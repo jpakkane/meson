@@ -538,6 +538,8 @@ be passed to [shared and static libraries](#library).
   in the D programming language
 - `d_unittest`, when set to true, the D modules are compiled in debug mode
 - `d_module_versions` list of module versions set when compiling D sources
+- `build_dir` provides a subdirectory to place the built
+  target. Useful when building multiple targets with the same base filename.
 
 The list of `sources`, `objects`, and `dependencies` is always
 flattened, which means you can freely nest and add lists while

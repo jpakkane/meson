@@ -193,7 +193,9 @@ class Backend:
             dirname = target.get_subdir()
         else:
             dirname = 'meson-out'
-        return dirname
+        if target.build_dir == '':
+            return dirname
+        return os.path.join(dirname, target.build_dir)
 
     def get_target_dir_relative_to(self, t, o):
         '''Get a target dir relative to another target's directory'''

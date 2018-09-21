@@ -53,6 +53,7 @@ cs_kwargs = set(['resources', 'cs_args'])
 buildtarget_kwargs = set([
     'build_by_default',
     'build_rpath',
+    'build_dir',
     'dependencies',
     'extra_files',
     'gui_app',
@@ -317,6 +318,7 @@ class Target:
 This is not supported, it can cause unexpected failures and will become
 a hard error in the future.''' % name)
         self.name = name
+        self.build_dir = ''
         self.subdir = subdir
         self.subproject = subproject
         self.build_by_default = build_by_default
@@ -339,6 +341,8 @@ a hard error in the future.''' % name)
         name_part = self.name.replace('/', '@').replace('\\', '@')
         assert not has_path_sep(self.type_suffix())
         myid = name_part + self.type_suffix()
+        if self.build_dir:
+            myid = self.build_dir + '@@' + myid
         if self.subdir:
             subdir_part = self.subdir.replace('/', '@').replace('\\', '@')
             myid = subdir_part + '@@' + myid
@@ -350,6 +354,11 @@ a hard error in the future.''' % name)
             if not isinstance(self.build_by_default, bool):
                 raise InvalidArguments('build_by_default must be a boolean value.')
         self.option_overrides = self.parse_overrides(kwargs)
+        self.build_dir = kwargs.get('build_dir', '')
+        if not isinstance(self.build_dir, str):
+            raise InvalidArguments('Build_dir must be a string.')
+        if has_path_sep(self.build_dir):
+            raise InvalidArguments('Build_dir "%s" has a path separator in its name.' % self.build_dir)
 
     def parse_overrides(self, kwargs):
         result = {}
