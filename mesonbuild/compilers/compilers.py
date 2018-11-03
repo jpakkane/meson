@@ -410,10 +410,11 @@ def option_enabled(boptions, options, option):
 
 def get_base_compile_args(options, compiler):
     args = []
-    # FIXME, gcc/clang specific.
     try:
         if options['b_lto'].value:
-            args.append('-flto')
+            if compiler.id == 'msvc' and options['buildtype'].value == 'debug':
+                raise MesonException('MSVC does not support LTO with debug buildtype.')
+            args.extend(compiler.get_lto_compile_args())
     except KeyError:
         pass
     try:
@@ -460,10 +461,9 @@ def get_base_compile_args(options, compiler):
 
 def get_base_link_args(options, linker, is_shared_module):
     args = []
-    # FIXME, gcc/clang specific.
     try:
         if options['b_lto'].value:
-            args.append('-flto')
+            args.extend(linker.get_lto_link_args())
     except KeyError:
         pass
     try:
@@ -1214,6 +1214,12 @@ class Compiler:
         m = 'Language {} does not support position-independent executable'
         raise EnvironmentException(m.format(self.get_display_language()))
 
+    def get_lto_compile_args(self):
+        return []
+
+    def get_lto_link_args(self):
+        return []
+
 
 @enum.unique
 class CompilerType(enum.Enum):
@@ -1449,6 +1455,12 @@ class GnuLikeCompiler(abc.ABC):
         # For other targets, discard the .def file.
         return []
 
+    def get_lto_compile_args(self):
+        return ['-flto']
+
+    def get_lto_link_args(self):
+        return ['-flto']
+
 
 class GnuCompiler(GnuLikeCompiler):
     """
@@ -1682,6 +1694,12 @@ class ArmclangCompiler:
         ArmLinker's symdefs output can be used as implib
         """
         return ['--symdefs=' + implibname]
+
+    def get_lto_compile_args(self):
+        return ['-flto']
+
+    def get_lto_link_args(self):
+        return ['-flto']
 
 
 # Tested on linux for ICC 14.0.3, 15.0.6, 16.0.4, 17.0.1

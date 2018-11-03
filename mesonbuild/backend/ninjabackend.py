@@ -2384,7 +2384,9 @@ rule FORTRAN_DEP_HACK%s
         # Add linker args for linking this target derived from 'base' build
         # options passed on the command-line, in default_options, etc.
         # These have the lowest priority.
-        if not isinstance(target, build.StaticLibrary):
+        if isinstance(target, build.StaticLibrary):
+            commands += linker.get_base_link_args(self.get_base_options_for_target(target))
+        else:
             commands += compilers.get_base_link_args(self.get_base_options_for_target(target),
                                                      linker,
                                                      isinstance(target, build.SharedModule))

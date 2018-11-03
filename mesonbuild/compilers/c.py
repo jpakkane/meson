@@ -1276,7 +1276,7 @@ class VisualStudioCCompiler(CCompiler):
         self.warn_args = {'1': ['/W2'],
                           '2': ['/W3'],
                           '3': ['/W4']}
-        self.base_options = ['b_pch', 'b_ndebug', 'b_vscrt'] # FIXME add lto, pgo and the like
+        self.base_options = ['b_pch', 'b_ndebug', 'b_vscrt', 'b_lto'] # FIXME add pgo and the like
         self.is_64 = is_64
 
     # Override CCompiler.get_always_args
@@ -1542,6 +1542,12 @@ class VisualStudioCCompiler(CCompiler):
         # MSVC doesn't have __attribute__ like Clang and GCC do, so just return
         # false without compiling anything
         return name in ['dllimport', 'dllexport']
+
+    def get_lto_compile_args(self):
+        return ['/GL']
+
+    def get_lto_link_args(self):
+        return ['/LTCG']
 
 
 class ArmCCompiler(ArmCompiler, CCompiler):

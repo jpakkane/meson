@@ -719,8 +719,11 @@ class Vs2010Backend(backends.Backend):
         ET.SubElement(type_config, 'CharacterSet').text = 'MultiByte'
         if self.platform_toolset:
             ET.SubElement(type_config, 'PlatformToolset').text = self.platform_toolset
-        # FIXME: Meson's LTO support needs to be integrated here
-        ET.SubElement(type_config, 'WholeProgramOptimization').text = 'false'
+        try:
+            use_lto = 'true' if self.environment.coredata.base_options['b_lto'].value else 'false'
+        except KeyError:
+            use_lto = 'false'
+        ET.SubElement(type_config, 'WholeProgramOptimization').text = use_lto
         # Let VS auto-set the RTC level
         ET.SubElement(type_config, 'BasicRuntimeChecks').text = 'Default'
         o_flags = split_o_flags_args(buildtype_args)

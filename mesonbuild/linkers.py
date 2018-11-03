@@ -1,4 +1,4 @@
-# Copyright 2012-2017 The Meson development team
+# Copyright 2012-2018 The Meson development team
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,6 +21,10 @@ class StaticLinker:
         Determines whether the linker can accept arguments using the @rsp syntax.
         """
         return mesonlib.is_windows()
+
+    def get_base_link_args(self, options):
+        """Like compilers.get_base_link_args, but for the static linker."""
+        return []
 
 
 class VisualStudioLinker(StaticLinker):
@@ -61,6 +65,15 @@ class VisualStudioLinker(StaticLinker):
 
     def get_option_link_args(self, options):
         return []
+
+    def get_base_link_args(self, options):
+        args = []
+        try:
+            if options['b_lto'].value:
+                args.append('/LTCG')
+        except KeyError:
+            pass
+        return args
 
     @classmethod
     def unix_args_to_native(cls, args):

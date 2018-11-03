@@ -1836,7 +1836,8 @@ class AllPlatformTests(BasePlatformTests):
         https://github.com/mesonbuild/meson/issues/1646
         '''
         testdir = os.path.join(self.common_test_dir, '5 linkstatic')
-        self.init(testdir, extra_args='-Db_lto=true')
+        # Use debugoptimized for MSVC, which doesn't support lto + debug
+        self.init(testdir, extra_args=['-Db_lto=true', '--buildtype=debugoptimized'])
         self.build()
         self.run_tests()
 
