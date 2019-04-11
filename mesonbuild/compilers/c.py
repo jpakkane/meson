@@ -390,6 +390,7 @@ class CCompiler(Compiler):
             #ifndef {symbol}
                 {symbol};
             #endif
+            return 0;
         }}'''
         return self.compiles(t.format(**fargs), env, extra_args=extra_args,
                              dependencies=dependencies)
@@ -565,6 +566,7 @@ class CCompiler(Compiler):
         {prefix}
         int main(int argc, char **argv) {{
             {type} something;
+            return 0;
         }}'''
         if not self.compiles(t.format(**fargs), env, extra_args=extra_args,
                              dependencies=dependencies):
@@ -600,6 +602,7 @@ class CCompiler(Compiler):
         {prefix}
         int main(int argc, char **argv) {{
             {type} something;
+            return 0;
         }}'''
         if not self.compiles(t.format(**fargs), env, extra_args=extra_args,
                              dependencies=dependencies):
@@ -674,6 +677,7 @@ class CCompiler(Compiler):
         #include <stdio.h>
         int main(int argc, char *argv[]) {{
             printf ("{fmt}", {cast} {f}());
+            return 0;
         }}'''.format(**fargs)
         res = self.run(code, env, extra_args=extra_args, dependencies=dependencies)
         if not res.compiled:
@@ -825,6 +829,7 @@ class CCompiler(Compiler):
                 #error "No definition for __builtin_{func} found in the prefix"
             #endif
         #endif
+            return 0;
         }}'''
         return self.links(t.format(**fargs), env, extra_args=extra_args,
                           dependencies=dependencies)
