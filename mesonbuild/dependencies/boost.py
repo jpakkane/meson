@@ -19,6 +19,7 @@ import os
 
 from .. import mlog
 from .. import mesonlib
+from ..mesonlib import LibType
 from ..environment import detect_cpu_family
 
 from .base import (DependencyException, ExternalDependency)
@@ -376,11 +377,12 @@ class BoostDependency(ExternalDependency):
         self.lib_modules = {}
 
         all_found = True
+        libtype = LibType.PREFER_STATIC if self.static else LibType.PREFER_SHARED
 
         for module in self.requested_modules:
             libname = 'boost_' + module + tag
 
-            args = self.clib_compiler.find_library(libname, self.env, self.extra_lib_dirs())
+            args = self.clib_compiler.find_library(libname, self.env, self.extra_lib_dirs(), libtype=libtype)
             if args is None:
                 mlog.debug("Couldn\'t find library '{}' for boost module '{}'  (ABI tag = '{}')".format(libname, module, tag))
                 all_found = False
