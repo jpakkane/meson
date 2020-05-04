@@ -14,3 +14,11 @@ endif
 if conf.get('CONFIG_VAL_VAL').to_int() != 4
   error('Expected CONFIG_VAL_VAL to be 4')
 endif
+
+if conf.get('CONFIG_VAL_STRING1') != 'foo'
+  error('Expected CONFIG_VAL_STRING1 to be foo')
+endif
+
+if conf.get('CONFIG_VAL_STRING2') != 'bar'
+  error('Expected CONFIG_VAL_STRING2 to be bar')
+endif

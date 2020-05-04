@@ -41,7 +41,11 @@ class KconfigModule(ExtensionModule):
                         name, val = line.split('=', 1)
                     except ValueError:
                         continue
-                    result[name.strip()] = val.strip()
+                    val = val.strip()
+                    # Unquote strings
+                    if val.startswith('"') and val.endswith('"'):
+                        val = val[1:-1]
+                    result[name.strip()] = val
         except IOError as e:
             raise mesonlib.MesonException('Failed to load {}: {}'.format(path_to_config, e))
 
