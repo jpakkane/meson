@@ -28,6 +28,8 @@ import re
 import subprocess
 import typing as T
 from pathlib import Path
+from itertools import groupby
+from operator import itemgetter
 
 from ... import arglist
 from ... import mesonlib
@@ -40,9 +42,19 @@ from .visualstudio import VisualStudioLikeCompiler
 if T.TYPE_CHECKING:
     from ...environment import Environment
 
-GROUP_FLAGS = re.compile(r'''\.so (?:\.[0-9]+)? (?:\.[0-9]+)? (?:\.[0-9]+)?$ |
+GROUP_FLAGS = re.compile(r'''[^-].*\.so (?:\.[0-9]+)? (?:\.[0-9]+)? (?:\.[0-9]+)?$ |
                              ^(?:-Wl,)?-l |
                              \.a$''', re.X)
+
+def group_consecutive_integer(data):
+    ''' Find all slices having the consecutive integers '''
+    groups = list()
+    for k, g in groupby(enumerate(data), lambda x: x[0]-x[1]):
+        group = (map(itemgetter(1), g))
+        group = list(map(int, group))
+        groups.append((group[0], group[-1]))
+
+    return groups
 
 class CLikeCompilerArgs(arglist.CompilerArgs):
     prepend_prefixes = ('-I', '-L')
@@ -68,19 +80,25 @@ class CLikeCompilerArgs(arglist.CompilerArgs):
         # all act like (or are) gnu ld
         # TODO: this could probably be added to the DynamicLinker instead
         if isinstance(self.compiler.linker, (GnuLikeDynamicLinkerMixin, SolarisDynamicLinker)):
-            group_start = -1
-            group_end = -1
+            is_library = list()
+
             for i, each in enumerate(new):
                 if not GROUP_FLAGS.search(each):
                     continue
-                group_end = i
-                if group_start < 0:
-                    # First occurrence of a library
-                    group_start = i
-            if group_start >= 0:
-                # Last occurrence of a library
-                new.insert(group_end + 1, '-Wl,--end-group')
-                new.insert(group_start, '-Wl,--start-group')
+                is_library.append(i)
+
+            # For each slice, enclose the arguments with '--start-group' and '--end-group'
+            offset = 0
+            for _group_start, _group_end in group_consecutive_integer(is_library):
+                # Skip groups that contains single link object
+                if _group_end - _group_start < 2:
+                    continue
+
+                # Last occurrence of a library in the subslice
+                new.insert(_group_end + offset + 1, '-Wl,--end-group')
+                new.insert(_group_start + offset, '-Wl,--start-group')
+                offset += 2
+
         # Remove system/default include paths added with -isystem
         if hasattr(self.compiler, 'get_default_include_dirs'):
             default_dirs = self.compiler.get_default_include_dirs()
