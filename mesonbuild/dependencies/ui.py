@@ -29,7 +29,7 @@ from ..environment import detect_cpu_family
 
 from .base import DependencyException, DependencyMethods
 from .base import ExternalDependency, NonExistingExternalProgram
-from .base import ExtraFrameworkDependency, PkgConfigDependency
+from .base import ExtraFrameworkDependency, PkgConfigDependency, CMakeDependency
 from .base import ConfigToolDependency, DependencyFactory
 from .base import find_external_program
 
@@ -206,15 +206,20 @@ class QtBaseDependency(ExternalDependency):
         # Keep track of the detection methods used, for logging purposes.
         methods = []
         # Prefer pkg-config, then fallback to `qmake -query`
-        if DependencyMethods.PKGCONFIG in self.methods:
-            mlog.debug('Trying to find qt with pkg-config')
-            self._pkgconfig_detect(mods, kwargs)
-            methods.append('pkgconfig')
-        if not self.is_found and DependencyMethods.QMAKE in self.methods:
-            mlog.debug('Trying to find qt with qmake')
-            self.from_text = self._qmake_detect(mods, kwargs)
-            methods.append('qmake-' + self.name)
-            methods.append('qmake')
+        #if DependencyMethods.PKGCONFIG in self.methods:
+        #    mlog.debug('Trying to find qt with pkg-config')
+        #    self._pkgconfig_detect(mods, kwargs)
+        #    methods.append('pkgconfig')
+        if not self.is_found and DependencyMethods.CMAKE in self.methods:
+            mlog.debug('Trying to find qt with cmake')
+            self._cmake_detect(mods, kwargs)
+            self.from_text = 'cmake'
+            methods.append('cmake')
+        #if not self.is_found and DependencyMethods.QMAKE in self.methods:
+        #    mlog.debug('Trying to find qt with qmake')
+        #    self.from_text = self._qmake_detect(mods, kwargs)
+        #    methods.append('qmake-' + self.name)
+        #    methods.append('qmake')
         if not self.is_found:
             # Reset compile args and link args
             self.compile_args = []
@@ -328,6 +333,27 @@ class QtBaseDependency(ExternalDependency):
             prefix = core.get_pkgconfig_variable('exec_prefix', {})
             if prefix:
                 self.bindir = os.path.join(prefix, 'bin')
+
+    def _cmake_detect(self, mods, kwargs):
+        # We set the value of required to False so that we can try the
+        # qmake-based fallback if pkg-config fails.
+        kwargs['required'] = False
+        modules = OrderedDict()
+        for module in mods:
+            kwargs['components'] = [module]
+            kwargs['modules'] = ["Qt::" + module]
+            modules[module] = CMakeDependency(self.qtpkgname, self.env,
+                                              kwargs, language=self.language)
+        for m_name, m in modules.items():
+            if not m.found():
+                self.is_found = False
+                return
+            self.compile_args += m.get_compile_args()
+            # TODO self.private_headers
+            self.link_args += m.get_link_args()
+
+        self.is_found = True
+        self.version = m.version
 
     def search_qmake(self) -> T.Generator['ExternalProgram', None, None]:
         for qmake in ('qmake-' + self.name, 'qmake'):
@@ -491,7 +517,7 @@ class QtBaseDependency(ExternalDependency):
 
     @staticmethod
     def get_methods():
-        return [DependencyMethods.PKGCONFIG, DependencyMethods.QMAKE]
+        return [DependencyMethods.PKGCONFIG, DependencyMethods.CMAKE, DependencyMethods.QMAKE]
 
     def get_exe_args(self, compiler):
         # Originally this was -fPIE but nowadays the default
