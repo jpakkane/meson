@@ -12,7 +12,7 @@ pkgs=(
   itstool gtk3 java-environment=8 gtk-doc llvm clang sdl2 graphviz
   doxygen vulkan-validation-layers openssh mercurial gtk-sharp-2 qt5-tools
   libwmf valgrind cmake netcdf-fortran openmpi nasm gnustep-base gettext
-  python-lxml hotdoc rust-bindgen qt6-base qt6-tools
+  python-lxml hotdoc rust-bindgen qt6-base qt6-tools zig curl
   # cuda
 )
 

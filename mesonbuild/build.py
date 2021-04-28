@@ -62,6 +62,7 @@ lang_arg_kwargs = {
     'rust_args',
     'vala_args',
     'cs_args',
+    'zig_args',
 }
 
 vala_kwargs = {'vala_header', 'vala_gir', 'vala_vapi'}
@@ -103,7 +104,7 @@ known_build_target_kwargs = (
     rust_kwargs |
     cs_kwargs)
 
-known_exe_kwargs = known_build_target_kwargs | {'implib', 'export_dynamic', 'pie'}
+known_exe_kwargs = known_build_target_kwargs | {'implib', 'export_dynamic', 'pie', 'link_script'}
 known_shlib_kwargs = known_build_target_kwargs | {'version', 'soversion', 'vs_module_defs', 'darwin_versions'}
 known_shmod_kwargs = known_build_target_kwargs | {'vs_module_defs'}
 known_stlib_kwargs = known_build_target_kwargs | {'pic', 'prelink'}
@@ -957,14 +958,23 @@ just like those detected with the dependency() function.''')
         for linktarget in lwhole:
             self.link_whole(linktarget)
 
-        c_pchlist, cpp_pchlist, clist, cpplist, cudalist, cslist, valalist,  objclist, objcpplist, fortranlist, rustlist \
-            = [extract_as_list(kwargs, c) for c in ['c_pch', 'cpp_pch', 'c_args', 'cpp_args', 'cuda_args', 'cs_args', 'vala_args', 'objc_args', 'objcpp_args', 'fortran_args', 'rust_args']]
+        c_pchlist, cpp_pchlist, clist, cpplist, cudalist, cslist, valalist, objclist, objcpplist, fortranlist, rustlist, ziglist \
+            = [extract_as_list(kwargs, c) for c in ['c_pch', 'cpp_pch', 'c_args', 'cpp_args', 'cuda_args', 'cs_args', 'vala_args', 'objc_args', 'objcpp_args', 'fortran_args', 'rust_args', 'zig_args']]
 
         self.add_pch('c', c_pchlist)
         self.add_pch('cpp', cpp_pchlist)
-        compiler_args = {'c': clist, 'cpp': cpplist, 'cuda': cudalist, 'cs': cslist, 'vala': valalist, 'objc': objclist, 'objcpp': objcpplist,
-                         'fortran': fortranlist, 'rust': rustlist
-                         }
+        compiler_args = {
+            'c': clist,
+            'cpp': cpplist,
+            'cuda': cudalist,
+            'cs': cslist,
+            'vala': valalist,
+            'objc': objclist,
+            'objcpp': objcpplist,
+            'fortran': fortranlist,
+            'rust': rustlist,
+            'zig': ziglist
+        }
         for key, value in compiler_args.items():
             self.add_compiler_args(key, value)
 
@@ -1747,6 +1757,9 @@ class Executable(BuildTarget):
 
         # Only linkwithable if using export_dynamic
         self.is_linkwithable = self.export_dynamic
+
+        if 'link_script' in self.kwargs:
+            raise MesonException('boom')
 
     def get_default_install_dir(self, environment: environment.Environment) -> str:
         return environment.get_bindir()

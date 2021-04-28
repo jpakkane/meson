@@ -23,6 +23,7 @@ import itertools
 from pathlib import PurePath, Path
 from functools import lru_cache
 
+from .. import dependencies
 from . import backends
 from .. import modules
 from .. import environment, mesonlib
@@ -720,6 +721,9 @@ int dummy;
             return
         if 'swift' in target.compilers:
             self.generate_swift_target(target)
+            return
+        if 'zig' in target.compilers:
+            self.generate_zig_target(target)
             return
 
         # Now we handle the following languages:
@@ -1674,6 +1678,109 @@ int dummy;
             self.generate_shsym(target)
         self.create_target_source_introspection(target, rustc, args, [main_rust_file], [])
 
+    def generate_zig_target(self, target: build.BuildTarget):
+        assert(self.environment);
+
+        zig = target.compilers['zig']
+        args = zig.compiler_args()
+
+        target_name = os.path.join(target.subdir, target.get_filename())
+        base_proxy = self.get_base_options_for_target(target)
+
+        # Adapted from the rust target generation logic, Zig behaves similarly
+        # in that it can work off of a single, so called "root source file" that
+        # imports other project source files
+        root_src_file = None
+        for i in target.get_sources():
+            if not zig.can_compile(i):
+                raise InvalidArguments(f'Zig target {target.get_basename()} contains a non-zig source file.')
+            if root_src_file is None:
+                root_src_file = i.rel_to_builddir(self.build_to_src)
+
+        if root_src_file is None:
+            raise MesonException('A Zig target has no Zig sources. This is weird. Also a bug. Please report')
+
+        has_shared_deps = any([isinstance(d, build.SharedLibrary) for d in target.get_dependencies()])
+
+        # Zig uses different subcommands for executables and libraries,
+        # shared libraries are selected via the -dynamic flag
+        if isinstance(target, build.Executable):
+            args += ['build-exe']
+            args += zig.get_win_subsystem_args(target.win_subsystem)
+            if has_shared_deps:
+                args += zig.get_pic_args()
+        elif isinstance(target, build.StaticLibrary):
+            args += ['build-lib']
+        elif isinstance(target, build.SharedLibrary):
+            args += ['build-lib']
+            args += zig.get_std_shared_lib_link_args()
+            args += zig.get_pic_args()
+            if target.ltversion:
+                args += ['--version', target.ltversion]
+        else:
+            raise InvalidArguments('Unknown target type for zig.')
+
+        # Add built-in options
+        args += compilers.get_base_compile_args(base_proxy, zig)
+
+        # Add otherwise needed flags
+        args += ['--enable-cache', '--cache-dir', self.environment.get_build_dir().join(['zig-cache'])]
+        args += zig.get_optimization_args(self.get_option_for_target(OptionKey('optimization'), target))
+        args += zig.get_output_args(target_name)
+
+        args += target.get_extra_args('zig')
+        args += self.build.get_global_args(zig, target.for_machine)
+        args += self.build.get_project_args(zig, target.subproject, target.for_machine)
+        args += self.environment.coredata.get_external_args(target.for_machine, zig.language)
+
+        # Handle target include directories, adapted from the Swift generation logic
+        for i in reversed(target.get_include_dirs()):
+            basedir = i.get_curdir()
+            for d in i.get_incdirs():
+                if d not in ('', '.'):
+                    expdir = os.path.join(basedir, d)
+                else:
+                    expdir = basedir
+                srctreedir = os.path.normpath(os.path.join(self.environment.get_build_dir(), self.build_to_src, expdir))
+                args += [f'-I{srctreedir}']
+
+        compiler_name = self.get_compiler_rule_name('zig', target.for_machine)
+        element = NinjaBuildElement(self.all_outputs, target_name, compiler_name, root_src_file)
+
+        # Provide the libaries the target links against
+        for d in target.link_targets:
+            reldir = self.get_target_dir(d)
+            if reldir == '':
+                reldir = '.'
+            ldir = os.path.normpath(os.path.join(self.environment.get_build_dir(), reldir))
+            args += [f'-L{ldir}']
+            # Also add shared libraries to rpath
+            if isinstance(d, build.SharedLibrary):
+                args += [f'-l{ldir.join([d.get_filename()])}']
+                if d.should_install():
+                    idir, _ = d.get_install_dir(self.environment)
+                    args += ['-rpath', os.path.join(self.environment.get_prefix(), idir[0])]
+                else:
+                    args += ['-rpath', ldir]
+            else:
+                args += [f'-l{ldir.join([d.name])}']
+            element.add_dep(d.get_filename())
+
+        # Handle external dependencies
+        for d in target.get_external_deps():
+            if isinstance(d, dependencies.platform.AppleFrameworks):
+                args += ['-framework', d.get_name()]
+            else:
+                args += d.get_compile_args()
+                args += d.get_link_args()
+
+        element.add_item('ARGS', args)
+        self.add_build(element)
+
+        # Generate symbol files for runtime linking
+        if isinstance(target, build.SharedLibrary):
+            self.generate_shsym(target)
+
     @staticmethod
     def get_rule_suffix(for_machine: MachineChoice) -> str:
         return PerMachine('_FOR_BUILD', '')[for_machine]
@@ -1867,10 +1974,7 @@ int dummy;
         for for_machine in MachineChoice:
             complist = self.environment.coredata.compilers[for_machine]
             for langname, compiler in complist.items():
-                if langname == 'java' \
-                        or langname == 'vala' \
-                        or langname == 'rust' \
-                        or langname == 'cs':
+                if langname in {'java', 'vala', 'rust', 'zig', 'cs'}:
                     continue
                 rule = '{}_LINKER{}'.format(langname, self.get_rule_suffix(for_machine))
                 command = compiler.get_linker_exelist()
@@ -1928,6 +2032,12 @@ int dummy;
         self.add_rule(NinjaRule(rule, command, [], description, deps=depstyle,
                                 depfile=depfile))
 
+    def generate_zig_compile_rules(self, compiler):
+        rule = self.compiler_to_rule_name(compiler)
+        command = compiler.get_exelist() + ['$ARGS', '$in']
+        description = 'Compiling Zig source $in'
+        self.add_rule(NinjaRule(rule, command, [], description))
+
     def generate_swift_compile_rules(self, compiler):
         rule = self.compiler_to_rule_name(compiler)
         full_exe = self.environment.get_build_command() + [
@@ -1984,6 +2094,9 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
             return
         if langname == 'rust':
             self.generate_rust_compile_rules(compiler)
+            return
+        if langname == 'zig':
+            self.generate_zig_compile_rules(compiler)
             return
         if langname == 'swift':
             if self.environment.machines.matches_build_machine(compiler.for_machine):

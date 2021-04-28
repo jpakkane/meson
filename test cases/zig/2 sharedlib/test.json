@@ -1,0 +1,6 @@
+{
+  "installed": [
+    {"type": "exe", "file": "usr/bin/zigtest-shared-lib"},
+    {"type": "shared_lib", "file": "usr/lib/hello", "version": "1.0.0"}
+  ]
+}

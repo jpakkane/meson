@@ -732,6 +732,7 @@ class Environment:
         self.default_rust = ['rustc']
         self.default_swift = ['swiftc']
         self.default_vala = ['valac']
+        self.default_zig = ['zig']
         self.default_static_linker = ['ar', 'gar']
         self.default_strip = ['strip']
         self.vs_static_linker = ['lib']
@@ -1998,6 +1999,24 @@ class Environment:
 
         raise EnvironmentException('Unknown compiler "' + ' '.join(exelist) + '"')
 
+    def detect_zig_compiler(self, for_machine: MachineChoice) -> compilers.ZigCompiler:
+        exelist = self.lookup_binary_entry(for_machine, 'zig')
+        is_cross = self.is_cross_build(for_machine)
+        info = self.machines[for_machine]
+        if exelist is None:
+            exelist = [self.default_zig[0]]
+
+        try:
+            _, ver, _ = Popen_safe(exelist + ['version'])
+        except OSError:
+            raise EnvironmentException('Could not execute Zig compiler "{}"'.format(' '.join(exelist)))
+
+        version = search_version(ver)
+        comp = compilers.ZigCompiler(exelist, version, for_machine, info, self.exe_wrapper, is_cross)
+        self.coredata.add_lang_args(comp.language, compilers.ZigCompiler, for_machine, self)
+
+        return comp
+
     def compiler_from_language(self, lang: str, for_machine: MachineChoice):
         if lang == 'c':
             comp = self.detect_c_compiler(for_machine)
@@ -2023,6 +2042,8 @@ class Environment:
             comp = self.detect_fortran_compiler(for_machine)
         elif lang == 'swift':
             comp = self.detect_swift_compiler(for_machine)
+        elif lang == 'zig':
+            comp = self.detect_zig_compiler(for_machine)
         else:
             comp = None
         return comp
