@@ -1855,7 +1855,8 @@ class BasePlatformTests(unittest.TestCase):
         self.common_test_dir = os.path.join(src_root, 'test cases/common')
         self.vala_test_dir = os.path.join(src_root, 'test cases/vala')
         self.framework_test_dir = os.path.join(src_root, 'test cases/frameworks')
-        self.unit_test_dir = os.path.join(src_root, 'test cases/unit')
+        self.unit_test_rel_dir = 'test cases/unit'
+        self.unit_test_dir = os.path.join(src_root, self.unit_test_rel_dir)
         self.rewrite_test_dir = os.path.join(src_root, 'test cases/rewrite')
         self.linuxlike_test_dir = os.path.join(src_root, 'test cases/linuxlike')
         self.objc_test_dir = os.path.join(src_root, 'test cases/objc')
@@ -4792,6 +4793,7 @@ class AllPlatformTests(BasePlatformTests):
             ('boolean', bool, []),
             ('integer', int, []),
             ('array', list, []),
+            ('filepath', str, []),
         ]
 
         buildoptions_sections = ['core', 'backend', 'base', 'compiler', 'directory', 'user', 'test']
@@ -5842,6 +5844,33 @@ class AllPlatformTests(BasePlatformTests):
                 cc = env.detect_compiler_for('c', MachineChoice.HOST)
                 link_args = env.coredata.get_external_link_args(cc.for_machine, cc.language)
                 self.assertEqual(sorted(link_args), sorted(['-flto']))
+
+    def test_overrides(self):
+        d = '96 overriding'
+        testdir = os.path.join(self.unit_test_dir, d)
+        # Use a relative path to the override file to test that path
+        # preservation works.
+        override_file = os.path.join(self.unit_test_rel_dir, d, 'overrides.txt')
+        self.init(testdir, extra_args=['-Doverride_file='+ override_file])
+        self.build()
+        file_found = False
+        for i in self.introspect('--buildoptions'):
+            if i['name'] == 'override_file':
+                self.assertTrue(os.path.isabs(i['value']))
+                file_found = True
+        self.assertTrue(file_found, 'Override file missing from build options.')
+        for c in self.get_compdb():
+            if 'toplevel.c' in c['file']:
+                self.assertNotIn('-O1', c['command'])
+                self.assertNotIn('-O2', c['command'])
+            elif 'other.c' in c['file']:
+                self.assertNotIn('-O2', c['command'])
+                self.assertIn('-O1', c['command'])
+            elif 'some.c' in c['file']:
+                self.assertNotIn('-O1', c['command'])
+                self.assertIn('-O2', c['command'])
+            else:
+                self.assertTrue(False, 'Unknown input file {} in compdb'.format(c['file']))
 
 class FailureTests(BasePlatformTests):
     '''

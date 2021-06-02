@@ -1,0 +1,6 @@
+[options_subprojects]
+buildtype = 'debugoptimized'
+
+[options_othersub]
+buildtype = 'release'
+optimization = '1'

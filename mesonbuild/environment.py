@@ -560,6 +560,45 @@ def search_version(text: str) -> str:
 
     return 'unknown version'
 
+class OptionOverrides:
+    def __init__(self):
+        self.subproject_overrides = {} # Overrides option value in all subprojects but not the main project.
+        self.option_overrides = {}
+
+    def add_subprojects_override(self, key, value):
+        self.subproject_overrides[key] = value
+
+    def value_if_overridden(self, option, subproject): # FIXME add target as an argument?
+        if subproject == '':
+            return None
+        if isinstance(option, str):
+            option_name = option
+        else:
+            option_name = option.name
+        option_key = (subproject, option_name)
+        if option_key in self.option_overrides:
+            return self.option_overrides[option_key]
+        # There was no specifc override for this option. However
+        # overriding the build type implicitly sets debug and
+        # optimization. Thus we
+        if option_name == 'optimization':
+            buildtype = self.value_if_overridden('buildtype', subproject)
+            if buildtype is None:
+                return None
+            return coredata.BUILDTYPE_2_OPTIMIZATION[buildtype]
+        elif option_name == 'debug':
+            buildtype = self.value_if_overridden('buildtype', subproject)
+            if buildtype is None:
+                return None
+            return coredata.BUILDTYPE_2_DEBUG[buildtype]
+
+        if option_name not in self.subproject_overrides:
+            return None
+        return self.subproject_overrides[option_name]
+
+    def add_option_override(self, subproject, key, value):
+        self.option_overrides[(subproject, key)] = value
+
 class Environment:
     private_dir = 'meson-private'
     log_dir = 'meson-logs'
@@ -742,6 +781,23 @@ class Environment:
         self.default_cmake = ['cmake']
         self.default_pkgconfig = ['pkg-config']
         self.wrap_resolver = None
+        self.overrides = OptionOverrides()
+        self.init_overrides()
+        self.check_dual_overrides()
+
+    def has_per_subproject_options(self):
+        for o in self.options:
+            if o.subproject:
+                return True
+        return False
+
+    def check_dual_overrides(self):
+        if self.has_per_subproject_options() and self.coredata.options[mesonlib.OptionKey('override_file')].value:
+            raise MesonException('''Tried to define a per-subproject option in a machine file when override_file was defined.
+This is not supported. All per-subproject options should be transitioned to
+use the override file. Machine file overrides are deprecatd and will be
+removed in a future Meson release.''')
+
 
     def _load_machine_file_options(self, config: 'ConfigParser', properties: Properties, machine: MachineChoice) -> None:
         """Read the contents of a Machine file and put it in the options store."""
@@ -773,6 +829,8 @@ class Environment:
                 subproject, section = section.split(':')
             else:
                 subproject = ''
+            if subproject != '':
+                mlog.deprecation('Per-subproject option values in machine files are deprecated, transition to using an override_file instead.')
             if section == 'built-in options':
                 for k, v in values.items():
                     key = OptionKey.from_string(k)
@@ -2185,3 +2243,20 @@ class Environment:
         if not self.need_exe_wrapper():
             return EmptyExternalProgram()
         return self.exe_wrapper
+
+    def init_overrides(self) -> None:
+        k = OptionKey('override_file')
+        override_file = self.options.get(k, None)
+        if override_file:
+            if not os.path.exists(override_file):
+                raise mesonlib.MesonException(f'Override file {override_file} does not exist.')
+            for section_name, entries in coredata.MachineFileParser(override_file).sections.items():
+                if section_name == 'options_subprojects':
+                    for k, v in entries.items():
+                        self.overrides.add_subprojects_override(k, v)
+                elif section_name.startswith('options_'):
+                    subproject_name = section_name.split('_', 1)[1]
+                    for k, v in entries.items():
+                        self.overrides.add_option_override(subproject_name, k, v)
+                else:
+                    raise mesonlib.MesonException(f'Unknown section "{section_name}" in override file.')

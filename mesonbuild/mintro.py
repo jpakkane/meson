@@ -256,6 +256,8 @@ def list_buildoptions(coredata: cdata.CoreData, subprojects: T.Optional[T.List[s
                 typestr = 'integer'
             elif isinstance(opt, cdata.UserArrayOption):
                 typestr = 'array'
+            elif isinstance(opt, cdata.UserFilePathOption):
+                typestr = 'filepath'
             else:
                 raise RuntimeError("Unknown option type")
             optdict['type'] = typestr

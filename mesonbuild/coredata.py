@@ -49,6 +49,19 @@ default_yielding = False
 # Can't bind this near the class method it seems, sadly.
 _T = T.TypeVar('_T')
 
+BUILDTYPE_2_DEBUG = {'plain': False,
+        'debug': True,
+        'debugoptimized': True,
+        'release': False,
+        'minsize': True,
+        }
+
+BUILDTYPE_2_OPTIMIZATION = {'plain': '0',
+        'debug':'0',
+        'debugoptimized':'2',
+        'release': '3',
+        'minsize':'s',
+        }
 
 class MesonVersionMismatchException(MesonException):
     '''Build directory generated with Meson version is incompatible with current version'''
@@ -92,6 +105,27 @@ class UserStringOption(UserOption[str]):
     def validate_value(self, value: T.Any) -> str:
         if not isinstance(value, str):
             raise MesonException('Value "%s" for string option is not a string.' % str(value))
+        return value
+
+class UserFilePathOption(UserOption[str]):
+    def __init__(self, description: str, value: T.Any, yielding: T.Optional[bool] = None):
+        super().__init__(description, None, yielding)
+        self.path_must_exist = True
+        self.set_value(value)
+
+    def validate_value(self, value: T.Any) -> str:
+        if not isinstance(value, str):
+            raise MesonException('Value "%s" for file path option is not a string.' % str(value))
+        if not value:
+            return value
+         # Store absolute paths, because the original Meson command
+         # might not have been run from the build root.
+        if not os.path.isabs(value):
+            value = os.path.join(os.getcwd(), value)
+        if not self.path_must_exist:
+            return value
+        if not os.path.exists(value):
+            raise MesonException(f'File path "{value}" for does not exist on the file system.')
         return value
 
 class UserBooleanOption(UserOption[bool]):
@@ -374,6 +408,7 @@ class DependencyCache:
     def clear(self) -> None:
         self.__cache.clear()
 
+
 # Can't bind this near the class method it seems, sadly.
 _V = T.TypeVar('_V')
 
@@ -606,24 +641,10 @@ class CoreData:
     def get_nondefault_buildtype_args(self):
         result= []
         value = self.options[OptionKey('buildtype')].value
-        if value == 'plain':
-            opt = '0'
-            debug = False
-        elif value == 'debug':
-            opt = '0'
-            debug = True
-        elif value == 'debugoptimized':
-            opt = '2'
-            debug = True
-        elif value == 'release':
-            opt = '3'
-            debug = False
-        elif value == 'minsize':
-            opt = 's'
-            debug = True
-        else:
-            assert(value == 'custom')
+        if value == 'custom':
             return []
+        opt = BUILDTYPE_2_OPTIMIZATION[value]
+        debug = BUILDTYPE_2_DEBUG[value]
         actual_opt = self.options[OptionKey('optimization')].value
         actual_debug = self.options[OptionKey('debug')].value
         if actual_opt != opt:
@@ -834,7 +855,7 @@ class MachineFileParser():
     def __init__(self, filenames: T.List[str]) -> None:
         self.parser = CmdLineFileParser()
         self.constants = {'True': True, 'False': False}
-        self.sections = {}
+        self.sections = {}   
 
         self.parser.read(filenames)
 
@@ -1127,24 +1148,25 @@ BUILTIN_DIR_OPTIONS: 'KeyedOptionDictType' = OrderedDict([
 ])
 
 BUILTIN_CORE_OPTIONS: 'KeyedOptionDictType' = OrderedDict([
-    (OptionKey('auto_features'),   BuiltinOption(UserFeatureOption, "Override value of all 'auto' features", 'auto')),
-    (OptionKey('backend'),         BuiltinOption(UserComboOption, 'Backend to use', 'ninja', choices=backendlist)),
-    (OptionKey('buildtype'),       BuiltinOption(UserComboOption, 'Build type to use', 'debug',
-                                                 choices=['plain', 'debug', 'debugoptimized', 'release', 'minsize', 'custom'])),
-    (OptionKey('debug'),           BuiltinOption(UserBooleanOption, 'Debug', True)),
-    (OptionKey('default_library'), BuiltinOption(UserComboOption, 'Default library type', 'shared', choices=['shared', 'static', 'both'],
-                                                 yielding=False)),
-    (OptionKey('errorlogs'),       BuiltinOption(UserBooleanOption, "Whether to print the logs from failing tests", True)),
-    (OptionKey('install_umask'),   BuiltinOption(UserUmaskOption, 'Default umask to apply on permissions of installed files', '022')),
-    (OptionKey('layout'),          BuiltinOption(UserComboOption, 'Build directory layout', 'mirror', choices=['mirror', 'flat'])),
-    (OptionKey('optimization'),    BuiltinOption(UserComboOption, 'Optimization level', '0', choices=['0', 'g', '1', '2', '3', 's'])),
-    (OptionKey('stdsplit'),        BuiltinOption(UserBooleanOption, 'Split stdout and stderr in test logs', True)),
-    (OptionKey('strip'),           BuiltinOption(UserBooleanOption, 'Strip targets on install', False)),
-    (OptionKey('unity'),           BuiltinOption(UserComboOption, 'Unity build', 'off', choices=['on', 'off', 'subprojects'])),
-    (OptionKey('unity_size'),      BuiltinOption(UserIntegerOption, 'Unity block size', (2, None, 4))),
-    (OptionKey('warning_level'),   BuiltinOption(UserComboOption, 'Compiler warning level to use', '1', choices=['0', '1', '2', '3'], yielding=False)),
-    (OptionKey('werror'),          BuiltinOption(UserBooleanOption, 'Treat warnings as errors', False, yielding=False)),
-    (OptionKey('wrap_mode'),       BuiltinOption(UserComboOption, 'Wrap mode', 'default', choices=['default', 'nofallback', 'nodownload', 'forcefallback', 'nopromote'])),
+    (OptionKey('auto_features'),      BuiltinOption(UserFeatureOption,  "Override value of all 'auto' features", 'auto')),
+    (OptionKey('backend'),            BuiltinOption(UserComboOption,    'Backend to use', 'ninja', choices=backendlist)),
+    (OptionKey('buildtype'),          BuiltinOption(UserComboOption,    'Build type to use', 'debug',
+                                                    choices=['plain', 'debug', 'debugoptimized', 'release', 'minsize', 'custom'])),
+    (OptionKey('debug'),              BuiltinOption(UserBooleanOption,  'Debug', True)),
+    (OptionKey('default_library'),    BuiltinOption(UserComboOption,    'Default library type', 'shared', choices=['shared', 'static', 'both'],
+                                                    yielding=False)),
+    (OptionKey('errorlogs'),          BuiltinOption(UserBooleanOption,  "Whether to print the logs from failing tests", True)),
+    (OptionKey('install_umask'),      BuiltinOption(UserUmaskOption,    'Default umask to apply on permissions of installed files', '022')),
+    (OptionKey('layout'),             BuiltinOption(UserComboOption,    'Build directory layout', 'mirror', choices=['mirror', 'flat'])),
+    (OptionKey('optimization'),       BuiltinOption(UserComboOption,    'Optimization level', '0', choices=['0', 'g', '1', '2', '3', 's'])),
+    (OptionKey('override_file'),      BuiltinOption(UserFilePathOption, 'Override file path', '')),
+    (OptionKey('stdsplit'),           BuiltinOption(UserBooleanOption,   'Split stdout and stderr in test logs', True)),
+    (OptionKey('strip'),              BuiltinOption(UserBooleanOption,  'Strip targets on install', False)),
+    (OptionKey('unity'),              BuiltinOption(UserComboOption,    'Unity build', 'off', choices=['on', 'off', 'subprojects'])),
+    (OptionKey('unity_size'),         BuiltinOption(UserIntegerOption,  'Unity block size', (2, None, 4))),
+    (OptionKey('warning_level'),      BuiltinOption(UserComboOption,    'Compiler warning level to use', '1', choices=['0', '1', '2', '3'], yielding=False)),
+    (OptionKey('werror'),             BuiltinOption(UserBooleanOption,  'Treat warnings as errors', False, yielding=False)),
+    (OptionKey('wrap_mode'),          BuiltinOption(UserComboOption,    'Wrap mode', 'default', choices=['default', 'nofallback', 'nodownload', 'forcefallback', 'nopromote'])),
     (OptionKey('force_fallback_for'), BuiltinOption(UserArrayOption, 'Force fallback for those subprojects', [])),
 ])
 

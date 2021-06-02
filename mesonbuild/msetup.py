@@ -224,6 +224,7 @@ class MesonApp:
         except Exception as e:
             mintro.write_meson_info_file(b, [e])
             raise
+        env.check_dual_overrides()
         # Print all default option values that don't match the current value
         for def_opt_name, def_opt_value, cur_opt_value in intr.get_non_matching_default_options():
             mlog.log('Option', mlog.bold(def_opt_name), 'is:',

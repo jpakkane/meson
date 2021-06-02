@@ -87,6 +87,7 @@ machine](#specifying-options-per-machine) section for details.
 | werror                               | false         | Treat warnings as errors                                       | no             | yes               |
 | wrap_mode {default, nofallback,<br>nodownload, forcefallback, nopromote} | default | Wrap mode to use                 | no             | no                |
 | force_fallback_for                   | []            | Force fallback for those dependencies                          | no             | no                |
+| override_file                        | ''            | Path to file containing option overrides                       | no             | no                |
 
 <a name="build-type-options"></a> For setting optimization levels and
 toggling debug, you can either set the `buildtype` option, or you can

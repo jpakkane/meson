@@ -14,6 +14,9 @@ ld = '/usr/bin/arm-linux/gnueabihf-ld'
 c_args = ['-DMESON_TEST_ISSUE_1665=1']
 cpp_args = '-DMESON_TEST_ISSUE_1665=1'
 
+[zlib:built-in options]
+c_std = 'c99'
+
 [properties]
 root = '/usr/arm-linux-gnueabihf'
 

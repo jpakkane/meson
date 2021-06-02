@@ -32,6 +32,7 @@ index.md
 		Cross-compilation.md
 		Localisation.md
 		Build-options.md
+		Overrides.md
 		Subprojects.md
 		Disabler.md
 		Code-formatting.md

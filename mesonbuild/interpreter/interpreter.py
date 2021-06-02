@@ -868,6 +868,10 @@ external dependencies (including libraries) must go to "dependencies".''')
     def get_option_internal(self, optname: str):
         key = OptionKey.from_string(optname).evolve(subproject=self.subproject)
 
+        maybe_v = self.environment.overrides.value_if_overridden(optname, self.subproject)
+        if maybe_v is not None:
+            return maybe_v
+
         if not key.is_project():
             for opts in [self.coredata.options, compilers.base_options]:
                 v = opts.get(key)

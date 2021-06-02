@@ -263,6 +263,9 @@ class Backend:
         return OptionOverrideProxy(comp_override, comp_reg)
 
     def get_option_for_target(self, option_name: 'OptionKey', target: build.BuildTarget):
+        potential = self.environment.overrides.value_if_overridden(option_name, target.subproject)
+        if potential is not None:
+            return potential
         if option_name in target.option_overrides_base:
             override = target.option_overrides_base[option_name]
             return self.environment.coredata.validate_option_value(option_name, override)
