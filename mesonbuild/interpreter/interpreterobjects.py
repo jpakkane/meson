@@ -858,6 +858,9 @@ class BuildTargetHolder(ObjectHolder[_BuildTarget]):
 class ExecutableHolder(BuildTargetHolder[build.Executable]):
     pass
 
+class CompiledObjectsHolder(BuildTargetHolder[build.CompiledObjects]):
+    pass
+
 class StaticLibraryHolder(BuildTargetHolder[build.StaticLibrary]):
     pass
 

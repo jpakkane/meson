@@ -311,7 +311,7 @@ rewriter_keys = {
         'operation': (str, None, ['src_add', 'src_rm', 'target_rm', 'target_add', 'info']),
         'sources': (list, [], None),
         'subdir': (str, '', None),
-        'target_type': (str, 'executable', ['both_libraries', 'executable', 'jar', 'library', 'shared_library', 'shared_module', 'static_library']),
+        'target_type': (str, 'executable', ['both_libraries', 'executable', 'jar', 'library', 'objects', 'shared_library', 'shared_module', 'static_library']),
     }
 }
 
@@ -416,7 +416,7 @@ class Rewriter:
         if target in self.interpreter.assignments:
             node = self.interpreter.assignments[target]
             if isinstance(node, FunctionNode):
-                if node.func_name in ['executable', 'jar', 'library', 'shared_library', 'shared_module', 'static_library', 'both_libraries']:
+                if node.func_name in ['executable', 'jar', 'library', 'objects', 'shared_library', 'shared_module', 'static_library', 'both_libraries']:
                     tgt = self.interpreter.assign_vals[target]
 
         return tgt

@@ -188,6 +188,7 @@ known_build_target_kwargs = (
     known_library_kwargs |
     build.known_exe_kwargs |
     build.known_jar_kwargs |
+    build.known_objs_kwargs |
     {'target_type'}
 )
 
@@ -372,6 +373,7 @@ class Interpreter(InterpreterBase, HoldableObject):
                            'subdir_done': self.func_subdir_done,
                            'subproject': self.func_subproject,
                            'summary': self.func_summary,
+                           'compiled_objects': self.func_compiled_objects,
                            'shared_library': self.func_shared_lib,
                            'shared_module': self.func_shared_module,
                            'static_library': self.func_static_lib,
@@ -405,6 +407,7 @@ class Interpreter(InterpreterBase, HoldableObject):
             build.StaticLibrary: OBJ.StaticLibraryHolder,
             build.BothLibraries: OBJ.BothLibrariesHolder,
             build.SharedModule: OBJ.SharedModuleHolder,
+            build.CompiledObjects: OBJ.CompiledObjectsHolder,
             build.Executable: OBJ.ExecutableHolder,
             build.Jar: OBJ.JarHolder,
             build.CustomTarget: OBJ.CustomTargetHolder,
@@ -1559,6 +1562,12 @@ external dependencies (including libraries) must go to "dependencies".''')
     def func_executable(self, node, args, kwargs):
         return self.build_target(node, args, kwargs, build.Executable)
 
+    # TODO: adjust to release
+    @FeatureNew('compiled_objects', '0.61.0')
+    @permittedKwargs(build.known_objs_kwargs)
+    def func_compiled_objects(self, node, args, kwargs):
+        return self.build_target(node, args, kwargs, build.CompiledObjects)
+
     @permittedKwargs(build.known_stlib_kwargs)
     def func_static_lib(self, node, args, kwargs):
         return self.build_target(node, args, kwargs, build.StaticLibrary)
@@ -1594,11 +1603,16 @@ external dependencies (including libraries) must go to "dependencies".''')
         target_type = kwargs.pop('target_type')
         if target_type == 'executable':
             return self.build_target(node, args, kwargs, build.Executable)
+        elif target_type == 'objects':
+            # TODO: adjust to release
+            FeatureNew.single_use('build_target(target_type: \'objects\')',
+                   '0.61.0', self.subproject)
+            return self.build_target(node, args, kwargs, build.CompiledObjects)
         elif target_type == 'shared_library':
             return self.build_target(node, args, kwargs, build.SharedLibrary)
         elif target_type == 'shared_module':
-            FeatureNew('build_target(target_type: \'shared_module\')',
-                       '0.51.0').use(self.subproject)
+            FeatureNew.single_use('build_target(target_type: \'shared_module\')',
+                       '0.51.0', self.subproject)
             return self.build_target(node, args, kwargs, build.SharedModule)
         elif target_type == 'static_library':
             return self.build_target(node, args, kwargs, build.StaticLibrary)
@@ -2680,7 +2694,7 @@ Try setting b_lundef to false instead.'''.format(self.coredata.options[OptionKey
             ef = extract_as_list(kwargs, 'extra_files')
             kwargs['extra_files'] = self.source_strings_to_files(ef)
         self.check_sources_exist(os.path.join(self.source_root, self.subdir), sources)
-        if targetclass not in {build.Executable, build.SharedLibrary, build.SharedModule, build.StaticLibrary, build.Jar}:
+        if targetclass not in {build.Executable, build.CompiledObjects, build.SharedLibrary, build.SharedModule, build.StaticLibrary, build.Jar}:
             mlog.debug('Unknown target type:', str(targetclass))
             raise RuntimeError('Unreachable code')
         self.kwarg_strings_to_includedirs(kwargs)

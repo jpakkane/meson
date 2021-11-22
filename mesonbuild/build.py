@@ -118,6 +118,7 @@ known_shlib_kwargs = known_build_target_kwargs | {'version', 'soversion', 'vs_mo
 known_shmod_kwargs = known_build_target_kwargs | {'vs_module_defs'}
 known_stlib_kwargs = known_build_target_kwargs | {'pic', 'prelink'}
 known_jar_kwargs = known_exe_kwargs | {'main_class'}
+known_objs_kwargs = known_build_target_kwargs | {'pic'}
 
 @lru_cache(maxsize=None)
 def get_target_macos_dylib_install_name(ld) -> str:
@@ -762,6 +763,8 @@ class BuildTarget(Target):
         for s in objects:
             if isinstance(s, (str, File, ExtractedObjects)):
                 self.objects.append(s)
+            elif isinstance(s, CompiledObjects):
+                self.objects.append(s.extract_all_objects())
             elif isinstance(s, (GeneratedList, CustomTarget)):
                 msg = 'Generated files are not allowed in the \'objects\' kwarg ' + \
                     f'for target {self.name!r}.\nIt is meant only for ' + \
@@ -2254,14 +2257,38 @@ class SharedModule(SharedLibrary):
 
     def __init__(self, name, subdir, subproject, for_machine: MachineChoice, sources, objects, environment, kwargs):
         if 'version' in kwargs:
-            raise MesonException('Shared modules must not specify the version kwarg.')
+            raise InvalidArguments('Shared modules must not specify the version kwarg.')
         if 'soversion' in kwargs:
-            raise MesonException('Shared modules must not specify the soversion kwarg.')
+            raise InvalidArguments('Shared modules must not specify the soversion kwarg.')
         super().__init__(name, subdir, subproject, for_machine, sources, objects, environment, kwargs)
         self.typename = 'shared module'
 
     def get_default_install_dir(self, environment) -> T.Tuple[str, str]:
         return environment.get_shared_module_dir(), '{moduledir_shared}'
+
+class CompiledObjects(BuildTarget):
+    known_kwargs = known_objs_kwargs
+
+    def __init__(self, name, subdir, subproject, for_machine: MachineChoice, sources, objects, environment, kwargs):
+        inhibited_kwargs = ['version', 'soversion', 'link_with', 'link_args', 'link_depends', 'link_language']
+        for arg in inhibited_kwargs:
+            if arg in kwargs:
+                raise InvalidArguments(f'Built objects must not specify the {arg} kwarg.')
+        self.typename = 'compiled objects'
+        super().__init__(name, subdir, subproject, for_machine, sources, objects, environment, kwargs)
+        # Mimic Backend.get_target_dir(t) to obtain unique name for phony target
+        if environment.coredata.get_option(OptionKey('layout')) == 'mirror':
+            dirname = self.get_subdir()
+        else:
+            dirname = 'meson-out'
+
+        self.filename = os.path.join(dirname, f'{name}-objs')
+
+    def type_suffix(self):
+        return "@obj"
+
+    def is_linkable_target(self):
+        return False
 
 class BothLibraries(SecondLevelHolder):
     def __init__(self, shared: SharedLibrary, static: StaticLibrary) -> None:

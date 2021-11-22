@@ -127,6 +127,7 @@ class AstInterpreter(InterpreterBase):
                            'add_languages': self.func_do_nothing,
                            'declare_dependency': self.func_do_nothing,
                            'files': self.func_do_nothing,
+                           'compiled_objects': self.func_do_nothing,
                            'executable': self.func_do_nothing,
                            'static_library': self.func_do_nothing,
                            'shared_library': self.func_do_nothing,

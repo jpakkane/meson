@@ -6,6 +6,7 @@ description: |
 
   `target_type` may be set to one of:
 
+  - `compiled_objects` (see [[compiled_objects]])
   - `executable` (see [[executable]])
   - `shared_library` (see [[shared_library]])
   - `shared_module` (see [[shared_module]])
@@ -32,8 +33,8 @@ description: |
 
   The returned object also has methods that are documented in [[@build_tgt]].
 
-posargs_inherit: _build_target_base
-varargs_inherit: _build_target_base
+posargs_inherit: _build_target_linkable
+varargs_inherit: _build_target_linkable
 kwargs_inherit:
   - executable
   - library

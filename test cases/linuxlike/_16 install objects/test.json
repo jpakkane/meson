@@ -1,0 +1,10 @@
+{
+  "installed": [
+    {"type": "file", "file": "usr/lib/a.o"},
+    {"type": "file", "file": "usr/lib/b.o"},
+    {"type": "file", "file": "usr/lib/c.o"},
+    {"type": "file", "file": "usr/lib/objs/d.o"},
+    {"type": "file", "file": "usr/lib/objs/e.o"},
+    {"type": "file", "file": "usr/lib/objs/f.o"}
+  ]
+}

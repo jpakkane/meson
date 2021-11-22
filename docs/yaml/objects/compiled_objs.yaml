@@ -1,0 +1,6 @@
+name: compiled_objs
+long_name: Compiled objects target
+extends: build_tgt
+description: |
+  Represents list of compiled objects.
+  Can be passed as `build_target` `objects` kwargs.

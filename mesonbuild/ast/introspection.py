@@ -21,14 +21,16 @@ from .. import compilers, environment, mesonlib, optinterpreter
 from .. import coredata as cdata
 from ..mesonlib import MachineChoice, OptionKey
 from ..interpreterbase import InvalidArguments, TYPE_nvar
-from ..build import BuildTarget, Executable, Jar, SharedLibrary, SharedModule, StaticLibrary
+from ..build import BuildTarget, CompiledObjects, Executable, Jar, SharedLibrary, SharedModule, StaticLibrary
 from ..mparser import BaseNode, ArithmeticNode, ArrayNode, ElementaryNode, IdNode, FunctionNode, StringNode
 from ..compilers import detect_compiler_for
 import typing as T
 import os
 import argparse
 
-build_target_functions = ['executable', 'jar', 'library', 'shared_library', 'shared_module', 'static_library', 'both_libraries']
+build_target_functions = [
+    'executable', 'jar', 'library', 'shared_library', 'shared_module', 'static_library', 'both_libraries', 'compiled_objects'
+]
 
 class IntrospectionHelper(argparse.Namespace):
     # mimic an argparse namespace
@@ -78,6 +80,7 @@ class IntrospectionInterpreter(AstInterpreter):
             'executable': self.func_executable,
             'jar': self.func_jar,
             'library': self.func_library,
+            'compiled_objects': self.func_compiled_objects,
             'project': self.func_project,
             'shared_library': self.func_shared_lib,
             'shared_module': self.func_shared_module,
@@ -300,6 +303,9 @@ class IntrospectionInterpreter(AstInterpreter):
     def func_jar(self, node: BaseNode, args: T.List[TYPE_nvar], kwargs: T.Dict[str, TYPE_nvar]) -> T.Optional[T.Dict[str, T.Any]]:
         return self.build_target(node, args, kwargs, Jar)
 
+    def func_compiled_objects(self, node: BaseNode, args: T.List[TYPE_nvar], kwargs: T.Dict[str, TYPE_nvar]) -> T.Optional[T.Dict[str, T.Any]]:
+        return self.build_target(node, args, kwargs, CompiledObjects)
+
     def func_build_target(self, node: BaseNode, args: T.List[TYPE_nvar], kwargs: T.Dict[str, TYPE_nvar]) -> T.Optional[T.Dict[str, T.Any]]:
         if 'target_type' not in kwargs:
             return None
@@ -318,6 +324,8 @@ class IntrospectionInterpreter(AstInterpreter):
             return self.build_library(node, args, kwargs)
         elif target_type == 'jar':
             return self.build_target(node, args, kwargs, Jar)
+        elif target_type == 'objects':
+            return self.build_target(node, args, kwargs, CompiledObjects)
         return None
 
     def is_subproject(self) -> bool:

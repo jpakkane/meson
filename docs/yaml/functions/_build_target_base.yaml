@@ -91,56 +91,6 @@ kwargs:
       on platforms where this makes a differerence, **deprecated** since
       0.56.0, use `win_subsystem` instead.
 
-  link_args:
-    type: list[str]
-    description: |
-      Flags to use during linking. You can use UNIX-style
-      flags here for all platforms.
-
-  link_depends:
-    type: str | file | custom_tgt | custom_idx
-    description: |
-      Strings, files, or custom targets the link step depends on
-      such as a symbol visibility map. The purpose is to
-      automatically trigger a re-link (but not a re-compile) of the target
-      when this file changes.
-
-  link_language:
-    type: str
-    since: 0.51.0
-    description: |
-      Makes the linker for this target be for the specified language.
-      It is generally unnecessary to set
-      this, as Meson will detect the right linker to use in most cases. There are
-      only two cases where this is needed. One, your main function in an
-      executable is not in the language Meson picked, or second you want to force
-      a library to use only one ABI.
-
-      *(broken until 0.55.0)*
-
-  link_whole:
-    type: list[lib | custom_tgt | custom_idx]
-    since: 0.40.0
-    description: |
-      Links all contents of the given static libraries
-      whether they are used by not, equivalent to the `-Wl,--whole-archive` argument flag of GCC.
-
-      *(since 0.41.0)* If passed a list that list will be flattened.
-
-      *(since 0.51.0)* This argument also accepts outputs produced by
-      custom targets. The user must ensure that the output is a library in
-      the correct format.
-
-  link_with:
-    type: list[lib | custom_tgt | custom_idx]
-    description: |
-      One or more shared or static libraries
-      (built by this project) that this target should be linked with. *(since 0.41.0)* If passed a
-      list this list will be flattened. *(since 0.51.0)* The arguments can also be custom targets.
-      In this case Meson will assume that merely adding the output file in the linker command
-      line is sufficient to make linking work. If this is not sufficient,
-      then the build system writer must write all other steps manually.
-
   implicit_include_directories:
     type: bool
     since: 0.42.0
@@ -190,7 +140,7 @@ kwargs:
       (but *not* before that). On Windows, this argument has no effect.
 
   objects:
-    type: list[extracted_obj]
+    type: list[extracted_obj | compiled_objs]
     description: |
       List of prebuilt object files (usually for third party
       products you don't have source to) that should be linked in this

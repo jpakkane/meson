@@ -967,8 +967,8 @@ class Backend:
         # Always set -fPIC for shared libraries
         if isinstance(target, build.SharedLibrary):
             commands += compiler.get_pic_args()
-        # Set -fPIC for static libraries by default unless explicitly disabled
-        if isinstance(target, build.StaticLibrary) and target.pic:
+        # Unless explicitly disabled set by default -fPIC for static libraries and compiled objects
+        if isinstance(target, (build.StaticLibrary, build.CompiledObjects)) and target.pic:
             commands += compiler.get_pic_args()
         elif isinstance(target, (build.StaticLibrary, build.Executable)) and target.pie:
             commands += compiler.get_pie_args()
@@ -1275,6 +1275,7 @@ class Backend:
         return libs
 
     def is_unity(self, target: build.BuildTarget) -> bool:
+        if isinstance(target, build.CompiledObjects): return False
         optval = self.get_option_for_target(OptionKey('unity'), target)
         return optval == 'on' or (optval == 'subprojects' and target.subproject != '')
 
@@ -1591,6 +1592,9 @@ class Backend:
                                                   install_mode, t.subproject,
                                                   optional=True, tag='devel')
                             d.targets.append(i)
+                    elif isinstance(t, build.CompiledObjects):
+                        # TODO: strip each each object of build.CompiledObjects
+                        pass
                 # Install secondary outputs. Only used for Vala right now.
                 if num_outdirs > 1:
                     for output, outdir, tag in zip(t.get_outputs()[1:], outdirs[1:], t.install_tag[1:]):

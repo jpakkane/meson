@@ -16,8 +16,8 @@ description: |
   The keyword arguments for this are the same as for
   [[build_target]]
 
-posargs_inherit: _build_target_base
-varargs_inherit: _build_target_base
+posargs_inherit: _build_target_linkable
+varargs_inherit: _build_target_linkable
 kwargs_inherit:
   - shared_library
   - static_library

@@ -76,6 +76,7 @@ syn keyword mesonBuiltin
   \ both_libraries
   \ build_machine
   \ build_target
+  \ compiled_objects
   \ configuration_data
   \ configure_file
   \ custom_target

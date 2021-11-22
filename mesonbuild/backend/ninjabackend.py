@@ -656,6 +656,8 @@ class NinjaBackend(backends.Backend):
         return srcs
 
     def get_target_source_can_unity(self, target, source):
+        if isinstance(target, build.CompiledObjects):
+            raise AssertionError('CompiledObjects can not support unity build')
         if isinstance(source, File):
             source = source.fname
         if self.environment.is_llvm_ir(source) or \
@@ -897,9 +899,15 @@ class NinjaBackend(backends.Backend):
             final_obj_list = self.generate_prelink(target, obj_list)
         else:
             final_obj_list = obj_list
-        elem = self.generate_link(target, outname, final_obj_list, linker, pch_objects, stdlib_args=stdlib_args)
+
+        if not isinstance(target, build.CompiledObjects):
+            elem = self.generate_link(target, outname, final_obj_list, linker, pch_objects, stdlib_args=stdlib_args)
+        else:
+            elem = NinjaBuildElement(self.all_outputs, 'meson-' + target.filename, 'phony', final_obj_list)
+
         self.generate_dependency_scan_target(target, compiled_sources, source2object, generated_source_files)
         self.generate_shlib_aliases(target, self.get_target_dir(target))
+
         self.add_build(elem)
 
     def should_use_dyndeps_for_target(self, target: 'build.BuildTarget') -> bool:
@@ -3233,8 +3241,11 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
         targetlist = []
         for t in self.get_build_by_default_targets().values():
             # Add the first output of each target to the 'all' target so that
-            # they are all built
-            targetlist.append(os.path.join(self.get_target_dir(t), t.get_outputs()[0]))
+            # they are all built. For compiled objects add its phony target.
+            if not isinstance(t, build.CompiledObjects):
+                targetlist.append(os.path.join(self.get_target_dir(t), t.get_outputs()[0]))
+            else:
+                targetlist.append('meson-' + t.filename)
 
         elem = NinjaBuildElement(self.all_outputs, 'all', 'phony', targetlist)
         self.add_build(elem)
