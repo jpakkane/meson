@@ -3431,9 +3431,6 @@ class Interpreter(InterpreterBase, HoldableObject):
         objs = kwargs['objects']
         kwargs['extra_files'] = self.source_strings_to_files(kwargs['extra_files'])
         self.check_sources_exist(os.path.join(self.source_root, self.subdir), sources)
-        if targetclass not in {build.Executable, build.SharedLibrary, build.SharedModule, build.StaticLibrary, build.Jar}:
-            mlog.debug('Unknown target type:', str(targetclass))
-            raise RuntimeError('Unreachable code')
         self.kwarg_strings_to_includedirs(kwargs)
 
         # Filter out kwargs from other target types. For example 'soversion'
