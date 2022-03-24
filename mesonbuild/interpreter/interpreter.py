@@ -126,6 +126,10 @@ if T.TYPE_CHECKING:
 
     BuildTargetSource = T.Union[mesonlib.FileOrString, build.GeneratedTypes, build.StructuredSources]
 
+    _BuildClassType = T.TypeVar(
+        '_BuildClassType', build.StaticLibrary, build.Executable,
+        build.SharedLibrary, build.SharedLibrary, build.Jar, build.SharedModule)
+
 
 def _project_version_validator(value: T.Union[T.List, str, mesonlib.File, None], _: ValidatorState) -> T.Optional[str]:
     if isinstance(value, list):
@@ -3143,7 +3147,10 @@ class Interpreter(InterpreterBase, HoldableObject):
             self.coredata.target_guids[idname] = str(uuid.uuid4()).upper()
 
     @FeatureNew('both_libraries', '0.46.0')
-    def build_both_libraries(self, node, args, kwargs):
+    def build_both_libraries(
+            self, node: mparser.BaseNode,
+            args: T.Tuple[str, T.List[BuildTargetSource]],
+            kwargs) -> build.BothLibraries:
         shared_lib = self.build_target(node, args, kwargs, build.SharedLibrary)
         static_lib = self.build_target(node, args, kwargs, build.StaticLibrary)
 
@@ -3172,7 +3179,10 @@ class Interpreter(InterpreterBase, HoldableObject):
 
         return build.BothLibraries(shared_lib, static_lib)
 
-    def build_library(self, node, args, kwargs):
+    def build_library(
+            self, node: mparser.BaseNode,
+            args: T.Tuple[str, T.List[BuildTargetSource]],
+            kwargs) -> T.Union[build.StaticLibrary, build.SharedLibrary, build.BothLibraries]:
         default_library = self.coredata.get_option(OptionKey('default_library', subproject=self.subproject))
         if default_library == 'shared':
             return self.build_target(node, args, kwargs, build.SharedLibrary)
@@ -3183,7 +3193,11 @@ class Interpreter(InterpreterBase, HoldableObject):
         else:
             raise InterpreterException(f'Unknown default_library value: {default_library}.')
 
-    def build_target(self, node: mparser.BaseNode, args, kwargs, targetclass):
+    def build_target(
+            self, node: mparser.BaseNode,
+            args: T.Tuple[str, T.List[BuildTargetSource]],
+            kwargs,
+            targetclass: T.Type[_BuildClassType]) -> _BuildClassType:
         @FeatureNewKwargs('build target', '1.2.0', ['rust_dependency_map'])
         @FeatureNewKwargs('build target', '0.42.0', ['rust_crate_type', 'build_rpath', 'implicit_include_directories'])
         @FeatureNewKwargs('build target', '0.41.0', ['rust_args'])
