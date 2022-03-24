@@ -1,4 +1,4 @@
-project('D Features', 'd', default_options : ['debug=false'])
+project('D Features', 'd', default_options : ['debug=false'], meson_version : '>= 1.0')
 
 # ONLY FOR BACKWARDS COMPATIBILITY.
 # DO NOT DO THIS IN NEW CODE!

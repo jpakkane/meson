@@ -1,0 +1,7 @@
+{
+  "stdout": [
+    {
+      "line": "test cases/d/9 features/meson.build:13: WARNING: Project targets '>= 1.0' but uses feature deprecated since '0.45.0': Absolute paths to the source directory for d_import_dirs. use a relative path instead."
+    }
+  ]
+}
