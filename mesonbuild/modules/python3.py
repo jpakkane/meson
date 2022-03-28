@@ -11,15 +11,24 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import annotations
 
+from __future__ import annotations
 import sysconfig
 from .. import mesonlib
+import typing as T
 
 from . import ExtensionModule, ModuleInfo
-from ..interpreterbase import typed_pos_args, noPosargs, noKwargs, permittedKwargs
-from ..build import known_shmod_kwargs
+from .. import build
+from ..interpreter.type_checking import SHARED_MOD_KWS
+from ..interpreterbase import typed_pos_args, typed_kwargs, noPosargs, noKwargs
 from ..programs import ExternalProgram
+
+if T.TYPE_CHECKING:
+    from . import ModuleState
+    from ..interpreter.interpreter import BuildTargetSource
+    from ..interpreter.kwargs import SharedModule, BuildTarget
+
+_MOD_KWARGS = [k for k in SHARED_MOD_KWS if k.name not in {'name_prefix', 'name_suffix'}]
 
 
 class Python3Module(ExtensionModule):
@@ -35,24 +44,23 @@ class Python3Module(ExtensionModule):
             'sysconfig_path': self.sysconfig_path,
         })
 
-    @permittedKwargs(known_shmod_kwargs)
-    def extension_module(self, state, args, kwargs):
-        if 'name_prefix' in kwargs:
-            raise mesonlib.MesonException('Name_prefix is set automatically, specifying it is forbidden.')
-        if 'name_suffix' in kwargs:
-            raise mesonlib.MesonException('Name_suffix is set automatically, specifying it is forbidden.')
+    @typed_pos_args('python3.extension_module', str, varargs=(str, mesonlib.File, build.CustomTarget, build.CustomTargetIndex, build.GeneratedList))
+    @typed_kwargs('python3.extension_module', *_MOD_KWARGS)
+    def extension_module(self, state: ModuleState,
+                         args: T.Tuple[str, T.List[BuildTargetSource]],
+                         kwargs: SharedModule) -> build.SharedModule:
         host_system = state.host_machine.system
+        suffix: T.Optional[str] = None
         if host_system == 'darwin':
             # Default suffix is 'dylib' but Python does not use it for extensions.
             suffix = 'so'
         elif host_system == 'windows':
             # On Windows the extension is pyd for some unexplainable reason.
             suffix = 'pyd'
-        else:
-            suffix = []
         kwargs['name_prefix'] = ''
         kwargs['name_suffix'] = suffix
-        return self.interpreter.func_shared_module(None, args, kwargs)
+        return self.interpreter.build_target(
+            state.current_node, (args[0], args[1]), T.cast('BuildTarget', kwargs), build.SharedModule)
 
     @noPosargs
     @noKwargs
