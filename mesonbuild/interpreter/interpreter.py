@@ -228,17 +228,6 @@ class Summary:
             line_len += v_len
         mlog.log(*line, sep=list_sep)
 
-known_library_kwargs = (
-    build.known_shlib_kwargs |
-    build.known_stlib_kwargs
-)
-
-known_build_target_kwargs = (
-    known_library_kwargs |
-    build.known_exe_kwargs |
-    build.known_jar_kwargs |
-    {'target_type'}
-)
 
 class InterpreterRuleRelaxation(Enum):
     ''' Defines specific relaxations of the Meson rules.
