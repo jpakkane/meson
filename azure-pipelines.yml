@@ -38,40 +38,6 @@ variables:
 
 jobs:
 
-- job: vs2017
-  timeoutInMinutes: 120
-  pool:
-    vmImage: VS2017-Win2016
-
-  strategy:
-    matrix:
-        vc2017x86ninja:
-          arch: x86
-          compiler: msvc2017
-          backend: ninja
-          MESON_RSP_THRESHOLD: 0
-        vc2017x64vs:
-          arch: x64
-          compiler: msvc2017
-          backend: vs2017
-        clangclx64ninja:
-          arch: x64
-          compiler: clang-cl
-          backend: ninja
-
-  steps:
-  - task: UsePythonVersion@0
-    inputs:
-      versionSpec: '3.7'
-      addToPath: true
-      architecture: 'x64'
-  - task: PowerShell@2
-    inputs:
-      targetType: 'filePath'
-      filePath: .\ci\run.ps1
-    env:
-      MESON_CI_JOBNAME: azure-$(System.JobName)
-
 - job: vs2019
   timeoutInMinutes: 120
   pool:
@@ -79,14 +45,26 @@ jobs:
 
   strategy:
     matrix:
+        vc2019x86ninja:
+          arch: x86
+          compiler: msvc2019
+          backend: ninja
         vc2019x64ninja:
           arch: x64
+          compiler: msvc2019
+          backend: ninja
+        vc2019x86vs:
+          arch: x86
           compiler: msvc2019
           backend: ninja
         vc2019x64vs:
           arch: x64
           compiler: msvc2019
           backend: vs2019
+        clangclx64ninja:
+          arch: x64
+          compiler: clang-cl
+          backend: ninja
         vc2019arm64ninjacross:
           arch: arm64
           compiler: msvc2019
