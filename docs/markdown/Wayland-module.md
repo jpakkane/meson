@@ -1,13 +1,9 @@
-# Unstable Wayland Module
+# Wayland Module
 
 This module is available since version 0.62.0.
 
 This module provides helper functions to find wayland protocol
 xmls and to generate .c and .h files using wayland-scanner
-
-**Note**: this module is unstable. It is only provided as a technology
-preview. Its API may change in arbitrary ways between releases or it
-might be removed from Meson altogether.
 
 ## Quick Usage
 
@@ -15,7 +11,7 @@ might be removed from Meson altogether.
 project('hello-wayland', 'c')
 
 wl_dep = dependency('wayland-client')
-wl_mod = import('unstable-wayland')
+wl_mod = import('wayland')
 
 xml = wl_mod.find_protocol('xdg-shell')
 xdg_shell = wl_mod.scan_xml(xml)
