@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+import copy
 import os
 import typing as T
 
@@ -142,19 +144,54 @@ class RustModule(ExtensionModule):
         tkwargs['args'] = extra_args + ['--test', '--format', 'pretty']
         tkwargs['protocol'] = 'rust'
 
-        new_target_kwargs = base_target.kwargs.copy()
-        # Don't mutate the shallow copied list, instead replace it with a new
-        # one
-        new_target_kwargs['rust_args'] = new_target_kwargs.get('rust_args', []) + ['--test']
-        new_target_kwargs['install'] = False
-        new_target_kwargs['dependencies'] = new_target_kwargs.get('dependencies', []) + dependencies
-
-        new_target = Executable(
-            name, base_target.subdir, state.subproject, base_target.for_machine,
-            base_target.sources, base_target.structured_sources,
-            base_target.objects, base_target.environment, base_target.compilers,
-            new_target_kwargs
-        )
+        # If we have an Executable we can take a fast path
+        if isinstance(base_target, Executable):
+            new_target = copy.deepcopy(base_target)
+            new_target.name = name
+            new_target.subdir = state.subdir
+            new_target.install = False
+        else:
+            new_target = Executable(
+                name,
+                state.subdir,
+                state.subproject,
+                base_target.for_machine,
+                state.environment,
+                base_target.sources,
+                base_target.structured_sources,
+                base_target.objects,
+                base_target.compilers,
+                build_by_default=base_target.build_by_default,
+                build_always_stale=base_target.build_always_stale,
+                install=False,
+                extra_files=base_target.extra_files,
+                # Option overrides intentionally not set here
+                build_rpath=base_target.build_rpath,
+                d_debug=base_target.d_features['debug'],
+                d_import_dirs=base_target.d_features['import_dirs'],
+                d_module_versions=base_target.d_features['versions'],
+                d_unittest=base_target.d_features['unittest'],
+                dependencies=list(base_target._added_deps),
+                gnu_symbol_visibility=base_target.gnu_symbol_visibility,
+                implicit_include_directories=base_target.implicit_include_directories,
+                include_directories=base_target.include_dirs,
+                # language args intentionally not set here
+                link_args=base_target.link_args,
+                link_depends=base_target.link_depends,
+                link_language=base_target.link_language,
+                link_whole=base_target.link_whole,
+                name_prefix=base_target.prefix,
+                name_suffix=base_target.suffix,
+                # pch intentionally not set here
+                vala_gir=base_target.vala_gir,
+                vala_header=base_target.vala_header,
+                vala_vapi=base_target.vala_vapi,
+            )
+            new_target.options = copy.deepcopy(base_target.options)
+            new_target.extra_args = copy.deepcopy(base_target.extra_args)
+            new_target.pch = copy.deepcopy(base_target.pch)
+        new_target.extra_args['rust'].append('--test')
+        new_target.add_deps(dependencies)
 
         test = self.interpreter.make_test(
             self.interpreter.current_node, (name, new_target), tkwargs)

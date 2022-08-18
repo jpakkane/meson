@@ -1,7 +1,7 @@
 {
   "stdout": [
     {
-      "line": "test cases/failing/53 wrong shared crate type/meson.build:7:0: ERROR: Crate type \"staticlib\" invalid for dynamic libraries; must be \"dylib\", \"cdylib\", or \"proc-macro\""
+      "line": "test cases/failing/53 wrong shared crate type/meson.build:7:0: ERROR: shared_library keyword argument \"rust_crate_type\" must be one of cdylib, dylib, lib, proc-macro, not staticlib"
     }
   ]
 }

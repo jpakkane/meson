@@ -392,9 +392,11 @@ def list_projinfo(builddata: build.Build) -> T.Dict[str, T.Union[str, T.List[T.D
               'subproject_dir': builddata.subproject_dir}    # type: T.Dict[str, T.Union[str, T.List[T.Dict[str, str]]]]
     subprojects = []
     for k, v in builddata.subprojects.items():
+        d = builddata.projects.get(k)
+        assert isinstance(d, str), 'for mypy'
         c = {'name': k,
              'version': v,
-             'descriptive_name': builddata.projects.get(k)}  # type: T.Dict[str, str]
+             'descriptive_name': d}
         subprojects.append(c)
     result['subprojects'] = subprojects
     return result

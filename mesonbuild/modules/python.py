@@ -11,8 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import annotations
 
+from __future__ import annotations
 from pathlib import Path
 import functools
 import json
@@ -21,16 +21,16 @@ import shutil
 import typing as T
 
 from . import ExtensionModule, ModuleInfo
+from .. import build
 from .. import mesonlib
 from .. import mlog
 from ..coredata import UserFeatureOption
-from ..build import known_shmod_kwargs
 from ..dependencies import DependencyMethods, PkgConfigDependency, NotFoundDependency, SystemDependency, ExtraFrameworkDependency
 from ..dependencies.base import process_method_kw
 from ..dependencies.detect import get_dep_identifier
 from ..environment import detect_cpu_family
 from ..interpreter import ExternalProgramHolder, extract_required_kwarg, permitted_dependency_kwargs
-from ..interpreter.type_checking import NoneType, PRESERVE_PATH_KW
+from ..interpreter.type_checking import PRESERVE_PATH_KW, SHARED_MOD_KWS, NoneType
 from ..interpreterbase import (
     noPosargs, noKwargs, permittedKwargs, ContainerTypeInfo,
     InvalidArguments, typed_pos_args, typed_kwargs, KwargInfo,
@@ -48,7 +48,8 @@ if T.TYPE_CHECKING:
     from ..dependencies.factory import DependencyGenerator
     from ..environment import Environment
     from ..interpreter import Interpreter
-    from ..interpreter.kwargs import ExtractRequired
+    from ..interpreter.interpreter import BuildTargetSource
+    from ..interpreter.kwargs import ExtractRequired, SharedModule as _SharedModuleKW, BuildTarget
     from ..interpreterbase.interpreterbase import TYPE_var, TYPE_kwargs
 
     class PythonIntrospectionDict(TypedDict):
@@ -75,14 +76,20 @@ if T.TYPE_CHECKING:
         disabler: bool
         modules: T.List[str]
 
+    class ExtensionModuleKw(_SharedModuleKW):
+
+        subdir: str
+
     _Base = ExternalDependency
 else:
     _Base = object
 
 
-mod_kwargs = {'subdir'}
-mod_kwargs.update(known_shmod_kwargs)
-mod_kwargs -= {'name_prefix', 'name_suffix'}
+_PURE_KW = KwargInfo('pure', bool, default=True)
+_SUBDIR_KW = KwargInfo('subdir', str, default='')
+
+_MOD_KWARGS = [k for k in SHARED_MOD_KWS if k.name not in {'name_prefix', 'name_suffix'}]
+_MOD_KWARGS.append(_SUBDIR_KW)
 
 
 class _PythonDependencyBase(_Base):
@@ -471,10 +478,6 @@ class PythonExternalProgram(ExternalProgram):
         return rel_path
 
 
-_PURE_KW = KwargInfo('pure', bool, default=True)
-_SUBDIR_KW = KwargInfo('subdir', str, default='')
-
-
 class PythonInstallation(ExternalProgramHolder):
     def __init__(self, python: 'PythonExternalProgram', interpreter: 'Interpreter'):
         ExternalProgramHolder.__init__(self, python, interpreter)
@@ -504,21 +507,23 @@ class PythonInstallation(ExternalProgramHolder):
             'path': self.path_method,
         })
 
-    @permittedKwargs(mod_kwargs)
-    def extension_module_method(self, args: T.List['TYPE_var'], kwargs: 'TYPE_kwargs') -> 'SharedModule':
-        if 'install_dir' in kwargs:
-            if 'subdir' in kwargs:
-                raise InvalidArguments('"subdir" and "install_dir" are mutually exclusive')
-        else:
-            subdir = kwargs.pop('subdir', '')
-            if not isinstance(subdir, str):
-                raise InvalidArguments('"subdir" argument must be a string.')
+    @typed_pos_args('python.extension_module', str, varargs=(str, mesonlib.File, build.CustomTarget, build.CustomTargetIndex, build.GeneratedList))
+    @typed_kwargs('python.extension_module', *_MOD_KWARGS)
+    def extension_module_method(self, args: T.Tuple[str, T.List[BuildTargetSource]],
+                                kwargs: ExtensionModuleKw) -> 'SharedModule':
+        # Create a copy of the keyword arguments, but as a SharedModule acrugment dictionary
+        n_kwargs = T.cast('BuildTarget', kwargs.copy())
+        del n_kwargs['subdir']  # type: ignore
 
-            kwargs['install_dir'] = os.path.join(self.platlib_install_path, subdir)
+        if kwargs['install_dir'] and kwargs['subdir']:
+            raise InvalidArguments('"subdir" and "install_dir" are mutually exclusive')
+        elif not kwargs['install_dir']:
+            subdir = kwargs['subdir']
+            n_kwargs['install_dir'] = [os.path.join(self.platlib_install_path, subdir)]
 
         new_deps = []
         has_pydep = False
-        for dep in mesonlib.extract_as_list(kwargs, 'dependencies'):
+        for dep in kwargs['dependencies']:
             if isinstance(dep, _PythonDependencyBase):
                 has_pydep = True
                 # On macOS and some Linux distros (Debian) distutils doesn't link
@@ -535,21 +540,22 @@ class PythonInstallation(ExternalProgramHolder):
             FeatureNew.single_use('python_installation.extension_module with implicit dependency on python',
                                   '0.63.0', self.subproject, 'use python_installation.dependency()',
                                   self.current_node)
-        kwargs['dependencies'] = new_deps
+        n_kwargs['dependencies'] = new_deps
 
         # msys2's python3 has "-cpython-36m.dll", we have to be clever
         # FIXME: explain what the specific cleverness is here
         split, suffix = self.suffix.rsplit('.', 1)
-        args[0] += split
+        name = args[0] + split
 
-        kwargs['name_prefix'] = ''
-        kwargs['name_suffix'] = suffix
+        n_kwargs['name_suffix'] = suffix
+        n_kwargs['name_prefix'] = ''
 
         if 'gnu_symbol_visibility' not in kwargs and \
                 (self.is_pypy or mesonlib.version_compare(self.version, '>=3.9')):
-            kwargs['gnu_symbol_visibility'] = 'inlineshidden'
+            n_kwargs['gnu_symbol_visibility'] = 'inlineshidden'
 
-        return self.interpreter.func_shared_module(None, args, kwargs)
+        return self.interpreter.build_target(
+            self.current_node, (name, args[1]), n_kwargs, build.SharedModule)
 
     def _dependency_method_impl(self, kwargs: TYPE_kwargs) -> Dependency:
         for_machine = self.interpreter.machine_from_native_kwarg(kwargs)

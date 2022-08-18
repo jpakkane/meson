@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 from mesonbuild.mesonlib.universal import windows_proof_rm
 import subprocess
 import re
@@ -56,6 +58,7 @@ from mesonbuild.dependencies import PkgConfigDependency
 from mesonbuild.build import Target, ConfigurationData, Executable, SharedLibrary, StaticLibrary
 import mesonbuild.modules.pkgconfig
 from mesonbuild.scripts import destdir_join
+from mesonbuild.interpreterbase import SubProject
 
 from mesonbuild.wrap.wrap import PackageDefinition, WrapException
 
@@ -65,6 +68,9 @@ from run_tests import (
 
 from .baseplatformtests import BasePlatformTests
 from .helpers import *
+
+if T.TYPE_CHECKING:
+    from mesonbuild.build import BuildTarget
 
 @contextmanager
 def temp_filename():
@@ -4128,12 +4134,14 @@ class AllPlatformTests(BasePlatformTests):
 
         env = get_fake_env(testdir, self.builddir, self.prefix)
 
-        def output_name(name, type_):
-            target = type_(name=name, subdir=None, subproject=None,
-                           for_machine=MachineChoice.HOST, sources=[],
-                           structured_sources=None,
-                           objects=[], environment=env, compilers=env.coredata.compilers[MachineChoice.HOST],
-                           kwargs={})
+        def output_name(name, type_: T.Type[BuildTarget]) -> str:
+            target = type_(name, '', SubProject(''),
+                           MachineChoice.HOST,
+                           env,
+                           [],
+                           None,
+                           ['fake_source'],  # targets must have sources
+                           env.coredata.compilers[MachineChoice.HOST])
             target.process_compilers()
             target.process_compilers_late([])
             return target.filename

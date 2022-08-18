@@ -305,7 +305,7 @@ class Backend:
         elif isinstance(t, build.CustomTargetIndex):
             filename = t.get_outputs()[0]
         else:
-            assert isinstance(t, build.BuildTarget)
+            assert isinstance(t, build.BuildTarget), t
             filename = t.get_filename()
         return os.path.join(self.get_target_dir(t), filename)
 
@@ -495,7 +495,7 @@ class Backend:
 
     def determine_swift_dep_dirs(self, target: build.BuildTarget) -> T.List[str]:
         result: T.List[str] = []
-        for l in target.link_targets:
+        for l in target.link_with:
             result.append(self.get_target_private_dir_abs(l))
         return result
 
@@ -754,7 +754,7 @@ class Backend:
                     paths.add(libdir)
             # Don't remove rpaths specified by the dependency
             paths.difference_update(self.get_rpath_dirs_from_link_args(dep.link_args))
-        for i in chain(target.link_targets, target.link_whole_targets):
+        for i in chain(target.link_with, target.link_whole):
             if isinstance(i, build.BuildTarget):
                 paths.update(self.rpaths_for_non_system_absolute_shared_libraries(i, exclude_system))
         return list(paths)
@@ -997,7 +997,7 @@ class Backend:
             # pkg-config puts the thread flags itself via `Cflags:`
         # Fortran requires extra include directives.
         if compiler.language == 'fortran':
-            for lt in chain(target.link_targets, target.link_whole_targets):
+            for lt in chain(target.link_with, target.link_whole):
                 priv_dir = self.get_target_private_dir(lt)
                 commands += compiler.get_include_args(priv_dir, False)
         return commands
@@ -1044,7 +1044,7 @@ class Backend:
         tests.
         """
         result: T.Set[str] = set()
-        prospectives: T.Set[T.Union[build.BuildTarget, build.CustomTarget, build.CustomTargetIndex]] = set()
+        prospectives: T.Set[build.BuildTargetTypes] = set()
         if isinstance(target, build.BuildTarget):
             prospectives.update(target.get_transitive_link_deps())
             # External deps
@@ -1539,8 +1539,7 @@ class Backend:
             num_outdirs, num_out = len(outdirs), len(t.get_outputs())
             if num_outdirs != 1 and num_outdirs != num_out:
                 m = 'Target {!r} has {} outputs: {!r}, but only {} "install_dir"s were found.\n' \
-                    "Pass 'false' for outputs that should not be installed and 'true' for\n" \
-                    'using the default installation directory for an output.'
+                    "Pass 'false' for outputs that should not be installed."
                 raise MesonException(m.format(t.name, num_out, t.get_outputs(), num_outdirs))
             assert len(t.install_tag) == num_out
             install_mode = t.get_custom_install_mode()

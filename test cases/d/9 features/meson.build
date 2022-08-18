@@ -1,10 +1,6 @@
 project('D Features', 'd', default_options : ['debug=false'])
 
-# ONLY FOR BACKWARDS COMPATIBILITY.
-# DO NOT DO THIS IN NEW CODE!
-# USE include_directories() INSTEAD OF BUILDING
-# STRINGS TO PATHS MANUALLY!
-data_dir = join_paths(meson.current_source_dir(), 'data')
+data_dir = 'data'
 
 test_src = ['app.d', 'extra.d']
 

@@ -44,3 +44,24 @@ kwargs:
     type: bool
     since: 0.49.0
     description: Build a position-independent executable.
+
+  gui_app:
+    type: bool
+    deprecated: 0.56.0
+    default: false
+    description: |
+      When set to true flags this target as a GUI application
+      on platforms where this makes a differerence, **deprecated** since
+      0.56.0, use `win_subsystem` instead.
+
+  win_subsystem:
+    type: str
+    default: "'console'"
+    since: 0.56.0
+    description: |
+      Specifies the subsystem type to use
+      on the Windows platform. Typical values include `console` for text
+      mode programs and `windows` for gui apps. The value can also contain
+      version specification such as `windows,6.0`. See [MSDN
+      documentation](https://docs.microsoft.com/en-us/cpp/build/reference/subsystem-specify-subsystem)
+      for the full list.

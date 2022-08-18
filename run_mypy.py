@@ -23,6 +23,7 @@ modules = [
 
     # specific files
     'mesonbuild/arglist.py',
+    'mesonbuild/build.py',
     'mesonbuild/backend/backends.py',
     # 'mesonbuild/coredata.py',
     'mesonbuild/depfile.py',
@@ -48,6 +49,7 @@ modules = [
     'mesonbuild/modules/java.py',
     'mesonbuild/modules/keyval.py',
     'mesonbuild/modules/modtest.py',
+    'mesonbuild/modules/pkgconfig.py',
     'mesonbuild/modules/qt.py',
     'mesonbuild/modules/rust.py',
     'mesonbuild/modules/sourceset.py',

@@ -11,8 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import annotations
 
+from __future__ import annotations
 import abc
 import contextlib, os.path, re
 import enum
@@ -32,7 +32,7 @@ from ..mesonlib import (
 from ..arglist import CompilerArgs
 
 if T.TYPE_CHECKING:
-    from ..build import BuildTarget
+    from ..build import BuildTarget, DFeatures
     from ..coredata import MutableKeyedOptionDictType, KeyedOptionDictType
     from ..envconfig import MachineInfo
     from ..environment import Environment
@@ -900,10 +900,6 @@ class Compiler(HoldableObject, metaclass=abc.ABCMeta):
     def gnu_symbol_visibility_args(self, vistype: str) -> T.List[str]:
         return []
 
-    def get_gui_app_args(self, value: bool) -> T.List[str]:
-        # Only used on Windows
-        return self.linker.get_gui_app_args(value)
-
     def get_win_subsystem_args(self, value: str) -> T.List[str]:
         # By default the dynamic linker is going to return an empty
         # array in case it either doesn't support Windows subsystems
@@ -1248,7 +1244,7 @@ class Compiler(HoldableObject, metaclass=abc.ABCMeta):
         return self.compiles(code, env, extra_args=extra_args,
                              dependencies=dependencies, mode='link', disable_cache=disable_cache)
 
-    def get_feature_args(self, kwargs: T.Dict[str, T.Any], build_to_src: str) -> T.List[str]:
+    def get_feature_args(self, kwargs: DFeatures, build_to_src: str) -> T.List[str]:
         """Used by D for extra language features."""
         # TODO: using a TypeDict here would improve this
         raise EnvironmentException(f'{self.id} does not implement get_feature_args')
@@ -1274,6 +1270,9 @@ class Compiler(HoldableObject, metaclass=abc.ABCMeta):
 
     def needs_static_linker(self) -> bool:
         raise NotImplementedError(f'There is no static linker for {self.language}')
+
+    def gen_vs_module_defs_args(self, defsfile: str) -> T.List[str]:
+        return []
 
 
 def get_global_options(lang: str,

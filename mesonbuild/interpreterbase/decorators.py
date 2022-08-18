@@ -389,10 +389,10 @@ class KwargInfo(T.Generic[_T]):
                  default: T.Optional[_T] = None,
                  since: T.Optional[str] = None,
                  since_message: T.Optional[str] = None,
-                 since_values: T.Optional[T.Dict[_T, T.Union[str, T.Tuple[str, str]]]] = None,
+                 since_values: T.Optional[T.Dict[T.Union[_T, T.Type[T.List], T.Type[T.Dict]], T.Union[str, T.Tuple[str, str]]]] = None,
                  deprecated: T.Optional[str] = None,
                  deprecated_message: T.Optional[str] = None,
-                 deprecated_values: T.Optional[T.Dict[_T, T.Union[str, T.Tuple[str, str]]]] = None,
+                 deprecated_values: T.Optional[T.Dict[T.Union[_T, T.Type[T.List], T.Type[T.Dict]], T.Union[str, T.Tuple[str, str]]]] = None,
                  validator: T.Optional[T.Callable[[T.Any], T.Optional[str]]] = None,
                  convertor: T.Optional[T.Callable[[_T], object]] = None,
                  not_set_warning: T.Optional[str] = None):
@@ -418,10 +418,10 @@ class KwargInfo(T.Generic[_T]):
                default: T.Union[_T, None, _NULL_T] = _NULL,
                since: T.Union[str, None, _NULL_T] = _NULL,
                since_message: T.Union[str, None, _NULL_T] = _NULL,
-               since_values: T.Union[T.Dict[_T, T.Union[str, T.Tuple[str, str]]], None, _NULL_T] = _NULL,
+               since_values: T.Union[T.Dict[T.Union[_T, T.Type[T.List], T.Type[T.Dict]], T.Union[str, T.Tuple[str, str]]], None, _NULL_T] = _NULL,
                deprecated: T.Union[str, None, _NULL_T] = _NULL,
                deprecated_message: T.Union[str, None, _NULL_T] = _NULL,
-               deprecated_values: T.Union[T.Dict[_T, T.Union[str, T.Tuple[str, str]]], None, _NULL_T] = _NULL,
+               deprecated_values: T.Union[T.Dict[T.Union[_T, T.Type[T.List], T.Type[T.Dict]], T.Union[str, T.Tuple[str, str]]], None, _NULL_T] = _NULL,
                validator: T.Union[T.Callable[[_T], T.Optional[str]], None, _NULL_T] = _NULL,
                convertor: T.Union[T.Callable[[_T], TYPE_var], None, _NULL_T] = _NULL) -> 'KwargInfo':
         """Create a shallow copy of this KwargInfo, with modifications.

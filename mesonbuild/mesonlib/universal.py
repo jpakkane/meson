@@ -92,6 +92,7 @@ __all__ = [
     'exe_exists',
     'expand_arguments',
     'extract_as_list',
+    'first',
     'generate_list',
     'get_compiler_for_source',
     'get_filenames_templates_dict',
@@ -2292,3 +2293,17 @@ def pickle_load(filename: str, object_name: str, object_type: T.Type) -> T.Any:
     if major_versions_differ(obj.version, coredata_version):
         raise MesonVersionMismatchException(obj.version, coredata_version)
     return obj
+
+
+def first(iter: T.Iterable[_T], predicate: T.Callable[[_T], bool]) -> T.Optional[_T]:
+    """Find the first entry in an iterable where the given predicate is true
+
+    :param iter: The iterable to search
+    :param predicate: A finding function that takes an element from the iterable
+        and returns True if found, otherwise False
+    :return: The first found element, or None if it is not found
+    """
+    for i in iter:
+        if predicate(i):
+            return i
+    return None

@@ -1387,6 +1387,10 @@ class InternalTests(unittest.TestCase):
                 validator=in_set_validator({'clean', 'build', 'rebuild', 'deprecated', 'since'}),
                 deprecated_values={'deprecated': '1.0'},
                 since_values={'since': '1.1'}),
+            KwargInfo('dict', (ContainerTypeInfo(list, str), ContainerTypeInfo(dict, str)), default={},
+                      since_values={list: '1.9'}),
+            KwargInfo('new_dict', (ContainerTypeInfo(list, str), ContainerTypeInfo(dict, str)), default={},
+                      since_values={dict: '1.1'}),
         )
         def _(obj, node, args: T.Tuple, kwargs: T.Dict[str, str]) -> None:
             pass
@@ -1426,6 +1430,18 @@ class InternalTests(unittest.TestCase):
         with self.subTest('new string union'), mock.patch('sys.stdout', io.StringIO()) as out:
             _(None, mock.Mock(subproject=''), [], {'mode': 'since'})
             self.assertRegex(out.getvalue(), r"""WARNING:.Project targets '1.0'.*introduced in '1.1': "testfunc" keyword argument "mode" value "since".*""")
+
+        with self.subTest('new container'), mock.patch('sys.stdout', io.StringIO()) as out:
+            _(None, mock.Mock(subproject=''), [], {'dict': ['a=b']})
+            self.assertRegex(out.getvalue(), r"""WARNING:.Project targets '1.0'.*introduced in '1.9': "testfunc" keyword argument "dict" of type list.*""")
+
+        with self.subTest('new container set to default'), mock.patch('sys.stdout', io.StringIO()) as out:
+            _(None, mock.Mock(subproject=''), [], {'new_dict': {}})
+            self.assertRegex(out.getvalue(), r"""WARNING:.Project targets '1.0'.*introduced in '1.1': "testfunc" keyword argument "new_dict" of type dict.*""")
+
+        with self.subTest('new container default'), mock.patch('sys.stdout', io.StringIO()) as out:
+            _(None, mock.Mock(subproject=''), [], {})
+            self.assertNotRegex(out.getvalue(), r"""WARNING:.Project targets '1.0'.*introduced in '1.1': "testfunc" keyword argument "new_dict" of type dict.*""")
 
     def test_typed_kwarg_evolve(self) -> None:
         k = KwargInfo('foo', str, required=True, default='foo')

@@ -29,13 +29,12 @@ kwargs:
       `soversion` is not defined, it is set to `3`.
 
   darwin_versions:
-    type: str | int | list[str]
+    type: list[str | int]
     since: 0.48.0
     description: |
-      Defines the `compatibility version` and `current version` for the dylib on macOS.
-      If a list is specified, it must be
-      either zero, one, or two elements. If only one element is specified
-      or if it's not a list, the specified value will be used for setting
+      Defines the `compatibility version` and `current version` for the dylib on
+      macOS.  If a list is specified, it must be either zero, one, or two
+      elements. If only one element is specified it will be used for setting
       both compatibility version and current version. If unspecified, the
       `soversion` will be used as per the aforementioned rules.
 

@@ -287,12 +287,12 @@ class Vs2010Backend(backends.Backend):
                 for d in target.get_dependencies():
                     all_deps[d.get_id()] = d
             elif isinstance(target, build.BuildTarget):
-                for ldep in target.link_targets:
+                for ldep in target.link_with:
                     if isinstance(ldep, build.CustomTargetIndex):
                         all_deps[ldep.get_id()] = ldep.target
                     else:
                         all_deps[ldep.get_id()] = ldep
-                for ldep in target.link_whole_targets:
+                for ldep in target.link_whole:
                     if isinstance(ldep, build.CustomTargetIndex):
                         all_deps[ldep.get_id()] = ldep.target
                     else:
@@ -854,13 +854,9 @@ class Vs2010Backend(backends.Backend):
         self.handled_target_deps[target.get_id()] = []
         if isinstance(target, build.Executable):
             conftype = 'Application'
-            if target.gui_app is not None:
-                if not target.gui_app:
-                    subsystem = 'Console'
-            else:
-                # If someone knows how to set the version properly,
-                # please send a patch.
-                subsystem = target.win_subsystem.split(',')[0]
+            # If someone knows how to set the version properly,
+            # please send a patch.
+            subsystem = target.win_subsystem.split(',')[0]
         elif isinstance(target, build.StaticLibrary):
             conftype = 'StaticLibrary'
         elif isinstance(target, build.SharedLibrary):
@@ -1234,7 +1230,7 @@ class Vs2010Backend(backends.Backend):
             else:
                 lobj = self.build.targets[t.get_id()]
             linkname = os.path.join(down, self.get_target_filename_for_linking(lobj))
-            if t in target.link_whole_targets:
+            if t in target.link_whole:
                 if compiler.id == 'msvc' and version_compare(compiler.version, '<19.00.23918'):
                     # Expand our object lists manually if we are on pre-Visual Studio 2015 Update 2
                     l = t.extract_all_objects(False)
@@ -1305,8 +1301,11 @@ class Vs2010Backend(backends.Backend):
         if isinstance(target, build.SharedLibrary):
             # Add module definitions file, if provided
             if target.vs_module_defs:
-                relpath = os.path.join(down, target.vs_module_defs.rel_to_builddir(self.build_to_src))
-                ET.SubElement(link, 'ModuleDefinitionFile').text = relpath
+                if isinstance(target.vs_module_defs, File):
+                    _vdf = os.path.join(down, target.vs_module_defs.rel_to_builddir(self.build_to_src))
+                else:
+                    _vdf = os.path.join(down, self.get_target_dir(target.vs_module_defs), target.vs_module_defs.get_outputs()[0])
+                ET.SubElement(link, 'ModuleDefinitionFile').text = _vdf
         if self.debug:
             pdb = ET.SubElement(link, 'ProgramDataBaseFileName')
             pdb.text = f'$(OutDir){target_name}.pdb'

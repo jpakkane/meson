@@ -11,8 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import annotations
 
+from __future__ import annotations
 import os.path
 import re
 import subprocess
@@ -38,6 +38,7 @@ from .compilers import (
 from .mixins.gnu import GnuCompiler
 
 if T.TYPE_CHECKING:
+    from ..build import DFeatures
     from ..dependencies import Dependency
     from ..programs import ExternalProgram
     from ..envconfig import MachineInfo
@@ -160,94 +161,6 @@ class DmdLikeCompilerMixin(CompilerMixinBase):
         if self.info.is_windows():
             return []
         return ['-fPIC']
-
-    def get_feature_args(self, kwargs: T.Dict[str, T.Any], build_to_src: str) -> T.List[str]:
-        # TODO: using a TypeDict here would improve this
-        res = []
-        # get_feature_args can be called multiple times for the same target when there is generated source
-        # so we have to copy the kwargs (target.d_features) dict before popping from it
-        kwargs = kwargs.copy()
-        if 'unittest' in kwargs:
-            unittest = kwargs.pop('unittest')
-            unittest_arg = d_feature_args[self.id]['unittest']
-            if not unittest_arg:
-                raise EnvironmentException('D compiler %s does not support the "unittest" feature.' % self.name_string())
-            if unittest:
-                res.append(unittest_arg)
-
-        if 'debug' in kwargs:
-            debug_level = -1
-            debugs = kwargs.pop('debug')
-            if not isinstance(debugs, list):
-                debugs = [debugs]
-
-            debug_arg = d_feature_args[self.id]['debug']
-            if not debug_arg:
-                raise EnvironmentException('D compiler %s does not support conditional debug identifiers.' % self.name_string())
-
-            # Parse all debug identifiers and the largest debug level identifier
-            for d in debugs:
-                if isinstance(d, int):
-                    if d > debug_level:
-                        debug_level = d
-                elif isinstance(d, str) and d.isdigit():
-                    if int(d) > debug_level:
-                        debug_level = int(d)
-                else:
-                    res.append(f'{debug_arg}={d}')
-
-            if debug_level >= 0:
-                res.append(f'{debug_arg}={debug_level}')
-
-        if 'versions' in kwargs:
-            version_level = -1
-            versions = kwargs.pop('versions')
-            if not isinstance(versions, list):
-                versions = [versions]
-
-            version_arg = d_feature_args[self.id]['version']
-            if not version_arg:
-                raise EnvironmentException('D compiler %s does not support conditional version identifiers.' % self.name_string())
-
-            # Parse all version identifiers and the largest version level identifier
-            for v in versions:
-                if isinstance(v, int):
-                    if v > version_level:
-                        version_level = v
-                elif isinstance(v, str) and v.isdigit():
-                    if int(v) > version_level:
-                        version_level = int(v)
-                else:
-                    res.append(f'{version_arg}={v}')
-
-            if version_level >= 0:
-                res.append(f'{version_arg}={version_level}')
-
-        if 'import_dirs' in kwargs:
-            import_dirs = kwargs.pop('import_dirs')
-            if not isinstance(import_dirs, list):
-                import_dirs = [import_dirs]
-
-            import_dir_arg = d_feature_args[self.id]['import_dir']
-            if not import_dir_arg:
-                raise EnvironmentException('D compiler %s does not support the "string import directories" feature.' % self.name_string())
-            for idir_obj in import_dirs:
-                basedir = idir_obj.get_curdir()
-                for idir in idir_obj.get_incdirs():
-                    bldtreedir = os.path.join(basedir, idir)
-                    # Avoid superfluous '/.' at the end of paths when d is '.'
-                    if idir not in ('', '.'):
-                        expdir = bldtreedir
-                    else:
-                        expdir = basedir
-                    srctreedir = os.path.join(build_to_src, expdir)
-                    res.append(f'{import_dir_arg}{srctreedir}')
-                    res.append(f'{import_dir_arg}{bldtreedir}')
-
-        if kwargs:
-            raise EnvironmentException('Unknown D compiler feature(s) selected: %s' % ', '.join(kwargs.keys()))
-
-        return res
 
     def get_buildtype_linker_args(self, buildtype: str) -> T.List[str]:
         if buildtype != 'plain':
@@ -571,26 +484,28 @@ class DCompiler(Compiler):
             return []
         return ['-fPIC']
 
-    def get_feature_args(self, kwargs: T.Dict[str, T.Any], build_to_src: str) -> T.List[str]:
-        # TODO: using a TypeDict here would improve this
-        res = []
-        # get_feature_args can be called multiple times for the same target when there is generated source
-        # so we have to copy the kwargs (target.d_features) dict before popping from it
-        kwargs = kwargs.copy()
-        if 'unittest' in kwargs:
-            unittest = kwargs.pop('unittest')
+    def get_feature_args(self, kwargs: DFeatures, build_to_src: str) -> T.List[str]:
+        """Convert user input for D features into compiler arguments.
+
+        :param kwargs: DFeatures from the BuildTarget
+        :param build_to_src: relative path from the source directory to the build directory
+        :raises EnvironmentException: If the compiler doesn't support unittests and they are enabled
+        :raises EnvironmentException: if the compiler doesn't support debug and it is enabled
+        :raises EnvironmentException: If the compiler doesn't support versions and they are enabled
+        :raises EnvironmentException: If the compiler doesn't support import_dirs, but they're enabled
+        :return: A list of arguments to pass to the compiler
+        """
+        res: T.List[str] = []
+
+        if kwargs['unittest']:
             unittest_arg = d_feature_args[self.id]['unittest']
             if not unittest_arg:
                 raise EnvironmentException('D compiler %s does not support the "unittest" feature.' % self.name_string())
-            if unittest:
-                res.append(unittest_arg)
+            res.append(unittest_arg)
 
-        if 'debug' in kwargs:
+        if kwargs['debug']:
             debug_level = -1
-            debugs = kwargs.pop('debug')
-            if not isinstance(debugs, list):
-                debugs = [debugs]
-
+            debugs = kwargs['debug']
             debug_arg = d_feature_args[self.id]['debug']
             if not debug_arg:
                 raise EnvironmentException('D compiler %s does not support conditional debug identifiers.' % self.name_string())
@@ -609,11 +524,9 @@ class DCompiler(Compiler):
             if debug_level >= 0:
                 res.append(f'{debug_arg}={debug_level}')
 
-        if 'versions' in kwargs:
+        if kwargs['versions']:
             version_level = -1
-            versions = kwargs.pop('versions')
-            if not isinstance(versions, list):
-                versions = [versions]
+            versions = kwargs['versions']
 
             version_arg = d_feature_args[self.id]['version']
             if not version_arg:
@@ -633,10 +546,8 @@ class DCompiler(Compiler):
             if version_level >= 0:
                 res.append(f'{version_arg}={version_level}')
 
-        if 'import_dirs' in kwargs:
-            import_dirs = kwargs.pop('import_dirs')
-            if not isinstance(import_dirs, list):
-                import_dirs = [import_dirs]
+        if kwargs['import_dirs']:
+            import_dirs = kwargs['import_dirs']
 
             import_dir_arg = d_feature_args[self.id]['import_dir']
             if not import_dir_arg:
@@ -653,9 +564,6 @@ class DCompiler(Compiler):
                     srctreedir = os.path.join(build_to_src, expdir)
                     res.append(f'{import_dir_arg}{srctreedir}')
                     res.append(f'{import_dir_arg}{bldtreedir}')
-
-        if kwargs:
-            raise EnvironmentException('Unknown D compiler feature(s) selected: %s' % ', '.join(kwargs.keys()))
 
         return res
 

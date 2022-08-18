@@ -26,9 +26,15 @@ from .. import coredata as cdata
 from ..build import Executable, Jar, SharedLibrary, SharedModule, StaticLibrary
 from ..compilers import detect_compiler_for
 from ..interpreterbase import InvalidArguments
-from ..mesonlib import MachineChoice, OptionKey
+from ..mesonlib import MachineChoice, OptionKey, MesonBugException
 from ..mparser import BaseNode, ArithmeticNode, ArrayNode, ElementaryNode, IdNode, FunctionNode, StringNode
 from .interpreter import AstInterpreter
+from ..interpreter.type_checking import (
+    EXECUTABLE_KWS,
+    JAR_KWS,
+    SHARED_LIB_KWS,
+    STATIC_LIB_KWS,
+)
 
 if T.TYPE_CHECKING:
     from ..build import BuildTarget
@@ -41,6 +47,13 @@ BUILD_TARGET_FUNCTIONS = [
     'executable', 'jar', 'library', 'shared_library', 'shared_module',
     'static_library', 'both_libraries'
 ]
+
+
+def _as_bool(inp: object) -> bool:
+    """type helper that asserts a thing is a boolean."""
+    assert isinstance(inp, bool)
+    return inp
+
 
 class IntrospectionHelper(argparse.Namespace):
     # mimic an argparse namespace
@@ -261,15 +274,36 @@ class IntrospectionInterpreter(AstInterpreter):
         extraf_nodes = traverse_nodes(extra_queue)
 
         # Make sure nothing can crash when creating the build class
-        kwargs_reduced = {k: v for k, v in kwargs.items() if k in targetclass.known_kwargs and k in ['install', 'build_by_default', 'build_always']}
+        if targetclass is Executable:
+            kargs = EXECUTABLE_KWS
+        elif targetclass is StaticLibrary:
+            kargs = STATIC_LIB_KWS
+        elif targetclass in {SharedLibrary, SharedModule}:
+            kargs = SHARED_LIB_KWS
+        elif targetclass is Jar:
+            kargs = JAR_KWS
+        else:
+            raise MesonBugException(f'Unknown target class {targetclass.__name__}')
+        known = {k.name for k in kargs if k.name in {'install', 'build_by_default', 'build_always'}}
+        kwargs_reduced = {k: v for k, v in kwargs.items() if k in known}
         kwargs_reduced = {k: v.value if isinstance(v, ElementaryNode) else v for k, v in kwargs_reduced.items()}
         kwargs_reduced = {k: v for k, v in kwargs_reduced.items() if not isinstance(v, BaseNode)}
-        for_machine = MachineChoice.HOST
-        objects = []        # type: T.List[T.Any]
-        empty_sources = []  # type: T.List[T.Any]
-        # Passing the unresolved sources list causes errors
-        target = targetclass(name, self.subdir, self.subproject, for_machine, empty_sources, [], objects,
-                             self.environment, self.coredata.compilers[for_machine], kwargs_reduced)
+        target = targetclass(
+            name,
+            self.subdir,
+            self.subproject,
+            MachineChoice.HOST,
+            self.environment,
+            [],
+            None,
+            ['fake_source'],  # A target must have some kind of source
+            self.coredata.compilers.host,
+            # I dislike this in that we are copying the defaults, but everything
+            # else ends up being super verbose
+            install=_as_bool(kwargs_reduced.get('install', False)),
+            build_by_default=_as_bool(kwargs_reduced.get('build_by_default',
+                kwargs_reduced.get('build_always', True))),
+        )
         target.process_compilers()
         target.process_compilers_late([])
 
