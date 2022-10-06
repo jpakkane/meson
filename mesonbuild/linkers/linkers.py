@@ -456,7 +456,7 @@ class DynamicLinker(metaclass=abc.ABCMeta):
     def get_lto_args(self) -> T.List[str]:
         return []
 
-    def sanitizer_args(self, value: str) -> T.List[str]:
+    def sanitizer_args(self, value: T.List[str]) -> T.List[str]:
         return []
 
     def get_buildtype_args(self, buildtype: str) -> T.List[str]:
@@ -602,10 +602,10 @@ class GnuLikeDynamicLinkerMixin:
     def get_lto_args(self) -> T.List[str]:
         return ['-flto']
 
-    def sanitizer_args(self, value: str) -> T.List[str]:
-        if value == 'none':
-            return []
-        return ['-fsanitize=' + value]
+    def sanitizer_args(self, value: T.List[str]) -> T.List[str]:
+        if not value:
+            return value
+        return [f'-fsanitize={",".join(value)}']
 
     def get_coverage_args(self) -> T.List[str]:
         return ['--coverage']
@@ -766,10 +766,10 @@ class AppleDynamicLinker(PosixDynamicLinkerMixin, DynamicLinker):
     def get_coverage_args(self) -> T.List[str]:
         return ['--coverage']
 
-    def sanitizer_args(self, value: str) -> T.List[str]:
-        if value == 'none':
-            return []
-        return ['-fsanitize=' + value]
+    def sanitizer_args(self, value: T.List[str]) -> T.List[str]:
+        if not value:
+            return value
+        return [f'-fsanitize={",".join(value)}']
 
     def no_undefined_args(self) -> T.List[str]:
         return self._apply_prefix('-undefined,error')

@@ -1,4 +1,4 @@
-# Copyright 2012-2021 The Meson development team
+# Copyright 2012-2022 The Meson development team
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -1082,7 +1082,7 @@ class Interpreter(InterpreterBase, HoldableObject):
 
     @typed_pos_args('get_option', str)
     @noKwargs
-    def func_get_option(self, nodes: mparser.BaseNode, args: T.Tuple[str],
+    def func_get_option(self, node: mparser.BaseNode, args: T.Tuple[str],
                         kwargs: 'TYPE_kwargs') -> T.Union[coredata.UserOption, 'TYPE_var']:
         optname = args[0]
         if ':' in optname:
@@ -1093,6 +1093,26 @@ class Interpreter(InterpreterBase, HoldableObject):
         if isinstance(opt, coredata.UserFeatureOption):
             opt.name = optname
             return opt
+        elif optname == 'b_sanitize':
+            assert isinstance(opt, coredata.UserArrayOption), 'for mypy'
+            # Handle the change of sanitize from a combo to an array
+            # if the version compat is < 0.63 then we return a `,` joined
+            # string, sorted alphabetically (so that address,undefined remains
+            # unchanged), otherwise we return an array
+
+            # TODO: this should be 0.63, but there's no way to test this until 0.63 if it is
+            if mesonlib.version_compare(mesonlib.project_meson_versions[self.subproject], '< 0.62.99'):
+                # Use deprecation to not trip up --fatal-warnings
+                mlog.deprecation(textwrap.dedent('''\
+                    In meson 0.63 the type of the builtin "b_sanitize" option changed from a combo to an array of strings. For
+                    compatiblity, projects that set their minimum version < 0.63 will continue to get a string from the command
+                    `get_option('b_sanitize')`, even when using meson > 0.63.  When the minimum version changes this will change to an
+                    array. Meson will attempt to provide the same values as before, (such as sorting to try to match `address,undefined`),
+                    however, new values available in meson >= 0.63 may trip this up, and any reliance on this should be removed,
+                    as the array version will be provided in user provided order.
+                    '''), location=node)
+                return ','.join(sorted(opt.value))
+            return opt.value
         elif isinstance(opt, coredata.UserOption):
             if isinstance(opt.value, str):
                 return P_OBJ.OptionString(opt.value, f'{{{optname}}}')
@@ -2810,7 +2830,8 @@ class Interpreter(InterpreterBase, HoldableObject):
             elif arg == '-g':
                 mlog.warning(f'Consider using the built-in debug option instead of using "{arg}".',
                              location=self.current_node)
-            elif arg.startswith('-fsanitize'):
+            # Don't catch things like `-fsanitize-recover`
+            elif arg in {'-fsanitize', '/fsanitize'} or arg.startswith(('-fsanitize=', '/fsanitize=')):
                 mlog.warning(f'Consider using the built-in option for sanitizers instead of using "{arg}".',
                              location=self.current_node)
             elif arg.startswith('-std=') or arg.startswith('/std:'):
@@ -2901,7 +2922,7 @@ class Interpreter(InterpreterBase, HoldableObject):
         if OptionKey('b_sanitize') not in self.coredata.options:
             return
         if (self.coredata.options[OptionKey('b_lundef')].value and
-                self.coredata.options[OptionKey('b_sanitize')].value != 'none'):
+                self.coredata.options[OptionKey('b_sanitize')].value):
             mlog.warning('''Trying to use {} sanitizer on Clang with b_lundef.
 This will probably not work.
 Try setting b_lundef to false instead.'''.format(self.coredata.options[OptionKey('b_sanitize')].value),

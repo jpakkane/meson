@@ -196,6 +196,20 @@ class RustCompiler(Compiler):
         # pic is on by rustc
         return []
 
+    def has_arguments(self, args: T.List[str], env: 'Environment', code: str,
+                      mode: str) -> T.Tuple[bool, bool]:
+        return self.compiles(code, env, extra_args=args, mode=mode)
+
+    def has_multi_arguments(self, args: T.List[str], env: 'Environment') -> T.Tuple[bool, bool]:
+        return self.has_arguments(args, env, 'fn main { std::process::exit(0) };\n', 'compile')
+
+    def _has_multi_link_arguments(self, args: T.List[str], env: 'Environment', code: str) -> T.Tuple[bool, bool]:
+        args = self.linker.fatal_warnings() + args
+        return self.has_arguments(args, env, code, mode='link')
+
+    def has_multi_link_arguments(self, args: T.List[str], env: 'Environment') -> T.Tuple[bool, bool]:
+        return self._has_multi_link_arguments(args, env, 'fn main { std::process::exit(0) };\n')
+
 
 class ClippyRustCompiler(RustCompiler):
 

@@ -164,12 +164,10 @@ class VisualStudioLikeCompiler(Compiler, metaclass=abc.ABCMeta):
     def get_no_optimization_args(self) -> T.List[str]:
         return ['/Od', '/Oi-']
 
-    def sanitizer_compile_args(self, value: str) -> T.List[str]:
-        if value == 'none':
-            return []
-        if value != 'address':
-            raise mesonlib.MesonException('VS only supports address sanitizer at the moment.')
-        return ['/fsanitize=address']
+    def sanitizer_compile_args(self, value: T.List[str]) -> T.List[str]:
+        if not value:
+            return value
+        return [f'/fsanitize={",".join(value)}']
 
     def get_output_args(self, target: str) -> T.List[str]:
         if target.endswith('.exe'):

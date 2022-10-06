@@ -674,10 +674,10 @@ class CudaCompiler(Compiler):
         # return self._to_host_flags(self.host_compiler.get_optimization_args(optimization_level))
         return cuda_optimization_args[optimization_level]
 
-    def sanitizer_compile_args(self, value: str) -> T.List[str]:
+    def sanitizer_compile_args(self, value: T.List[str]) -> T.List[str]:
         return self._to_host_flags(self.host_compiler.sanitizer_compile_args(value))
 
-    def sanitizer_link_args(self, value: str) -> T.List[str]:
+    def sanitizer_link_args(self, value: T.List[str]) -> T.List[str]:
         return self._to_host_flags(self.host_compiler.sanitizer_link_args(value))
 
     def get_debug_args(self, is_debug: bool) -> T.List[str]:

@@ -33,21 +33,21 @@ not be relied on, since they can be absolute paths in the following cases:
 
 ### Directories
 
-| Option                               | Default value | Description |
-| ------                               | ------------- | ----------- |
-| prefix                               | see below     | Installation prefix |
-| bindir                               | bin           | Executable directory |
-| datadir                              | share         | Data file directory |
-| includedir                           | include       | Header file directory |
-| infodir                              | share/info    | Info page directory |
-| libdir                               | see below     | Library directory |
-| libexecdir                           | libexec       | Library executable directory |
-| localedir                            | share/locale  | Locale data directory |
-| localstatedir                        | var           | Localstate data directory |
-| mandir                               | share/man     | Manual page directory |
-| sbindir                              | sbin          | System executable directory |
-| sharedstatedir                       | com           | Architecture-independent data directory |
-| sysconfdir                           | etc           | Sysconf data directory |
+| Option         | Default value | Description                             |
+| -------------- | ------------- | --------------------------------------- |
+| prefix         | see below     | Installation prefix                     |
+| bindir         | bin           | Executable directory                    |
+| datadir        | share         | Data file directory                     |
+| includedir     | include       | Header file directory                   |
+| infodir        | share/info    | Info page directory                     |
+| libdir         | see below     | Library directory                       |
+| libexecdir     | libexec       | Library executable directory            |
+| localedir      | share/locale  | Locale data directory                   |
+| localstatedir  | var           | Localstate data directory               |
+| mandir         | share/man     | Manual page directory                   |
+| sbindir        | sbin          | System executable directory             |
+| sharedstatedir | com           | Architecture-independent data directory |
+| sysconfdir     | etc           | Sysconf data directory                  |
 
 
 `prefix` defaults to `C:/` on Windows, and `/usr/local` otherwise. You
@@ -67,28 +67,28 @@ Options that are labeled "per machine" in the table are set per
 machine. See the [specifying options per
 machine](#specifying-options-per-machine) section for details.
 
-| Option                               | Default value | Description                                                    | Is per machine | Is per subproject |
-| ------                               | ------------- | -----------                                                    | -------------- | ----------------- |
-| auto_features {enabled, disabled, auto} | auto       | Override value of all 'auto' features                          | no             | no                |
-| backend {ninja, vs,<br>vs2010, vs2012, vs2013, vs2015, vs2017, vs2019, vs2022, xcode} | ninja | Backend to use        | no             | no                |
-| buildtype {plain, debug,<br>debugoptimized, release, minsize, custom} | debug |  Build type to use                    | no             | no                |
-| debug                                | true          | Enable debug symbols and other information                     | no             | no                |
-| default_library {shared, static, both} | shared      | Default library type                                           | no             | yes               |
-| errorlogs                            | true          | Whether to print the logs from failing tests.                  | no             | no                |
-| install_umask {preserve, 0000-0777}  | 022           | Default umask to apply on permissions of installed files       | no             | no                |
-| layout {mirror,flat}                 | mirror        | Build directory layout                                         | no             | no                |
-| optimization {0, g, 1, 2, 3, s}      | 0             | Optimization level                                             | no             | no                |
-| pkg_config_path {OS separated path}  | ''            | Additional paths for pkg-config to search before builtin paths | yes            | no                |
-| prefer_static                        | false         | Whether to try static linking before shared linking            | no             | no                |
-| cmake_prefix_path                    | []            | Additional prefixes for cmake to search before builtin paths   | yes            | no                |
-| stdsplit                             | true          | Split stdout and stderr in test logs                           | no             | no                |
-| strip                                | false         | Strip targets on install                                       | no             | no                |
-| unity {on, off, subprojects}         | off           | Unity build                                                    | no             | no                |
-| unity_size {>=2}                     | 4             | Unity file block size                                          | no             | no                |
-| warning_level {0, 1, 2, 3}           | 1             | Set the warning level. From 0 = none to 3 = highest            | no             | yes               |
-| werror                               | false         | Treat warnings as errors                                       | no             | yes               |
-| wrap_mode {default, nofallback,<br>nodownload, forcefallback, nopromote} | default | Wrap mode to use                 | no             | no                |
-| force_fallback_for                   | []            | Force fallback for those dependencies                          | no             | no                |
+| Option                                                                                | Default value | Description                                                    | Is per machine | Is per subproject |
+| ------------------------------------------------------------------------------------- | ------------- | -------------------------------------------------------------- | -------------- | ----------------- |
+| auto_features {enabled, disabled, auto}                                               | auto          | Override value of all 'auto' features                          | no             | no                |
+| backend {ninja, vs,<br>vs2010, vs2012, vs2013, vs2015, vs2017, vs2019, vs2022, xcode} | ninja         | Backend to use                                                 | no             | no                |
+| buildtype {plain, debug,<br>debugoptimized, release, minsize, custom}                 | debug         | Build type to use                                              | no             | no                |
+| debug                                                                                 | true          | Enable debug symbols and other information                     | no             | no                |
+| default_library {shared, static, both}                                                | shared        | Default library type                                           | no             | yes               |
+| errorlogs                                                                             | true          | Whether to print the logs from failing tests.                  | no             | no                |
+| install_umask {preserve, 0000-0777}                                                   | 022           | Default umask to apply on permissions of installed files       | no             | no                |
+| layout {mirror,flat}                                                                  | mirror        | Build directory layout                                         | no             | no                |
+| optimization {0, g, 1, 2, 3, s}                                                       | 0             | Optimization level                                             | no             | no                |
+| pkg_config_path {OS separated path}                                                   | ''            | Additional paths for pkg-config to search before builtin paths | yes            | no                |
+| prefer_static                                                                         | false         | Whether to try static linking before shared linking            | no             | no                |
+| cmake_prefix_path                                                                     | []            | Additional prefixes for cmake to search before builtin paths   | yes            | no                |
+| stdsplit                                                                              | true          | Split stdout and stderr in test logs                           | no             | no                |
+| strip                                                                                 | false         | Strip targets on install                                       | no             | no                |
+| unity {on, off, subprojects}                                                          | off           | Unity build                                                    | no             | no                |
+| unity_size {>=2}                                                                      | 4             | Unity file block size                                          | no             | no                |
+| warning_level {0, 1, 2, 3}                                                            | 1             | Set the warning level. From 0 = none to 3 = highest            | no             | yes               |
+| werror                                                                                | false         | Treat warnings as errors                                       | no             | yes               |
+| wrap_mode {default, nofallback,<br>nodownload, forcefallback, nopromote}              | default       | Wrap mode to use                                               | no             | no                |
+| force_fallback_for                                                                    | []            | Force fallback for those dependencies                          | no             | no                |
 
 <a name="build-type-options"></a> For setting optimization levels and
 toggling debug, you can either set the `buildtype` option, or you can
@@ -99,7 +99,7 @@ from it. For example, `-Dbuildtype=debugoptimized` is the same as
 the two-way mapping:
 
 | buildtype      | debug | optimization |
-| ---------      | ----- | ------------ |
+| -------------- | ----- | ------------ |
 | plain          | false | 0            |
 | debug          | true  | 0            |
 | debugoptimized | true  | 2            |
@@ -121,28 +121,31 @@ no options.
 The following options are available. Note that they may not be
 available on all platforms or with all compilers:
 
-| Option        | Default value  | Possible values                                                  | Description                                                                   |
-|---------------|----------------|------------------------------------------------------------------|-------------------------------------------------------------------------------|
-| b_asneeded    | true           | true, false                                                      | Use -Wl,--as-needed when linking                                              |
-| b_bitcode     | false          | true, false                                                      | Embed Apple bitcode, see below                                                |
-| b_colorout    | always         | auto, always, never                                              | Use colored output                                                            |
-| b_coverage    | false          | true, false                                                      | Enable coverage tracking                                                      |
-| b_lundef      | true           | true, false                                                      | Don't allow undefined symbols when linking                                    |
-| b_lto         | false          | true, false                                                      | Use link time optimization                                                    |
-| b_lto_threads | 0              | Any integer*                                                     | Use multiple threads for lto. *(Added in 0.57.0)*                             |
-| b_lto_mode    | default        | default, thin                                                    | Select between lto modes, thin and default. *(Added in 0.57.0)*               |
-| b_ndebug      | false          | true, false, if-release                                          | Disable asserts                                                               |
-| b_pch         | true           | true, false                                                      | Use precompiled headers                                                       |
-| b_pgo         | off            | off, generate, use                                               | Use profile guided optimization                                               |
-| b_sanitize    | none           | see below                                                        | Code sanitizer to use                                                         |
-| b_staticpic   | true           | true, false                                                      | Build static libraries as position independent                                |
-| b_pie         | false          | true, false                                                      | Build position-independent executables (since 0.49.0)                         |
-| b_vscrt       | from_buildtype | none, md, mdd, mt, mtd, from_buildtype, static_from_buildtype    | VS runtime library to use (since 0.48.0) (static_from_buildtype since 0.56.0) |
+| Option        | Default value  | Possible values                                               | Description                                                                   |
+| ------------- | -------------- | ------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| b_asneeded    | true           | true, false                                                   | Use -Wl,--as-needed when linking                                              |
+| b_bitcode     | false          | true, false                                                   | Embed Apple bitcode, see below                                                |
+| b_colorout    | always         | auto, always, never                                           | Use colored output                                                            |
+| b_coverage    | false          | true, false                                                   | Enable coverage tracking                                                      |
+| b_lundef      | true           | true, false                                                   | Don't allow undefined symbols when linking                                    |
+| b_lto         | false          | true, false                                                   | Use link time optimization                                                    |
+| b_lto_threads | 0              | Any integer†                                                  | Use multiple threads for lto. *(Added in 0.57.0)*                             |
+| b_lto_mode    | default        | default, thin                                                 | Select between lto modes, thin and default. *(Added in 0.57.0)*               |
+| b_ndebug      | false          | true, false, if-release                                       | Disable asserts                                                               |
+| b_pch         | true           | true, false                                                   | Use precompiled headers                                                       |
+| b_pgo         | off            | off, generate, use                                            | Use profile guided optimization                                               |
+| b_sanitize    | none or []*    | see below                                                     | Code sanitizer(s) to use                                                      |
+| b_staticpic   | true           | true, false                                                   | Build static libraries as position independent                                |
+| b_pie         | false          | true, false                                                   | Build position-independent executables (since 0.49.0)                         |
+| b_vscrt       | from_buildtype | none, md, mdd, mt, mtd, from_buildtype, static_from_buildtype | VS runtime library to use (since 0.48.0) (static_from_buildtype since 0.56.0) |
 
-The value of `b_sanitize` can be one of: `none`, `address`, `thread`,
-`undefined`, `memory`, `leak`, `address,undefined`, but note that some
-compilers might not support all of them. For example Visual Studio
-only supports the address sanitizer.
+† The default and possible values of saniziers changed in 0.63. Before 0.63 they
+were string values, and restricted to a specific subset of values: `none`,
+`address`, `thread`, `undefined`, `memory`, `leak`, or `address,undefined`. In 0.63 it
+was changed to a free form array of sanitizers, which are checked by a compiler
+and linker check. If the meson compatible version is `< 0.63` then
+`get_option('b_sanitize')` will return a string value, even on later version of
+meson as a compatibility feature.
 
 * < 0 means disable, == 0 means automatic selection, > 0 sets a specific number to use
 
@@ -155,7 +158,7 @@ used internally to pick the CRT compiler arguments for `from_buildtype` or
 option:
 
 | buildtype      | from_buildtype | static_from_buildtype |
-| --------       | -------------- | --------------------- |
+| -------------- | -------------- | --------------------- |
 | debug          | `/MDd`         | `/MTd`                |
 | debugoptimized | `/MD`          | `/MT`                 |
 | release        | `/MD`          | `/MT`                 |
@@ -182,23 +185,23 @@ The following options are available. They can be set by passing
 the possible values they can take will depend on the target platform
 or compiler being used:
 
-| Option           | Default value | Possible values                          | Description |
-| ------           | ------------- | ---------------                          | ----------- |
-| c_args           |               | free-form comma-separated list           | C compile arguments to use |
-| c_link_args      |               | free-form comma-separated list           | C link arguments to use |
-| c_std            | none          | none, c89, c99, c11, c17, c18, c2x, gnu89, gnu99, gnu11, gnu17, gnu18, gnu2x | C language standard to use |
-| c_winlibs        | see below     | free-form comma-separated list           | Standard Windows libs to link against |
-| c_thread_count   | 4             | integer value ≥ 0                        | Number of threads to use with emcc when using threads |
-| cpp_args         |               | free-form comma-separated list           | C++ compile arguments to use |
-| cpp_link_args    |               | free-form comma-separated list           | C++ link arguments to use |
-| cpp_std          | none          | none, c++98, c++03, c++11, c++14, c++17, c++20 <br/>c++2a, c++1z, gnu++03, gnu++11, gnu++14, gnu++17, gnu++1z, <br/> gnu++2a, gnu++20, vc++14, vc++17, vc++latest | C++ language standard to use |
-| cpp_debugstl     | false         | true, false                              | C++ STL debug mode |
-| cpp_eh           | default       | none, default, a, s, sc                  | C++ exception handling type |
-| cpp_rtti         | true          | true, false                              | Whether to enable RTTI (runtime type identification) |
-| cpp_thread_count | 4             | integer value ≥ 0                        | Number of threads to use with emcc when using threads |
-| cpp_winlibs      | see below     | free-form comma-separated list           | Standard Windows libs to link against |
-| fortran_std      | none          | [none, legacy, f95, f2003, f2008, f2018] | Fortran language standard to use |
-| cuda_ccbindir    |               | filesystem path                          | CUDA non-default toolchain directory to use (-ccbin) *(Added in 0.57.1)* |
+| Option           | Default value | Possible values                                                                                                                                                   | Description                                                              |
+| ---------------- | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| c_args           |               | free-form comma-separated list                                                                                                                                    | C compile arguments to use                                               |
+| c_link_args      |               | free-form comma-separated list                                                                                                                                    | C link arguments to use                                                  |
+| c_std            | none          | none, c89, c99, c11, c17, c18, c2x, gnu89, gnu99, gnu11, gnu17, gnu18, gnu2x                                                                                      | C language standard to use                                               |
+| c_winlibs        | see below     | free-form comma-separated list                                                                                                                                    | Standard Windows libs to link against                                    |
+| c_thread_count   | 4             | integer value ≥ 0                                                                                                                                                 | Number of threads to use with emcc when using threads                    |
+| cpp_args         |               | free-form comma-separated list                                                                                                                                    | C++ compile arguments to use                                             |
+| cpp_link_args    |               | free-form comma-separated list                                                                                                                                    | C++ link arguments to use                                                |
+| cpp_std          | none          | none, c++98, c++03, c++11, c++14, c++17, c++20 <br/>c++2a, c++1z, gnu++03, gnu++11, gnu++14, gnu++17, gnu++1z, <br/> gnu++2a, gnu++20, vc++14, vc++17, vc++latest | C++ language standard to use                                             |
+| cpp_debugstl     | false         | true, false                                                                                                                                                       | C++ STL debug mode                                                       |
+| cpp_eh           | default       | none, default, a, s, sc                                                                                                                                           | C++ exception handling type                                              |
+| cpp_rtti         | true          | true, false                                                                                                                                                       | Whether to enable RTTI (runtime type identification)                     |
+| cpp_thread_count | 4             | integer value ≥ 0                                                                                                                                                 | Number of threads to use with emcc when using threads                    |
+| cpp_winlibs      | see below     | free-form comma-separated list                                                                                                                                    | Standard Windows libs to link against                                    |
+| fortran_std      | none          | [none, legacy, f95, f2003, f2008, f2018]                                                                                                                          | Fortran language standard to use                                         |
+| cuda_ccbindir    |               | filesystem path                                                                                                                                                   | CUDA non-default toolchain directory to use (-ccbin) *(Added in 0.57.1)* |
 
 The default values of `c_winlibs` and `cpp_winlibs` are in
 compiler-specific argument forms, but the libraries are: kernel32,
@@ -277,7 +280,7 @@ name with the module name: `-D<module>.<option>=<value>` (e.g. `-Dpython.platlib
 ### Pkgconfig module
 
 | Option      | Default value | Possible values | Description                                                |
-|-------------|---------------|-----------------|------------------------------------------------------------|
+| ----------- | ------------- | --------------- | ---------------------------------------------------------- |
 | relocatable | false         | true, false     | Generate the pkgconfig files as relocatable (Since 0.63.0) |
 
 *Since 0.63.0* The `pkgconfig.relocatable` option is used by the
@@ -297,11 +300,11 @@ install prefix. For example if the install prefix is `/usr` and the
 
 ### Python module
 
-| Option           | Default value | Possible values             | Description |
-| ------           | ------------- | -----------------           | ----------- |
-| install_env      | prefix        | {auto,prefix,system,venv}   | Which python environment to install to (Since 0.62.0) |
-| platlibdir       |               | Directory path              | Directory for site-specific, platform-specific files (Since 0.60.0) |
-| purelibdir       |               | Directory path              | Directory for site-specific, non-platform-specific files  (Since 0.60.0) |
+| Option      | Default value | Possible values           | Description                                                              |
+| ----------- | ------------- | ------------------------- | ------------------------------------------------------------------------ |
+| install_env | prefix        | {auto,prefix,system,venv} | Which python environment to install to (Since 0.62.0)                    |
+| platlibdir  |               | Directory path            | Directory for site-specific, platform-specific files (Since 0.60.0)      |
+| purelibdir  |               | Directory path            | Directory for site-specific, non-platform-specific files  (Since 0.60.0) |
 
 *Since 0.60.0* `python.platlibdir` and `python.purelibdir` options are used by
 python module methods `python.install_sources()` and `python.get_install_dir()`.

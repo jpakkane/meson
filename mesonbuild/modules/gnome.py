@@ -909,9 +909,9 @@ class GnomeModule(ExtensionModule):
             if state.project_args.get(lang):
                 cflags += state.project_args[lang]
             if mesonlib.OptionKey('b_sanitize') in compiler.base_options:
-                sanitize = state.environment.coredata.options[mesonlib.OptionKey('b_sanitize')].value
+                sanitize: T.List[str] = state.environment.coredata.options[mesonlib.OptionKey('b_sanitize')].value
+                assert isinstance(sanitize, list), 'for mypy'
                 cflags += compiler.sanitizer_compile_args(sanitize)
-                sanitize = sanitize.split(',')
                 # These must be first in ldflags
                 if 'address' in sanitize:
                     internal_ldflags += ['-lasan']

@@ -284,9 +284,7 @@ base_options: 'KeyedOptionDictType' = {
     OptionKey('b_lto_mode'): coredata.UserComboOption('Select between different LTO modes.',
                                                       ['default', 'thin'],
                                                       'default'),
-    OptionKey('b_sanitize'): coredata.UserComboOption('Code sanitizer to use',
-                                                      ['none', 'address', 'thread', 'undefined', 'memory', 'leak', 'address,undefined'],
-                                                      'none'),
+    OptionKey('b_sanitize'): coredata.UserArrayOption('Code sanitizer to use', []),
     OptionKey('b_lundef'): coredata.UserBooleanOption('Use -Wl,--no-undefined when linking', True),
     OptionKey('b_asneeded'): coredata.UserBooleanOption('Use -Wl,--as-needed when linking', True),
     OptionKey('b_pgo'): coredata.UserComboOption('Use profile guided optimization',
@@ -329,7 +327,7 @@ def get_option_value(options: 'KeyedOptionDictType', opt: OptionKey, fallback: '
     return v
 
 
-def get_base_compile_args(options: 'KeyedOptionDictType', compiler: 'Compiler') -> T.List[str]:
+def get_base_compile_args(options: 'KeyedOptionDictType', compiler: 'Compiler', env: 'Environment') -> T.List[str]:
     args = []  # type T.List[str]
     try:
         if options[OptionKey('b_lto')].value:
@@ -343,7 +341,14 @@ def get_base_compile_args(options: 'KeyedOptionDictType', compiler: 'Compiler') 
     except KeyError:
         pass
     try:
-        args += compiler.sanitizer_compile_args(options[OptionKey('b_sanitize')].value)
+        sani_opt: T.List[str] = options[OptionKey('b_sanitize')].value
+        assert isinstance(sani_opt, list), 'for mypy'
+        sani_args = compiler.sanitizer_compile_args(sani_opt)
+        # We consider that if there are no sanitizer arguments returned, then the language doesn't support them
+        if sani_args:
+            if not compiler.has_multi_arguments(sani_args, env)[0]:
+                raise MesonException(f'Compiler {compiler.name_string()} does not support sanitizer arguments {sani_args}')
+            args.extend(sani_args)
     except KeyError:
         pass
     try:
@@ -381,7 +386,7 @@ def get_base_compile_args(options: 'KeyedOptionDictType', compiler: 'Compiler') 
     return args
 
 def get_base_link_args(options: 'KeyedOptionDictType', linker: 'Compiler',
-                       is_shared_module: bool) -> T.List[str]:
+                       is_shared_module: bool, env: 'Environment') -> T.List[str]:
     args = []  # type: T.List[str]
     try:
         if options[OptionKey('b_lto')].value:
@@ -391,7 +396,14 @@ def get_base_link_args(options: 'KeyedOptionDictType', linker: 'Compiler',
     except KeyError:
         pass
     try:
-        args += linker.sanitizer_link_args(options[OptionKey('b_sanitize')].value)
+        sani_opt: T.List[str] = options[OptionKey('b_sanitize')].value
+        assert isinstance(sani_opt, list), 'for mypy'
+        sani_args = linker.sanitizer_link_args(sani_opt)
+        # We consider that if there are no sanitizer arguments returned, then the language doesn't support them
+        if sani_args:
+            if not linker.has_multi_link_arguments(sani_args, env)[0]:
+                raise MesonException(f'Linker {linker.name_string()} does not support sanitizer arguments {sani_args}')
+            args.extend(sani_args)
     except KeyError:
         pass
     try:
@@ -720,11 +732,23 @@ class Compiler(HoldableObject, metaclass=abc.ABCMeta):
         return []
 
     def has_multi_arguments(self, args: T.List[str], env: 'Environment') -> T.Tuple[bool, bool]:
+        """Checks if the compiler has all of the arguments.
+
+        :returns:
+            A tuple of (bool, bool). The first value is whether the check
+            succeeded, and the second is whether it was retrieved from a cache
+        """
         raise EnvironmentException(
             'Language {} does not support has_multi_arguments.'.format(
                 self.get_display_language()))
 
     def has_multi_link_arguments(self, args: T.List[str], env: 'Environment') -> T.Tuple[bool, bool]:
+        """Checks if the linker has all of the arguments.
+
+        :returns:
+            A tuple of (bool, bool). The first value is whether the check
+            succeeded, and the second is whether it was retrieved from a cache
+        """
         return self.linker.has_multi_arguments(args, env)
 
     def _get_compile_output(self, dirname: str, mode: str) -> str:
@@ -976,10 +1000,10 @@ class Compiler(HoldableObject, metaclass=abc.ABCMeta):
     def get_lto_link_args(self, *, threads: int = 0, mode: str = 'default') -> T.List[str]:
         return self.linker.get_lto_args()
 
-    def sanitizer_compile_args(self, value: str) -> T.List[str]:
+    def sanitizer_compile_args(self, value: T.List[str]) -> T.List[str]:
         return []
 
-    def sanitizer_link_args(self, value: str) -> T.List[str]:
+    def sanitizer_link_args(self, value: T.List[str]) -> T.List[str]:
         return self.linker.sanitizer_args(value)
 
     def get_asneeded_args(self) -> T.List[str]:
@@ -1235,6 +1259,12 @@ class Compiler(HoldableObject, metaclass=abc.ABCMeta):
                  dependencies: T.Optional[T.List['Dependency']] = None,
                  mode: str = 'compile',
                  disable_cache: bool = False) -> T.Tuple[bool, bool]:
+        """Run a compilation or link test to see if code can be compiled/linked.
+
+        :returns:
+            A tuple of (bool, bool). The first value is whether the check
+            succeeded, and the second is whether it was retrieved from a cache
+        """
         with self._build_wrapper(code, env, extra_args, dependencies, mode, disable_cache=disable_cache) as p:
             return p.returncode == 0, p.cached
 
