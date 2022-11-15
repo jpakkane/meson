@@ -1,0 +1,7 @@
+{
+  "stdout": [
+    {
+      "line": "test cases/common/18 includedir/src/meson.build:4: WARNING: Project targets '>= 0.48.0' but uses feature introduced in '0.50.0': include_directories kwarg of type string. Use include_directories('../include') instead"
+    }
+  ]
+}
