@@ -372,7 +372,6 @@ class _BuildTargetBase(_AllTargetBase):
     cython_args: T.List[str]
     d_args: T.List[str]
     fortran_args: T.List[str]
-    java_args: T.List[str]
     objc_args: T.List[str]
     objcpp_args: T.List[str]
     rust_args: T.List[str]

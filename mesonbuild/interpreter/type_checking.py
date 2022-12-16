@@ -651,6 +651,16 @@ OBJECTS_KW: KwargInfo[T.List[ObjectTypes]] = KwargInfo(
     }
 )
 
+_LANGUAGE_KWS: T.List[KwargInfo[T.List[str]]] = [
+    KwargInfo(f'{lang}_args', ContainerTypeInfo(list, str), listify=True, default=[])
+    for lang in compilers.all_languages ^ {'rust', 'java'}
+]
+_LANGUAGE_KWS.append(KwargInfo(
+    'rust_args', ContainerTypeInfo(list, str), listify=True, default=[], since='0.41.0'))
+
+_LANGUAGE_JAVA_KW: KwargInfo[T.List[str]] = KwargInfo(
+    'java_args', ContainerTypeInfo(list, str), listify=True, default=[])
+
 # For all BuildTarget derived classes except `Jar()``
 _BUILD_TARGET_KWS: T.List[KwargInfo] = [
     KwargInfo('build_rpath', str, default='', since='0.42.0'),
@@ -702,6 +712,12 @@ _BUILD_TARGET_KWS: T.List[KwargInfo] = [
     KwargInfo('vala_header', (str, NoneType), validator=_empty_string_validator),
     KwargInfo('vala_vapi', (str, NoneType), validator=_empty_string_validator),
     KwargInfo('vala_gir', (str, NoneType), validator=_empty_string_validator),
+
+    # This is really only valid for java, but for backwards compat…
+    _LANGUAGE_JAVA_KW.evolve(
+        deprecated='1.1.0',
+        deprecated_message='has always been ignored, and is safe to delete',
+    ),
 ]
 
 _RUST_CRATE_TYPE_KW = KwargInfo(
@@ -710,13 +726,6 @@ _RUST_CRATE_TYPE_KW = KwargInfo(
     default='lib',
     since='0.42.0',
 )
-
-_LANGUAGE_KWS: T.List[KwargInfo[T.List[str]]] = [
-    KwargInfo(f'{lang}_args', ContainerTypeInfo(list, str), listify=True, default=[])
-    for lang in compilers.all_languages ^ {'rust'}
-]
-_LANGUAGE_KWS.append(KwargInfo(
-    'rust_args', ContainerTypeInfo(list, str), listify=True, default=[], since='0.41.0'))
 
 _EXCLUSIVE_STATIC_LIB_KWS: T.List[KwargInfo] = [
     KwargInfo('pic', (bool, NoneType), since='0.36.0'),
@@ -886,6 +895,7 @@ JAR_KWS: T.List[KwargInfo] = [
     *_ALL_TARGET_KWS,
     *_LANGUAGE_KWS,
     *_EXCLUSIVE_JAVA_KWS,
+    _LANGUAGE_JAVA_KW,
     SOURCES_KW,  # this doesn't include StructuredSources, which is correct for Jar
     # Jars can only be linked with other JARs
     KwargInfo(
@@ -916,6 +926,7 @@ BUILD_TARGET_KWS: T.List[KwargInfo] = [
             'jar',
         }),
         since_values={'shared_module': '0.51.0'},
+        deprecated_values={'jar': ('1.1', 'Use the jar() function instead.')},
     ),
     *_ALL_TARGET_KWS,
     *_BUILD_TARGET_KWS,
@@ -924,6 +935,10 @@ BUILD_TARGET_KWS: T.List[KwargInfo] = [
     *_EXCLUSIVE_SHARED_LIB_KWS,
     *_EXCLUSIVE_EXECUTABLE_KWS,
     *_LANGUAGE_KWS,
+    _LANGUAGE_JAVA_KW.evolve(
+        deprecated='1.1.0',
+        deprecated_message='is only used when "target_type" == "jar", which is deprecated',
+    ),
     _RUST_CRATE_TYPE_KW.evolve(
         validator=in_set_validator({'bin', 'lib', 'rlib', 'staticlib', 'cdylib', 'dylib', 'proc-macro'}),
         since_values={'proc-macro': '0.62.0'},
