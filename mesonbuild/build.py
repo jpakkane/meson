@@ -784,15 +784,6 @@ class BuildTarget(Target):
             elif isinstance(s, (CustomTarget, CustomTargetIndex, GeneratedList)):
                 self.generated.append(s)
 
-    @staticmethod
-    def can_compile_remove_sources(compiler: 'Compiler', sources: T.List['FileOrString']) -> bool:
-        removed = False
-        for s in sources[:]:
-            if compiler.can_compile(s):
-                sources.remove(s)
-                removed = True
-        return removed
-
     def process_compilers_late(self, extra_languages: T.List[str]):
         """Processes additional compilers after kwargs have been evaluated.
 

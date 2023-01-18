@@ -753,15 +753,6 @@ class Interpreter(InterpreterBase, HoldableObject):
                 message = printer.result
             raise InterpreterException('Assert failed: ' + message)
 
-    def validate_arguments(self, args, argcount, arg_types):
-        if argcount is not None:
-            if argcount != len(args):
-                raise InvalidArguments(f'Expected {argcount} arguments, got {len(args)}.')
-        for actual, wanted in zip(args, arg_types):
-            if wanted is not None:
-                if not isinstance(actual, wanted):
-                    raise InvalidArguments('Incorrect argument type.')
-
     # Executables aren't actually accepted, but we allow them here to allow for
     # better error messages when overridden
     @typed_pos_args(
