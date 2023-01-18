@@ -681,7 +681,8 @@ class PkgConfigModule(NewExtensionModule):
         if dversions:
             compiler = state.environment.coredata.compilers.host.get('d')
             if compiler:
-                deps.add_cflags(compiler.get_feature_args({'versions': dversions}, None))
+                deps.add_cflags(compiler.get_feature_args(
+                    {'versions': dversions, 'import_dirs': [], 'debug': [], 'unittest': False}, None))
 
         deps.remove_dups()
 
