@@ -304,6 +304,7 @@ class Interpreter(InterpreterBase, HoldableObject):
         self.project_args_frozen = False
         self.global_args_frozen = False  # implies self.project_args_frozen
         self.subprojects: T.Dict[str, SubprojectHolder] = {}
+        self.my_subprojects: T.Dict[str, SubprojectHolder] = {}
         self.subproject_stack: T.List[str] = []
         self.configure_file_outputs: T.Dict[str, int] = {}
         # Passed from the outside, only used in subprojects.
@@ -893,6 +894,7 @@ class Interpreter(InterpreterBase, HoldableObject):
                 wanted = kwargs['version']
                 if pv == 'undefined' or not mesonlib.version_compare_many(pv, wanted)[0]:
                     raise InterpreterException(f'Subproject {subp_name} version is {pv} but {wanted} required.')
+            self.my_subprojects[subp_name] = subproject;
             return subproject
 
         r = self.environment.wrap_resolver
@@ -977,6 +979,8 @@ class Interpreter(InterpreterBase, HoldableObject):
         self.active_projectname = current_active
         self.subprojects.update(subi.subprojects)
         self.subprojects[subp_name] = SubprojectHolder(subi, subdir, warnings=subi_warnings)
+        self.my_subprojects.update(subi.my_subprojects)
+        self.my_subprojects[subp_name] = self.subprojects[subp_name];
         # Duplicates are possible when subproject uses files from project root
         if build_def_files:
             self.build_def_files.update(build_def_files)

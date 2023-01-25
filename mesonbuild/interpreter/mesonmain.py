@@ -17,6 +17,7 @@ from ..interpreter.type_checking import ENV_KW, ENV_METHOD_KW, ENV_SEPARATOR_KW,
 from ..interpreterbase import (MesonInterpreterObject, FeatureNew, FeatureDeprecated,
                                typed_pos_args,  noArgsFlattening, noPosargs, noKwargs,
                                typed_kwargs, KwargInfo, InterpreterException)
+from .interpreterobjects import (SubprojectHolder)
 from .primitives import MesonVersionString
 from .type_checking import NATIVE_KW, NoneType
 
@@ -83,6 +84,7 @@ class MesonMain(MesonInterpreterObject):
                              'has_external_property': self.has_external_property_method,
                              'backend': self.backend_method,
                              'add_devenv': self.add_devenv_method,
+                             'get_subprojects': self.get_subprojects_method,
                              })
 
     def _find_source_script(
@@ -462,3 +464,8 @@ class MesonMain(MesonInterpreterObject):
         converted = env_convertor_with_method(env, kwargs['method'], kwargs['separator'])
         assert isinstance(converted, build.EnvironmentVariables)
         self.build.devenv.append(converted)
+
+    @noPosargs
+    @noKwargs
+    def get_subprojects_method(self, args: T.List['TYPE_var'], kwargs: 'TYPE_kwargs') -> T.Dict[str, SubprojectHolder]:
+        return self.interpreter.my_subprojects
