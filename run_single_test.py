@@ -27,6 +27,7 @@ if T.TYPE_CHECKING:
         subtests: T.List[int]
         backend: str
         extra_args: T.List[str]
+        quick: bool
 
 
 def main() -> None:
@@ -39,11 +40,13 @@ def main() -> None:
     parser.add_argument('--cross-file', action='store', help='File describing cross compilation environment.')
     parser.add_argument('--native-file', action='store', help='File describing native compilation environment.')
     parser.add_argument('--use-tmpdir', action='store_true', help='Use tmp directory for temporary files.')
+    parser.add_argument('--quick', action='store_true', help='Skip some compiler and tool checking')
     args = T.cast('ArgumentType', parser.parse_args())
 
     setup_commands(args.backend)
-    detect_system_compiler(args)
-    print_tool_versions()
+    if not args.quick:
+        detect_system_compiler(args)
+        print_tool_versions()
 
     test = TestDef(args.case, args.case.stem, [])
     tests = load_test_json(test, False)
