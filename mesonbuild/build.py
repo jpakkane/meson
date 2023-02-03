@@ -754,7 +754,7 @@ class BuildTarget(Target):
             'c': c_pch or [],
             'cpp': cpp_pch or [],
         }
-        self.extra_args: T.Dict[str, T.List['FileOrString']] = {}
+        self.extra_args: T.DefaultDict[str, T.List['FileOrString']] = defaultdict(list)
         self.sources: T.List[File] = []
         self.generated: T.List['GeneratedTypes'] = []
         self.pic = False
@@ -1355,10 +1355,7 @@ class BuildTarget(Target):
         for a in args:
             if not isinstance(a, (str, File)):
                 raise InvalidArguments('A non-string passed to compiler args.')
-        if language in self.extra_args:
-            self.extra_args[language] += args
-        else:
-            self.extra_args[language] = args
+        self.extra_args[language].extend(args)
 
     def get_aliases(self) -> T.List[T.Tuple[str, str, str]]:
         return []
