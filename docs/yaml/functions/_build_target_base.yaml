@@ -49,8 +49,13 @@ kwargs:
       eg: `cpp_args` for C++
 
   sources:
-    type: str | file | custom_tgt | custom_idx | generated_list | structured_src
+    type: list[str | file | custom_tgt | custom_idx | generated_list | structured_src]
     description: Additional source files. Same as the source varargs.
+
+  resources:
+    type: list[str]
+    description: |
+      Resources files for .net applications (currently limited to C#)
 
   build_by_default:
     type: bool
@@ -78,7 +83,7 @@ kwargs:
       (for deps built by the project)
 
   extra_files:
-    type: str | file | custom_tgt | custom_idx
+    type: list[str | file]
     description: |
       Not used for the build itself but are shown as source files in IDEs
       that group files by targets (such as Visual Studio)
@@ -131,6 +136,9 @@ kwargs:
       *(since 0.51.0)* This argument also accepts outputs produced by
       custom targets. The user must ensure that the output is a library in
       the correct format.
+
+      All targets must be *statically* linkable. Therefore, only "staticlib",
+      "bothlib", and "custom targets" that produce static archives may be passed.
 
   link_with:
     type: list[lib | custom_tgt | custom_idx]
@@ -191,7 +199,7 @@ kwargs:
       (but *not* before that). On Windows, this argument has no effect.
 
   objects:
-    type: list[extracted_obj | file | str]
+    type: list[extracted_obj | file | str | custom_tgt | custom_idx | generated_list]
     description: |
       List of object files that should be linked in this target.
 
@@ -248,7 +256,7 @@ kwargs:
       do not support GNU visibility arguments.
 
   d_import_dirs:
-    type: list[str]
+    type: list[str | inc]
     description: List of directories to look in for string imports used in the D programming language.
 
   d_unittest:
@@ -261,7 +269,7 @@ kwargs:
     description: List of module version identifiers set when compiling D sources.
 
   d_debug:
-    type: list[str]
+    type: list[str | int]
     description: |
       The [D version identifiers](https://dlang.org/spec/version.html#version) to add
       during the compilation of D source files.
@@ -312,3 +320,22 @@ kwargs:
 
       This allows renaming similar to the dependency renaming feature of cargo
       or `extern crate foo as bar` inside rust code.
+
+  vala_header:
+    type: str
+    description: |
+      The name of a vala import header to generate. If left undefined the base
+      name of the target will be used. Is not generated for [[executable]]s that
+      do not also set export_dynamic.
+
+  vala_vapi:
+    type: str
+    description: |
+      The name of a vala vapi file generate. If left undefined the base
+      name of the target will be used. Is not generated for [[executable]]s that
+      do not also set export_dynamic.
+
+  vala_gir:
+    type: str
+    description: |
+      The name of a gir file to generate. If undefined no gir file will be generated.
