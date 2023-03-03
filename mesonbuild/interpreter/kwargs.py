@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright © 2021 The Meson Developers
-# Copyright © 2021 Intel Corporation
+# Copyright © 2021, 2023 Intel Corporation
 
 """Keyword Argument type annotations."""
 
@@ -311,3 +311,58 @@ class DoSubproject(ExtractRequired):
     version: T.List[str]
     cmake_options: T.List[str]
     options: T.Optional[CMakeSubprojectOptions]
+
+
+class _AllTargetBase(TypedDict):
+    pass
+
+
+class _BuildTargetBase(_AllTargetBase):
+    pass
+
+
+class _StaticLibraryMixin(TypedDict):
+    pass
+
+
+class StaticLibrary(_BuildTargetBase, _StaticLibraryMixin):
+    pass
+
+
+class _SharedModuleMixin(TypedDict):
+    pass
+
+
+class SharedModule(_BuildTargetBase, _SharedModuleMixin):
+    pass
+
+
+class _SharedLibraryMixin(TypedDict):
+    pass
+
+
+class SharedLibrary(_BuildTargetBase, _SharedModuleMixin, _SharedLibraryMixin):
+    pass
+
+
+class _ExecutableMixin(TypedDict):
+    pass
+
+
+class Executable(_BuildTargetBase, _ExecutableMixin):
+    pass
+
+
+class BothLibrary(_BuildTargetBase, _ExecutableMixin, _SharedLibraryMixin, _StaticLibraryMixin):
+    pass
+
+
+class _JarMixin(TypedDict):
+    pass
+
+class Jar(_AllTargetBase, _JarMixin):
+    pass
+
+
+class BuildTarget(BothLibrary, _ExecutableMixin, _JarMixin):
+    pass
