@@ -83,10 +83,14 @@ kwargs:
       (for deps built by the project)
 
   extra_files:
-    type: list[str | file]
+    type: list[str | file | custom_tgt | custom_idx]
     description: |
       Not used for the build itself but are shown as source files in IDEs
       that group files by targets (such as Visual Studio)
+
+      *(since 1.1.0)* CustomTarget and indices thereof are now accepted.
+      **Note:** These were previously documented as accepted, but would
+      result in an error if actually used.
 
   gui_app:
     type: bool

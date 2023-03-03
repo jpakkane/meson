@@ -470,7 +470,7 @@ class Target(HoldableObject, metaclass=abc.ABCMeta):
     environment: environment.Environment
     install: bool = False
     build_always_stale: bool = False
-    extra_files: T.List[File] = field(default_factory=list)
+    extra_files: T.List[T.Union[File, CustomTarget, CustomTargetIndex]] = field(default_factory=list)
     override_options: InitVar[T.Optional[T.Dict[OptionKey, str]]] = None
 
     @abc.abstractproperty
@@ -627,7 +627,7 @@ class BuildTarget(Target):
             d_versions: T.Optional[T.List[T.Union[str, int]]] = None,
             d_unittest: bool = False,
             dependencies: T.Optional[T.List[dependencies.Dependency]] = None,
-            extra_files: T.Optional[T.List[File]] = None,
+            extra_files: T.Optional[T.List[T.Union[File, CustomTarget, CustomTargetIndex]]] = None,
             gnu_symbol_visibility: GNU_SYMBOL_VISIBILITY = '',
             implicit_include_directories: bool = True,
             include_directories: T.Optional[T.List[IncludeDirs]] = None,
@@ -656,7 +656,7 @@ class BuildTarget(Target):
             _allow_no_sources: bool = False,
             ):
         super().__init__(name, subdir, subproject, build_by_default, for_machine, environment,
-                         install, extra_files=extra_files or [], override_options=override_options)
+                         install, extra_files or [], override_options)
         self.all_compilers = compilers
         self.build_rpath = build_rpath
         self.d_features: DFeatures = {
@@ -1519,7 +1519,7 @@ class Executable(BuildTarget):
             d_versions: T.Optional[T.List[T.Union[str, int]]] = None,
             d_unittest: bool = False,
             dependencies: T.Optional[T.List[dependencies.Dependency]] = None,
-            extra_files: T.Optional[T.List[File]] = None,
+            extra_files: T.Optional[T.List[T.Union[File, CustomTarget, CustomTargetIndex]]] = None,
             gnu_symbol_visibility: GNU_SYMBOL_VISIBILITY = '',
             implicit_include_directories: bool = True,
             include_directories: T.Optional[T.List[IncludeDirs]] = None,
@@ -1739,7 +1739,7 @@ class StaticLibrary(BuildTarget):
             d_unittest: bool = False,
             dependencies: T.Optional[T.List[dependencies.Dependency]] = None,
             gnu_symbol_visibility: GNU_SYMBOL_VISIBILITY = '',
-            extra_files: T.Optional[T.List[File]] = None,
+            extra_files: T.Optional[T.List[T.Union[File, CustomTarget, CustomTargetIndex]]] = None,
             implicit_include_directories: bool = True,
             include_directories: T.Optional[T.List[IncludeDirs]] = None,
             install: bool = False,
@@ -1874,7 +1874,7 @@ class SharedLibrary(BuildTarget):
             d_versions: T.Optional[T.List[T.Union[str, int]]] = None,
             d_unittest: bool = False,
             dependencies: T.Optional[T.List[dependencies.Dependency]] = None,
-            extra_files: T.Optional[T.List[File]] = None,
+            extra_files: T.Optional[T.List[T.Union[File, CustomTarget, CustomTargetIndex]]] = None,
             gnu_symbol_visibility: GNU_SYMBOL_VISIBILITY = '',
             implicit_include_directories: bool = True,
             include_directories: T.Optional[T.List[IncludeDirs]] = None,
@@ -2210,7 +2210,7 @@ class SharedModule(SharedLibrary):
             d_versions: T.Optional[T.List[T.Union[str, int]]] = None,
             d_unittest: bool = False,
             dependencies: T.Optional[T.List[dependencies.Dependency]] = None,
-            extra_files: T.Optional[T.List[File]] = None,
+            extra_files: T.Optional[T.List[T.Union[File, CustomTarget, CustomTargetIndex]]] = None,
             gnu_symbol_visibility: GNU_SYMBOL_VISIBILITY = '',
             implicit_include_directories: bool = True,
             include_directories: T.Optional[T.List[IncludeDirs]] = None,
@@ -2672,7 +2672,7 @@ class Jar(BuildTarget):
                  *,
                  build_by_default: bool = True,
                  dependencies: T.Optional[T.List[dependencies.Dependency]] = None,
-                 extra_files: T.Optional[T.List[File]] = None,
+                 extra_files: T.Optional[T.List[T.Union[File, CustomTarget, CustomTargetIndex]]] = None,
                  include_directories: T.Optional[T.List[IncludeDirs]] = None,
                  install: bool = False,
                  install_dir: T.Optional[T.List[T.Union[str, bool]]] = None,

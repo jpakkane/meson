@@ -252,6 +252,15 @@ def list_targets(builddata: build.Build, installdata: backends.InstallData, back
             raise RuntimeError('The target object in `builddata.get_targets()` is not of type `build.Target`. Please file a bug with this error message.')
 
         outdir = get_target_dir(builddata.environment.coredata, target.subdir)
+
+        extra_files: T.List[str] = []
+        for e in target.extra_files:
+            if isinstance(e, mesonlib.File):
+                extra_files.append(e.absolute_path(src_dir, build_dir))
+            else:
+                for o in e.get_outputs():
+                    extra_files.append(os.path.join(build_dir, e.get_subdir(), o))
+
         t = {
             'name': target.get_basename(),
             'id': idname,
@@ -260,7 +269,7 @@ def list_targets(builddata: build.Build, installdata: backends.InstallData, back
             'filename': [os.path.join(build_dir, outdir, x) for x in target.get_outputs()],
             'build_by_default': target.build_by_default,
             'target_sources': backend.get_introspection_data(idname, target),
-            'extra_files': [os.path.normpath(os.path.join(src_dir, x.subdir, x.fname)) for x in target.extra_files],
+            'extra_files': extra_files,
             'subproject': target.subproject or None,
             'dependencies': [d.name for d in getattr(target, 'external_deps', [])],
         }
