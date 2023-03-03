@@ -728,6 +728,20 @@ class BuildTarget(Target):
         self.validate_install()
         self.check_module_linking()
 
+        if self.is_linkable_target() and 'vala' in self.compilers:
+            self.outputs.extend([self.vala_header, self.vala_vapi])
+            self.install_tag.extend(['devel', 'devel'])
+            installs = len(self.install_dir)
+            if installs > 1 and self.install_dir[1] is True:
+                self.install_dir[1] = self.environment.get_includedir()
+            if installs > 2 and self.install_dir[2] is True:
+                self.install_dir[2] = os.path.join(self.environment.get_datadir(), 'vala', 'vapi')
+            if self.vala_gir:
+                self.outputs.append(self.vala_gir)
+                self.install_tag.append('devel')
+                if installs > 3 and self.install_dir[3] is True:
+                    self.install_dir[3] = os.path.join(self.environment.get_datadir(), 'gir-1.0')
+
     def post_init(self) -> None:
         ''' Initialisations and checks requiring the final list of compilers to be known
         '''
@@ -1351,6 +1365,7 @@ class BuildTarget(Target):
                                      'use shared_library() with `override_options: [\'b_lundef=false\']` instead.')
                     link_target.force_soname = True
 
+
 class Generator(HoldableObject):
     def __init__(self, exe: T.Union['Executable', programs.ExternalProgram],
                  arguments: T.List[str],
@@ -1551,6 +1566,9 @@ class Executable(BuildTarget):
             export_dynamic: bool = False,
             win_subsystem: str = 'console',
             ):
+        # Needs to be before the super() call so that self.is_linkable_target works
+        self.export_dynamic = export_dynamic
+
         super().__init__(name, subdir, subproject, for_machine, sources, structured_sources, objects,
                          environment, compilers,
                          build_by_default=build_by_default,
@@ -1588,13 +1606,9 @@ class Executable(BuildTarget):
                          cpp_pch=cpp_pch,
                          _allow_no_sources=_allow_no_sources,
                          )
-        # Check for export_dynamic
-        self.export_dynamic = export_dynamic
         self.win_subsystem = win_subsystem
         self.implib = implib
         self.pie = self._extract_pic_pie(pie, 'pie')
-        # Only linkwithable if using export_dynamic
-        self.is_linkwithable = self.export_dynamic
         # Remember that this exe was returned by `find_program()` through an override
         self.was_returned_by_find_program = False
 
@@ -1697,7 +1711,7 @@ class Executable(BuildTarget):
         return self.debug_filename
 
     def is_linkable_target(self):
-        return self.is_linkwithable
+        return self.export_dynamic
 
     def get_command(self) -> 'ImmutableListProtocol[str]':
         """Provides compatibility with ExternalProgram.

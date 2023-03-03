@@ -1647,7 +1647,7 @@ class Backend:
                     "Pass 'false' for outputs that should not be installed and 'true' for\n" \
                     'using the default installation directory for an output.'
                 raise MesonException(m.format(t.name, num_out, t.get_outputs(), num_outdirs))
-            assert len(t.install_tag) == num_out
+            assert len(t.install_tag) == num_out, f'Have {len(t.install_tag)}, but expected {num_out}'
             install_mode = t.get_custom_install_mode()
             # because mypy gets confused type narrowing in lists
             first_outdir = outdirs[0]
