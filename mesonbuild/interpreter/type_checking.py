@@ -492,4 +492,14 @@ EXECUTABLE_KWS: T.List[KwargInfo] = []
 
 JAR_KWS: T.List[KwargInfo] = []
 
-BUILD_TARGET_KWS: T.List[KwargInfo] = []
+BUILD_TARGET_KWS: T.List[KwargInfo] = [
+    KwargInfo(
+        'target_type', str, required=True,
+        validator=in_set_validator({
+            'executable', 'shared_library', 'shared_module',
+            'static_library', 'both_libraries', 'library',
+            'jar',
+        }),
+        since_values={'shared_module': '0.51.0'},
+    ),
+]

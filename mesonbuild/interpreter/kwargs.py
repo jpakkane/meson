@@ -365,4 +365,6 @@ class Jar(_AllTargetBase, _JarMixin):
 
 
 class BuildTarget(BothLibrary, _ExecutableMixin, _JarMixin):
-    pass
+
+    target_type: Literal['executable', 'shared_library', 'static_library', 'shared_module',
+                         'both_libraries', 'library', 'jar']
