@@ -321,6 +321,7 @@ class _AllTargetBase(TypedDict):
     extra_files: T.List[File]
     include_directories: T.List[T.Union[build.IncludeDirs, str]]
     install: bool
+    install_dir: T.List[T.Union[str, bool]]
 
 
 class _BuildTargetBase(_AllTargetBase):
