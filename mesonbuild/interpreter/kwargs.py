@@ -337,6 +337,7 @@ class _BuildTargetBase(_AllTargetBase):
     d_debug: T.List[str]
     d_import_dirs: T.List[T.Union[str, build.IncludeDirs]]
     d_module_versions: T.List[T.Union[str, int]]
+    d_unittest: bool
 
 
 class _StaticLibraryMixin(TypedDict):
