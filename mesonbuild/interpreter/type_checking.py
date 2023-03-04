@@ -10,7 +10,8 @@ import typing as T
 from .. import compilers
 from ..build import (CustomTarget, BuildTarget,
                      CustomTargetIndex, ExtractedObjects, GeneratedList, IncludeDirs,
-                     BothLibraries, SharedLibrary, StaticLibrary, Jar, Executable)
+                     BothLibraries, SharedLibrary, StaticLibrary, Jar, Executable,
+                     StructuredSources)
 from ..coredata import UserFeatureOption
 from ..dependencies import Dependency, InternalDependency
 from ..interpreterbase.decorators import KwargInfo, ContainerTypeInfo
@@ -492,6 +493,7 @@ EXECUTABLE_KWS: T.List[KwargInfo] = []
 
 _EXCLUSIVE_JAVA_KWS: T.List[KwargInfo] = [
     KwargInfo('main_class', str, default=''),
+    KwargInfo('java_resources', (StructuredSources, NoneType), since='0.62.0'),
 ]
 
 JAR_KWS: T.List[KwargInfo] = [

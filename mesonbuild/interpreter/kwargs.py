@@ -360,6 +360,7 @@ class BothLibrary(_BuildTargetBase, _ExecutableMixin, _SharedLibraryMixin, _Stat
 class _JarMixin(TypedDict):
 
     main_class: str
+    java_resources: T.Optional[build.StructuredSources]
 
 
 class Jar(_AllTargetBase, _JarMixin):

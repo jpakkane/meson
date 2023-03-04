@@ -2810,7 +2810,8 @@ class Jar(BuildTarget):
                  environment.Environment, compilers: T.Dict[str, 'Compiler'],
                  kwargs,
                  *,
-                 main_class: str = ''):
+                 main_class: str = '',
+                 resources: T.Optional[StructuredSources] = None):
         super().__init__(name, subdir, subproject, for_machine, sources, None, [],
                          environment, compilers, kwargs)
         for t in self.link_targets:
@@ -2819,7 +2820,7 @@ class Jar(BuildTarget):
         self.filename = self.name + '.jar'
         self.outputs = [self.filename]
         self.java_args = kwargs.get('java_args', [])
-        self.java_resources: T.Optional[StructuredSources] = kwargs.get('java_resources', None)
+        self.java_resources = resources
         self.main_class = main_class
 
     def get_main_class(self):
