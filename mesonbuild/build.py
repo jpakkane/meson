@@ -710,6 +710,7 @@ class BuildTarget(Target):
             install_dir: T.Optional[T.List[T.Union[str, bool]]] = None,
             install_mode: T.Optional[FileMode] = None,
             install_tag: T.Optional[str] = None,
+            link_args: T.Optional[T.List[str]] = None,
             ):
         super().__init__(name, subdir, subproject, build_by_default, for_machine, environment,
                          install, extra_files=extra_files or [])
@@ -718,6 +719,7 @@ class BuildTarget(Target):
         self.install_dir = install_dir if install_dir is not None else []
         self.install_mode = install_mode if install_mode is not None else FileMode()
         self.install_tag = _process_install_tag([install_tag], 1)
+        self.link_args = link_args or []
         self.compilers = OrderedDict() # type: OrderedDict[str, Compiler]
         self.objects: T.List[ObjectTypes] = []
         self.structured_sources = structured_sources
@@ -1130,17 +1132,6 @@ class BuildTarget(Target):
         if dfeatures:
             self.d_features = dfeatures
 
-        self.link_args = extract_as_list(kwargs, 'link_args')
-        for i in self.link_args:
-            if not isinstance(i, str):
-                raise InvalidArguments('Link_args arguments must be strings.')
-        for l in self.link_args:
-            if '-Wl,-rpath' in l or l.startswith('-rpath'):
-                mlog.warning(textwrap.dedent('''\
-                    Please do not define rpath with a linker argument, use install_rpath
-                    or build_rpath properties instead.
-                    This will become a hard error in a future Meson release.
-                '''))
         self.process_link_depends(kwargs.get('link_depends', []))
         if isinstance(self, Executable):
             # This kwarg is deprecated. The value of "none" means that the kwarg
@@ -1801,6 +1792,7 @@ class Executable(BuildTarget):
             install_dir: T.Optional[T.List[T.Union[str, bool]]] = None,
             install_mode: T.Optional[FileMode] = None,
             install_tag: T.Optional[str] = None,
+            link_args: T.Optional[T.List[str]] = None,
             ):
         key = OptionKey('b_pie')
         if 'pie' not in kwargs and key in environment.coredata.options:
@@ -1815,7 +1807,8 @@ class Executable(BuildTarget):
                          install=install,
                          install_dir=install_dir,
                          install_mode=install_mode,
-                         install_tag=install_tag)
+                         install_tag=install_tag,
+                         link_args=link_args)
         # Check for export_dynamic
         self.export_dynamic = kwargs.get('export_dynamic', False)
         if not isinstance(self.export_dynamic, bool):
@@ -1974,6 +1967,7 @@ class StaticLibrary(BuildTarget):
             install_dir: T.Optional[T.List[T.Union[str, bool]]] = None,
             install_mode: T.Optional[FileMode] = None,
             install_tag: T.Optional[str] = None,
+            link_args: T.Optional[T.List[str]] = None,
             ):
         self.prelink = kwargs.get('prelink', False)
         if not isinstance(self.prelink, bool):
@@ -1988,7 +1982,8 @@ class StaticLibrary(BuildTarget):
                          install=install,
                          install_dir=install_dir,
                          install_mode=install_mode,
-                         install_tag=install_tag)
+                         install_tag=install_tag,
+                         link_args=link_args)
 
     def post_init(self) -> None:
         super().post_init()
@@ -2078,6 +2073,7 @@ class SharedLibrary(BuildTarget):
             install_dir: T.Optional[T.List[T.Union[str, bool]]] = None,
             install_mode: T.Optional[FileMode] = None,
             install_tag: T.Optional[str] = None,
+            link_args: T.Optional[T.List[str]] = None,
             ):
         self.soversion = None
         self.ltversion = None
@@ -2104,7 +2100,8 @@ class SharedLibrary(BuildTarget):
                          install=install,
                          install_dir=install_dir,
                          install_mode=install_mode,
-                         install_tag=install_tag)
+                         install_tag=install_tag,
+                         link_args=link_args)
 
     def post_init(self) -> None:
         super().post_init()
@@ -2445,6 +2442,7 @@ class SharedModule(SharedLibrary):
             install_dir: T.Optional[T.List[T.Union[str, bool]]] = None,
             install_mode: T.Optional[FileMode] = None,
             install_tag: T.Optional[str] = None,
+            link_args: T.Optional[T.List[str]] = None,
             ):
         if 'version' in kwargs:
             raise MesonException('Shared modules must not specify the version kwarg.')
@@ -2460,7 +2458,8 @@ class SharedModule(SharedLibrary):
                          install=install,
                          install_dir=install_dir,
                          install_mode=install_mode,
-                         install_tag=install_tag)
+                         install_tag=install_tag,
+                         link_args=link_args)
         # We need to set the soname in cases where build files link the module
         # to build targets, see: https://github.com/mesonbuild/meson/issues/9492
         self.force_soname = False
@@ -2862,6 +2861,7 @@ class Jar(BuildTarget):
                  install_dir: T.Optional[T.List[T.Union[str, bool]]] = None,
                  install_mode: T.Optional[FileMode] = None,
                  install_tag: T.Optional[str] = None,
+                 link_args: T.Optional[T.List[str]] = None,
                  main_class: str = '',
                  resources: T.Optional[StructuredSources] = None):
         super().__init__(name, subdir, subproject, for_machine, sources, None, [],
@@ -2873,7 +2873,8 @@ class Jar(BuildTarget):
                          install=install,
                          install_dir=install_dir,
                          install_mode=install_mode,
-                         install_tag=install_tag)
+                         install_tag=install_tag,
+                         link_args=link_args)
 
         for t in self.link_targets:
             if not isinstance(t, Jar):

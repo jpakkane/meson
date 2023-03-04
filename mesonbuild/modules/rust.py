@@ -155,6 +155,7 @@ class RustModule(ExtensionModule):
             dependencies=list(itertools.chain(base_target.added_deps, kwargs['dependencies'])),
             include_directories=base_target.include_dirs.copy(),
             install=False,
+            link_args=base_target.link_args.copy(),
         )
 
         test = self.interpreter.make_test(
