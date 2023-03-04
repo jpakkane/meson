@@ -333,6 +333,7 @@ class _AllTargetBase(TypedDict):
 class _BuildTargetBase(_AllTargetBase):
 
     implicit_include_directories: bool
+    build_rpath: str
 
 
 class _StaticLibraryMixin(TypedDict):
