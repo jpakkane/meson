@@ -336,6 +336,7 @@ class _BuildTargetBase(_AllTargetBase):
     build_rpath: str
     d_debug: T.List[str]
     d_import_dirs: T.List[T.Union[str, build.IncludeDirs]]
+    d_module_versions: T.List[T.Union[str, int]]
 
 
 class _StaticLibraryMixin(TypedDict):

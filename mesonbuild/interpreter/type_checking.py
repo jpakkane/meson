@@ -520,6 +520,7 @@ _BUILD_TARGET_KWS: T.List[KwargInfo] = [
     KwargInfo('d_debug', ContainerTypeInfo(list, (str, int)), default=[], listify=True),
     KwargInfo('implicit_include_directories', bool, default=True, since='0.42.0'),
     INCLUDE_DIRECTORIES.evolve(name='d_import_dirs'),
+    D_MODULE_VERSIONS_KW,
     # sources is here because JAR needs to have it's own implementation
     KwargInfo(
         'sources',
