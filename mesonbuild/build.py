@@ -709,6 +709,7 @@ class BuildTarget(Target):
             install: bool = False,
             install_dir: T.Optional[T.List[T.Union[str, bool]]] = None,
             install_mode: T.Optional[FileMode] = None,
+            install_tag: T.Optional[str] = None,
             ):
         super().__init__(name, subdir, subproject, build_by_default, for_machine, environment,
                          install, extra_files=extra_files or [])
@@ -716,6 +717,7 @@ class BuildTarget(Target):
         self.implicit_include_directories = implicit_include_directories
         self.install_dir = install_dir if install_dir is not None else []
         self.install_mode = install_mode if install_mode is not None else FileMode()
+        self.install_tag = _process_install_tag([install_tag], 1)
         self.compilers = OrderedDict() # type: OrderedDict[str, Compiler]
         self.objects: T.List[ObjectTypes] = []
         self.structured_sources = structured_sources
@@ -1140,7 +1142,6 @@ class BuildTarget(Target):
                     This will become a hard error in a future Meson release.
                 '''))
         self.process_link_depends(kwargs.get('link_depends', []))
-        self.install_tag = stringlistify(kwargs.get('install_tag', [None]))
         if isinstance(self, Executable):
             # This kwarg is deprecated. The value of "none" means that the kwarg
             # was not specified and win_subsystem should be used instead.
@@ -1799,6 +1800,7 @@ class Executable(BuildTarget):
             install: bool = False,
             install_dir: T.Optional[T.List[T.Union[str, bool]]] = None,
             install_mode: T.Optional[FileMode] = None,
+            install_tag: T.Optional[str] = None,
             ):
         key = OptionKey('b_pie')
         if 'pie' not in kwargs and key in environment.coredata.options:
@@ -1812,7 +1814,8 @@ class Executable(BuildTarget):
                          include_directories=include_directories,
                          install=install,
                          install_dir=install_dir,
-                         install_mode=install_mode)
+                         install_mode=install_mode,
+                         install_tag=install_tag)
         # Check for export_dynamic
         self.export_dynamic = kwargs.get('export_dynamic', False)
         if not isinstance(self.export_dynamic, bool):
@@ -1970,6 +1973,7 @@ class StaticLibrary(BuildTarget):
             install: bool = False,
             install_dir: T.Optional[T.List[T.Union[str, bool]]] = None,
             install_mode: T.Optional[FileMode] = None,
+            install_tag: T.Optional[str] = None,
             ):
         self.prelink = kwargs.get('prelink', False)
         if not isinstance(self.prelink, bool):
@@ -1983,7 +1987,8 @@ class StaticLibrary(BuildTarget):
                          include_directories=include_directories,
                          install=install,
                          install_dir=install_dir,
-                         install_mode=install_mode)
+                         install_mode=install_mode,
+                         install_tag=install_tag)
 
     def post_init(self) -> None:
         super().post_init()
@@ -2072,6 +2077,7 @@ class SharedLibrary(BuildTarget):
             install: bool = False,
             install_dir: T.Optional[T.List[T.Union[str, bool]]] = None,
             install_mode: T.Optional[FileMode] = None,
+            install_tag: T.Optional[str] = None,
             ):
         self.soversion = None
         self.ltversion = None
@@ -2097,7 +2103,8 @@ class SharedLibrary(BuildTarget):
                          include_directories=include_directories,
                          install=install,
                          install_dir=install_dir,
-                         install_mode=install_mode)
+                         install_mode=install_mode,
+                         install_tag=install_tag)
 
     def post_init(self) -> None:
         super().post_init()
@@ -2437,6 +2444,7 @@ class SharedModule(SharedLibrary):
             install: bool = False,
             install_dir: T.Optional[T.List[T.Union[str, bool]]] = None,
             install_mode: T.Optional[FileMode] = None,
+            install_tag: T.Optional[str] = None,
             ):
         if 'version' in kwargs:
             raise MesonException('Shared modules must not specify the version kwarg.')
@@ -2451,7 +2459,8 @@ class SharedModule(SharedLibrary):
                          include_directories=include_directories,
                          install=install,
                          install_dir=install_dir,
-                         install_mode=install_mode)
+                         install_mode=install_mode,
+                         install_tag=install_tag)
         # We need to set the soname in cases where build files link the module
         # to build targets, see: https://github.com/mesonbuild/meson/issues/9492
         self.force_soname = False
@@ -2852,6 +2861,7 @@ class Jar(BuildTarget):
                  install: bool = False,
                  install_dir: T.Optional[T.List[T.Union[str, bool]]] = None,
                  install_mode: T.Optional[FileMode] = None,
+                 install_tag: T.Optional[str] = None,
                  main_class: str = '',
                  resources: T.Optional[StructuredSources] = None):
         super().__init__(name, subdir, subproject, for_machine, sources, None, [],
@@ -2862,7 +2872,8 @@ class Jar(BuildTarget):
                          include_directories=include_directories,
                          install=install,
                          install_dir=install_dir,
-                         install_mode=install_mode)
+                         install_mode=install_mode,
+                         install_tag=install_tag)
 
         for t in self.link_targets:
             if not isinstance(t, Jar):

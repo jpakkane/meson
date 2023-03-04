@@ -503,6 +503,7 @@ _ALL_TARGET_KWS: T.List[KwargInfo] = [
         default=[],
         listify=True,
     ),
+    INSTALL_TAG_KW.evolve(since='0.60.0'),
 ]
 # For all BuildTarget derived classes except `Jar()``
 _BUILD_TARGET_KWS: T.List[KwargInfo] = [

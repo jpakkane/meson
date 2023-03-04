@@ -323,6 +323,7 @@ class _AllTargetBase(TypedDict):
     install: bool
     install_dir: T.List[T.Union[str, bool]]
     install_mode: FileMode
+    install_tag: T.Optional[str]
 
 
 class _BuildTargetBase(_AllTargetBase):
