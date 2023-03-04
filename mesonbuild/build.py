@@ -52,6 +52,7 @@ if T.TYPE_CHECKING:
     from .backend.backends import Backend, ExecutableSerialisation
     from .compilers import Compiler
     from .interpreter.interpreter import Test, SourceOutputs, Interpreter
+    from .interpreter.kwargs import GNU_SYMBOL_VISIBILITY
     from .interpreterbase import SubProject
     from .linkers import StaticLinker
     from .mesonlib import FileOrString
@@ -685,6 +686,7 @@ class BuildTarget(Target):
             d_unittest: bool = False,
             dependencies: T.Optional[T.List[dependencies.Dependency]] = None,
             extra_files: T.Optional[T.List[File]] = None,
+            gnu_symbol_visibility: GNU_SYMBOL_VISIBILITY = '',
             implicit_include_directories: bool = True,
             include_directories: T.Optional[T.List[IncludeDirs]] = None,
             install: bool = False,
@@ -711,6 +713,7 @@ class BuildTarget(Target):
         self.install_tag = _process_install_tag([install_tag], 1)
         self.link_args = link_args or []
         self.link_depends = link_depends or []
+        self.gnu_symbol_visibility = gnu_symbol_visibility
         self.compilers = OrderedDict() # type: OrderedDict[str, Compiler]
         self.objects: T.List[ObjectTypes] = []
         self.structured_sources = structured_sources
@@ -1165,13 +1168,6 @@ class BuildTarget(Target):
                 self.pie = True
             else:
                 self.pie = self._extract_pic_pie(kwargs, 'pie', 'b_pie')
-        self.gnu_symbol_visibility = kwargs.get('gnu_symbol_visibility', '')
-        if not isinstance(self.gnu_symbol_visibility, str):
-            raise InvalidArguments('GNU symbol visibility must be a string.')
-        if self.gnu_symbol_visibility != '':
-            permitted = ['default', 'internal', 'hidden', 'protected', 'inlineshidden']
-            if self.gnu_symbol_visibility not in permitted:
-                raise InvalidArguments('GNU symbol visibility arg {} not one of: {}'.format(self.gnu_symbol_visibility, ', '.join(permitted)))
 
         rust_dependency_map = kwargs.get('rust_dependency_map', {})
         if not isinstance(rust_dependency_map, dict):
@@ -1755,6 +1751,7 @@ class Executable(BuildTarget):
             d_unittest: bool = False,
             dependencies: T.Optional[T.List[dependencies.Dependency]] = None,
             extra_files: T.Optional[T.List[File]] = None,
+            gnu_symbol_visibility: GNU_SYMBOL_VISIBILITY = '',
             implicit_include_directories: bool = True,
             include_directories: T.Optional[T.List[IncludeDirs]] = None,
             install: bool = False,
@@ -1786,6 +1783,7 @@ class Executable(BuildTarget):
                          install_tag=install_tag,
                          link_args=link_args,
                          link_depends=link_depends,
+                         gnu_symbol_visibility=gnu_symbol_visibility,
                          override_options=override_options)
         # Check for export_dynamic
         self.export_dynamic = kwargs.get('export_dynamic', False)
@@ -1943,6 +1941,7 @@ class StaticLibrary(BuildTarget):
             d_versions: T.Optional[T.List[T.Union[str, int]]] = None,
             d_unittest: bool = False,
             dependencies: T.Optional[T.List[dependencies.Dependency]] = None,
+            gnu_symbol_visibility: GNU_SYMBOL_VISIBILITY = '',
             extra_files: T.Optional[T.List[File]] = None,
             implicit_include_directories: bool = True,
             include_directories: T.Optional[T.List[IncludeDirs]] = None,
@@ -1975,6 +1974,7 @@ class StaticLibrary(BuildTarget):
                          install_tag=install_tag,
                          link_args=link_args,
                          link_depends=link_depends,
+                         gnu_symbol_visibility=gnu_symbol_visibility,
                          override_options=override_options)
 
     def post_init(self) -> None:
@@ -2064,6 +2064,7 @@ class SharedLibrary(BuildTarget):
             d_unittest: bool = False,
             dependencies: T.Optional[T.List[dependencies.Dependency]] = None,
             extra_files: T.Optional[T.List[File]] = None,
+            gnu_symbol_visibility: GNU_SYMBOL_VISIBILITY = '',
             implicit_include_directories: bool = True,
             include_directories: T.Optional[T.List[IncludeDirs]] = None,
             install: bool = False,
@@ -2107,6 +2108,7 @@ class SharedLibrary(BuildTarget):
                          install_tag=install_tag,
                          link_args=link_args,
                          link_depends=link_depends,
+                         gnu_symbol_visibility=gnu_symbol_visibility,
                          override_options=override_options)
 
     def post_init(self) -> None:
@@ -2447,6 +2449,7 @@ class SharedModule(SharedLibrary):
             d_unittest: bool = False,
             dependencies: T.Optional[T.List[dependencies.Dependency]] = None,
             extra_files: T.Optional[T.List[File]] = None,
+            gnu_symbol_visibility: GNU_SYMBOL_VISIBILITY = '',
             implicit_include_directories: bool = True,
             include_directories: T.Optional[T.List[IncludeDirs]] = None,
             install: bool = False,
@@ -2479,6 +2482,7 @@ class SharedModule(SharedLibrary):
                          install_tag=install_tag,
                          link_args=link_args,
                          link_depends=link_depends,
+                         gnu_symbol_visibility=gnu_symbol_visibility,
                          override_options=override_options)
         # We need to set the soname in cases where build files link the module
         # to build targets, see: https://github.com/mesonbuild/meson/issues/9492

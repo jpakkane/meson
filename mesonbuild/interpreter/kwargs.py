@@ -314,6 +314,10 @@ class DoSubproject(ExtractRequired):
     options: T.Optional[CMakeSubprojectOptions]
 
 
+# '' in this case means "don't do anything"
+GNU_SYMBOL_VISIBILITY = Literal['', 'default', 'internal', 'hidden', 'protected', 'inlineshidden']
+
+
 class _AllTargetBase(TypedDict):
 
     build_by_default: bool
@@ -338,6 +342,7 @@ class _BuildTargetBase(_AllTargetBase):
     d_import_dirs: T.List[T.Union[str, build.IncludeDirs]]
     d_module_versions: T.List[T.Union[str, int]]
     d_unittest: bool
+    gnu_symbol_visibility: GNU_SYMBOL_VISIBILITY
 
 
 class _StaticLibraryMixin(TypedDict):

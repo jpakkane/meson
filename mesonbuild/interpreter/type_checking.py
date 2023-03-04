@@ -522,6 +522,10 @@ _BUILD_TARGET_KWS: T.List[KwargInfo] = [
     INCLUDE_DIRECTORIES.evolve(name='d_import_dirs'),
     D_MODULE_VERSIONS_KW,
     KwargInfo('d_unittest', bool, default=False),
+    KwargInfo(
+        'gnu_symbol_visibility', str, default='', since='0.48.0',
+        validator=in_set_validator({'', 'default', 'internal', 'hidden', 'protected', 'inlineshidden'}),
+    ),
     # sources is here because JAR needs to have it's own implementation
     KwargInfo(
         'sources',
