@@ -490,7 +490,13 @@ BOTH_LIB_KWS: T.List[KwargInfo] = []
 
 EXECUTABLE_KWS: T.List[KwargInfo] = []
 
-JAR_KWS: T.List[KwargInfo] = []
+_EXCLUSIVE_JAVA_KWS: T.List[KwargInfo] = [
+    KwargInfo('main_class', str, default=''),
+]
+
+JAR_KWS: T.List[KwargInfo] = [
+    *_EXCLUSIVE_JAVA_KWS,
+]
 
 BUILD_TARGET_KWS: T.List[KwargInfo] = [
     KwargInfo(
@@ -502,4 +508,5 @@ BUILD_TARGET_KWS: T.List[KwargInfo] = [
         }),
         since_values={'shared_module': '0.51.0'},
     ),
+    *_EXCLUSIVE_JAVA_KWS,
 ]

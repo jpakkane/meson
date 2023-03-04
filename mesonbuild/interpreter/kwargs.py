@@ -358,7 +358,9 @@ class BothLibrary(_BuildTargetBase, _ExecutableMixin, _SharedLibraryMixin, _Stat
 
 
 class _JarMixin(TypedDict):
-    pass
+
+    main_class: str
+
 
 class Jar(_AllTargetBase, _JarMixin):
     pass

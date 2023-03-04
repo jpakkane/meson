@@ -1148,10 +1148,6 @@ class BuildTarget(Target):
                                         (str, bool))
         self.install_mode = kwargs.get('install_mode', None)
         self.install_tag = stringlistify(kwargs.get('install_tag', [None]))
-        main_class = kwargs.get('main_class', '')
-        if not isinstance(main_class, str):
-            raise InvalidArguments('Main class must be a string')
-        self.main_class = main_class
         if isinstance(self, Executable):
             # This kwarg is deprecated. The value of "none" means that the kwarg
             # was not specified and win_subsystem should be used instead.
@@ -2812,7 +2808,9 @@ class Jar(BuildTarget):
                  for_machine: MachineChoice,
                  sources: T.List[SourceOutputs], environment:
                  environment.Environment, compilers: T.Dict[str, 'Compiler'],
-                 kwargs):
+                 kwargs,
+                 *,
+                 main_class: str = ''):
         super().__init__(name, subdir, subproject, for_machine, sources, None, [],
                          environment, compilers, kwargs)
         for t in self.link_targets:
@@ -2822,6 +2820,7 @@ class Jar(BuildTarget):
         self.outputs = [self.filename]
         self.java_args = kwargs.get('java_args', [])
         self.java_resources: T.Optional[StructuredSources] = kwargs.get('java_resources', None)
+        self.main_class = main_class
 
     def get_main_class(self):
         return self.main_class
