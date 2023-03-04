@@ -493,25 +493,34 @@ _ALL_TARGET_KWS: T.List[KwargInfo] = [
         },
     ),
 ]
+# For all BuildTarget derived classes except `Jar()``
+_BUILD_TARGET_KWS: T.List[KwargInfo] = [
+    KwargInfo('implicit_include_directories', bool, default=True, since='0.42.0'),
+]
 
 STATIC_LIB_KWS: T.List[KwargInfo] = [
     *_ALL_TARGET_KWS,
+    *_BUILD_TARGET_KWS,
 ]
 
 SHARED_LIB_KWS: T.List[KwargInfo] = [
     *_ALL_TARGET_KWS,
+    *_BUILD_TARGET_KWS,
 ]
 
 SHARED_MOD_KWS: T.List[KwargInfo] = [
     *_ALL_TARGET_KWS,
+    *_BUILD_TARGET_KWS,
 ]
 
 BOTH_LIB_KWS: T.List[KwargInfo] = [
     *_ALL_TARGET_KWS,
+    *_BUILD_TARGET_KWS,
 ]
 
 EXECUTABLE_KWS: T.List[KwargInfo] = [
     *_ALL_TARGET_KWS,
+    *_BUILD_TARGET_KWS,
 ]
 
 _EXCLUSIVE_JAVA_KWS: T.List[KwargInfo] = [
@@ -522,6 +531,11 @@ _EXCLUSIVE_JAVA_KWS: T.List[KwargInfo] = [
 JAR_KWS: T.List[KwargInfo] = [
     *_ALL_TARGET_KWS,
     *_EXCLUSIVE_JAVA_KWS,
+
+    # For backwards compatibility reasons (we're post 1.0), we can't just remove
+    # these, we have to deprecate them and remove then in 2.0
+    *[a.evolve(deprecated='1.1.0', deprecated_message='has always been ignored, and is safe to delete')
+      for a in _BUILD_TARGET_KWS],
 ]
 
 BUILD_TARGET_KWS: T.List[KwargInfo] = [

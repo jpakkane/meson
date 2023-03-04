@@ -3231,6 +3231,7 @@ class Interpreter(InterpreterBase, HoldableObject):
             build_by_default=kwargs['build_by_default'],
             dependencies=kwargs['dependencies'],
             extra_files=kwargs['extra_files'],
+            implicit_include_directories=kwargs['implicit_include_directories'],
         )
 
     def __build_sh_lib(self, name: str, sources: T.List[BuildTargetSource],
@@ -3244,6 +3245,7 @@ class Interpreter(InterpreterBase, HoldableObject):
             build_by_default=kwargs['build_by_default'],
             dependencies=kwargs['dependencies'],
             extra_files=kwargs['extra_files'],
+            implicit_include_directories=kwargs['implicit_include_directories'],
         )
 
     def __build_sh_mod(self, name: str, sources: T.List[BuildTargetSource],
@@ -3257,6 +3259,7 @@ class Interpreter(InterpreterBase, HoldableObject):
             build_by_default=kwargs['build_by_default'],
             dependencies=kwargs['dependencies'],
             extra_files=kwargs['extra_files'],
+            implicit_include_directories=kwargs['implicit_include_directories'],
         )
 
     def __build_st_lib(self, name: str, sources: T.List[BuildTargetSource],
@@ -3270,6 +3273,7 @@ class Interpreter(InterpreterBase, HoldableObject):
             build_by_default=kwargs['build_by_default'],
             dependencies=kwargs['dependencies'],
             extra_files=kwargs['extra_files'],
+            implicit_include_directories=kwargs['implicit_include_directories'],
         )
 
     def build_target(
@@ -3278,7 +3282,7 @@ class Interpreter(InterpreterBase, HoldableObject):
             kwargs: kwtypes.BuildTarget,
             targetclass: T.Type[_BuildClassType]) -> _BuildClassType:
         @FeatureNewKwargs('build target', '1.2.0', ['rust_dependency_map'])
-        @FeatureNewKwargs('build target', '0.42.0', ['rust_crate_type', 'build_rpath', 'implicit_include_directories'])
+        @FeatureNewKwargs('build target', '0.42.0', ['rust_crate_type', 'build_rpath'])
         @FeatureNewKwargs('build target', '0.41.0', ['rust_args'])
         @FeatureNewKwargs('build target', '0.48.0', ['gnu_symbol_visibility'])
         def build_target_decorator_caller(self, node, args, kwargs):

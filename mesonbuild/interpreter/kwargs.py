@@ -322,7 +322,8 @@ class _AllTargetBase(TypedDict):
 
 
 class _BuildTargetBase(_AllTargetBase):
-    pass
+
+    implicit_include_directories: bool
 
 
 class _StaticLibraryMixin(TypedDict):
