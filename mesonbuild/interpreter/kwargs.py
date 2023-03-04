@@ -319,6 +319,7 @@ class _AllTargetBase(TypedDict):
     build_by_default: bool
     dependencies: T.List[dependencies.Dependency]
     extra_files: T.List[File]
+    include_directories: T.List[T.Union[build.IncludeDirs, str]]
 
 
 class _BuildTargetBase(_AllTargetBase):

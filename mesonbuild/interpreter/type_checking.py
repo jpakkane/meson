@@ -492,6 +492,7 @@ _ALL_TARGET_KWS: T.List[KwargInfo] = [
             ContainerTypeInfo(list, File): '0.41.0',
         },
     ),
+    INCLUDE_DIRECTORIES.evolve(since_values={ContainerTypeInfo(list, str): ('0.50', 'Use include_dirctories() instead')}),
 ]
 # For all BuildTarget derived classes except `Jar()``
 _BUILD_TARGET_KWS: T.List[KwargInfo] = [
