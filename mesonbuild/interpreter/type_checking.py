@@ -480,16 +480,29 @@ TEST_KWS: T.List[KwargInfo] = [
     KwargInfo('suite', ContainerTypeInfo(list, str), listify=True, default=['']),  # yes, a list of empty string
     KwargInfo('verbose', bool, default=False, since='0.62.0'),
 ]
+_ALL_TARGET_KWS: T.List[KwargInfo] = [
+    KwargInfo('build_by_default', bool, default=True, since='0.40.0'),
+]
 
-STATIC_LIB_KWS: T.List[KwargInfo] = []
+STATIC_LIB_KWS: T.List[KwargInfo] = [
+    *_ALL_TARGET_KWS,
+]
 
-SHARED_LIB_KWS: T.List[KwargInfo] = []
+SHARED_LIB_KWS: T.List[KwargInfo] = [
+    *_ALL_TARGET_KWS,
+]
 
-SHARED_MOD_KWS: T.List[KwargInfo] = []
+SHARED_MOD_KWS: T.List[KwargInfo] = [
+    *_ALL_TARGET_KWS,
+]
 
-BOTH_LIB_KWS: T.List[KwargInfo] = []
+BOTH_LIB_KWS: T.List[KwargInfo] = [
+    *_ALL_TARGET_KWS,
+]
 
-EXECUTABLE_KWS: T.List[KwargInfo] = []
+EXECUTABLE_KWS: T.List[KwargInfo] = [
+    *_ALL_TARGET_KWS,
+]
 
 _EXCLUSIVE_JAVA_KWS: T.List[KwargInfo] = [
     KwargInfo('main_class', str, default=''),
@@ -497,6 +510,7 @@ _EXCLUSIVE_JAVA_KWS: T.List[KwargInfo] = [
 ]
 
 JAR_KWS: T.List[KwargInfo] = [
+    *_ALL_TARGET_KWS,
     *_EXCLUSIVE_JAVA_KWS,
 ]
 
@@ -510,5 +524,6 @@ BUILD_TARGET_KWS: T.List[KwargInfo] = [
         }),
         since_values={'shared_module': '0.51.0'},
     ),
+    *_ALL_TARGET_KWS,
     *_EXCLUSIVE_JAVA_KWS,
 ]

@@ -151,9 +151,9 @@ class RustModule(ExtensionModule):
 
         new_target = Executable(
             name, base_target.subdir, state.subproject, base_target.for_machine,
-            sources, base_target.structured_sources,
-            base_target.objects, base_target.environment, base_target.compilers,
-            new_target_kwargs
+            sources, base_target.structured_sources, base_target.objects,
+            base_target.environment, base_target.compilers, new_target_kwargs,
+            build_by_default=True,
         )
 
         test = self.interpreter.make_test(

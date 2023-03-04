@@ -3213,6 +3213,7 @@ class Interpreter(InterpreterBase, HoldableObject):
         return build.Jar(
             name, self.subdir, self.subproject, MachineChoice.HOST, sources,
             self.environment, self.compilers[MachineChoice.HOST], kwargs,
+            build_by_default=kwargs['build_by_default'],
             main_class=kwargs['main_class'],
             resources=kwargs['java_resources'],
         )
@@ -3225,6 +3226,7 @@ class Interpreter(InterpreterBase, HoldableObject):
         return build.Executable(
             name, self.subdir, self.subproject, for_machine, sources,
             struct_src, objects, self.environment, self.compilers[for_machine], kwargs,
+            build_by_default=kwargs['build_by_default'],
         )
 
     def __build_sh_lib(self, name: str, sources: T.List[BuildTargetSource],
@@ -3235,6 +3237,7 @@ class Interpreter(InterpreterBase, HoldableObject):
         return build.SharedLibrary(
             name, self.subdir, self.subproject, for_machine, sources,
             struct_src, objects, self.environment, self.compilers[for_machine], kwargs,
+            build_by_default=kwargs['build_by_default'],
         )
 
     def __build_sh_mod(self, name: str, sources: T.List[BuildTargetSource],
@@ -3245,6 +3248,7 @@ class Interpreter(InterpreterBase, HoldableObject):
         return build.SharedModule(
             name, self.subdir, self.subproject, for_machine, sources,
             struct_src, objects, self.environment, self.compilers[for_machine], kwargs,
+            build_by_default=kwargs['build_by_default'],
         )
 
     def __build_st_lib(self, name: str, sources: T.List[BuildTargetSource],
@@ -3255,6 +3259,7 @@ class Interpreter(InterpreterBase, HoldableObject):
         return build.StaticLibrary(
             name, self.subdir, self.subproject, for_machine, sources,
             struct_src, objects, self.environment, self.compilers[for_machine], kwargs,
+            build_by_default=kwargs['build_by_default'],
         )
 
     def build_target(
@@ -3265,7 +3270,6 @@ class Interpreter(InterpreterBase, HoldableObject):
         @FeatureNewKwargs('build target', '1.2.0', ['rust_dependency_map'])
         @FeatureNewKwargs('build target', '0.42.0', ['rust_crate_type', 'build_rpath', 'implicit_include_directories'])
         @FeatureNewKwargs('build target', '0.41.0', ['rust_args'])
-        @FeatureNewKwargs('build target', '0.38.0', ['build_by_default'])
         @FeatureNewKwargs('build target', '0.48.0', ['gnu_symbol_visibility'])
         def build_target_decorator_caller(self, node, args, kwargs):
             return True

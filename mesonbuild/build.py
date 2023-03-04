@@ -636,15 +636,6 @@ class Target(HoldableObject, metaclass=abc.ABCMeta):
             self.subdir, self.name, self.type_suffix())
 
     def process_kwargs_base(self, kwargs: T.Dict[str, T.Any]) -> None:
-        if 'build_by_default' in kwargs:
-            self.build_by_default = kwargs['build_by_default']
-            if not isinstance(self.build_by_default, bool):
-                raise InvalidArguments('build_by_default must be a boolean value.')
-        elif kwargs.get('install', False):
-            # For backward compatibility, if build_by_default is not explicitly
-            # set, use the value of 'install' if it's enabled.
-            self.build_by_default = True
-
         self.set_option_overrides(self.parse_overrides(kwargs))
 
     def set_option_overrides(self, option_overrides: T.Dict[OptionKey, str]) -> None:
@@ -710,8 +701,11 @@ class BuildTarget(Target):
             objects: T.List[ObjectTypes],
             environment: environment.Environment,
             compilers: T.Dict[str, 'Compiler'],
-            kwargs):
-        super().__init__(name, subdir, subproject, True, for_machine, environment)
+            kwargs,
+            *,
+            build_by_default: bool = True,
+            ):
+        super().__init__(name, subdir, subproject, build_by_default, for_machine, environment)
         self.all_compilers = compilers
         self.compilers = OrderedDict() # type: OrderedDict[str, Compiler]
         self.objects: T.List[ObjectTypes] = []
@@ -1826,12 +1820,16 @@ class Executable(BuildTarget):
             objects: T.List[ObjectTypes],
             environment: environment.Environment,
             compilers: T.Dict[str, 'Compiler'],
-            kwargs):
+            kwargs,
+            *,
+            build_by_default: bool = True,
+            ):
         key = OptionKey('b_pie')
         if 'pie' not in kwargs and key in environment.coredata.options:
             kwargs['pie'] = environment.coredata.options[key].value
         super().__init__(name, subdir, subproject, for_machine, sources, structured_sources, objects,
-                         environment, compilers, kwargs)
+                         environment, compilers, kwargs,
+                         build_by_default=build_by_default)
         # Check for export_dynamic
         self.export_dynamic = kwargs.get('export_dynamic', False)
         if not isinstance(self.export_dynamic, bool):
@@ -1979,12 +1977,16 @@ class StaticLibrary(BuildTarget):
             objects: T.List[ObjectTypes],
             environment: environment.Environment,
             compilers: T.Dict[str, 'Compiler'],
-            kwargs):
+            kwargs,
+            *,
+            build_by_default: bool = True,
+            ):
         self.prelink = kwargs.get('prelink', False)
         if not isinstance(self.prelink, bool):
             raise InvalidArguments('Prelink keyword argument must be a boolean.')
         super().__init__(name, subdir, subproject, for_machine, sources, structured_sources, objects,
-                         environment, compilers, kwargs)
+                         environment, compilers, kwargs,
+                         build_by_default=build_by_default)
 
     def post_init(self) -> None:
         super().post_init()
@@ -2063,7 +2065,10 @@ class SharedLibrary(BuildTarget):
             objects: T.List[ObjectTypes],
             environment: environment.Environment,
             compilers: T.Dict[str, 'Compiler'],
-            kwargs):
+            kwargs,
+            *,
+            build_by_default: bool = True,
+            ):
         self.soversion = None
         self.ltversion = None
         # Max length 2, first element is compatibility_version, second is current_version
@@ -2080,7 +2085,8 @@ class SharedLibrary(BuildTarget):
         # Use by the pkgconfig module
         self.shared_library_only = False
         super().__init__(name, subdir, subproject, for_machine, sources, structured_sources, objects,
-                         environment, compilers, kwargs)
+                         environment, compilers, kwargs,
+                         build_by_default=build_by_default)
 
     def post_init(self) -> None:
         super().post_init()
@@ -2410,13 +2416,17 @@ class SharedModule(SharedLibrary):
             objects: T.List[ObjectTypes],
             environment: environment.Environment,
             compilers: T.Dict[str, 'Compiler'],
-            kwargs):
+            kwargs,
+            *,
+            build_by_default: bool = True,
+            ):
         if 'version' in kwargs:
             raise MesonException('Shared modules must not specify the version kwarg.')
         if 'soversion' in kwargs:
             raise MesonException('Shared modules must not specify the soversion kwarg.')
         super().__init__(name, subdir, subproject, for_machine, sources,
-                         structured_sources, objects, environment, compilers, kwargs)
+                         structured_sources, objects, environment, compilers, kwargs,
+                         build_by_default=build_by_default)
         # We need to set the soname in cases where build files link the module
         # to build targets, see: https://github.com/mesonbuild/meson/issues/9492
         self.force_soname = False
@@ -2702,13 +2712,13 @@ class CompileTarget(BuildTarget):
                  dependencies: T.List[dependencies.Dependency]):
         compilers = {compiler.get_language(): compiler}
         kwargs = {
-            'build_by_default': False,
             f'{compiler.language}_args': compile_args,
             'include_directories': include_directories,
             'dependencies': dependencies,
         }
         super().__init__(name, subdir, subproject, compiler.for_machine,
-                         sources, None, [], environment, compilers, kwargs)
+                         sources, None, [], environment, compilers, kwargs,
+                         build_by_default=False)
         self.filename = name
         self.compiler = compiler
         self.output_templ = output_templ
@@ -2810,10 +2820,12 @@ class Jar(BuildTarget):
                  environment.Environment, compilers: T.Dict[str, 'Compiler'],
                  kwargs,
                  *,
+                 build_by_default: bool = True,
                  main_class: str = '',
                  resources: T.Optional[StructuredSources] = None):
         super().__init__(name, subdir, subproject, for_machine, sources, None, [],
-                         environment, compilers, kwargs)
+                         environment, compilers, kwargs,
+                         build_by_default=build_by_default)
         for t in self.link_targets:
             if not isinstance(t, Jar):
                 raise InvalidArguments(f'Link target {t} is not a jar target.')

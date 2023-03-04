@@ -314,7 +314,8 @@ class DoSubproject(ExtractRequired):
 
 
 class _AllTargetBase(TypedDict):
-    pass
+
+    build_by_default: bool
 
 
 class _BuildTargetBase(_AllTargetBase):
