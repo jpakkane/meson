@@ -35,7 +35,7 @@ from . import programs
 from .mesonlib import (
     HoldableObject, SecondLevelHolder, FileMode,
     File, MesonException, MachineChoice, PerMachine, OrderedSet, listify,
-    extract_as_list, stringlistify, classify_unity_sources,
+    extract_as_list, classify_unity_sources,
     get_filenames_templates_dict, substitute_values, has_path_sep,
     OptionKey, PerMachineDefaultable, OptionOverrideProxy,
     MesonBugException, EnvironmentVariables, pickle_load,
@@ -635,17 +635,6 @@ class Target(HoldableObject, metaclass=abc.ABCMeta):
         return self.construct_id_from_path(
             self.subdir, self.name, self.type_suffix())
 
-    def process_kwargs_base(self, kwargs: T.Dict[str, T.Any]) -> None:
-        self.set_option_overrides(self.parse_overrides(kwargs))
-
-    def set_option_overrides(self, option_overrides: T.Dict[OptionKey, str]) -> None:
-        self.options.overrides = {}
-        for k, v in option_overrides.items():
-            if k.lang:
-                self.options.overrides[k.evolve(machine=self.for_machine)] = v
-            else:
-                self.options.overrides[k] = v
-
     def get_options(self) -> OptionOverrideProxy:
         return self.options
 
@@ -655,26 +644,6 @@ class Target(HoldableObject, metaclass=abc.ABCMeta):
         # TODO: if it's possible to annotate get_option or validate_option_value
         # in the future we might be able to remove the cast here
         return T.cast('T.Union[str, int, bool, WrapMode]', self.options[key].value)
-
-    @staticmethod
-    def parse_overrides(kwargs: T.Dict[str, T.Any]) -> T.Dict[OptionKey, str]:
-        opts = kwargs.get('override_options', [])
-
-        # In this case we have an already parsed and ready to go dictionary
-        # provided by typed_kwargs
-        if isinstance(opts, dict):
-            return T.cast('T.Dict[OptionKey, str]', opts)
-
-        result: T.Dict[OptionKey, str] = {}
-        overrides = stringlistify(opts)
-        for o in overrides:
-            if '=' not in o:
-                raise InvalidArguments('Overrides must be of form "key=value"')
-            k, v = o.split('=', 1)
-            key = OptionKey.from_string(k.strip())
-            v = v.strip()
-            result[key] = v
-        return result
 
     def is_linkable_target(self) -> bool:
         return False
@@ -712,9 +681,10 @@ class BuildTarget(Target):
             install_tag: T.Optional[str] = None,
             link_args: T.Optional[T.List[str]] = None,
             link_depends: T.Optional[T.List[T.Union[File, CustomTarget, CustomTargetIndex]]] = None,
+            override_options: T.Optional[T.Dict[OptionKey, str]] = None,
             ):
         super().__init__(name, subdir, subproject, build_by_default, for_machine, environment,
-                         install, extra_files=extra_files or [])
+                         install, extra_files=extra_files or [], override_options=override_options)
         self.all_compilers = compilers
         self.implicit_include_directories = implicit_include_directories
         self.install_dir = install_dir if install_dir is not None else []
@@ -1083,7 +1053,6 @@ class BuildTarget(Target):
         return self.install_mode
 
     def process_kwargs(self, kwargs):
-        self.process_kwargs_base(kwargs)
         self.copy_kwargs(kwargs)
         kwargs.get('modules', [])
         self.need_install = kwargs.get('install', self.need_install)
@@ -1794,6 +1763,7 @@ class Executable(BuildTarget):
             install_tag: T.Optional[str] = None,
             link_args: T.Optional[T.List[str]] = None,
             link_depends: T.Optional[T.List[T.Union[File, CustomTarget, CustomTargetIndex]]] = None,
+            override_options: T.Optional[T.Dict[OptionKey, str]] = None,
             ):
         key = OptionKey('b_pie')
         if 'pie' not in kwargs and key in environment.coredata.options:
@@ -1810,7 +1780,8 @@ class Executable(BuildTarget):
                          install_mode=install_mode,
                          install_tag=install_tag,
                          link_args=link_args,
-                         link_depends=link_depends)
+                         link_depends=link_depends,
+                         override_options=override_options)
         # Check for export_dynamic
         self.export_dynamic = kwargs.get('export_dynamic', False)
         if not isinstance(self.export_dynamic, bool):
@@ -1971,6 +1942,7 @@ class StaticLibrary(BuildTarget):
             install_tag: T.Optional[str] = None,
             link_args: T.Optional[T.List[str]] = None,
             link_depends: T.Optional[T.List[T.Union[File, CustomTarget, CustomTargetIndex]]] = None,
+            override_options: T.Optional[T.Dict[OptionKey, str]] = None,
             ):
         self.prelink = kwargs.get('prelink', False)
         if not isinstance(self.prelink, bool):
@@ -1987,7 +1959,8 @@ class StaticLibrary(BuildTarget):
                          install_mode=install_mode,
                          install_tag=install_tag,
                          link_args=link_args,
-                         link_depends=link_depends)
+                         link_depends=link_depends,
+                         override_options=override_options)
 
     def post_init(self) -> None:
         super().post_init()
@@ -2079,6 +2052,7 @@ class SharedLibrary(BuildTarget):
             install_tag: T.Optional[str] = None,
             link_args: T.Optional[T.List[str]] = None,
             link_depends: T.Optional[T.List[T.Union[File, CustomTarget, CustomTargetIndex]]] = None,
+            override_options: T.Optional[T.Dict[OptionKey, str]] = None,
             ):
         self.soversion = None
         self.ltversion = None
@@ -2107,7 +2081,8 @@ class SharedLibrary(BuildTarget):
                          install_mode=install_mode,
                          install_tag=install_tag,
                          link_args=link_args,
-                         link_depends=link_depends)
+                         link_depends=link_depends,
+                         override_options=override_options)
 
     def post_init(self) -> None:
         super().post_init()
@@ -2450,6 +2425,7 @@ class SharedModule(SharedLibrary):
             install_tag: T.Optional[str] = None,
             link_args: T.Optional[T.List[str]] = None,
             link_depends: T.Optional[T.List[T.Union[File, CustomTarget, CustomTargetIndex]]] = None,
+            override_options: T.Optional[T.Dict[OptionKey, str]] = None,
             ):
         if 'version' in kwargs:
             raise MesonException('Shared modules must not specify the version kwarg.')
@@ -2467,7 +2443,8 @@ class SharedModule(SharedLibrary):
                          install_mode=install_mode,
                          install_tag=install_tag,
                          link_args=link_args,
-                         link_depends=link_depends)
+                         link_depends=link_depends,
+                         override_options=override_options)
         # We need to set the soname in cases where build files link the module
         # to build targets, see: https://github.com/mesonbuild/meson/issues/9492
         self.force_soname = False
@@ -2871,6 +2848,7 @@ class Jar(BuildTarget):
                  install_tag: T.Optional[str] = None,
                  link_args: T.Optional[T.List[str]] = None,
                  link_depends: T.Optional[T.List[T.Union[File, CustomTarget, CustomTargetIndex]]] = None,
+                 override_options: T.Optional[T.Dict[OptionKey, str]] = None,
                  main_class: str = '',
                  resources: T.Optional[StructuredSources] = None):
         super().__init__(name, subdir, subproject, for_machine, sources, None, [],
@@ -2884,7 +2862,8 @@ class Jar(BuildTarget):
                          install_mode=install_mode,
                          install_tag=install_tag,
                          link_args=link_args,
-                         link_depends=link_depends)
+                         link_depends=link_depends,
+                         override_options=override_options)
 
         for t in self.link_targets:
             if not isinstance(t, Jar):

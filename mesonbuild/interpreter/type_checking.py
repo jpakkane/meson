@@ -511,10 +511,19 @@ _ALL_TARGET_KWS: T.List[KwargInfo] = [
         default=[],
         listify=True,
     ),
+    OVERRIDE_OPTIONS_KW.evolve(since='0.40.0'),
 ]
+
 # For all BuildTarget derived classes except `Jar()``
 _BUILD_TARGET_KWS: T.List[KwargInfo] = [
     KwargInfo('implicit_include_directories', bool, default=True, since='0.42.0'),
+    # sources is here because JAR needs to have it's own implementation
+    KwargInfo(
+        'sources',
+        ContainerTypeInfo(list, (str, File, CustomTarget, CustomTargetIndex, GeneratedList, StructuredSources)),
+        default=[],
+        listify=True,
+    ),
 ]
 
 STATIC_LIB_KWS: T.List[KwargInfo] = [
@@ -550,11 +559,12 @@ _EXCLUSIVE_JAVA_KWS: T.List[KwargInfo] = [
 JAR_KWS: T.List[KwargInfo] = [
     *_ALL_TARGET_KWS,
     *_EXCLUSIVE_JAVA_KWS,
+    SOURCES_KW,  # this doesn't include StructuredSources, which is correct for Jar
 
     # For backwards compatibility reasons (we're post 1.0), we can't just remove
     # these, we have to deprecate them and remove then in 2.0
     *[a.evolve(deprecated='1.1.0', deprecated_message='has always been ignored, and is safe to delete')
-      for a in _BUILD_TARGET_KWS],
+      for a in _BUILD_TARGET_KWS if a.name not in {'sources'}],
 ]
 
 BUILD_TARGET_KWS: T.List[KwargInfo] = [
@@ -568,5 +578,6 @@ BUILD_TARGET_KWS: T.List[KwargInfo] = [
         since_values={'shared_module': '0.51.0'},
     ),
     *_ALL_TARGET_KWS,
+    *_BUILD_TARGET_KWS,
     *_EXCLUSIVE_JAVA_KWS,
 ]

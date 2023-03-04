@@ -1861,7 +1861,7 @@ class Interpreter(InterpreterBase, HoldableObject):
                  kwargs: kwtypes.Jar) -> build.Jar:
         return self.build_target(node, args, kwargs, build.Jar)
 
-    @FeatureNewKwargs('build_target', '0.40.0', ['link_whole', 'override_options'])
+    @FeatureNewKwargs('build_target', '0.40.0', ['link_whole'])
     @permittedKwargs(known_build_target_kwargs)
     @typed_pos_args('build_target', str, varargs=(str, mesonlib.File, build.CustomTarget, build.CustomTargetIndex, build.GeneratedList, build.StructuredSources, build.ExtractedObjects, build.BuildTarget))
     @typed_kwargs('build_target', *BUILD_TARGET_KWS, allow_unknown=True)
@@ -3200,6 +3200,7 @@ class Interpreter(InterpreterBase, HoldableObject):
             install_dir=kwargs['install_dir'],
             link_args=kwargs['link_args'],
             link_depends=self.source_strings_to_files(kwargs['link_depends']) if kwargs['link_depends'] else None,
+            override_options=kwargs['override_options'],
             main_class=kwargs['main_class'],
             resources=kwargs['java_resources'],
         )
@@ -3223,6 +3224,7 @@ class Interpreter(InterpreterBase, HoldableObject):
             install_tag=kwargs['install_tag'],
             link_args=kwargs['link_args'],
             link_depends=self.source_strings_to_files(kwargs['link_depends']) if kwargs['link_depends'] else None,
+            override_options=kwargs['override_options'],
         )
 
     def __build_sh_lib(self, name: str, sources: T.List[BuildTargetSource],
@@ -3244,6 +3246,7 @@ class Interpreter(InterpreterBase, HoldableObject):
             install_tag=kwargs['install_tag'],
             link_args=kwargs['link_args'],
             link_depends=self.source_strings_to_files(kwargs['link_depends']) if kwargs['link_depends'] else None,
+            override_options=kwargs['override_options'],
         )
 
     def __build_sh_mod(self, name: str, sources: T.List[BuildTargetSource],
@@ -3265,6 +3268,7 @@ class Interpreter(InterpreterBase, HoldableObject):
             install_tag=kwargs['install_tag'],
             link_args=kwargs['link_args'],
             link_depends=self.source_strings_to_files(kwargs['link_depends']) if kwargs['link_depends'] else None,
+            override_options=kwargs['override_options'],
         )
 
     def __build_st_lib(self, name: str, sources: T.List[BuildTargetSource],
@@ -3286,6 +3290,7 @@ class Interpreter(InterpreterBase, HoldableObject):
             install_tag=kwargs['install_tag'],
             link_args=kwargs['link_args'],
             link_depends=self.source_strings_to_files(kwargs['link_depends']) if kwargs['link_depends'] else None,
+            override_options=kwargs['override_options'],
         )
 
     def build_target(
@@ -3304,8 +3309,7 @@ class Interpreter(InterpreterBase, HoldableObject):
 
         name, sources = args
         for_machine = self.machine_from_native_kwarg(kwargs)
-        if 'sources' in kwargs:
-            sources += listify(kwargs['sources'])
+        sources = sources + kwargs['sources']
         if any(isinstance(s, build.BuildTarget) for s in sources):
             FeatureDeprecated.single_use('passing references to built targets as a source file', '1.1.0', self.subproject,
                                          'consider using `link_with` or `link_whole` if you meant to link, or dropping them as otherwise they are ignored',
