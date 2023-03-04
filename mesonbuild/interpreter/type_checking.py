@@ -483,6 +483,15 @@ TEST_KWS: T.List[KwargInfo] = [
 _ALL_TARGET_KWS: T.List[KwargInfo] = [
     KwargInfo('build_by_default', bool, default=True, since='0.40.0'),
     DEPENDENCIES_KW,
+    KwargInfo(
+        'extra_files',
+        ContainerTypeInfo(list, (str, File)),
+        default=[],
+        listify=True,
+        since_values={
+            ContainerTypeInfo(list, File): '0.41.0',
+        },
+    ),
 ]
 
 STATIC_LIB_KWS: T.List[KwargInfo] = [

@@ -318,6 +318,7 @@ class _AllTargetBase(TypedDict):
 
     build_by_default: bool
     dependencies: T.List[dependencies.Dependency]
+    extra_files: T.List[File]
 
 
 class _BuildTargetBase(_AllTargetBase):
