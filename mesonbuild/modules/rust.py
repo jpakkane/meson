@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from __future__ import annotations
-
+import itertools
 import os
 import typing as T
 
@@ -144,7 +144,6 @@ class RustModule(ExtensionModule):
         # one
         new_target_kwargs['rust_args'] = new_target_kwargs.get('rust_args', []) + ['--test']
         new_target_kwargs['install'] = False
-        new_target_kwargs['dependencies'] = new_target_kwargs.get('dependencies', []) + kwargs['dependencies']
 
         sources = T.cast('T.List[SourceOutputs]', base_target.sources.copy())
         sources.extend(base_target.generated)
@@ -154,6 +153,7 @@ class RustModule(ExtensionModule):
             sources, base_target.structured_sources, base_target.objects,
             base_target.environment, base_target.compilers, new_target_kwargs,
             build_by_default=True,
+            dependencies=list(itertools.chain(base_target.added_deps, kwargs['dependencies'])),
         )
 
         test = self.interpreter.make_test(

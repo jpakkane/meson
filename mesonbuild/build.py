@@ -704,6 +704,7 @@ class BuildTarget(Target):
             kwargs,
             *,
             build_by_default: bool = True,
+            dependencies: T.Optional[T.List[dependencies.Dependency]] = None,
             ):
         super().__init__(name, subdir, subproject, build_by_default, for_machine, environment)
         self.all_compilers = compilers
@@ -716,7 +717,6 @@ class BuildTarget(Target):
         self.link_targets: T.List[LibTypes] = []
         self.link_whole_targets: T.List[T.Union[StaticLibrary, CustomTarget, CustomTargetIndex]] = []
         self.link_depends = []
-        self.added_deps = set()
         self.name_prefix_set = False
         self.name_suffix_set = False
         self.filename = 'no_name'
@@ -734,6 +734,9 @@ class BuildTarget(Target):
         self.pie = False
         # Track build_rpath entries so we can remove them at install time
         self.rpath_dirs_to_remove: T.Set[bytes] = set()
+        self.added_deps: T.Set[dependencies.Dependency] = set()
+        if dependencies:
+            self.add_deps(dependencies)
         self.process_sourcelist(sources)
         # Objects can be:
         # 1. Preexisting objects provided by the user with the `objects:` kwarg
@@ -1133,9 +1136,6 @@ class BuildTarget(Target):
         # internal deps (added inside self.add_deps()) to override them.
         inclist = extract_as_list(kwargs, 'include_directories')
         self.add_include_dirs(inclist)
-        # Add dependencies (which also have include_directories)
-        deplist = extract_as_list(kwargs, 'dependencies')
-        self.add_deps(deplist)
         # If an item in this list is False, the output corresponding to
         # the list index of that item will not be installed
         self.install_dir = typeslistify(kwargs.get('install_dir', []),
@@ -1307,7 +1307,7 @@ class BuildTarget(Target):
     def get_include_dirs(self) -> T.List['IncludeDirs']:
         return self.include_dirs
 
-    def add_deps(self, deps):
+    def add_deps(self, deps: T.List[dependencies.Dependency]) -> None:
         deps = listify(deps)
         for dep in deps:
             if dep in self.added_deps:
@@ -1333,29 +1333,11 @@ class BuildTarget(Target):
                     self.external_deps.append(extpart)
                 # Deps of deps.
                 self.add_deps(dep.ext_deps)
-            elif isinstance(dep, dependencies.Dependency):
+            else:
                 if dep not in self.external_deps:
                     self.external_deps.append(dep)
                     self.process_sourcelist(dep.get_sources())
                 self.add_deps(dep.ext_deps)
-            elif isinstance(dep, BuildTarget):
-                raise InvalidArguments('''Tried to use a build target as a dependency.
-You probably should put it in link_with instead.''')
-            else:
-                # This is a bit of a hack. We do not want Build to know anything
-                # about the interpreter so we can't import it and use isinstance.
-                # This should be reliable enough.
-                if hasattr(dep, 'held_object'):
-                    # FIXME: subproject is not a real ObjectHolder so we have to do this by hand
-                    dep = dep.held_object
-                if hasattr(dep, 'project_args_frozen') or hasattr(dep, 'global_args_frozen'):
-                    raise InvalidArguments('Tried to use subproject object as a dependency.\n'
-                                           'You probably wanted to use a dependency declared in it instead.\n'
-                                           'Access it by calling get_variable() on the subproject object.')
-                raise InvalidArguments(f'Argument is of an unacceptable type {type(dep).__name__!r}.\nMust be '
-                                       'either an external dependency (returned by find_library() or '
-                                       'dependency()) or an internal dependency (returned by '
-                                       'declare_dependency()).')
 
             dep_d_features = dep.d_features
 
@@ -1823,13 +1805,15 @@ class Executable(BuildTarget):
             kwargs,
             *,
             build_by_default: bool = True,
+            dependencies: T.Optional[T.List[dependencies.Dependency]] = None,
             ):
         key = OptionKey('b_pie')
         if 'pie' not in kwargs and key in environment.coredata.options:
             kwargs['pie'] = environment.coredata.options[key].value
         super().__init__(name, subdir, subproject, for_machine, sources, structured_sources, objects,
                          environment, compilers, kwargs,
-                         build_by_default=build_by_default)
+                         build_by_default=build_by_default,
+                         dependencies=dependencies)
         # Check for export_dynamic
         self.export_dynamic = kwargs.get('export_dynamic', False)
         if not isinstance(self.export_dynamic, bool):
@@ -1980,13 +1964,15 @@ class StaticLibrary(BuildTarget):
             kwargs,
             *,
             build_by_default: bool = True,
+            dependencies: T.Optional[T.List[dependencies.Dependency]] = None,
             ):
         self.prelink = kwargs.get('prelink', False)
         if not isinstance(self.prelink, bool):
             raise InvalidArguments('Prelink keyword argument must be a boolean.')
         super().__init__(name, subdir, subproject, for_machine, sources, structured_sources, objects,
                          environment, compilers, kwargs,
-                         build_by_default=build_by_default)
+                         build_by_default=build_by_default,
+                         dependencies=dependencies)
 
     def post_init(self) -> None:
         super().post_init()
@@ -2068,6 +2054,7 @@ class SharedLibrary(BuildTarget):
             kwargs,
             *,
             build_by_default: bool = True,
+            dependencies: T.Optional[T.List[dependencies.Dependency]] = None,
             ):
         self.soversion = None
         self.ltversion = None
@@ -2086,7 +2073,8 @@ class SharedLibrary(BuildTarget):
         self.shared_library_only = False
         super().__init__(name, subdir, subproject, for_machine, sources, structured_sources, objects,
                          environment, compilers, kwargs,
-                         build_by_default=build_by_default)
+                         build_by_default=build_by_default,
+                         dependencies=dependencies)
 
     def post_init(self) -> None:
         super().post_init()
@@ -2419,6 +2407,7 @@ class SharedModule(SharedLibrary):
             kwargs,
             *,
             build_by_default: bool = True,
+            dependencies: T.Optional[T.List[dependencies.Dependency]] = None,
             ):
         if 'version' in kwargs:
             raise MesonException('Shared modules must not specify the version kwarg.')
@@ -2426,7 +2415,8 @@ class SharedModule(SharedLibrary):
             raise MesonException('Shared modules must not specify the soversion kwarg.')
         super().__init__(name, subdir, subproject, for_machine, sources,
                          structured_sources, objects, environment, compilers, kwargs,
-                         build_by_default=build_by_default)
+                         build_by_default=build_by_default,
+                         dependencies=dependencies)
         # We need to set the soname in cases where build files link the module
         # to build targets, see: https://github.com/mesonbuild/meson/issues/9492
         self.force_soname = False
@@ -2714,11 +2704,11 @@ class CompileTarget(BuildTarget):
         kwargs = {
             f'{compiler.language}_args': compile_args,
             'include_directories': include_directories,
-            'dependencies': dependencies,
         }
         super().__init__(name, subdir, subproject, compiler.for_machine,
                          sources, None, [], environment, compilers, kwargs,
-                         build_by_default=False)
+                         build_by_default=False,
+                         dependencies=dependencies)
         self.filename = name
         self.compiler = compiler
         self.output_templ = output_templ
@@ -2821,11 +2811,13 @@ class Jar(BuildTarget):
                  kwargs,
                  *,
                  build_by_default: bool = True,
+                 dependencies: T.Optional[T.List[dependencies.Dependency]] = None,
                  main_class: str = '',
                  resources: T.Optional[StructuredSources] = None):
         super().__init__(name, subdir, subproject, for_machine, sources, None, [],
                          environment, compilers, kwargs,
-                         build_by_default=build_by_default)
+                         build_by_default=build_by_default,
+                         dependencies=dependencies)
         for t in self.link_targets:
             if not isinstance(t, Jar):
                 raise InvalidArguments(f'Link target {t} is not a jar target.')

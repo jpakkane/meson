@@ -12,6 +12,7 @@ from typing_extensions import TypedDict, Literal, Protocol
 
 from .. import build
 from .. import coredata
+from .. import dependencies
 from ..compilers import Compiler
 from ..mesonlib import MachineChoice, File, FileMode, FileOrString
 from ..modules.cmake import CMakeSubprojectOptions
@@ -316,6 +317,7 @@ class DoSubproject(ExtractRequired):
 class _AllTargetBase(TypedDict):
 
     build_by_default: bool
+    dependencies: T.List[dependencies.Dependency]
 
 
 class _BuildTargetBase(_AllTargetBase):

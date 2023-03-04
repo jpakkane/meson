@@ -1,7 +1,7 @@
 {
   "stdout": [
     {
-      "line": "test cases/failing/128 subproject object as a dependency/meson.build:3:0: ERROR: Tried to use subproject object as a dependency."
+      "line": "test cases/failing/128 subproject object as a dependency/meson.build:3:0: ERROR: executable keyword argument 'dependencies' was of type array[SubprojectHolder] but should have been array[Dependency | InternalDependency]"
     }
   ]
 }
