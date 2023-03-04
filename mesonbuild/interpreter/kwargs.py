@@ -334,6 +334,7 @@ class _BuildTargetBase(_AllTargetBase):
 
     implicit_include_directories: bool
     build_rpath: str
+    d_debug: T.List[str]
 
 
 class _StaticLibraryMixin(TypedDict):

@@ -517,6 +517,7 @@ _ALL_TARGET_KWS: T.List[KwargInfo] = [
 # For all BuildTarget derived classes except `Jar()``
 _BUILD_TARGET_KWS: T.List[KwargInfo] = [
     KwargInfo('build_rpath', str, default='', since='0.42.0'),
+    KwargInfo('d_debug', ContainerTypeInfo(list, (str, int)), default=[], listify=True),
     KwargInfo('implicit_include_directories', bool, default=True, since='0.42.0'),
     # sources is here because JAR needs to have it's own implementation
     KwargInfo(
