@@ -3217,6 +3217,7 @@ class Interpreter(InterpreterBase, HoldableObject):
             dependencies=kwargs['dependencies'],
             extra_files=kwargs['extra_files'],
             include_directories=self.extract_incdirs(kwargs),
+            install=kwargs['install'],
             main_class=kwargs['main_class'],
             resources=kwargs['java_resources'],
         )
@@ -3234,6 +3235,7 @@ class Interpreter(InterpreterBase, HoldableObject):
             extra_files=kwargs['extra_files'],
             implicit_include_directories=kwargs['implicit_include_directories'],
             include_directories=self.extract_incdirs(kwargs),
+            install=kwargs['install'],
         )
 
     def __build_sh_lib(self, name: str, sources: T.List[BuildTargetSource],
@@ -3249,6 +3251,7 @@ class Interpreter(InterpreterBase, HoldableObject):
             extra_files=kwargs['extra_files'],
             implicit_include_directories=kwargs['implicit_include_directories'],
             include_directories=self.extract_incdirs(kwargs),
+            install=kwargs['install'],
         )
 
     def __build_sh_mod(self, name: str, sources: T.List[BuildTargetSource],
@@ -3264,6 +3267,7 @@ class Interpreter(InterpreterBase, HoldableObject):
             extra_files=kwargs['extra_files'],
             implicit_include_directories=kwargs['implicit_include_directories'],
             include_directories=self.extract_incdirs(kwargs),
+            install=kwargs['install'],
         )
 
     def __build_st_lib(self, name: str, sources: T.List[BuildTargetSource],
@@ -3279,6 +3283,7 @@ class Interpreter(InterpreterBase, HoldableObject):
             extra_files=kwargs['extra_files'],
             implicit_include_directories=kwargs['implicit_include_directories'],
             include_directories=self.extract_incdirs(kwargs),
+            install=kwargs['install'],
         )
 
     def build_target(

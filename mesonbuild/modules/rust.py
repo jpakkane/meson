@@ -143,7 +143,6 @@ class RustModule(ExtensionModule):
         # Don't mutate the shallow copied list, instead replace it with a new
         # one
         new_target_kwargs['rust_args'] = new_target_kwargs.get('rust_args', []) + ['--test']
-        new_target_kwargs['install'] = False
 
         sources = T.cast('T.List[SourceOutputs]', base_target.sources.copy())
         sources.extend(base_target.generated)
@@ -155,6 +154,7 @@ class RustModule(ExtensionModule):
             build_by_default=True,
             dependencies=list(itertools.chain(base_target.added_deps, kwargs['dependencies'])),
             include_directories=base_target.include_dirs.copy(),
+            install=False,
         )
 
         test = self.interpreter.make_test(

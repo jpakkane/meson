@@ -320,6 +320,7 @@ class _AllTargetBase(TypedDict):
     dependencies: T.List[dependencies.Dependency]
     extra_files: T.List[File]
     include_directories: T.List[T.Union[build.IncludeDirs, str]]
+    install: bool
 
 
 class _BuildTargetBase(_AllTargetBase):

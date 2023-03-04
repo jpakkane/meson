@@ -708,9 +708,10 @@ class BuildTarget(Target):
             extra_files: T.Optional[T.List[File]] = None,
             implicit_include_directories: bool = True,
             include_directories: T.Optional[T.List[IncludeDirs]] = None,
+            install: bool = False
             ):
         super().__init__(name, subdir, subproject, build_by_default, for_machine, environment,
-                         extra_files=extra_files or [])
+                         install, extra_files=extra_files or [])
         self.all_compilers = compilers
         self.implicit_include_directories = implicit_include_directories
         self.compilers = OrderedDict() # type: OrderedDict[str, Compiler]
@@ -1798,6 +1799,7 @@ class Executable(BuildTarget):
             extra_files: T.Optional[T.List[File]] = None,
             implicit_include_directories: bool = True,
             include_directories: T.Optional[T.List[IncludeDirs]] = None,
+            install: bool = False
             ):
         key = OptionKey('b_pie')
         if 'pie' not in kwargs and key in environment.coredata.options:
@@ -1808,7 +1810,8 @@ class Executable(BuildTarget):
                          dependencies=dependencies,
                          extra_files=extra_files,
                          implicit_include_directories=implicit_include_directories,
-                         include_directories=include_directories)
+                         include_directories=include_directories,
+                         install=install)
         # Check for export_dynamic
         self.export_dynamic = kwargs.get('export_dynamic', False)
         if not isinstance(self.export_dynamic, bool):
@@ -1963,6 +1966,7 @@ class StaticLibrary(BuildTarget):
             extra_files: T.Optional[T.List[File]] = None,
             implicit_include_directories: bool = True,
             include_directories: T.Optional[T.List[IncludeDirs]] = None,
+            install: bool = False,
             ):
         self.prelink = kwargs.get('prelink', False)
         if not isinstance(self.prelink, bool):
@@ -1973,7 +1977,8 @@ class StaticLibrary(BuildTarget):
                          dependencies=dependencies,
                          extra_files=extra_files,
                          implicit_include_directories=implicit_include_directories,
-                         include_directories=include_directories)
+                         include_directories=include_directories,
+                         install=install)
 
     def post_init(self) -> None:
         super().post_init()
@@ -2059,6 +2064,7 @@ class SharedLibrary(BuildTarget):
             extra_files: T.Optional[T.List[File]] = None,
             implicit_include_directories: bool = True,
             include_directories: T.Optional[T.List[IncludeDirs]] = None,
+            install: bool = False,
             ):
         self.soversion = None
         self.ltversion = None
@@ -2081,7 +2087,8 @@ class SharedLibrary(BuildTarget):
                          dependencies=dependencies,
                          extra_files=extra_files,
                          implicit_include_directories=implicit_include_directories,
-                         include_directories=include_directories)
+                         include_directories=include_directories,
+                         install=install)
 
     def post_init(self) -> None:
         super().post_init()
@@ -2418,6 +2425,7 @@ class SharedModule(SharedLibrary):
             extra_files: T.Optional[T.List[File]] = None,
             implicit_include_directories: bool = True,
             include_directories: T.Optional[T.List[IncludeDirs]] = None,
+            install: bool = False,
             ):
         if 'version' in kwargs:
             raise MesonException('Shared modules must not specify the version kwarg.')
@@ -2429,7 +2437,8 @@ class SharedModule(SharedLibrary):
                          dependencies=dependencies,
                          extra_files=extra_files,
                          implicit_include_directories=implicit_include_directories,
-                         include_directories=include_directories)
+                         include_directories=include_directories,
+                         install=install)
         # We need to set the soname in cases where build files link the module
         # to build targets, see: https://github.com/mesonbuild/meson/issues/9492
         self.force_soname = False
@@ -2827,6 +2836,7 @@ class Jar(BuildTarget):
                  dependencies: T.Optional[T.List[dependencies.Dependency]] = None,
                  extra_files: T.Optional[T.List[File]] = None,
                  include_directories: T.Optional[T.List[IncludeDirs]] = None,
+                 install: bool = False,
                  main_class: str = '',
                  resources: T.Optional[StructuredSources] = None):
         super().__init__(name, subdir, subproject, for_machine, sources, None, [],
@@ -2834,7 +2844,8 @@ class Jar(BuildTarget):
                          build_by_default=build_by_default,
                          extra_files=extra_files,
                          dependencies=dependencies,
-                         include_directories=include_directories)
+                         include_directories=include_directories,
+                         install=install)
 
         for t in self.link_targets:
             if not isinstance(t, Jar):
