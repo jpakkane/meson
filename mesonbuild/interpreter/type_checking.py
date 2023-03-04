@@ -505,6 +505,12 @@ _ALL_TARGET_KWS: T.List[KwargInfo] = [
     ),
     INSTALL_TAG_KW.evolve(since='0.60.0'),
     KwargInfo('link_args', ContainerTypeInfo(list, str), default=[], listify=True),
+    KwargInfo(
+        'link_depends',
+        ContainerTypeInfo(list, (str, File, CustomTarget, CustomTargetIndex)),
+        default=[],
+        listify=True,
+    ),
 ]
 # For all BuildTarget derived classes except `Jar()``
 _BUILD_TARGET_KWS: T.List[KwargInfo] = [
