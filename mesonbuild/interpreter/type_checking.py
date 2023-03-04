@@ -493,6 +493,7 @@ _ALL_TARGET_KWS: T.List[KwargInfo] = [
         },
     ),
     INCLUDE_DIRECTORIES.evolve(since_values={ContainerTypeInfo(list, str): ('0.50', 'Use include_dirctories() instead')}),
+    INSTALL_MODE_KW.evolve(since='0.47.0'),
     INSTALL_KW,
     # TODO: Eventually we want this to just be the generic INSTALL_DIR_KW, but in the mean time
     # this is allowed to be a `List[str | bool]` (not just `False`) so we have to handle it manually

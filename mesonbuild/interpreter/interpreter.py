@@ -2402,27 +2402,6 @@ class Interpreter(InterpreterBase, HoldableObject):
             pass
         self.subdir = prev_subdir
 
-    def _get_kwarg_install_mode(self, kwargs: T.Dict[str, T.Any]) -> T.Optional[FileMode]:
-        if kwargs.get('install_mode', None) is None:
-            return None
-        if isinstance(kwargs['install_mode'], FileMode):
-            return kwargs['install_mode']
-        install_mode: T.List[str] = []
-        mode = mesonlib.typeslistify(kwargs.get('install_mode', []), (str, int))
-        for m in mode:
-            # We skip any arguments that are set to `false`
-            if m is False:
-                m = None
-            install_mode.append(m)
-        if len(install_mode) > 3:
-            raise InvalidArguments('Keyword argument install_mode takes at '
-                                   'most 3 arguments.')
-        if len(install_mode) > 0 and install_mode[0] is not None and \
-           not isinstance(install_mode[0], str):
-            raise InvalidArguments('Keyword argument install_mode requires the '
-                                   'permissions arg to be a string or false')
-        return FileMode(*install_mode)
-
     # This is either ignored on basically any OS nowadays, or silently gets
     # ignored (Solaris) or triggers an "illegal operation" error (FreeBSD).
     # It was likely added "because it exists", but should never be used. In
@@ -3238,6 +3217,7 @@ class Interpreter(InterpreterBase, HoldableObject):
             include_directories=self.extract_incdirs(kwargs),
             install=kwargs['install'],
             install_dir=kwargs['install_dir'],
+            install_mode=kwargs['install_mode'],
         )
 
     def __build_sh_lib(self, name: str, sources: T.List[BuildTargetSource],
@@ -3255,6 +3235,7 @@ class Interpreter(InterpreterBase, HoldableObject):
             include_directories=self.extract_incdirs(kwargs),
             install=kwargs['install'],
             install_dir=kwargs['install_dir'],
+            install_mode=kwargs['install_mode'],
         )
 
     def __build_sh_mod(self, name: str, sources: T.List[BuildTargetSource],
@@ -3272,6 +3253,7 @@ class Interpreter(InterpreterBase, HoldableObject):
             include_directories=self.extract_incdirs(kwargs),
             install=kwargs['install'],
             install_dir=kwargs['install_dir'],
+            install_mode=kwargs['install_mode'],
         )
 
     def __build_st_lib(self, name: str, sources: T.List[BuildTargetSource],
@@ -3289,6 +3271,7 @@ class Interpreter(InterpreterBase, HoldableObject):
             include_directories=self.extract_incdirs(kwargs),
             install=kwargs['install'],
             install_dir=kwargs['install_dir'],
+            install_mode=kwargs['install_mode'],
         )
 
     def build_target(
@@ -3323,7 +3306,6 @@ class Interpreter(InterpreterBase, HoldableObject):
                    if not isinstance(s, (build.BuildTarget, build.ExtractedObjects))]
         sources = self.source_strings_to_files(sources)
         objs = extract_as_list(kwargs, 'objects')
-        kwargs['install_mode'] = self._get_kwarg_install_mode(kwargs)
         kwargs['extra_files'] = self.source_strings_to_files(kwargs['extra_files'])
         self.check_sources_exist(os.path.join(self.source_root, self.subdir), sources)
         if targetclass not in {build.Executable, build.SharedLibrary, build.SharedModule, build.StaticLibrary, build.Jar}:
