@@ -1,7 +1,7 @@
 {
   "stdout": [
     {
-      "line": "test cases/failing/63 string as link target/meson.build:2:0: ERROR: '' is not a target."
+      "line": "test cases/failing/63 string as link target/meson.build:2:0: ERROR: executable keyword argument 'link_with' was of type array[str] but should have been array[BothLibraries | SharedLibrary | StaticLibrary | SharedModule | CustomTarget | CustomTargetIndex | Dependency]"
     }
   ]
 }

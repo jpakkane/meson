@@ -35,7 +35,7 @@ from . import programs
 from .mesonlib import (
     HoldableObject, SecondLevelHolder, FileMode,
     File, MesonException, MachineChoice, PerMachine, OrderedSet, listify,
-    extract_as_list, classify_unity_sources,
+    classify_unity_sources,
     get_filenames_templates_dict, substitute_values, has_path_sep,
     OptionKey, PerMachineDefaultable, OptionOverrideProxy,
     MesonBugException, EnvironmentVariables, pickle_load,
@@ -698,6 +698,7 @@ class BuildTarget(Target):
             link_args: T.Optional[T.List[str]] = None,
             link_depends: T.Optional[T.List[T.Union[File, CustomTarget, CustomTargetIndex]]] = None,
             link_language: T.Optional[LINK_LANGUAGE] = None,
+            link_with: T.Optional[T.List[LibTypes]] = None,
             link_whole: T.Optional[T.List[T.Union[StaticLibrary, CustomTarget, CustomTargetIndex]]] = None,
             name_prefix: T.Optional[str] = None,
             name_suffix: T.Optional[str] = None,
@@ -738,6 +739,8 @@ class BuildTarget(Target):
         self.link_language = link_language
         self.link_targets: T.List[LibTypes] = []
         self.link_whole_targets: T.List[T.Union[StaticLibrary, CustomTarget, CustomTargetIndex]] = []
+        if link_with:
+            self.link(link_with)
         if link_whole:
             self.link_whole(link_whole)
         self.prefix = name_prefix
@@ -1100,17 +1103,6 @@ class BuildTarget(Target):
         self.copy_kwargs(kwargs)
         kwargs.get('modules', [])
         self.need_install = kwargs.get('install', self.need_install)
-        llist = extract_as_list(kwargs, 'link_with')
-        for linktarget in llist:
-            if isinstance(linktarget, dependencies.ExternalLibrary):
-                raise MesonException(textwrap.dedent('''\
-                    An external library was used in link_with keyword argument, which
-                    is reserved for libraries built as part of this project. External
-                    libraries must be passed using the dependencies keyword argument
-                    instead, because they are conceptually "external dependencies",
-                    just like those detected with the dependency() function.
-                '''))
-            self.link(linktarget)
 
         if isinstance(self, Executable):
             # This kwarg is deprecated. The value of "none" means that the kwarg
@@ -1259,16 +1251,15 @@ class BuildTarget(Target):
     def is_internal(self) -> bool:
         return False
 
-    def link(self, target):
+    def link(self, targets: T.List[LibTypes]) -> None:
         # More of this should move to the interpreter, but that requires both modification to the
         # buildTarget classea and InternalDependency
-        for t in listify(target):
+        for t in listify(targets):
             if isinstance(self, StaticLibrary) and self.need_install:
-                if isinstance(t, (CustomTarget, CustomTargetIndex)):
-                    if not t.should_install():
-                        mlog.warning(f'Try to link an installed static library target {self.name} with a'
-                                     'custom target that is not installed, this might cause problems'
-                                     'when you try to use this static library')
+                if isinstance(t, (CustomTarget, CustomTargetIndex)) and not t.should_install():
+                    mlog.warning(f'Try to link an installed static library target {self.name} with a'
+                                 'custom target that is not installed, this might cause problems'
+                                 'when you try to use this static library')
                 elif t.is_internal() and not t.uses_rust():
                     # When we're a static library and we link_with to an
                     # internal/convenience library, promote to link_whole.
@@ -1691,6 +1682,7 @@ class Executable(BuildTarget):
             link_args: T.Optional[T.List[str]] = None,
             link_depends: T.Optional[T.List[T.Union[File, CustomTarget, CustomTargetIndex]]] = None,
             link_language: T.Optional[LINK_LANGUAGE] = None,
+            link_with: T.Optional[T.List[LibTypes]] = None,
             link_whole: T.Optional[T.List[T.Union[StaticLibrary, CustomTarget, CustomTargetIndex]]] = None,
             name_prefix: T.Optional[str] = None,
             name_suffix: T.Optional[str] = None,
@@ -1728,6 +1720,7 @@ class Executable(BuildTarget):
                          link_args=link_args,
                          link_depends=link_depends,
                          link_language=link_language,
+                         link_with=link_with,
                          link_whole=link_whole,
                          gnu_symbol_visibility=gnu_symbol_visibility,
                          name_prefix=name_prefix,
@@ -1912,6 +1905,7 @@ class StaticLibrary(BuildTarget):
             link_args: T.Optional[T.List[str]] = None,
             link_depends: T.Optional[T.List[T.Union[File, CustomTarget, CustomTargetIndex]]] = None,
             link_language: T.Optional[LINK_LANGUAGE] = None,
+            link_with: T.Optional[T.List[LibTypes]] = None,
             link_whole: T.Optional[T.List[T.Union[StaticLibrary, CustomTarget, CustomTargetIndex]]] = None,
             name_prefix: T.Optional[str] = None,
             name_suffix: T.Optional[str] = None,
@@ -1949,6 +1943,7 @@ class StaticLibrary(BuildTarget):
                          link_args=link_args,
                          link_depends=link_depends,
                          link_language=link_language,
+                         link_with=link_with,
                          link_whole=link_whole,
                          gnu_symbol_visibility=gnu_symbol_visibility,
                          name_prefix=name_prefix,
@@ -2043,6 +2038,7 @@ class SharedLibrary(BuildTarget):
             link_args: T.Optional[T.List[str]] = None,
             link_depends: T.Optional[T.List[T.Union[File, CustomTarget, CustomTargetIndex]]] = None,
             link_language: T.Optional[LINK_LANGUAGE] = None,
+            link_with: T.Optional[T.List[LibTypes]] = None,
             link_whole: T.Optional[T.List[T.Union[StaticLibrary, CustomTarget, CustomTargetIndex]]] = None,
             name_prefix: T.Optional[str] = None,
             name_suffix: T.Optional[str] = None,
@@ -2092,6 +2088,7 @@ class SharedLibrary(BuildTarget):
                          link_args=link_args,
                          link_depends=link_depends,
                          link_language=link_language,
+                         link_with=link_with,
                          link_whole=link_whole,
                          gnu_symbol_visibility=gnu_symbol_visibility,
                          name_prefix=name_prefix,
@@ -2436,6 +2433,7 @@ class SharedModule(SharedLibrary):
             link_args: T.Optional[T.List[str]] = None,
             link_depends: T.Optional[T.List[T.Union[File, CustomTarget, CustomTargetIndex]]] = None,
             link_language: T.Optional[LINK_LANGUAGE] = None,
+            link_with: T.Optional[T.List[LibTypes]] = None,
             link_whole: T.Optional[T.List[T.Union[StaticLibrary, CustomTarget, CustomTargetIndex]]] = None,
             name_prefix: T.Optional[str] = None,
             name_suffix: T.Optional[str] = None,
@@ -2474,6 +2472,7 @@ class SharedModule(SharedLibrary):
                          link_args=link_args,
                          link_depends=link_depends,
                          link_language=link_language,
+                         link_with=link_with,
                          link_whole=link_whole,
                          gnu_symbol_visibility=gnu_symbol_visibility,
                          name_prefix=name_prefix,
@@ -2893,6 +2892,7 @@ class Jar(BuildTarget):
                  install_tag: T.Optional[str] = None,
                  link_args: T.Optional[T.List[str]] = None,
                  link_depends: T.Optional[T.List[T.Union[File, CustomTarget, CustomTargetIndex]]] = None,
+                 link_with: T.Optional[T.List[Jar]] = None,
                  override_options: T.Optional[T.Dict[OptionKey, str]] = None,
                  java_args: T.Optional[T.List[str]] = None,
                  main_class: str = '',
@@ -2909,12 +2909,10 @@ class Jar(BuildTarget):
                          install_tag=install_tag,
                          link_args=link_args,
                          link_depends=link_depends,
+                         link_with=link_with,
                          override_options=override_options,
                          rust_crate_type='lib')  # this shouldn't be necessary
 
-        for t in self.link_targets:
-            if not isinstance(t, Jar):
-                raise InvalidArguments(f'Link target {t} is not a jar target.')
         self.filename = self.name + '.jar'
         self.outputs = [self.filename]
         self.java_args = java_args or []

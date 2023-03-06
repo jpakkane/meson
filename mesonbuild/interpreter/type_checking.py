@@ -11,7 +11,7 @@ from .. import compilers
 from ..build import (CustomTarget, BuildTarget,
                      CustomTargetIndex, ExtractedObjects, GeneratedList, IncludeDirs,
                      BothLibraries, SharedLibrary, StaticLibrary, Jar, Executable,
-                     StructuredSources)
+                     StructuredSources, SharedModule)
 from ..coredata import UserFeatureOption
 from ..compilers import is_object, is_header, is_source
 from ..dependencies import Dependency, InternalDependency
@@ -27,7 +27,7 @@ NoneType: T.Type[None] = type(None)
 if T.TYPE_CHECKING:
     from typing_extensions import Literal, TypeVarTuple, Unpack
 
-    from ..build import ObjectTypes
+    from ..build import LibTypes, ObjectTypes
     from ..interpreterbase import TYPE_var
     from ..interpreterbase.decorators import ValidatorState
     from ..mesonlib import EnvInitValueType
@@ -437,13 +437,23 @@ D_MODULE_VERSIONS_KW: KwargInfo[T.List[T.Union[str, int]]] = KwargInfo(
 
 _link_with_error = '''can only be self-built targets, external dependencies (including libraries) must go in "dependencies".'''
 
+
+def link_with_validator(value: T.List[T.Union[LibTypes, Dependency]], _: ValidatorState) -> T.Optional[str]:
+    for l in value:
+        if isinstance(l, Dependency):
+            return _link_with_error
+        if isinstance(l, (CustomTarget, CustomTargetIndex)) and not l.is_linkable_target():
+            return f'cannot link with custom_target {l.name}, it does not produce a library'
+    return None
+
+
 # Allow Dependency for the better error message? But then in other cases it will list this as one of the allowed types!
 LINK_WITH_KW: KwargInfo[T.List[T.Union[BothLibraries, SharedLibrary, StaticLibrary, CustomTarget, CustomTargetIndex, Jar, Executable]]] = KwargInfo(
     'link_with',
     ContainerTypeInfo(list, (BothLibraries, SharedLibrary, StaticLibrary, CustomTarget, CustomTargetIndex, Jar, Executable, Dependency)),
     listify=True,
     default=[],
-    validator=lambda x, _: _link_with_error if any(isinstance(i, Dependency) for i in x) else None,
+    validator=link_with_validator,
 )
 
 def link_whole_validator(values: T.List[T.Union[StaticLibrary, CustomTarget, CustomTargetIndex, Dependency]],
@@ -547,6 +557,25 @@ _NAME_PREFIX_KW: KwargInfo[T.Union[str, list, None]] = KwargInfo(
     default=[],
     validator=lambda x, _: 'must be an empty list to signify default value' if (isinstance(x, list) and x) else None,
     convertor=lambda x, _: None if isinstance(x, list) else x,
+)
+
+# A variant used internally for build targets, and is stricter than the public
+# one. Specifically:
+# - shared_module allows linking with `Executable`, but no other `build_target`` does
+# - Jar can only be linked with other `Jar`s, but no other type can link with a `Jar`
+#
+# This also means that this is different than the version used by `declare_dependency`,
+# which must accept all of these types.
+_LINK_WITH_KW: KwargInfo[T.List[T.Union[BothLibraries, SharedLibrary, SharedModule, StaticLibrary, CustomTarget, CustomTargetIndex]]] = KwargInfo(
+    'link_with',
+    ContainerTypeInfo(
+        list,
+        (BothLibraries, SharedLibrary, StaticLibrary,
+         SharedModule, CustomTarget, CustomTargetIndex,
+         Dependency)),
+    default=[],
+    listify=True,
+    validator=lambda x, _: _link_with_error if isinstance(x, Dependency) else None,
 )
 
 _ALL_TARGET_KWS: T.List[KwargInfo] = [
@@ -687,6 +716,8 @@ STATIC_LIB_KWS: T.List[KwargInfo] = [
     *_ALL_TARGET_KWS,
     *_BUILD_TARGET_KWS,
     *_LANGUAGE_KWS,
+    _LINK_WITH_KW,
+    _RUST_CRATE_TYPE_KW.evolve(validator=in_set_validator({'lib', 'rlib', 'staticlib'}))
 ]
 
 _SHARED_LIB_RUST_CRATE = _RUST_CRATE_TYPE_KW.evolve(
@@ -698,6 +729,7 @@ SHARED_LIB_KWS: T.List[KwargInfo] = [
     *_ALL_TARGET_KWS,
     *_BUILD_TARGET_KWS,
     *_LANGUAGE_KWS,
+    _LINK_WITH_KW,
     _SHARED_LIB_RUST_CRATE,
 ]
 
@@ -706,12 +738,25 @@ SHARED_MOD_KWS: T.List[KwargInfo] = [
     *_BUILD_TARGET_KWS,
     *_LANGUAGE_KWS,
     _SHARED_LIB_RUST_CRATE,
+    # Shared modules can additionally by linked with Executables
+    KwargInfo(
+        'link_with',
+        ContainerTypeInfo(
+            list,
+            (BothLibraries, SharedLibrary, StaticLibrary,
+             SharedModule, CustomTarget, CustomTargetIndex,
+             Executable, Dependency)),
+        default=[],
+        listify=True,
+        validator=lambda x, _: _link_with_error if any(isinstance(i, Dependency) for i in x) else None,
+    ),
 ]
 
 BOTH_LIB_KWS: T.List[KwargInfo] = [
     *_ALL_TARGET_KWS,
     *_BUILD_TARGET_KWS,
     *_LANGUAGE_KWS,
+    _LINK_WITH_KW,
     _RUST_CRATE_TYPE_KW.evolve(
         validator=in_set_validator({'lib', 'rlib', 'staticlib', 'cdylib', 'dylib', 'proc-macro'}),
         since_values={'proc-macro': '0.62.0'},
@@ -722,6 +767,7 @@ EXECUTABLE_KWS: T.List[KwargInfo] = [
     *_ALL_TARGET_KWS,
     *_BUILD_TARGET_KWS,
     *_LANGUAGE_KWS,
+    _LINK_WITH_KW,
     _RUST_CRATE_TYPE_KW.evolve(validator=in_set_validator({'bin'})),
 ]
 
@@ -735,11 +781,18 @@ JAR_KWS: T.List[KwargInfo] = [
     *_LANGUAGE_KWS,
     *_EXCLUSIVE_JAVA_KWS,
     SOURCES_KW,  # this doesn't include StructuredSources, which is correct for Jar
+    # Jars can only be linked with other JARs
+    KwargInfo(
+        'link_with',
+        ContainerTypeInfo(list, Jar),
+        default=[],
+        listify=True,
+    ),
 
     # For backwards compatibility reasons (we're post 1.0), we can't just remove
     # these, we have to deprecate them and remove then in 2.0
     *[a.evolve(deprecated='1.1.0', deprecated_message='has always been ignored, and is safe to delete')
-      for a in _BUILD_TARGET_KWS if a.name not in {'sources'}],
+      for a in _BUILD_TARGET_KWS if a.name not in {'sources', 'link_with'}],
     _RUST_CRATE_TYPE_KW.evolve(
         deprecated='1.1.0',
         deprecated_message='is not a valid argument for Jar, and should be removed. It is, and has always been, silently ignored',
@@ -763,5 +816,16 @@ BUILD_TARGET_KWS: T.List[KwargInfo] = [
     _RUST_CRATE_TYPE_KW.evolve(
         validator=in_set_validator({'bin', 'lib', 'rlib', 'staticlib', 'cdylib', 'dylib', 'proc-macro'}),
         since_values={'proc-macro': '0.62.0'},
+    ),
+    KwargInfo(
+        'link_with',
+        ContainerTypeInfo(
+            list,
+            (BothLibraries, SharedLibrary, StaticLibrary,
+             SharedModule, CustomTarget, CustomTargetIndex,
+             Dependency, Jar)),
+        default=[],
+        listify=True,
+        validator=lambda x, _: _link_with_error if isinstance(x, Dependency) else None,
     ),
 ]

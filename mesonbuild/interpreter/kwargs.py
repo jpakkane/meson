@@ -387,6 +387,7 @@ class _StaticLibraryMixin(TypedDict):
 class StaticLibrary(_BuildTargetBase, _StaticLibraryMixin):
 
     rust_crate_type: Literal['lib', 'rlib', 'staticlib']
+    link_with: T.List[T.Union[build.BothLibraries, build.SharedLibrary, build.StaticLibrary, build.SharedModule, build.CustomTarget, build.CustomTargetIndex]]
 
 
 class _SharedModuleMixin(TypedDict):
@@ -394,7 +395,8 @@ class _SharedModuleMixin(TypedDict):
 
 
 class SharedModule(_BuildTargetBase, _SharedModuleMixin):
-    pass
+
+    link_with: T.List[T.Union[build.BothLibraries, build.SharedLibrary, build.StaticLibrary, build.SharedModule, build.CustomTarget, build.CustomTargetIndex, build.Executable]]
 
 
 class _SharedLibraryMixin(TypedDict):
@@ -404,6 +406,7 @@ class _SharedLibraryMixin(TypedDict):
 class SharedLibrary(_BuildTargetBase, _SharedModuleMixin, _SharedLibraryMixin):
 
     rust_crate_type: Literal['lib', 'dylib', 'cdylib', 'proc-macro']
+    link_with: T.List[T.Union[build.BothLibraries, build.SharedLibrary, build.StaticLibrary, build.SharedModule, build.CustomTarget, build.CustomTargetIndex]]
 
 
 class _ExecutableMixin(TypedDict):
@@ -411,12 +414,14 @@ class _ExecutableMixin(TypedDict):
 
 
 class Executable(_BuildTargetBase, _ExecutableMixin):
-    pass
+
+    link_with: T.List[T.Union[build.BothLibraries, build.SharedLibrary, build.StaticLibrary, build.SharedModule, build.CustomTarget, build.CustomTargetIndex]]
 
 
 class BothLibrary(_BuildTargetBase, _ExecutableMixin, _SharedLibraryMixin, _StaticLibraryMixin):
 
     rust_crate_type: Literal['lib', 'rlib', 'staticlib', 'dylib', 'cdylib', 'proc-macro']
+    link_with: T.List[T.Union[build.BothLibraries, build.SharedLibrary, build.StaticLibrary, build.SharedModule, build.CustomTarget, build.CustomTargetIndex]]
 
 
 class _JarMixin(TypedDict):
@@ -427,7 +432,8 @@ class _JarMixin(TypedDict):
 
 
 class Jar(_AllTargetBase, _JarMixin):
-    pass
+
+    link_with: T.List[build.Jar]
 
 
 class BuildTarget(BothLibrary, _ExecutableMixin, _JarMixin):
