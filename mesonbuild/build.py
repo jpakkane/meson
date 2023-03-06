@@ -44,7 +44,7 @@ from .compilers import (
     is_object, clink_langs, sort_clink, all_languages,
     is_known_suffix, detect_static_linker
 )
-from .interpreterbase import FeatureNew, FeatureDeprecated
+from .interpreterbase import FeatureNew
 
 if T.TYPE_CHECKING:
     from typing_extensions import Literal, TypedDict
@@ -705,6 +705,8 @@ class BuildTarget(Target):
             vala_header: T.Optional[str] = None,
             vala_vapi: T.Optional[str] = None,
             vala_gir: T.Optional[str] = None,
+            c_pch: T.Optional[T.List[str]] = None,
+            cpp_pch: T.Optional[T.List[str]] = None,
             ):
         super().__init__(name, subdir, subproject, build_by_default, for_machine, environment,
                          install, extra_files=extra_files or [], override_options=override_options)
@@ -748,7 +750,10 @@ class BuildTarget(Target):
         # as Vala which generates .vapi and .h besides the compiled output.
         self.outputs = [self.filename]
         self.need_install = False
-        self.pch: T.Dict[str, T.List[str]] = {}
+        self.pch: T.Dict[str, T.List[str]] = {
+            'c': c_pch or [],
+            'cpp': cpp_pch or [],
+        }
         self.extra_args: T.Dict[str, T.List['FileOrString']] = {}
         self.sources: T.List[File] = []
         self.generated: T.List['GeneratedTypes'] = []
@@ -1105,9 +1110,6 @@ class BuildTarget(Target):
             lang_args = extract_as_list(kwargs, f'{lang}_args')
             self.add_compiler_args(lang, lang_args)
 
-        self.add_pch('c', extract_as_list(kwargs, 'c_pch'))
-        self.add_pch('cpp', extract_as_list(kwargs, 'cpp_pch'))
-
         if isinstance(self, Executable):
             # This kwarg is deprecated. The value of "none" means that the kwarg
             # was not specified and win_subsystem should be used instead.
@@ -1208,7 +1210,7 @@ class BuildTarget(Target):
         return self.need_install
 
     def has_pch(self) -> bool:
-        return bool(self.pch)
+        return any(self.pch.values())
 
     def get_pch(self, language: str) -> T.List[str]:
         return self.pch.get(language, [])
@@ -1334,37 +1336,6 @@ class BuildTarget(Target):
             if t.is_internal():
                 objs += t.extract_all_objects_recurse()
         return objs
-
-    def add_pch(self, language: str, pchlist: T.List[str]) -> None:
-        if not pchlist:
-            return
-        elif len(pchlist) == 1:
-            if not environment.is_header(pchlist[0]):
-                raise InvalidArguments(f'PCH argument {pchlist[0]} is not a header.')
-        elif len(pchlist) == 2:
-            if environment.is_header(pchlist[0]):
-                if not environment.is_source(pchlist[1]):
-                    raise InvalidArguments('PCH definition must contain one header and at most one source.')
-            elif environment.is_source(pchlist[0]):
-                if not environment.is_header(pchlist[1]):
-                    raise InvalidArguments('PCH definition must contain one header and at most one source.')
-                pchlist = [pchlist[1], pchlist[0]]
-            else:
-                raise InvalidArguments(f'PCH argument {pchlist[0]} is of unknown type.')
-
-            if os.path.dirname(pchlist[0]) != os.path.dirname(pchlist[1]):
-                raise InvalidArguments('PCH files must be stored in the same folder.')
-
-            FeatureDeprecated.single_use('PCH source files', '0.50.0', self.subproject,
-                                         'Only a single header file should be used.')
-        elif len(pchlist) > 2:
-            raise InvalidArguments('PCH definition may have a maximum of 2 files.')
-        for f in pchlist:
-            if not isinstance(f, str):
-                raise MesonException('PCH arguments must be strings.')
-            if not os.path.isfile(os.path.join(self.environment.source_dir, self.subdir, f)):
-                raise MesonException(f'File {f} does not exist.')
-        self.pch[language] = pchlist
 
     def add_include_dirs(self, args: T.Sequence['IncludeDirs'], set_is_system: T.Optional[str] = None) -> None:
         ids: T.List['IncludeDirs'] = []
@@ -1742,6 +1713,8 @@ class Executable(BuildTarget):
             vala_header: T.Optional[str] = None,
             vala_vapi: T.Optional[str] = None,
             vala_gir: T.Optional[str] = None,
+            c_pch: T.Optional[T.List[str]] = None,
+            cpp_pch: T.Optional[T.List[str]] = None,
             ):
         key = OptionKey('b_pie')
         if 'pie' not in kwargs and key in environment.coredata.options:
@@ -1775,6 +1748,8 @@ class Executable(BuildTarget):
                          vala_header=vala_header,
                          vala_vapi=vala_vapi,
                          vala_gir=vala_gir,
+                         c_pch=c_pch,
+                         cpp_pch=cpp_pch,
                          )
         # Check for export_dynamic
         self.export_dynamic = kwargs.get('export_dynamic', False)
@@ -1953,6 +1928,8 @@ class StaticLibrary(BuildTarget):
             vala_header: T.Optional[str] = None,
             vala_vapi: T.Optional[str] = None,
             vala_gir: T.Optional[str] = None,
+            c_pch: T.Optional[T.List[str]] = None,
+            cpp_pch: T.Optional[T.List[str]] = None,
             ):
         self.prelink = kwargs.get('prelink', False)
         if not isinstance(self.prelink, bool):
@@ -1986,6 +1963,8 @@ class StaticLibrary(BuildTarget):
                          vala_header=vala_header,
                          vala_vapi=vala_vapi,
                          vala_gir=vala_gir,
+                         c_pch=c_pch,
+                         cpp_pch=cpp_pch,
                          )
 
     def post_init(self) -> None:
@@ -2094,6 +2073,8 @@ class SharedLibrary(BuildTarget):
             vala_header: T.Optional[str] = None,
             vala_vapi: T.Optional[str] = None,
             vala_gir: T.Optional[str] = None,
+            c_pch: T.Optional[T.List[str]] = None,
+            cpp_pch: T.Optional[T.List[str]] = None,
             ):
         self.soversion = None
         self.ltversion = None
@@ -2139,6 +2120,8 @@ class SharedLibrary(BuildTarget):
                          vala_header=vala_header,
                          vala_vapi=vala_vapi,
                          vala_gir=vala_gir,
+                         c_pch=c_pch,
+                         cpp_pch=cpp_pch,
                          )
 
     def post_init(self) -> None:
@@ -2493,6 +2476,8 @@ class SharedModule(SharedLibrary):
             vala_header: T.Optional[str] = None,
             vala_vapi: T.Optional[str] = None,
             vala_gir: T.Optional[str] = None,
+            c_pch: T.Optional[T.List[str]] = None,
+            cpp_pch: T.Optional[T.List[str]] = None,
             ):
         if 'version' in kwargs:
             raise MesonException('Shared modules must not specify the version kwarg.')
@@ -2527,6 +2512,8 @@ class SharedModule(SharedLibrary):
                          vala_header=vala_header,
                          vala_vapi=vala_vapi,
                          vala_gir=vala_gir,
+                         c_pch=c_pch,
+                         cpp_pch=cpp_pch,
                          )
         # We need to set the soname in cases where build files link the module
         # to build targets, see: https://github.com/mesonbuild/meson/issues/9492

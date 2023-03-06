@@ -13,9 +13,9 @@ from ..build import (CustomTarget, BuildTarget,
                      BothLibraries, SharedLibrary, StaticLibrary, Jar, Executable,
                      StructuredSources)
 from ..coredata import UserFeatureOption
-from ..compilers import is_object
+from ..compilers import is_object, is_header, is_source
 from ..dependencies import Dependency, InternalDependency
-from ..interpreterbase.decorators import KwargInfo, ContainerTypeInfo
+from ..interpreterbase.decorators import FeatureDeprecated, KwargInfo, ContainerTypeInfo
 from ..mesonlib import (File, FileMode, MachineChoice, listify, has_path_sep,
                         OptionKey, EnvironmentVariables)
 from ..programs import ExternalProgram
@@ -504,6 +504,43 @@ TEST_KWS: T.List[KwargInfo] = [
     KwargInfo('verbose', bool, default=False, since='0.62.0'),
 ]
 
+
+def _pch_validator(value: T.List[str], state: ValidatorState) -> T.Optional[str]:
+    num_vals = len(value)
+    if num_vals > 2:
+        return 'PCH definition may have a maximum of 2 files.'
+    elif num_vals == 1:
+        if not is_header(value[0]):
+            return 'When one PCH file is given it must be a header.'
+    elif num_vals == 2:
+        if not (is_header(value[0]) and is_source(value[1]) or
+                (is_source(value[0] and is_header(value[1])))):
+            return 'PCH definition must contain one header and at most one source.'
+        if os.path.dirname(value[0]) != os.path.dirname(value[1]):
+            return 'PCH files must be stored in the same folder.'
+
+    for f in value:
+        if not os.path.isfile(os.path.join(state.source_root, state.subdir, f)):
+            return f'PCH file {f} does not exist.'
+
+
+def _pch_convertor(value: T.List[str], state: ValidatorState) -> T.List[str]:
+    """Ensure that internally the values are (header, source)."""
+    if len(value) == 2 and is_source(value[0]):
+        return [value[1], value[0]]
+    return value
+
+
+_PCH_KW: KwargInfo[T.List[str]] = KwargInfo(
+    'c_pch',
+    ContainerTypeInfo(list, str),
+    default=[],
+    listify=True,
+    validator=_pch_validator,
+    convertor=_pch_convertor,
+    feature_validator=lambda x, _: [FeatureDeprecated('PCH source files', '0.50.0', 'Only a single header file should be used.')] if len(x) == 2 else [],
+)
+
 _NAME_PREFIX_KW: KwargInfo[T.Union[str, list, None]] = KwargInfo(
     'name_prefix',
     (str, list, NoneType),
@@ -619,6 +656,8 @@ _BUILD_TARGET_KWS: T.List[KwargInfo] = [
                                if os.path.splitext(x)[1] not in {'.txt', '.resx', '.resources'}
                                else None,
     ),
+    _PCH_KW,
+    _PCH_KW.evolve(name='cpp_pch'),
     KwargInfo('vala_header', (str, NoneType), validator=_empty_string_validator),
     KwargInfo('vala_vapi', (str, NoneType), validator=_empty_string_validator),
     KwargInfo('vala_gir', (str, NoneType), validator=_empty_string_validator),

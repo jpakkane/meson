@@ -361,6 +361,8 @@ class _BuildTargetBase(_AllTargetBase):
     vala_header: T.Optional[str]
     vala_vapi: T.Optional[str]
     vala_gir: T.Optional[str]
+    c_pch: T.List[str]
+    cpp_pch: T.List[str]
 
 
 class _StaticLibraryMixin(TypedDict):
