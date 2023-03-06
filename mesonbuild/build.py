@@ -2028,9 +2028,9 @@ class SharedLibrary(BuildTarget):
             vs_module_defs: T.Optional[T.Union[File, CustomTarget, CustomTargetIndex]] = None,
             c_pch: T.Optional[T.List[str]] = None,
             cpp_pch: T.Optional[T.List[str]] = None,
+            soversion: T.Optional[str] = None,
             version: T.Optional[str] = None,
             ):
-        self.soversion = None
         # Max length 2, first element is compatibility_version, second is current_version
         self.darwin_versions = []
         # The import library this target will generate
@@ -2044,7 +2044,22 @@ class SharedLibrary(BuildTarget):
         # Use by the pkgconfig module
         self.shared_library_only = False
 
-        self.ltversion = version if not environment.machines[for_machine].is_android() else None
+        if not environment.machines[for_machine].is_android():
+            self.ltversion = version
+            # library version is defined, get the soversion from that We
+            # replicate what Autotools does here and take the first number of
+            # the version by default.
+            if soversion is not None:
+                self.soversion: T.Optional[str] = soversion
+            elif version:
+                self.soversion = version.split('.', 1)[0]
+            else:
+                self.soversion = None
+        else:
+            self.ltversion = None
+            self.soversion = None
+
+        assert hasattr(self, 'soversion')
 
         super().__init__(name, subdir, subproject, for_machine, sources, structured_sources, objects,
                          environment, compilers, kwargs,
@@ -2270,18 +2285,6 @@ class SharedLibrary(BuildTarget):
         super().process_kwargs(kwargs)
 
         if not self.environment.machines[self.for_machine].is_android():
-            # Try to extract/deduce the soversion
-            if 'soversion' in kwargs:
-                self.soversion = kwargs['soversion']
-                if isinstance(self.soversion, int):
-                    self.soversion = str(self.soversion)
-                if not isinstance(self.soversion, str):
-                    raise InvalidArguments('Shared library soversion is not a string or integer.')
-            elif self.ltversion:
-                # library version is defined, get the soversion from that
-                # We replicate what Autotools does here and take the first
-                # number of the version by default.
-                self.soversion = self.ltversion.split('.')[0]
             # macOS, iOS and tvOS dylib compatibility_version and current_version
             if 'darwin_versions' in kwargs:
                 self.darwin_versions = self._validate_darwin_versions(kwargs['darwin_versions'])
@@ -2406,8 +2409,6 @@ class SharedModule(SharedLibrary):
             c_pch: T.Optional[T.List[str]] = None,
             cpp_pch: T.Optional[T.List[str]] = None,
             ):
-        if 'soversion' in kwargs:
-            raise MesonException('Shared modules must not specify the soversion kwarg.')
         super().__init__(name, subdir, subproject, for_machine, sources,
                          structured_sources, objects, environment, compilers, kwargs,
                          build_by_default=build_by_default,

@@ -3305,6 +3305,7 @@ class Interpreter(InterpreterBase, HoldableObject):
             vs_module_defs=self.source_strings_to_files([kwargs['vs_module_defs']])[0] if kwargs['vs_module_defs'] else None,
             c_pch=kwargs['c_pch'],
             cpp_pch=kwargs['cpp_pch'],
+            soversion=kwargs['soversion'],
             version=kwargs['version'],
         )
 

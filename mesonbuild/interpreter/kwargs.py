@@ -405,6 +405,7 @@ class SharedModule(_BuildTargetBase, _SharedModuleMixin):
 class _SharedLibraryMixin(TypedDict):
 
     version: T.Optional[str]
+    soversion: T.Optional[str]
 
 
 class SharedLibrary(_BuildTargetBase, _SharedModuleMixin, _SharedLibraryMixin):
