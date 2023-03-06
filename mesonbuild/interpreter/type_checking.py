@@ -851,6 +851,7 @@ def _win_subsystem_validator(value: str, _: ValidatorState) -> T.Optional[str]:
 
 _EXCLUSIVE_EXECUTABLE_KWS: T.List[KwargInfo] = [
     KwargInfo('export_dynamic', bool, default=False, since='0.45.0'),
+    KwargInfo('implib', (bool, str, NoneType), since='0.42.0'),
     KwargInfo(
         'gui_app',
         (bool, NoneType),

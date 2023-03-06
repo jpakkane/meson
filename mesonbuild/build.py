@@ -1649,6 +1649,7 @@ class Executable(BuildTarget):
             vala_gir: T.Optional[str] = None,
             c_pch: T.Optional[T.List[str]] = None,
             cpp_pch: T.Optional[T.List[str]] = None,
+            implib: T.Union[str, bool] = False,
             export_dynamic: bool = False,
             win_subsystem: str = 'console',
             ):
@@ -1694,17 +1695,34 @@ class Executable(BuildTarget):
         # Check for export_dynamic
         self.export_dynamic = export_dynamic
         self.win_subsystem = win_subsystem
-        self.implib = kwargs.get('implib')
-        if not isinstance(self.implib, (bool, str, type(None))):
-            raise InvalidArguments('"export_dynamic" keyword argument must be a boolean or string')
-        if self.implib:
-            self.export_dynamic = True
-        if self.export_dynamic and self.implib is False:
-            raise InvalidArguments('"implib" keyword argument must not be false for if "export_dynamic" is true')
+        self.implib = implib
         # Only linkwithable if using export_dynamic
         self.is_linkwithable = self.export_dynamic
         # Remember that this exe was returned by `find_program()` through an override
         self.was_returned_by_find_program = False
+
+        # The import library this target will generate
+        self.import_filename: T.Optional[str] = None
+        # The import library that Visual Studio would generate (and accept)
+        self.vs_import_filename: T.Optional[str] = None
+        # The import library that GCC would generate (and prefer)
+        self.gcc_import_filename: T.Optional[str] = None
+        # The debugging information file this target will generate
+        self.debug_filename: T.Optional[str] = None
+
+        # If using export_dynamic, set the import library name
+        if self.export_dynamic:
+            machine = self.environment.machines[self.for_machine]
+            implib_basename = self.name + '.exe'
+            if isinstance(self.implib, str):
+                implib_basename = self.implib
+            if machine.is_windows() or machine.is_cygwin():
+                self.vs_import_filename = f'{implib_basename}.lib'
+                self.gcc_import_filename = f'lib{implib_basename}.a'
+                if self.get_using_msvc():
+                    self.import_filename = self.vs_import_filename
+                else:
+                    self.import_filename = self.gcc_import_filename
 
     def post_init(self) -> None:
         super().post_init()
@@ -1740,28 +1758,6 @@ class Executable(BuildTarget):
         if self.suffix:
             self.filename += '.' + self.suffix
         self.outputs = [self.filename]
-
-        # The import library this target will generate
-        self.import_filename = None
-        # The import library that Visual Studio would generate (and accept)
-        self.vs_import_filename = None
-        # The import library that GCC would generate (and prefer)
-        self.gcc_import_filename = None
-        # The debugging information file this target will generate
-        self.debug_filename = None
-
-        # If using export_dynamic, set the import library name
-        if self.export_dynamic:
-            implib_basename = self.name + '.exe'
-            if isinstance(self.implib, str):
-                implib_basename = self.implib
-            if machine.is_windows() or machine.is_cygwin():
-                self.vs_import_filename = f'{implib_basename}.lib'
-                self.gcc_import_filename = f'lib{implib_basename}.a'
-                if self.get_using_msvc():
-                    self.import_filename = self.vs_import_filename
-                else:
-                    self.import_filename = self.gcc_import_filename
 
         create_debug_file = (
             machine.is_windows()
