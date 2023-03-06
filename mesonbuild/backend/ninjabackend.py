@@ -1395,15 +1395,16 @@ class NinjaBackend(backends.Backend):
         # Create introspection information
         self.create_target_source_introspection(target, compiler, compile_args, src_list, gen_src_list)
 
-    def generate_cs_resource_tasks(self, target):
-        args = []
-        deps = []
+    def generate_cs_resource_tasks(self, target: build.BuildTarget) -> T.Tuple[T.List[str], T.List[str]]:
+        args: T.List[str] = []
+        deps: T.List[str] = []
         for r in target.resources:
-            rel_sourcefile = os.path.join(self.build_to_src, target.subdir, r)
+            rel_sourcefile = r.rel_to_builddir(self.build_to_src)
             if r.endswith('.resources'):
                 a = '-resource:' + rel_sourcefile
-            elif r.endswith('.txt') or r.endswith('.resx'):
-                ofilebase = os.path.splitext(os.path.basename(r))[0] + '.resources'
+            else:
+                # TODO: this should really be handled by a CustomTarget higher up in the stack
+                ofilebase = os.path.splitext(r.fname)[0] + '.resources'
                 ofilename = os.path.join(self.get_target_private_dir(target), ofilebase)
                 elem = NinjaBuildElement(self.all_outputs, ofilename, "CUSTOM_COMMAND", rel_sourcefile)
                 elem.add_item('COMMAND', ['resgen', rel_sourcefile, ofilename])
@@ -1411,8 +1412,6 @@ class NinjaBackend(backends.Backend):
                 self.add_build(elem)
                 deps.append(ofilename)
                 a = '-resource:' + ofilename
-            else:
-                raise InvalidArguments(f'Unknown resource file {r}.')
             args.append(a)
         return args, deps
 

@@ -700,6 +700,7 @@ class BuildTarget(Target):
             link_whole: T.Optional[T.List[T.Union[StaticLibrary, CustomTarget, CustomTargetIndex]]] = None,
             name_prefix: T.Optional[str] = None,
             name_suffix: T.Optional[str] = None,
+            resources: T.Optional[T.List[File]] = None,
             override_options: T.Optional[T.Dict[OptionKey, str]] = None,
             ):
         super().__init__(name, subdir, subproject, build_by_default, for_machine, environment,
@@ -734,6 +735,7 @@ class BuildTarget(Target):
         self.name_prefix_set = name_prefix is not None
         self.suffix = name_suffix
         self.name_suffix_set = name_suffix is not None
+        self.resources = resources
         self.filename = 'no_name'
         # The list of all files outputted by this target. Useful in cases such
         # as Vala which generates .vapi and .h besides the compiled output.
@@ -1119,14 +1121,6 @@ class BuildTarget(Target):
             raise InvalidArguments('Argument gui_app can only be used on executables.')
         elif 'win_subsystem' in kwargs:
             raise InvalidArguments('Argument win_subsystem can only be used on executables.')
-        resources = extract_as_list(kwargs, 'resources')
-        for r in resources:
-            if not isinstance(r, str):
-                raise InvalidArguments('Resource argument is not a string.')
-            trial = os.path.join(self.environment.get_source_dir(), self.subdir, r)
-            if not os.path.isfile(trial):
-                raise InvalidArguments(f'Tried to add non-existing resource {r}.')
-        self.resources = resources
         if isinstance(self, StaticLibrary):
             # You can't disable PIC on OS X. The compiler ignores -fno-PIC.
             # PIC is always on for Windows (all code is position-independent
@@ -1741,6 +1735,7 @@ class Executable(BuildTarget):
             link_whole: T.Optional[T.List[T.Union[StaticLibrary, CustomTarget, CustomTargetIndex]]] = None,
             name_prefix: T.Optional[str] = None,
             name_suffix: T.Optional[str] = None,
+            resources: T.Optional[T.List[File]] = None,
             override_options: T.Optional[T.Dict[OptionKey, str]] = None,
             ):
         key = OptionKey('b_pie')
@@ -1770,7 +1765,9 @@ class Executable(BuildTarget):
                          gnu_symbol_visibility=gnu_symbol_visibility,
                          name_prefix=name_prefix,
                          name_suffix=name_suffix,
-                         override_options=override_options)
+                         override_options=override_options,
+                         resources=resources,
+                         )
         # Check for export_dynamic
         self.export_dynamic = kwargs.get('export_dynamic', False)
         if not isinstance(self.export_dynamic, bool):
@@ -1943,6 +1940,7 @@ class StaticLibrary(BuildTarget):
             link_whole: T.Optional[T.List[T.Union[StaticLibrary, CustomTarget, CustomTargetIndex]]] = None,
             name_prefix: T.Optional[str] = None,
             name_suffix: T.Optional[str] = None,
+            resources: T.Optional[T.List[File]] = None,
             override_options: T.Optional[T.Dict[OptionKey, str]] = None,
             ):
         self.prelink = kwargs.get('prelink', False)
@@ -1972,7 +1970,9 @@ class StaticLibrary(BuildTarget):
                          gnu_symbol_visibility=gnu_symbol_visibility,
                          name_prefix=name_prefix,
                          name_suffix=name_suffix,
-                         override_options=override_options)
+                         override_options=override_options,
+                         resources=resources,
+                         )
 
     def post_init(self) -> None:
         super().post_init()
@@ -2075,6 +2075,7 @@ class SharedLibrary(BuildTarget):
             link_whole: T.Optional[T.List[T.Union[StaticLibrary, CustomTarget, CustomTargetIndex]]] = None,
             name_prefix: T.Optional[str] = None,
             name_suffix: T.Optional[str] = None,
+            resources: T.Optional[T.List[File]] = None,
             override_options: T.Optional[T.Dict[OptionKey, str]] = None,
             ):
         self.soversion = None
@@ -2116,7 +2117,9 @@ class SharedLibrary(BuildTarget):
                          gnu_symbol_visibility=gnu_symbol_visibility,
                          name_prefix=name_prefix,
                          name_suffix=name_suffix,
-                         override_options=override_options)
+                         override_options=override_options,
+                         resources=resources,
+                         )
 
     def post_init(self) -> None:
         super().post_init()
@@ -2465,6 +2468,7 @@ class SharedModule(SharedLibrary):
             link_whole: T.Optional[T.List[T.Union[StaticLibrary, CustomTarget, CustomTargetIndex]]] = None,
             name_prefix: T.Optional[str] = None,
             name_suffix: T.Optional[str] = None,
+            resources: T.Optional[T.List[File]] = None,
             override_options: T.Optional[T.Dict[OptionKey, str]] = None,
             ):
         if 'version' in kwargs:
@@ -2495,7 +2499,9 @@ class SharedModule(SharedLibrary):
                          gnu_symbol_visibility=gnu_symbol_visibility,
                          name_prefix=name_prefix,
                          name_suffix=name_suffix,
-                         override_options=override_options)
+                         override_options=override_options,
+                         resources=resources,
+                         )
         # We need to set the soname in cases where build files link the module
         # to build targets, see: https://github.com/mesonbuild/meson/issues/9492
         self.force_soname = False
