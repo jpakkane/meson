@@ -1081,13 +1081,6 @@ class BuildTarget(Target):
         kwargs.get('modules', [])
         self.need_install = kwargs.get('install', self.need_install)
 
-        if isinstance(self, Executable) or (isinstance(self, StaticLibrary) and not self.pic):
-            # Executables must be PIE on Android
-            if self.environment.machines[self.for_machine].is_android():
-                self.pie = True
-            else:
-                self.pie = self._extract_pic_pie(kwargs, 'pie', 'b_pie')
-
     def _extract_pic_pie(self, kwargs, arg: str, option: str):
         # Check if we have -fPIC, -fpic, -fPIE, or -fpie in cflags
         all_flags = self.extra_args['c'] + self.extra_args['cpp']
@@ -1100,6 +1093,10 @@ class BuildTarget(Target):
         # PIC is always on for Windows (all code is position-independent
         # since library loading is done differently)
         if arg == 'pic' and (m.is_darwin() or m.is_windows()):
+            return True
+
+        # Executables must always be PIE on Android
+        if arg == 'pie' and m.is_android():
             return True
 
         k = OptionKey(option)
@@ -1649,13 +1646,11 @@ class Executable(BuildTarget):
             vala_gir: T.Optional[str] = None,
             c_pch: T.Optional[T.List[str]] = None,
             cpp_pch: T.Optional[T.List[str]] = None,
+            pie: T.Optional[bool] = None,
             implib: T.Union[str, bool] = False,
             export_dynamic: bool = False,
             win_subsystem: str = 'console',
             ):
-        key = OptionKey('b_pie')
-        if 'pie' not in kwargs and key in environment.coredata.options:
-            kwargs['pie'] = environment.coredata.options[key].value
         super().__init__(name, subdir, subproject, for_machine, sources, structured_sources, objects,
                          environment, compilers, kwargs,
                          build_by_default=build_by_default,
@@ -1696,6 +1691,7 @@ class Executable(BuildTarget):
         self.export_dynamic = export_dynamic
         self.win_subsystem = win_subsystem
         self.implib = implib
+        self.pie = self._extract_pic_pie({'pie': pie}, 'pie', 'b_pie')
         # Only linkwithable if using export_dynamic
         self.is_linkwithable = self.export_dynamic
         # Remember that this exe was returned by `find_program()` through an override
@@ -1909,6 +1905,8 @@ class StaticLibrary(BuildTarget):
                          cpp_pch=cpp_pch,
                          )
         self.pic = self._extract_pic_pie({'pic': pic}, 'pic', 'b_staticpic')
+        self.pie = False if self.pic else self._extract_pic_pie({'pie': None}, 'pie', 'b_pie')
+
         self.prelink = prelink
 
     def post_init(self) -> None:

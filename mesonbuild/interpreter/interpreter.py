@@ -3279,6 +3279,7 @@ class Interpreter(InterpreterBase, HoldableObject):
             vala_gir=kwargs['vala_gir'],
             c_pch=kwargs['c_pch'],
             cpp_pch=kwargs['cpp_pch'],
+            pie=kwargs['pie'],
             implib=implib,
             export_dynamic=export_dynamic,
             win_subsystem=kwargs['win_subsystem'],

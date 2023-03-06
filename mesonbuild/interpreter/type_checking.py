@@ -865,6 +865,7 @@ _EXCLUSIVE_EXECUTABLE_KWS: T.List[KwargInfo] = [
         since='0.56.0',
         validator=_win_subsystem_validator,
     ),
+    KwargInfo('pie', (bool, NoneType), since='0.49.0'),
 ]
 
 EXECUTABLE_KWS: T.List[KwargInfo] = [

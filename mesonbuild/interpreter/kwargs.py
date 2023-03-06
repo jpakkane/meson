@@ -420,6 +420,7 @@ class _ExecutableMixin(TypedDict):
     export_dynamic: bool
     gui_app: T.Optional[bool]
     implib: T.Optional[T.Union[str, bool]]
+    pie: T.Optional[bool]
     win_subsystem: T.Optional[str]
 
 
