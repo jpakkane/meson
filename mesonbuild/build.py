@@ -806,18 +806,12 @@ class BuildTarget(Target):
         if len(unknowns) > 0:
             mlog.warning('Unknown keyword argument(s) in target {}: {}.'.format(self.name, ', '.join(unknowns)))
 
-    def process_objectlist(self, objects):
-        assert isinstance(objects, list)
+    def process_objectlist(self, objects: T.List[ObjectTypes]) -> None:
         for s in objects:
             if isinstance(s, (str, File, ExtractedObjects)):
                 self.objects.append(s)
-            elif isinstance(s, (CustomTarget, CustomTargetIndex, GeneratedList)):
-                non_objects = [o for o in s.get_outputs() if not is_object(o)]
-                if non_objects:
-                    raise InvalidArguments(f'Generated file {non_objects[0]} in the \'objects\' kwarg is not an object.')
-                self.generated.append(s)
             else:
-                raise InvalidArguments(f'Bad object of type {type(s).__name__!r} in target {self.name!r}.')
+                self.generated.append(s)
 
     def process_sourcelist(self, sources: T.List['SourceOutputs']) -> None:
         """Split sources into generated and static sources.

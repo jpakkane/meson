@@ -13,11 +13,13 @@ from ..build import (CustomTarget, BuildTarget,
                      BothLibraries, SharedLibrary, StaticLibrary, Jar, Executable,
                      StructuredSources)
 from ..coredata import UserFeatureOption
+from ..compilers import is_object
 from ..dependencies import Dependency, InternalDependency
 from ..interpreterbase.decorators import KwargInfo, ContainerTypeInfo
 from ..mesonlib import (File, FileMode, MachineChoice, listify, has_path_sep,
                         OptionKey, EnvironmentVariables)
 from ..programs import ExternalProgram
+
 
 # Helper definition for type checks that are `Optional[T]`
 NoneType: T.Type[None] = type(None)
@@ -526,6 +528,26 @@ _ALL_TARGET_KWS: T.List[KwargInfo] = [
     OVERRIDE_OPTIONS_KW.evolve(since='0.40.0'),
 ]
 
+
+def _object_validator(vals: T.List[T.Union[str, File, ExtractedObjects, GeneratedList, CustomTarget, CustomTargetIndex]],
+                      _: ValidatorState) -> T.Optional[str]:
+    non_objects: T.List[str] = []
+
+    for val in vals:
+        if isinstance(val, ExtractedObjects):
+            continue
+        elif isinstance(val, (str, File)):
+            if not is_object(val):
+                non_objects.append(str(val))
+        else:
+            non_objects.extend([o for o in val.get_outputs() if not is_object(o)])
+
+    if non_objects:
+        return (f'File{"s" if len(non_objects) > 1 else ""}: "{", ".join(non_objects)}" '
+                'in the "objects" keyword arguments are not objects')
+    return None
+
+
 # For all BuildTarget derived classes except `Jar()``
 _BUILD_TARGET_KWS: T.List[KwargInfo] = [
     KwargInfo('build_rpath', str, default='', since='0.42.0'),
@@ -549,6 +571,17 @@ _BUILD_TARGET_KWS: T.List[KwargInfo] = [
     _NAME_PREFIX_KW,
     _NAME_PREFIX_KW.evolve(name='name_suffix'),
     NATIVE_KW,
+    KwargInfo(
+        'objects',
+        ContainerTypeInfo(list, (str, File, ExtractedObjects, GeneratedList, CustomTarget, CustomTargetIndex)),
+        default=[],
+        listify=True,
+        validator=_object_validator,
+        since_values={
+            ContainerTypeInfo(list, (GeneratedList, CustomTarget, CustomTargetIndex)):
+                ('1.1.0', 'Pass generated sources as positional source arguments')
+        }
+    ),
     # sources is here because JAR needs to have it's own implementation
     KwargInfo(
         'sources',
