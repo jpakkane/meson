@@ -3239,6 +3239,7 @@ class Interpreter(InterpreterBase, HoldableObject):
             override_options=kwargs['override_options'],
             resources=self.source_strings_to_files(kwargs['resources']),
             vala_header=kwargs['vala_header'],
+            vala_vapi=kwargs['vala_vapi'],
         )
 
     def __build_sh_lib(self, name: str, sources: T.List[BuildTargetSource],
@@ -3273,6 +3274,7 @@ class Interpreter(InterpreterBase, HoldableObject):
             override_options=kwargs['override_options'],
             resources=self.source_strings_to_files(kwargs['resources']),
             vala_header=kwargs['vala_header'],
+            vala_vapi=kwargs['vala_vapi'],
         )
 
     def __build_sh_mod(self, name: str, sources: T.List[BuildTargetSource],
@@ -3307,6 +3309,7 @@ class Interpreter(InterpreterBase, HoldableObject):
             override_options=kwargs['override_options'],
             resources=self.source_strings_to_files(kwargs['resources']),
             vala_header=kwargs['vala_header'],
+            vala_vapi=kwargs['vala_vapi'],
         )
 
     def __build_st_lib(self, name: str, sources: T.List[BuildTargetSource],
@@ -3341,6 +3344,7 @@ class Interpreter(InterpreterBase, HoldableObject):
             override_options=kwargs['override_options'],
             resources=self.source_strings_to_files(kwargs['resources']),
             vala_header=kwargs['vala_header'],
+            vala_vapi=kwargs['vala_vapi'],
         )
 
     def build_target(

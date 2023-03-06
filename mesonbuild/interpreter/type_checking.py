@@ -620,6 +620,7 @@ _BUILD_TARGET_KWS: T.List[KwargInfo] = [
                                else None,
     ),
     KwargInfo('vala_header', (str, NoneType), validator=_empty_string_validator),
+    KwargInfo('vala_vapi', (str, NoneType), validator=_empty_string_validator),
 ]
 
 STATIC_LIB_KWS: T.List[KwargInfo] = [

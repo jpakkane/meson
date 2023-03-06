@@ -359,6 +359,7 @@ class _BuildTargetBase(_AllTargetBase):
     objects: T.Sequence[build.ObjectTypes]
     resources: T.List[File]
     vala_header: T.Optional[str]
+    vala_vapi: T.Optional[str]
 
 
 class _StaticLibraryMixin(TypedDict):
