@@ -360,6 +360,7 @@ class _BuildTargetBase(_AllTargetBase):
     resources: T.List[File]
     vala_header: T.Optional[str]
     vala_vapi: T.Optional[str]
+    vala_gir: T.Optional[str]
 
 
 class _StaticLibraryMixin(TypedDict):
