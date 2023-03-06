@@ -317,6 +317,13 @@ class DoSubproject(ExtractRequired):
 # '' in this case means "don't do anything"
 GNU_SYMBOL_VISIBILITY = Literal['', 'default', 'internal', 'hidden', 'protected', 'inlineshidden']
 
+# Must be kept in sync with the list in
+# mesonbuild/compilers/compilers.py:all_languages
+#
+# nasm and asm are intentionally left off this list as they do not link, instead
+# they rely on C/C++ for linking
+LINK_LANGUAGE = Literal['c', 'cpp', 'objc', 'objcpp', 'd', 'rust', 'swift', 'cuda', 'fortran', 'vala', 'cs', 'java', 'cython']
+
 
 class _AllTargetBase(TypedDict):
 
@@ -344,6 +351,7 @@ class _BuildTargetBase(_AllTargetBase):
     d_unittest: bool
     gnu_symbol_visibility: GNU_SYMBOL_VISIBILITY
     install_rpath: str
+    link_language: T.Optional[LINK_LANGUAGE]
 
 
 class _StaticLibraryMixin(TypedDict):

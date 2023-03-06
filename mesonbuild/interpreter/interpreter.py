@@ -3228,6 +3228,7 @@ class Interpreter(InterpreterBase, HoldableObject):
             install_tag=kwargs['install_tag'],
             link_args=kwargs['link_args'],
             link_depends=self.source_strings_to_files(kwargs['link_depends']) if kwargs['link_depends'] else None,
+            link_language=kwargs['link_language'],
             gnu_symbol_visibility=kwargs['gnu_symbol_visibility'],
             override_options=kwargs['override_options'],
         )
@@ -3256,6 +3257,7 @@ class Interpreter(InterpreterBase, HoldableObject):
             install_tag=kwargs['install_tag'],
             link_args=kwargs['link_args'],
             link_depends=self.source_strings_to_files(kwargs['link_depends']) if kwargs['link_depends'] else None,
+            link_language=kwargs['link_language'],
             gnu_symbol_visibility=kwargs['gnu_symbol_visibility'],
             override_options=kwargs['override_options'],
         )
@@ -3284,6 +3286,7 @@ class Interpreter(InterpreterBase, HoldableObject):
             install_tag=kwargs['install_tag'],
             link_args=kwargs['link_args'],
             link_depends=self.source_strings_to_files(kwargs['link_depends']) if kwargs['link_depends'] else None,
+            link_language=kwargs['link_language'],
             gnu_symbol_visibility=kwargs['gnu_symbol_visibility'],
             override_options=kwargs['override_options'],
         )
@@ -3312,6 +3315,7 @@ class Interpreter(InterpreterBase, HoldableObject):
             install_tag=kwargs['install_tag'],
             link_args=kwargs['link_args'],
             link_depends=self.source_strings_to_files(kwargs['link_depends']) if kwargs['link_depends'] else None,
+            link_language=kwargs['link_language'],
             gnu_symbol_visibility=kwargs['gnu_symbol_visibility'],
             override_options=kwargs['override_options'],
         )
