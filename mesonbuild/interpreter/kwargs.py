@@ -343,6 +343,7 @@ class _BuildTargetBase(_AllTargetBase):
     d_module_versions: T.List[T.Union[str, int]]
     d_unittest: bool
     gnu_symbol_visibility: GNU_SYMBOL_VISIBILITY
+    install_rpath: str
 
 
 class _StaticLibraryMixin(TypedDict):

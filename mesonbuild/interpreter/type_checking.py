@@ -526,6 +526,7 @@ _BUILD_TARGET_KWS: T.List[KwargInfo] = [
         'gnu_symbol_visibility', str, default='', since='0.48.0',
         validator=in_set_validator({'', 'default', 'internal', 'hidden', 'protected', 'inlineshidden'}),
     ),
+    KwargInfo('install_rpath', str, default=''),
     # sources is here because JAR needs to have it's own implementation
     KwargInfo(
         'sources',
