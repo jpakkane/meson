@@ -406,6 +406,7 @@ class _SharedLibraryMixin(TypedDict):
 
     version: T.Optional[str]
     soversion: T.Optional[str]
+    darwin_versions: T.Tuple[T.Optional[str], T.Optional[str]]
 
 
 class SharedLibrary(_BuildTargetBase, _SharedModuleMixin, _SharedLibraryMixin):

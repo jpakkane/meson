@@ -738,6 +738,38 @@ _SHARED_LIB_RUST_CRATE = _RUST_CRATE_TYPE_KW.evolve(
 )
 
 
+def _validate_darwin_versions(darwin_versions: T.List[T.Union[str, int]], _: ValidatorState) -> T.Optional[str]:
+    if len(darwin_versions) > 2:
+        return f"Must contain between 0 and 2 elements, not {len(darwin_versions)}"
+    if len(darwin_versions) == 1:
+        darwin_versions = 2 * darwin_versions
+    for v in darwin_versions:
+        if isinstance(v, int):
+            v = str(v)
+        if not re.fullmatch(r'[0-9]+(\.[0-9]+){0,2}', v):
+            return 'must be X.Y.Z where X, Y, Z are numbers, and Y and Z are optional'
+        try:
+            parts = v.split('.')
+        except ValueError:
+            return f'badly formed value: "{v}, not in X.Y.Z form'
+        if len(parts) in {1, 2, 3} and int(parts[0]) > 65535:
+            return 'must be X.Y.Z where X is [0, 65535] and Y, Z are optional'
+        if len(parts) in {2, 3} and int(parts[1]) > 255:
+            return 'must be X.Y.Z where Y is [0, 255] and Y, Z are optional'
+        if len(parts) == 3 and int(parts[2]) > 255:
+            return 'must be X.Y.Z where Z is [0, 255] and Y, Z are optional'
+    return None
+
+
+def _convert_darwin_versions(val: T.List[T.Union[str, int]], _: ValidatorState) -> T.Optional[T.Tuple[str, str]]:
+    if not val:
+        return None
+    elif len(val) == 1:
+        v = str(val[0])
+        return (v, v)
+    return (str(val[0]), str(val[1]))
+
+
 def _validate_library_version(ver: T.Optional[str], _: ValidatorState) -> T.Optional[str]:
     if ver is not None and not re.fullmatch(r'[0-9]+(\.[0-9]+){0,2}', ver):
         return (f'Invalid Shared library version "{ver}". '
@@ -745,9 +777,20 @@ def _validate_library_version(ver: T.Optional[str], _: ValidatorState) -> T.Opti
     return None
 
 
+_DARWIN_VERSIONS_KW: KwargInfo[T.List[T.Union[str, int]]] = KwargInfo(
+    'darwin_versions',
+    ContainerTypeInfo(list, (str, int)),
+    default=[],
+    listify=True,
+    validator=_validate_darwin_versions,
+    convertor=_convert_darwin_versions,
+    since='0.48.0',
+)
+
 _EXCLUSIVE_SHARED_LIB_KWS: T.List[KwargInfo] = [
     KwargInfo('version', (str, NoneType), validator=_validate_library_version),
     KwargInfo('soversion', (str, int, NoneType), convertor=lambda x, _: str(x) if x is not None else None),
+    _DARWIN_VERSIONS_KW,
 ]
 
 SHARED_LIB_KWS: T.List[KwargInfo] = [
@@ -764,6 +807,10 @@ SHARED_MOD_KWS: T.List[KwargInfo] = [
     *_ALL_TARGET_KWS,
     *_BUILD_TARGET_KWS,
     *_LANGUAGE_KWS,
+    _DARWIN_VERSIONS_KW.evolve(
+        deprecated='1.1.0',
+        deprecated_message='This argument is only valid for shared_library(), and should be removed. It is, and always has been, ignored.'
+    ),
     _SHARED_LIB_RUST_CRATE,
     _VS_MODULE_DEF_KW.evolve(since='0.52.0'),
     # Shared modules can additionally by linked with Executables

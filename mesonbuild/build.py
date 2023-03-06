@@ -2028,11 +2028,10 @@ class SharedLibrary(BuildTarget):
             vs_module_defs: T.Optional[T.Union[File, CustomTarget, CustomTargetIndex]] = None,
             c_pch: T.Optional[T.List[str]] = None,
             cpp_pch: T.Optional[T.List[str]] = None,
+            darwin_versions: T.Optional[T.Tuple[str, str]] = None,
             soversion: T.Optional[str] = None,
             version: T.Optional[str] = None,
             ):
-        # Max length 2, first element is compatibility_version, second is current_version
-        self.darwin_versions = []
         # The import library this target will generate
         self.import_filename = None
         # The import library that Visual Studio would generate (and accept)
@@ -2043,6 +2042,7 @@ class SharedLibrary(BuildTarget):
         self.debug_filename = None
         # Use by the pkgconfig module
         self.shared_library_only = False
+        # MacOs, iOS, and tvOS dylib compatibility_versin and current_version
 
         if not environment.machines[for_machine].is_android():
             self.ltversion = version
@@ -2055,9 +2055,14 @@ class SharedLibrary(BuildTarget):
                 self.soversion = version.split('.', 1)[0]
             else:
                 self.soversion = None
+
+            self.darwin_versions = darwin_versions
+            if not self.darwin_versions and version:
+                self.darwin_versions = (version, version)
         else:
             self.ltversion = None
             self.soversion = None
+            self.darwin_versions = None
 
         assert hasattr(self, 'soversion')
 
@@ -2242,55 +2247,6 @@ class SharedLibrary(BuildTarget):
         self.outputs[0] = self.filename
         if create_debug_file:
             self.debug_filename = os.path.splitext(self.filename)[0] + '.pdb'
-
-    @staticmethod
-    def _validate_darwin_versions(darwin_versions):
-        try:
-            if isinstance(darwin_versions, int):
-                darwin_versions = str(darwin_versions)
-            if isinstance(darwin_versions, str):
-                darwin_versions = 2 * [darwin_versions]
-            if not isinstance(darwin_versions, list):
-                raise InvalidArguments('Shared library darwin_versions: must be a string, integer,'
-                                       f'or a list, not {darwin_versions!r}')
-            if len(darwin_versions) > 2:
-                raise InvalidArguments('Shared library darwin_versions: list must contain 2 or fewer elements')
-            if len(darwin_versions) == 1:
-                darwin_versions = 2 * darwin_versions
-            for i, v in enumerate(darwin_versions[:]):
-                if isinstance(v, int):
-                    v = str(v)
-                if not isinstance(v, str):
-                    raise InvalidArguments('Shared library darwin_versions: list elements '
-                                           f'must be strings or integers, not {v!r}')
-                if not re.fullmatch(r'[0-9]+(\.[0-9]+){0,2}', v):
-                    raise InvalidArguments('Shared library darwin_versions: must be X.Y.Z where '
-                                           'X, Y, Z are numbers, and Y and Z are optional')
-                parts = v.split('.')
-                if len(parts) in {1, 2, 3} and int(parts[0]) > 65535:
-                    raise InvalidArguments('Shared library darwin_versions: must be X.Y.Z '
-                                           'where X is [0, 65535] and Y, Z are optional')
-                if len(parts) in {2, 3} and int(parts[1]) > 255:
-                    raise InvalidArguments('Shared library darwin_versions: must be X.Y.Z '
-                                           'where Y is [0, 255] and Y, Z are optional')
-                if len(parts) == 3 and int(parts[2]) > 255:
-                    raise InvalidArguments('Shared library darwin_versions: must be X.Y.Z '
-                                           'where Z is [0, 255] and Y, Z are optional')
-                darwin_versions[i] = v
-        except ValueError:
-            raise InvalidArguments('Shared library darwin_versions: value is invalid')
-        return darwin_versions
-
-    def process_kwargs(self, kwargs):
-        super().process_kwargs(kwargs)
-
-        if not self.environment.machines[self.for_machine].is_android():
-            # macOS, iOS and tvOS dylib compatibility_version and current_version
-            if 'darwin_versions' in kwargs:
-                self.darwin_versions = self._validate_darwin_versions(kwargs['darwin_versions'])
-            elif self.soversion:
-                # If unspecified, pick the soversion
-                self.darwin_versions = 2 * [self.soversion]
 
     def get_import_filename(self) -> T.Optional[str]:
         """
