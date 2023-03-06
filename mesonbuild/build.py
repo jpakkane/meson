@@ -1894,10 +1894,8 @@ class StaticLibrary(BuildTarget):
             c_pch: T.Optional[T.List[str]] = None,
             cpp_pch: T.Optional[T.List[str]] = None,
             pic: T.Optional[bool] = None,
+            prelink: bool = False,
             ):
-        self.prelink = kwargs.get('prelink', False)
-        if not isinstance(self.prelink, bool):
-            raise InvalidArguments('Prelink keyword argument must be a boolean.')
         super().__init__(name, subdir, subproject, for_machine, sources, structured_sources, objects,
                          environment, compilers, kwargs,
                          build_by_default=build_by_default,
@@ -1935,6 +1933,7 @@ class StaticLibrary(BuildTarget):
                          cpp_pch=cpp_pch,
                          )
         self.pic = self._extract_pic_pie({'pic': pic}, 'pic', 'b_staticpic')
+        self.prelink = prelink
 
     def post_init(self) -> None:
         super().post_init()

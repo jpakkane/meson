@@ -383,6 +383,7 @@ class _BuildTargetBase(_AllTargetBase):
 class _StaticLibraryMixin(TypedDict):
 
     pic: T.Optional[bool]
+    prelink: bool
 
 
 class StaticLibrary(_BuildTargetBase, _StaticLibraryMixin):

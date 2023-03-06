@@ -719,6 +719,7 @@ _LANGUAGE_KWS.append(KwargInfo(
 
 _EXCLUSIVE_STATIC_LIB_KWS: T.List[KwargInfo] = [
     KwargInfo('pic', (bool, NoneType), since='0.36.0'),
+    KwargInfo('prelink', bool, default=False, since='0.57.0'),
 ]
 
 STATIC_LIB_KWS: T.List[KwargInfo] = [
