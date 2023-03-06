@@ -1670,6 +1670,7 @@ class Executable(BuildTarget):
             vala_gir: T.Optional[str] = None,
             c_pch: T.Optional[T.List[str]] = None,
             cpp_pch: T.Optional[T.List[str]] = None,
+            export_dynamic: bool = False,
             ):
         key = OptionKey('b_pie')
         if 'pie' not in kwargs and key in environment.coredata.options:
@@ -1711,9 +1712,7 @@ class Executable(BuildTarget):
                          cpp_pch=cpp_pch,
                          )
         # Check for export_dynamic
-        self.export_dynamic = kwargs.get('export_dynamic', False)
-        if not isinstance(self.export_dynamic, bool):
-            raise InvalidArguments('"export_dynamic" keyword argument must be a boolean')
+        self.export_dynamic = export_dynamic
         self.implib = kwargs.get('implib')
         if not isinstance(self.implib, (bool, str, type(None))):
             raise InvalidArguments('"export_dynamic" keyword argument must be a boolean or string')

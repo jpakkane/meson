@@ -3263,6 +3263,7 @@ class Interpreter(InterpreterBase, HoldableObject):
             vala_gir=kwargs['vala_gir'],
             c_pch=kwargs['c_pch'],
             cpp_pch=kwargs['cpp_pch'],
+            export_dynamic=kwargs['export_dynamic']
         )
 
     def __build_sh_lib(self, name: str, sources: T.List[BuildTargetSource],

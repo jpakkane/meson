@@ -416,7 +416,8 @@ class SharedLibrary(_BuildTargetBase, _SharedModuleMixin, _SharedLibraryMixin):
 
 
 class _ExecutableMixin(TypedDict):
-    pass
+
+    export_dynamic: bool
 
 
 class Executable(_BuildTargetBase, _ExecutableMixin):
