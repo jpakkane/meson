@@ -548,6 +548,7 @@ _BUILD_TARGET_KWS: T.List[KwargInfo] = [
     LINK_WHOLE_KW.evolve(since='0.40.0'),
     _NAME_PREFIX_KW,
     _NAME_PREFIX_KW.evolve(name='name_suffix'),
+    NATIVE_KW,
     # sources is here because JAR needs to have it's own implementation
     KwargInfo(
         'sources',
