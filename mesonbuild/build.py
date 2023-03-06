@@ -702,6 +702,7 @@ class BuildTarget(Target):
             name_prefix: T.Optional[str] = None,
             name_suffix: T.Optional[str] = None,
             resources: T.Optional[T.List[File]] = None,
+            rust_crate_type: str,  # this intentionally doesn't have a value
             override_options: T.Optional[T.Dict[OptionKey, str]] = None,
             vala_header: T.Optional[str] = None,
             vala_vapi: T.Optional[str] = None,
@@ -742,6 +743,7 @@ class BuildTarget(Target):
         self.suffix = name_suffix
         self.name_suffix_set = name_suffix is not None
         self.resources = resources
+        self.rust_crate_type = rust_crate_type
         self.vala_header = vala_header or f'{name}.h'
         self.vala_vapi = vala_vapi or f'{self.name}.vapi'
         self.vala_gir = vala_gir
@@ -1698,6 +1700,7 @@ class Executable(BuildTarget):
             name_prefix: T.Optional[str] = None,
             name_suffix: T.Optional[str] = None,
             resources: T.Optional[T.List[File]] = None,
+            rust_crate_type: str = 'bin',
             override_options: T.Optional[T.Dict[OptionKey, str]] = None,
             vala_header: T.Optional[str] = None,
             vala_vapi: T.Optional[str] = None,
@@ -1735,6 +1738,7 @@ class Executable(BuildTarget):
                          name_suffix=name_suffix,
                          override_options=override_options,
                          resources=resources,
+                         rust_crate_type=rust_crate_type,
                          vala_header=vala_header,
                          vala_vapi=vala_vapi,
                          vala_gir=vala_gir,
@@ -1915,6 +1919,7 @@ class StaticLibrary(BuildTarget):
             name_prefix: T.Optional[str] = None,
             name_suffix: T.Optional[str] = None,
             resources: T.Optional[T.List[File]] = None,
+            rust_crate_type: str = 'rlib',
             override_options: T.Optional[T.Dict[OptionKey, str]] = None,
             vala_header: T.Optional[str] = None,
             vala_vapi: T.Optional[str] = None,
@@ -1952,6 +1957,7 @@ class StaticLibrary(BuildTarget):
                          name_suffix=name_suffix,
                          override_options=override_options,
                          resources=resources,
+                         rust_crate_type=rust_crate_type if rust_crate_type != 'lib' else 'rlib',
                          vala_header=vala_header,
                          vala_vapi=vala_vapi,
                          vala_gir=vala_gir,
@@ -1964,13 +1970,6 @@ class StaticLibrary(BuildTarget):
         if 'cs' in self.compilers:
             raise InvalidArguments('Static libraries not supported for C#.')
         if 'rust' in self.compilers:
-            # If no crate type is specified, or it's the generic lib type, use rlib
-            if not hasattr(self, 'rust_crate_type') or self.rust_crate_type == 'lib':
-                mlog.debug('Defaulting Rust static library target crate type to rlib')
-                self.rust_crate_type = 'rlib'
-            # Don't let configuration proceed with a non-static crate type
-            elif self.rust_crate_type not in ['rlib', 'staticlib']:
-                raise InvalidArguments(f'Crate type "{self.rust_crate_type}" invalid for static libraries; must be "rlib" or "staticlib"')
             # See https://github.com/rust-lang/rust/issues/110460
             if self.rust_crate_type == 'rlib' and any(c in self.name for c in ['-', ' ', '.']):
                 raise InvalidArguments('Rust crate type "rlib" does not allow spaces, periods or dashes in the library name '
@@ -1985,12 +1984,8 @@ class StaticLibrary(BuildTarget):
         if self.prefix is None:
             self.prefix = 'lib'
         if self.suffix is None:
-            if 'rust' in self.compilers:
-                if not hasattr(self, 'rust_crate_type') or self.rust_crate_type == 'rlib':
-                    # default Rust static library suffix
-                    self.suffix = 'rlib'
-                elif self.rust_crate_type == 'staticlib':
-                    self.suffix = 'a'
+            if 'rust' in self.compilers and self.rust_crate_type == 'rlib':
+                self.suffix = 'rlib'
             else:
                 self.suffix = 'a'
         self.filename = self.prefix + self.name + '.' + self.suffix
@@ -2004,15 +1999,6 @@ class StaticLibrary(BuildTarget):
 
     def type_suffix(self):
         return "@sta"
-
-    def process_kwargs(self, kwargs):
-        super().process_kwargs(kwargs)
-        if 'rust_crate_type' in kwargs:
-            rust_crate_type = kwargs['rust_crate_type']
-            if isinstance(rust_crate_type, str):
-                self.rust_crate_type = rust_crate_type
-            else:
-                raise InvalidArguments(f'Invalid rust_crate_type "{rust_crate_type}": must be a string.')
 
     def is_linkable_target(self):
         return True
@@ -2062,6 +2048,7 @@ class SharedLibrary(BuildTarget):
             name_prefix: T.Optional[str] = None,
             name_suffix: T.Optional[str] = None,
             resources: T.Optional[T.List[File]] = None,
+            rust_crate_type: str = 'dylib',
             override_options: T.Optional[T.Dict[OptionKey, str]] = None,
             vala_header: T.Optional[str] = None,
             vala_vapi: T.Optional[str] = None,
@@ -2111,6 +2098,7 @@ class SharedLibrary(BuildTarget):
                          name_suffix=name_suffix,
                          override_options=override_options,
                          resources=resources,
+                         rust_crate_type=rust_crate_type if rust_crate_type != 'lib' else 'dylib',
                          vala_header=vala_header,
                          vala_vapi=vala_vapi,
                          vala_gir=vala_gir,
@@ -2121,13 +2109,6 @@ class SharedLibrary(BuildTarget):
     def post_init(self) -> None:
         super().post_init()
         if 'rust' in self.compilers:
-            # If no crate type is specified, or it's the generic lib type, use dylib
-            if not hasattr(self, 'rust_crate_type') or self.rust_crate_type == 'lib':
-                mlog.debug('Defaulting Rust dynamic library target crate type to "dylib"')
-                self.rust_crate_type = 'dylib'
-            # Don't let configuration proceed with a non-dynamic crate type
-            elif self.rust_crate_type not in ['dylib', 'cdylib', 'proc-macro']:
-                raise InvalidArguments(f'Crate type "{self.rust_crate_type}" invalid for dynamic libraries; must be "dylib", "cdylib", or "proc-macro"')
             # See https://github.com/rust-lang/rust/issues/110460
             if self.rust_crate_type != 'cdylib' and any(c in self.name for c in ['-', ' ', '.']):
                 raise InvalidArguments('Rust crate types "dylib" and "proc-macro" do not allow spaces, periods or dashes in the library name '
@@ -2352,15 +2333,6 @@ class SharedLibrary(BuildTarget):
                     'a file object or a Custom Target')
             self.process_link_depends(path)
 
-        if 'rust_crate_type' in kwargs:
-            rust_crate_type = kwargs['rust_crate_type']
-            if isinstance(rust_crate_type, str):
-                self.rust_crate_type = rust_crate_type
-            else:
-                raise InvalidArguments(f'Invalid rust_crate_type "{rust_crate_type}": must be a string.')
-            if rust_crate_type == 'proc-macro':
-                FeatureNew.single_use('Rust crate type "proc-macro"', '0.62.0', self.subproject)
-
     def get_import_filename(self) -> T.Optional[str]:
         """
         The name of the import library that will be outputted by the compiler
@@ -2467,6 +2439,7 @@ class SharedModule(SharedLibrary):
             name_prefix: T.Optional[str] = None,
             name_suffix: T.Optional[str] = None,
             resources: T.Optional[T.List[File]] = None,
+            rust_crate_type: str = 'dylib',
             override_options: T.Optional[T.Dict[OptionKey, str]] = None,
             vala_header: T.Optional[str] = None,
             vala_vapi: T.Optional[str] = None,
@@ -2505,6 +2478,7 @@ class SharedModule(SharedLibrary):
                          name_suffix=name_suffix,
                          override_options=override_options,
                          resources=resources,
+                         rust_crate_type=rust_crate_type,  # SharedLibrary will take care of this
                          vala_header=vala_header,
                          vala_vapi=vala_vapi,
                          vala_gir=vala_gir,
@@ -2803,7 +2777,8 @@ class CompileTarget(BuildTarget):
                          build_by_default=False,
                          dependencies=dependencies,
                          include_directories=include_directories,
-                         language_args=comp_args)
+                         language_args=comp_args,
+                         rust_crate_type='bin')
         self.filename = name
         self.compiler = compiler
         self.output_templ = output_templ
@@ -2931,7 +2906,8 @@ class Jar(BuildTarget):
                          install_tag=install_tag,
                          link_args=link_args,
                          link_depends=link_depends,
-                         override_options=override_options)
+                         override_options=override_options,
+                         rust_crate_type='lib')  # this shouldn't be necessary
 
         for t in self.link_targets:
             if not isinstance(t, Jar):

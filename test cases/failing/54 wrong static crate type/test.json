@@ -1,7 +1,7 @@
 {
   "stdout": [
     {
-      "line": "test cases/failing/54 wrong static crate type/meson.build:7:0: ERROR: Crate type \"cdylib\" invalid for static libraries; must be \"rlib\" or \"staticlib\""
+      "line": "test cases/failing/54 wrong static crate type/meson.build:7:0: ERROR: static_library keyword argument \"rust_crate_type\" must be one of lib, rlib, staticlib, not cdylib"
     }
   ]
 }

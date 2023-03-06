@@ -663,6 +663,13 @@ _BUILD_TARGET_KWS: T.List[KwargInfo] = [
     KwargInfo('vala_gir', (str, NoneType), validator=_empty_string_validator),
 ]
 
+_RUST_CRATE_TYPE_KW = KwargInfo(
+    'rust_crate_type',
+    str,
+    default='lib',
+    since='0.42.0',
+)
+
 _LANGUAGE_KWS: T.List[KwargInfo[T.List[str]]] = [
     KwargInfo(f'{lang}_args', ContainerTypeInfo(list, str), listify=True, default=[])
     for lang in compilers.all_languages ^ {'rust'}
@@ -676,28 +683,40 @@ STATIC_LIB_KWS: T.List[KwargInfo] = [
     *_LANGUAGE_KWS,
 ]
 
+_SHARED_LIB_RUST_CRATE = _RUST_CRATE_TYPE_KW.evolve(
+    validator=in_set_validator({'lib', 'dylib', 'cdylib', 'proc-macro'}),
+    since_values={'proc-macro': '0.62.0'}
+)
+
 SHARED_LIB_KWS: T.List[KwargInfo] = [
     *_ALL_TARGET_KWS,
     *_BUILD_TARGET_KWS,
     *_LANGUAGE_KWS,
+    _SHARED_LIB_RUST_CRATE,
 ]
 
 SHARED_MOD_KWS: T.List[KwargInfo] = [
     *_ALL_TARGET_KWS,
     *_BUILD_TARGET_KWS,
     *_LANGUAGE_KWS,
+    _SHARED_LIB_RUST_CRATE,
 ]
 
 BOTH_LIB_KWS: T.List[KwargInfo] = [
     *_ALL_TARGET_KWS,
     *_BUILD_TARGET_KWS,
     *_LANGUAGE_KWS,
+    _RUST_CRATE_TYPE_KW.evolve(
+        validator=in_set_validator({'lib', 'rlib', 'staticlib', 'cdylib', 'dylib', 'proc-macro'}),
+        since_values={'proc-macro': '0.62.0'},
+    ),
 ]
 
 EXECUTABLE_KWS: T.List[KwargInfo] = [
     *_ALL_TARGET_KWS,
     *_BUILD_TARGET_KWS,
     *_LANGUAGE_KWS,
+    _RUST_CRATE_TYPE_KW.evolve(validator=in_set_validator({'bin'})),
 ]
 
 _EXCLUSIVE_JAVA_KWS: T.List[KwargInfo] = [
@@ -715,6 +734,10 @@ JAR_KWS: T.List[KwargInfo] = [
     # these, we have to deprecate them and remove then in 2.0
     *[a.evolve(deprecated='1.1.0', deprecated_message='has always been ignored, and is safe to delete')
       for a in _BUILD_TARGET_KWS if a.name not in {'sources'}],
+    _RUST_CRATE_TYPE_KW.evolve(
+        deprecated='1.1.0',
+        deprecated_message='is not a valid argument for Jar, and should be removed. It is, and has always been, silently ignored',
+    ),
 ]
 
 BUILD_TARGET_KWS: T.List[KwargInfo] = [
@@ -731,4 +754,8 @@ BUILD_TARGET_KWS: T.List[KwargInfo] = [
     *_BUILD_TARGET_KWS,
     *_EXCLUSIVE_JAVA_KWS,
     *_LANGUAGE_KWS,
+    _RUST_CRATE_TYPE_KW.evolve(
+        validator=in_set_validator({'bin', 'lib', 'rlib', 'staticlib', 'cdylib', 'dylib', 'proc-macro'}),
+        since_values={'proc-macro': '0.62.0'},
+    ),
 ]

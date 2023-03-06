@@ -3385,7 +3385,6 @@ class Interpreter(InterpreterBase, HoldableObject):
             kwargs: kwtypes.BuildTarget,
             targetclass: T.Type[_BuildClassType]) -> _BuildClassType:
         @FeatureNewKwargs('build target', '1.2.0', ['rust_dependency_map'])
-        @FeatureNewKwargs('build target', '0.42.0', ['rust_crate_type'])
         def build_target_decorator_caller(self, node, args, kwargs):
             return True
 

@@ -384,7 +384,8 @@ class _StaticLibraryMixin(TypedDict):
 
 
 class StaticLibrary(_BuildTargetBase, _StaticLibraryMixin):
-    pass
+
+    rust_crate_type: Literal['lib', 'rlib', 'staticlib']
 
 
 class _SharedModuleMixin(TypedDict):
@@ -400,7 +401,8 @@ class _SharedLibraryMixin(TypedDict):
 
 
 class SharedLibrary(_BuildTargetBase, _SharedModuleMixin, _SharedLibraryMixin):
-    pass
+
+    rust_crate_type: Literal['lib', 'dylib', 'cdylib', 'proc-macro']
 
 
 class _ExecutableMixin(TypedDict):
@@ -412,7 +414,8 @@ class Executable(_BuildTargetBase, _ExecutableMixin):
 
 
 class BothLibrary(_BuildTargetBase, _ExecutableMixin, _SharedLibraryMixin, _StaticLibraryMixin):
-    pass
+
+    rust_crate_type: Literal['lib', 'rlib', 'staticlib', 'dylib', 'cdylib', 'proc-macro']
 
 
 class _JarMixin(TypedDict):
