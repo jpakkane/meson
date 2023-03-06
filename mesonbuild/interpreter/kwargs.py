@@ -1,10 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright © 2021 The Meson Developers
 # Copyright © 2021 Intel Corporation
-from __future__ import annotations
 
 """Keyword Argument type annotations."""
 
+# We very intentionally don't use `__future__.annotations` here, as it is
+# unnecessary and confues flake8
 import typing as T
 
 from typing_extensions import TypedDict, Literal, Protocol
@@ -15,6 +16,8 @@ from ..compilers import Compiler
 from ..mesonlib import MachineChoice, File, FileMode, FileOrString
 from ..modules.cmake import CMakeSubprojectOptions
 from ..programs import ExternalProgram
+
+assert T.TYPE_CHECKING, 'this module should not be imported into live code!'
 
 
 class FuncAddProjectArgs(TypedDict):
