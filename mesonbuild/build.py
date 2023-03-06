@@ -1096,15 +1096,6 @@ class BuildTarget(Target):
             raise InvalidArguments('Argument gui_app can only be used on executables.')
         elif 'win_subsystem' in kwargs:
             raise InvalidArguments('Argument win_subsystem can only be used on executables.')
-        if isinstance(self, StaticLibrary):
-            # You can't disable PIC on OS X. The compiler ignores -fno-PIC.
-            # PIC is always on for Windows (all code is position-independent
-            # since library loading is done differently)
-            m = self.environment.machines[self.for_machine]
-            if m.is_darwin() or m.is_windows():
-                self.pic = True
-            else:
-                self.pic = self._extract_pic_pie(kwargs, 'pic', 'b_staticpic')
         if isinstance(self, Executable) or (isinstance(self, StaticLibrary) and not self.pic):
             # Executables must be PIE on Android
             if self.environment.machines[self.for_machine].is_android():
@@ -1125,8 +1116,15 @@ class BuildTarget(Target):
             mlog.warning(f"Use the '{arg}' kwarg instead of passing '-f{arg}' manually to {self.name!r}")
             return True
 
+        m = self.environment.machines[self.for_machine]
+        # You can't disable PIC on OS X. The compiler ignores -fno-PIC.
+        # PIC is always on for Windows (all code is position-independent
+        # since library loading is done differently)
+        if arg == 'pic' and (m.is_darwin() or m.is_windows()):
+            return True
+
         k = OptionKey(option)
-        if arg in kwargs:
+        if kwargs.get(arg) is not None:
             val = kwargs[arg]
         elif k in self.environment.coredata.options:
             val = self.environment.coredata.options[k].value
@@ -1895,6 +1893,7 @@ class StaticLibrary(BuildTarget):
             vala_gir: T.Optional[str] = None,
             c_pch: T.Optional[T.List[str]] = None,
             cpp_pch: T.Optional[T.List[str]] = None,
+            pic: T.Optional[bool] = None,
             ):
         self.prelink = kwargs.get('prelink', False)
         if not isinstance(self.prelink, bool):
@@ -1935,6 +1934,7 @@ class StaticLibrary(BuildTarget):
                          c_pch=c_pch,
                          cpp_pch=cpp_pch,
                          )
+        self.pic = self._extract_pic_pie({'pic': pic}, 'pic', 'b_staticpic')
 
     def post_init(self) -> None:
         super().post_init()

@@ -381,7 +381,8 @@ class _BuildTargetBase(_AllTargetBase):
 
 
 class _StaticLibraryMixin(TypedDict):
-    pass
+
+    pic: T.Optional[bool]
 
 
 class StaticLibrary(_BuildTargetBase, _StaticLibraryMixin):
