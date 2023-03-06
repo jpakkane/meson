@@ -353,6 +353,7 @@ class _BuildTargetBase(_AllTargetBase):
     install_rpath: str
     link_language: T.Optional[LINK_LANGUAGE]
     link_whole: T.List[T.Union[build.BothLibraries, build.StaticLibrary, build.CustomTarget, build.CustomTargetIndex]]
+    name_prefix: T.Optional[str]
 
 
 class _StaticLibraryMixin(TypedDict):

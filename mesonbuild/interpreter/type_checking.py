@@ -483,6 +483,15 @@ TEST_KWS: T.List[KwargInfo] = [
     KwargInfo('suite', ContainerTypeInfo(list, str), listify=True, default=['']),  # yes, a list of empty string
     KwargInfo('verbose', bool, default=False, since='0.62.0'),
 ]
+
+_NAME_PREFIX_KW: KwargInfo[T.Union[str, list, None]] = KwargInfo(
+    'name_prefix',
+    (str, list, NoneType),
+    default=[],
+    validator=lambda x, _: 'must be an empty list to signify default value' if (isinstance(x, list) and x) else None,
+    convertor=lambda x, _: None if isinstance(x, list) else x,
+)
+
 _ALL_TARGET_KWS: T.List[KwargInfo] = [
     KwargInfo('build_by_default', bool, default=True, since='0.40.0'),
     DEPENDENCIES_KW,
@@ -537,6 +546,7 @@ _BUILD_TARGET_KWS: T.List[KwargInfo] = [
         validator=in_set_validator(set(compilers.all_languages)),
     ),
     LINK_WHOLE_KW.evolve(since='0.40.0'),
+    _NAME_PREFIX_KW,
     # sources is here because JAR needs to have it's own implementation
     KwargInfo(
         'sources',
