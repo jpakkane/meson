@@ -418,6 +418,7 @@ class SharedLibrary(_BuildTargetBase, _SharedModuleMixin, _SharedLibraryMixin):
 class _ExecutableMixin(TypedDict):
 
     export_dynamic: bool
+    gui_app: T.Optional[bool]
 
 
 class Executable(_BuildTargetBase, _ExecutableMixin):
