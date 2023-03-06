@@ -165,6 +165,12 @@ def variables_convertor(contents: T.Union[str, T.List[str], T.Dict[str, str]], _
     return variables
 
 
+def _empty_string_validator(val: T.Optional[str], _: ValidatorState) -> T.Optional[str]:
+    if val is not None and val == '':
+        return 'may not be an empty string'
+    return None
+
+
 NATIVE_KW = KwargInfo(
     'native', bool,
     default=False,
@@ -613,6 +619,7 @@ _BUILD_TARGET_KWS: T.List[KwargInfo] = [
                                if os.path.splitext(x)[1] not in {'.txt', '.resx', '.resources'}
                                else None,
     ),
+    KwargInfo('vala_header', (str, NoneType), validator=_empty_string_validator),
 ]
 
 STATIC_LIB_KWS: T.List[KwargInfo] = [

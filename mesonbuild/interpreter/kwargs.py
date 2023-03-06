@@ -358,6 +358,7 @@ class _BuildTargetBase(_AllTargetBase):
     native: MachineChoice
     objects: T.Sequence[build.ObjectTypes]
     resources: T.List[File]
+    vala_header: T.Optional[str]
 
 
 class _StaticLibraryMixin(TypedDict):
