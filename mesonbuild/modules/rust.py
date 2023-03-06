@@ -157,6 +157,7 @@ class RustModule(ExtensionModule):
             install=False,
             link_args=base_target.link_args.copy(),
             link_depends=base_target.link_depends.copy(),
+            link_whole=base_target.link_whole_targets.copy(),
         )
 
         test = self.interpreter.make_test(

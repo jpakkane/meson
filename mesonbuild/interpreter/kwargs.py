@@ -352,6 +352,7 @@ class _BuildTargetBase(_AllTargetBase):
     gnu_symbol_visibility: GNU_SYMBOL_VISIBILITY
     install_rpath: str
     link_language: T.Optional[LINK_LANGUAGE]
+    link_whole: T.List[T.Union[build.BothLibraries, build.StaticLibrary, build.CustomTarget, build.CustomTargetIndex]]
 
 
 class _StaticLibraryMixin(TypedDict):

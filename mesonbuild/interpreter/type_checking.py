@@ -429,10 +429,13 @@ LINK_WITH_KW: KwargInfo[T.List[T.Union[BothLibraries, SharedLibrary, StaticLibra
 def link_whole_validator(values: T.List[T.Union[StaticLibrary, CustomTarget, CustomTargetIndex, Dependency]],
                          _: ValidatorState) -> T.Optional[str]:
     for l in values:
-        if isinstance(l, (CustomTarget, CustomTargetIndex)) and l.links_dynamically():
-            return f'{type(l).__name__} returning a shared library is not allowed'
         if isinstance(l, Dependency):
             return _link_with_error
+        if isinstance(l, (CustomTarget, CustomTargetIndex)):
+            if not l.is_linkable_target():
+                return f'cannot link with custom_target {l.name}, it does not produce a library'
+            if l.links_dynamically():
+                return f'cannot link_whole with custom_target {l.name}, it produces a dynamic library'
     return None
 
 LINK_WHOLE_KW: KwargInfo[T.List[T.Union[BothLibraries, StaticLibrary, CustomTarget, CustomTargetIndex]]] = KwargInfo(
@@ -533,6 +536,7 @@ _BUILD_TARGET_KWS: T.List[KwargInfo] = [
         since='0.51.0',
         validator=in_set_validator(set(compilers.all_languages)),
     ),
+    LINK_WHOLE_KW.evolve(since='0.40.0'),
     # sources is here because JAR needs to have it's own implementation
     KwargInfo(
         'sources',

@@ -1860,7 +1860,6 @@ class Interpreter(InterpreterBase, HoldableObject):
                  kwargs: kwtypes.Jar) -> build.Jar:
         return self.build_target(node, args, kwargs, build.Jar)
 
-    @FeatureNewKwargs('build_target', '0.40.0', ['link_whole'])
     @permittedKwargs(known_build_target_kwargs)
     @typed_pos_args('build_target', str, varargs=(str, mesonlib.File, build.CustomTarget, build.CustomTargetIndex, build.GeneratedList, build.StructuredSources, build.ExtractedObjects, build.BuildTarget))
     @typed_kwargs('build_target', *BUILD_TARGET_KWS, allow_unknown=True)
@@ -3229,6 +3228,7 @@ class Interpreter(InterpreterBase, HoldableObject):
             link_args=kwargs['link_args'],
             link_depends=self.source_strings_to_files(kwargs['link_depends']) if kwargs['link_depends'] else None,
             link_language=kwargs['link_language'],
+            link_whole=kwargs['link_whole'],
             gnu_symbol_visibility=kwargs['gnu_symbol_visibility'],
             override_options=kwargs['override_options'],
         )
@@ -3258,6 +3258,7 @@ class Interpreter(InterpreterBase, HoldableObject):
             link_args=kwargs['link_args'],
             link_depends=self.source_strings_to_files(kwargs['link_depends']) if kwargs['link_depends'] else None,
             link_language=kwargs['link_language'],
+            link_whole=kwargs['link_whole'],
             gnu_symbol_visibility=kwargs['gnu_symbol_visibility'],
             override_options=kwargs['override_options'],
         )
@@ -3287,6 +3288,7 @@ class Interpreter(InterpreterBase, HoldableObject):
             link_args=kwargs['link_args'],
             link_depends=self.source_strings_to_files(kwargs['link_depends']) if kwargs['link_depends'] else None,
             link_language=kwargs['link_language'],
+            link_whole=kwargs['link_whole'],
             gnu_symbol_visibility=kwargs['gnu_symbol_visibility'],
             override_options=kwargs['override_options'],
         )
@@ -3316,6 +3318,7 @@ class Interpreter(InterpreterBase, HoldableObject):
             link_args=kwargs['link_args'],
             link_depends=self.source_strings_to_files(kwargs['link_depends']) if kwargs['link_depends'] else None,
             link_language=kwargs['link_language'],
+            link_whole=kwargs['link_whole'],
             gnu_symbol_visibility=kwargs['gnu_symbol_visibility'],
             override_options=kwargs['override_options'],
         )
