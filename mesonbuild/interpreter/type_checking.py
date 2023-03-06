@@ -663,29 +663,41 @@ _BUILD_TARGET_KWS: T.List[KwargInfo] = [
     KwargInfo('vala_gir', (str, NoneType), validator=_empty_string_validator),
 ]
 
+_LANGUAGE_KWS: T.List[KwargInfo[T.List[str]]] = [
+    KwargInfo(f'{lang}_args', ContainerTypeInfo(list, str), listify=True, default=[])
+    for lang in compilers.all_languages ^ {'rust'}
+]
+_LANGUAGE_KWS.append(KwargInfo(
+    'rust_args', ContainerTypeInfo(list, str), listify=True, default=[], since='0.41.0'))
+
 STATIC_LIB_KWS: T.List[KwargInfo] = [
     *_ALL_TARGET_KWS,
     *_BUILD_TARGET_KWS,
+    *_LANGUAGE_KWS,
 ]
 
 SHARED_LIB_KWS: T.List[KwargInfo] = [
     *_ALL_TARGET_KWS,
     *_BUILD_TARGET_KWS,
+    *_LANGUAGE_KWS,
 ]
 
 SHARED_MOD_KWS: T.List[KwargInfo] = [
     *_ALL_TARGET_KWS,
     *_BUILD_TARGET_KWS,
+    *_LANGUAGE_KWS,
 ]
 
 BOTH_LIB_KWS: T.List[KwargInfo] = [
     *_ALL_TARGET_KWS,
     *_BUILD_TARGET_KWS,
+    *_LANGUAGE_KWS,
 ]
 
 EXECUTABLE_KWS: T.List[KwargInfo] = [
     *_ALL_TARGET_KWS,
     *_BUILD_TARGET_KWS,
+    *_LANGUAGE_KWS,
 ]
 
 _EXCLUSIVE_JAVA_KWS: T.List[KwargInfo] = [
@@ -695,6 +707,7 @@ _EXCLUSIVE_JAVA_KWS: T.List[KwargInfo] = [
 
 JAR_KWS: T.List[KwargInfo] = [
     *_ALL_TARGET_KWS,
+    *_LANGUAGE_KWS,
     *_EXCLUSIVE_JAVA_KWS,
     SOURCES_KW,  # this doesn't include StructuredSources, which is correct for Jar
 
@@ -717,4 +730,5 @@ BUILD_TARGET_KWS: T.List[KwargInfo] = [
     *_ALL_TARGET_KWS,
     *_BUILD_TARGET_KWS,
     *_EXCLUSIVE_JAVA_KWS,
+    *_LANGUAGE_KWS,
 ]

@@ -3203,9 +3203,25 @@ class Interpreter(InterpreterBase, HoldableObject):
             link_args=kwargs['link_args'],
             link_depends=self.source_strings_to_files(kwargs['link_depends']) if kwargs['link_depends'] else None,
             override_options=kwargs['override_options'],
+            java_args=kwargs['java_args'],
             main_class=kwargs['main_class'],
             resources=kwargs['java_resources'],
         )
+
+    @staticmethod
+    def __extract_language_args(kwargs: kwtypes.BuildTarget) -> T.DefaultDict[str, T.List[mesonlib.FileOrString]]:
+        """Convert split language args into a combined dictionary.
+
+        The Meson DSL takes arguments in the form `<lang>_args : args`, but in the
+        build layer we store these in a single dictionary as `{<lang>: args}`.
+        This function extracts the arguments from the DSL format and prepares
+        them for the IR.
+        """
+        args: T.DefaultDict[str, T.List[mesonlib.FileOrString]] = collections.defaultdict(list)
+        for l in compilers.all_languages:
+            lang = kwargs[f'{l}_args']
+            args[l].extend(lang)
+        return args
 
     def __build_exe(self, name: str, sources: T.List[BuildTargetSource],
                     struct_src: T.Optional[build.StructuredSources],
@@ -3229,6 +3245,7 @@ class Interpreter(InterpreterBase, HoldableObject):
             install_mode=kwargs['install_mode'],
             install_rpath=kwargs['build_rpath'],
             install_tag=kwargs['install_tag'],
+            language_args=self.__extract_language_args(kwargs),
             link_args=kwargs['link_args'],
             link_depends=self.source_strings_to_files(kwargs['link_depends']) if kwargs['link_depends'] else None,
             link_language=kwargs['link_language'],
@@ -3267,6 +3284,7 @@ class Interpreter(InterpreterBase, HoldableObject):
             install_mode=kwargs['install_mode'],
             install_rpath=kwargs['build_rpath'],
             install_tag=kwargs['install_tag'],
+            language_args=self.__extract_language_args(kwargs),
             link_args=kwargs['link_args'],
             link_depends=self.source_strings_to_files(kwargs['link_depends']) if kwargs['link_depends'] else None,
             link_language=kwargs['link_language'],
@@ -3305,6 +3323,7 @@ class Interpreter(InterpreterBase, HoldableObject):
             install_mode=kwargs['install_mode'],
             install_rpath=kwargs['build_rpath'],
             install_tag=kwargs['install_tag'],
+            language_args=self.__extract_language_args(kwargs),
             link_args=kwargs['link_args'],
             link_depends=self.source_strings_to_files(kwargs['link_depends']) if kwargs['link_depends'] else None,
             link_language=kwargs['link_language'],
@@ -3343,6 +3362,7 @@ class Interpreter(InterpreterBase, HoldableObject):
             install_mode=kwargs['install_mode'],
             install_rpath=kwargs['build_rpath'],
             install_tag=kwargs['install_tag'],
+            language_args=self.__extract_language_args(kwargs),
             link_args=kwargs['link_args'],
             link_depends=self.source_strings_to_files(kwargs['link_depends']) if kwargs['link_depends'] else None,
             link_language=kwargs['link_language'],
@@ -3366,7 +3386,6 @@ class Interpreter(InterpreterBase, HoldableObject):
             targetclass: T.Type[_BuildClassType]) -> _BuildClassType:
         @FeatureNewKwargs('build target', '1.2.0', ['rust_dependency_map'])
         @FeatureNewKwargs('build target', '0.42.0', ['rust_crate_type'])
-        @FeatureNewKwargs('build target', '0.41.0', ['rust_args'])
         def build_target_decorator_caller(self, node, args, kwargs):
             return True
 

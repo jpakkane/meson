@@ -364,6 +364,20 @@ class _BuildTargetBase(_AllTargetBase):
     c_pch: T.List[str]
     cpp_pch: T.List[str]
 
+    c_args: T.List[str]
+    cpp_args: T.List[str]
+    cs_args: T.List[str]
+    cuda_args: T.List[str]
+    cython_args: T.List[str]
+    d_args: T.List[str]
+    fortran_args: T.List[str]
+    java_args: T.List[str]
+    objc_args: T.List[str]
+    objcpp_args: T.List[str]
+    rust_args: T.List[str]
+    swift_args: T.List[str]
+    vala_args: T.List[str]
+
 
 class _StaticLibraryMixin(TypedDict):
     pass
@@ -404,6 +418,7 @@ class BothLibrary(_BuildTargetBase, _ExecutableMixin, _SharedLibraryMixin, _Stat
 class _JarMixin(TypedDict):
 
     main_class: str
+    java_args: T.List[str]
     java_resources: T.Optional[build.StructuredSources]
 
 

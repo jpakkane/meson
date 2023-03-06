@@ -42,7 +42,7 @@ from .mesonlib import (
 )
 from .compilers import (
     is_object, clink_langs, sort_clink, all_languages,
-    is_known_suffix, detect_static_linker
+    is_known_suffix, detect_static_linker,
 )
 from .interpreterbase import FeatureNew
 
@@ -694,6 +694,7 @@ class BuildTarget(Target):
             install_mode: T.Optional[FileMode] = None,
             install_rpath: str = '',
             install_tag: T.Optional[str] = None,
+            language_args: T.Optional[T.DefaultDict[str, T.List[FileOrString]]] = None,
             link_args: T.Optional[T.List[str]] = None,
             link_depends: T.Optional[T.List[T.Union[File, CustomTarget, CustomTargetIndex]]] = None,
             link_language: T.Optional[LINK_LANGUAGE] = None,
@@ -754,7 +755,8 @@ class BuildTarget(Target):
             'c': c_pch or [],
             'cpp': cpp_pch or [],
         }
-        self.extra_args: T.DefaultDict[str, T.List['FileOrString']] = defaultdict(list)
+        self.extra_args: T.DefaultDict[str, T.List[FileOrString]] = \
+            language_args if language_args is not None else defaultdict(list)
         self.sources: T.List[File] = []
         self.generated: T.List['GeneratedTypes'] = []
         self.pic = False
@@ -1106,10 +1108,6 @@ class BuildTarget(Target):
                 '''))
             self.link(linktarget)
 
-        for lang in all_languages:
-            lang_args = extract_as_list(kwargs, f'{lang}_args')
-            self.add_compiler_args(lang, lang_args)
-
         if isinstance(self, Executable):
             # This kwarg is deprecated. The value of "none" means that the kwarg
             # was not specified and win_subsystem should be used instead.
@@ -1349,13 +1347,6 @@ class BuildTarget(Target):
             is_system = set_is_system == 'system'
             ids = [IncludeDirs(x.get_curdir(), x.get_incdirs(), is_system, x.get_extra_build_dirs()) for x in ids]
         self.include_dirs += ids
-
-    def add_compiler_args(self, language: str, args: T.List['FileOrString']) -> None:
-        args = listify(args)
-        for a in args:
-            if not isinstance(a, (str, File)):
-                raise InvalidArguments('A non-string passed to compiler args.')
-        self.extra_args[language].extend(args)
 
     def get_aliases(self) -> T.List[T.Tuple[str, str, str]]:
         return []
@@ -1699,6 +1690,7 @@ class Executable(BuildTarget):
             install_mode: T.Optional[FileMode] = None,
             install_rpath: str = '',
             install_tag: T.Optional[str] = None,
+            language_args: T.Optional[T.DefaultDict[str, T.List[FileOrString]]] = None,
             link_args: T.Optional[T.List[str]] = None,
             link_depends: T.Optional[T.List[T.Union[File, CustomTarget, CustomTargetIndex]]] = None,
             link_language: T.Optional[LINK_LANGUAGE] = None,
@@ -1733,6 +1725,7 @@ class Executable(BuildTarget):
                          install_mode=install_mode,
                          install_rpath=install_rpath,
                          install_tag=install_tag,
+                         language_args=language_args,
                          link_args=link_args,
                          link_depends=link_depends,
                          link_language=link_language,
@@ -1914,6 +1907,7 @@ class StaticLibrary(BuildTarget):
             install_mode: T.Optional[FileMode] = None,
             install_rpath: str = '',
             install_tag: T.Optional[str] = None,
+            language_args: T.Optional[T.DefaultDict[str, T.List[FileOrString]]] = None,
             link_args: T.Optional[T.List[str]] = None,
             link_depends: T.Optional[T.List[T.Union[File, CustomTarget, CustomTargetIndex]]] = None,
             link_language: T.Optional[LINK_LANGUAGE] = None,
@@ -1948,6 +1942,7 @@ class StaticLibrary(BuildTarget):
                          install_mode=install_mode,
                          install_rpath=install_rpath,
                          install_tag=install_tag,
+                         language_args=language_args,
                          link_args=link_args,
                          link_depends=link_depends,
                          link_language=link_language,
@@ -2059,6 +2054,7 @@ class SharedLibrary(BuildTarget):
             install_mode: T.Optional[FileMode] = None,
             install_rpath: str = '',
             install_tag: T.Optional[str] = None,
+            language_args: T.Optional[T.DefaultDict[str, T.List[FileOrString]]] = None,
             link_args: T.Optional[T.List[str]] = None,
             link_depends: T.Optional[T.List[T.Union[File, CustomTarget, CustomTargetIndex]]] = None,
             link_language: T.Optional[LINK_LANGUAGE] = None,
@@ -2105,6 +2101,7 @@ class SharedLibrary(BuildTarget):
                          install_mode=install_mode,
                          install_rpath=install_rpath,
                          install_tag=install_tag,
+                         language_args=language_args,
                          link_args=link_args,
                          link_depends=link_depends,
                          link_language=link_language,
@@ -2462,6 +2459,7 @@ class SharedModule(SharedLibrary):
             install_mode: T.Optional[FileMode] = None,
             install_rpath: str = '',
             install_tag: T.Optional[str] = None,
+            language_args: T.Optional[T.DefaultDict[str, T.List[FileOrString]]] = None,
             link_args: T.Optional[T.List[str]] = None,
             link_depends: T.Optional[T.List[T.Union[File, CustomTarget, CustomTargetIndex]]] = None,
             link_language: T.Optional[LINK_LANGUAGE] = None,
@@ -2497,6 +2495,7 @@ class SharedModule(SharedLibrary):
                          install_mode=install_mode,
                          install_rpath=install_rpath,
                          install_tag=install_tag,
+                         language_args=language_args,
                          link_args=link_args,
                          link_depends=link_depends,
                          link_language=link_language,
@@ -2796,14 +2795,15 @@ class CompileTarget(BuildTarget):
                  include_directories: T.List[IncludeDirs],
                  dependencies: T.List[dependencies.Dependency]):
         compilers = {compiler.get_language(): compiler}
-        kwargs = {
-            f'{compiler.language}_args': compile_args,
-        }
+        comp_args: T.DefaultDict[str, T.List[FileOrString]] = defaultdict(list)
+        comp_args[compiler.language] = compile_args
+
         super().__init__(name, subdir, subproject, compiler.for_machine,
-                         sources, None, [], environment, compilers, kwargs,
+                         sources, None, [], environment, compilers, {},
                          build_by_default=False,
                          dependencies=dependencies,
-                         include_directories=include_directories)
+                         include_directories=include_directories,
+                         language_args=comp_args)
         self.filename = name
         self.compiler = compiler
         self.output_templ = output_templ
@@ -2916,6 +2916,7 @@ class Jar(BuildTarget):
                  link_args: T.Optional[T.List[str]] = None,
                  link_depends: T.Optional[T.List[T.Union[File, CustomTarget, CustomTargetIndex]]] = None,
                  override_options: T.Optional[T.Dict[OptionKey, str]] = None,
+                 java_args: T.Optional[T.List[str]] = None,
                  main_class: str = '',
                  resources: T.Optional[StructuredSources] = None):
         super().__init__(name, subdir, subproject, for_machine, sources, None, [],
@@ -2937,7 +2938,7 @@ class Jar(BuildTarget):
                 raise InvalidArguments(f'Link target {t} is not a jar target.')
         self.filename = self.name + '.jar'
         self.outputs = [self.filename]
-        self.java_args = kwargs.get('java_args', [])
+        self.java_args = java_args or []
         self.java_resources = resources
         self.main_class = main_class
 
