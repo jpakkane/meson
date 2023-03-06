@@ -1799,23 +1799,21 @@ class Interpreter(InterpreterBase, HoldableObject):
         return Disabler()
 
     @typed_pos_args('executable', str, varargs=(str, mesonlib.File, build.CustomTarget, build.CustomTargetIndex, build.GeneratedList, build.StructuredSources, build.ExtractedObjects, build.BuildTarget))
-    @typed_kwargs('executable', *EXECUTABLE_KWS, allow_unknown=True)
+    @typed_kwargs('executable', *EXECUTABLE_KWS)
     def func_executable(self, node: mparser.BaseNode,
                         args: T.Tuple[str, T.List[BuildTargetSource]],
                         kwargs: kwtypes.Executable) -> build.Executable:
         return self.build_target(node, args, kwargs, build.Executable)
 
-    @permittedKwargs(build.known_stlib_kwargs)
     @typed_pos_args('static_library', str, varargs=(str, mesonlib.File, build.CustomTarget, build.CustomTargetIndex, build.GeneratedList, build.StructuredSources, build.ExtractedObjects, build.BuildTarget))
-    @typed_kwargs('static_library', *STATIC_LIB_KWS, allow_unknown=True)
+    @typed_kwargs('static_library', *STATIC_LIB_KWS)
     def func_static_lib(self, node: mparser.BaseNode,
                         args: T.Tuple[str, T.List[BuildTargetSource]],
                         kwargs: kwtypes.StaticLibrary) -> build.StaticLibrary:
         return self.build_target(node, args, kwargs, build.StaticLibrary)
 
-    @permittedKwargs(build.known_shlib_kwargs)
     @typed_pos_args('shared_library', str, varargs=(str, mesonlib.File, build.CustomTarget, build.CustomTargetIndex, build.GeneratedList, build.StructuredSources, build.ExtractedObjects, build.BuildTarget))
-    @typed_kwargs('shared_library', *SHARED_LIB_KWS, allow_unknown=True)
+    @typed_kwargs('shared_library', *SHARED_LIB_KWS)
     def func_shared_lib(self, node: mparser.BaseNode,
                         args: T.Tuple[str, T.List[BuildTargetSource]],
                         kwargs: kwtypes.SharedLibrary) -> build.SharedLibrary:
@@ -1823,43 +1821,38 @@ class Interpreter(InterpreterBase, HoldableObject):
         holder.shared_library_only = True
         return holder
 
-    @permittedKwargs(known_library_kwargs)
     @typed_pos_args('both_libraries', str, varargs=(str, mesonlib.File, build.CustomTarget, build.CustomTargetIndex, build.GeneratedList, build.StructuredSources, build.ExtractedObjects, build.BuildTarget))
-    @typed_kwargs('both_libraries', *BOTH_LIB_KWS, allow_unknown=True)
+    @typed_kwargs('both_libraries', *BOTH_LIB_KWS)
     def func_both_lib(self, node: mparser.BaseNode,
                       args: T.Tuple[str, T.List[BuildTargetSource]],
                       kwargs: kwtypes.BothLibrary) -> build.BothLibraries:
         return self.build_both_libraries(node, args, kwargs)
 
     @FeatureNew('shared_module', '0.37.0')
-    @permittedKwargs(build.known_shmod_kwargs)
     @typed_pos_args('shared_module', str, varargs=(str, mesonlib.File, build.CustomTarget, build.CustomTargetIndex, build.GeneratedList, build.StructuredSources, build.ExtractedObjects, build.BuildTarget))
-    @typed_kwargs('shared_module', *SHARED_MOD_KWS, allow_unknown=True)
+    @typed_kwargs('shared_module', *SHARED_MOD_KWS)
     def func_shared_module(self, node: mparser.BaseNode,
                            args: T.Tuple[str, T.List[BuildTargetSource]],
                            kwargs: kwtypes.SharedModule) -> build.SharedModule:
         return self.build_target(node, args, kwargs, build.SharedModule)
 
-    @permittedKwargs(known_library_kwargs)
     @typed_pos_args('library', str, varargs=(str, mesonlib.File, build.CustomTarget, build.CustomTargetIndex, build.GeneratedList, build.StructuredSources, build.ExtractedObjects, build.BuildTarget))
-    @typed_kwargs('library', *BOTH_LIB_KWS, allow_unknown=True)
+    @typed_kwargs('library', *BOTH_LIB_KWS)
     def func_library(self, node: mparser.BaseNode,
                      args: T.Tuple[str, T.List[BuildTargetSource]],
                      kwargs: kwtypes.BothLibrary
                      ) -> T.Union[build.SharedLibrary, build.StaticLibrary, build.BothLibraries]:
         return self.build_library(node, args, kwargs)
 
-    @permittedKwargs(build.known_jar_kwargs)
     @typed_pos_args('jar', str, varargs=(str, mesonlib.File, build.CustomTarget, build.CustomTargetIndex, build.GeneratedList, build.ExtractedObjects, build.BuildTarget))
-    @typed_kwargs('jar', *JAR_KWS, allow_unknown=True)
+    @typed_kwargs('jar', *JAR_KWS)
     def func_jar(self, node: mparser.BaseNode,
                  args: T.Tuple[str, T.List[T.Union[str, mesonlib.File, build.GeneratedTypes]]],
                  kwargs: kwtypes.Jar) -> build.Jar:
         return self.build_target(node, args, kwargs, build.Jar)
 
-    @permittedKwargs(known_build_target_kwargs)
     @typed_pos_args('build_target', str, varargs=(str, mesonlib.File, build.CustomTarget, build.CustomTargetIndex, build.GeneratedList, build.StructuredSources, build.ExtractedObjects, build.BuildTarget))
-    @typed_kwargs('build_target', *BUILD_TARGET_KWS, allow_unknown=True)
+    @typed_kwargs('build_target', *BUILD_TARGET_KWS)
     def func_build_target(self, node: mparser.BaseNode,
                           args: T.Tuple[str, T.List[BuildTargetSource]],
                           kwargs: kwtypes.BuildTarget
