@@ -2028,9 +2028,9 @@ class SharedLibrary(BuildTarget):
             vs_module_defs: T.Optional[T.Union[File, CustomTarget, CustomTargetIndex]] = None,
             c_pch: T.Optional[T.List[str]] = None,
             cpp_pch: T.Optional[T.List[str]] = None,
+            version: T.Optional[str] = None,
             ):
         self.soversion = None
-        self.ltversion = None
         # Max length 2, first element is compatibility_version, second is current_version
         self.darwin_versions = []
         # The import library this target will generate
@@ -2043,6 +2043,9 @@ class SharedLibrary(BuildTarget):
         self.debug_filename = None
         # Use by the pkgconfig module
         self.shared_library_only = False
+
+        self.ltversion = version if not environment.machines[for_machine].is_android() else None
+
         super().__init__(name, subdir, subproject, for_machine, sources, structured_sources, objects,
                          environment, compilers, kwargs,
                          build_by_default=build_by_default,
@@ -2267,13 +2270,6 @@ class SharedLibrary(BuildTarget):
         super().process_kwargs(kwargs)
 
         if not self.environment.machines[self.for_machine].is_android():
-            # Shared library version
-            if 'version' in kwargs:
-                self.ltversion = kwargs['version']
-                if not isinstance(self.ltversion, str):
-                    raise InvalidArguments('Shared library version needs to be a string, not ' + type(self.ltversion).__name__)
-                if not re.fullmatch(r'[0-9]+(\.[0-9]+){0,2}', self.ltversion):
-                    raise InvalidArguments(f'Invalid Shared library version "{self.ltversion}". Must be of the form X.Y.Z where all three are numbers. Y and Z are optional.')
             # Try to extract/deduce the soversion
             if 'soversion' in kwargs:
                 self.soversion = kwargs['soversion']
@@ -2410,8 +2406,6 @@ class SharedModule(SharedLibrary):
             c_pch: T.Optional[T.List[str]] = None,
             cpp_pch: T.Optional[T.List[str]] = None,
             ):
-        if 'version' in kwargs:
-            raise MesonException('Shared modules must not specify the version kwarg.')
         if 'soversion' in kwargs:
             raise MesonException('Shared modules must not specify the soversion kwarg.')
         super().__init__(name, subdir, subproject, for_machine, sources,

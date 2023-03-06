@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 import os
+import re
 import typing as T
 
 from .. import compilers
@@ -736,10 +737,23 @@ _SHARED_LIB_RUST_CRATE = _RUST_CRATE_TYPE_KW.evolve(
     since_values={'proc-macro': '0.62.0'}
 )
 
+
+def _validate_library_version(ver: T.Optional[str], _: ValidatorState) -> T.Optional[str]:
+    if ver is not None and not re.fullmatch(r'[0-9]+(\.[0-9]+){0,2}', ver):
+        return (f'Invalid Shared library version "{ver}". '
+                'Must be of the form X.Y.Z where all three are numbers. Y and Z are optional.')
+    return None
+
+
+_EXCLUSIVE_SHARED_LIB_KWS: T.List[KwargInfo] = [
+    KwargInfo('version', (str, NoneType), validator=_validate_library_version),
+]
+
 SHARED_LIB_KWS: T.List[KwargInfo] = [
     *_ALL_TARGET_KWS,
     *_BUILD_TARGET_KWS,
     *_LANGUAGE_KWS,
+    *_EXCLUSIVE_SHARED_LIB_KWS,
     _LINK_WITH_KW,
     _SHARED_LIB_RUST_CRATE,
     _VS_MODULE_DEF_KW,
@@ -770,6 +784,7 @@ BOTH_LIB_KWS: T.List[KwargInfo] = [
     *_BUILD_TARGET_KWS,
     *_LANGUAGE_KWS,
     *_EXCLUSIVE_STATIC_LIB_KWS,
+    *_EXCLUSIVE_SHARED_LIB_KWS,
     _LINK_WITH_KW,
     _RUST_CRATE_TYPE_KW.evolve(
         validator=in_set_validator({'lib', 'rlib', 'staticlib', 'cdylib', 'dylib', 'proc-macro'}),
@@ -828,6 +843,7 @@ BUILD_TARGET_KWS: T.List[KwargInfo] = [
     *_BUILD_TARGET_KWS,
     *_EXCLUSIVE_JAVA_KWS,
     *_EXCLUSIVE_STATIC_LIB_KWS,
+    *_EXCLUSIVE_SHARED_LIB_KWS,
     *_LANGUAGE_KWS,
     _RUST_CRATE_TYPE_KW.evolve(
         validator=in_set_validator({'bin', 'lib', 'rlib', 'staticlib', 'cdylib', 'dylib', 'proc-macro'}),

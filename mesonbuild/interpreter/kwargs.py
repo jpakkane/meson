@@ -403,7 +403,8 @@ class SharedModule(_BuildTargetBase, _SharedModuleMixin):
 
 
 class _SharedLibraryMixin(TypedDict):
-    pass
+
+    version: T.Optional[str]
 
 
 class SharedLibrary(_BuildTargetBase, _SharedModuleMixin, _SharedLibraryMixin):
