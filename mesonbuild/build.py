@@ -993,29 +993,6 @@ class BuildTarget(Target):
             langs = ', '.join(self.compilers.keys())
             raise InvalidArguments(f'Cannot mix those languages into a target: {langs}')
 
-    def process_link_depends(self, sources: T.List[T.Union[FileOrString, CustomTarget, CustomTargetIndex]]) -> None:
-        """Process the link_depends keyword argument.
-
-        This is designed to handle strings, Files, and the output of Custom
-        Targets. Notably it doesn't handle generator() returned objects, since
-        adding them as a link depends would inherently cause them to be
-        generated twice, since the output needs to be passed to the ld_args and
-        link_depends.
-        """
-        sources = listify(sources)
-        for s in sources:
-            if isinstance(s, File):
-                self.link_depends.append(s)
-            elif isinstance(s, str):
-                self.link_depends.append(
-                    File.from_source_file(self.environment.source_dir, self.subdir, s))
-            elif hasattr(s, 'get_outputs'):
-                self.link_depends.append(s)
-            else:
-                raise InvalidArguments(
-                    'Link_depends arguments must be strings, Files, '
-                    'or a Custom Target, or lists thereof.')
-
     def get_original_kwargs(self):
         return self.kwargs
 
@@ -2049,6 +2026,7 @@ class SharedLibrary(BuildTarget):
             vala_header: T.Optional[str] = None,
             vala_vapi: T.Optional[str] = None,
             vala_gir: T.Optional[str] = None,
+            vs_module_defs: T.Optional[T.Union[File, CustomTarget, CustomTargetIndex]] = None,
             c_pch: T.Optional[T.List[str]] = None,
             cpp_pch: T.Optional[T.List[str]] = None,
             ):
@@ -2056,7 +2034,6 @@ class SharedLibrary(BuildTarget):
         self.ltversion = None
         # Max length 2, first element is compatibility_version, second is current_version
         self.darwin_versions = []
-        self.vs_module_defs = None
         # The import library this target will generate
         self.import_filename = None
         # The import library that Visual Studio would generate (and accept)
@@ -2103,6 +2080,12 @@ class SharedLibrary(BuildTarget):
                          c_pch=c_pch,
                          cpp_pch=cpp_pch,
                          )
+
+        if isinstance(vs_module_defs, (CustomTarget, CustomTargetIndex)):
+            vs_module_defs = File.from_built_file(vs_module_defs.subdir, vs_module_defs.get_filename())
+        self.vs_module_defs = vs_module_defs
+        if vs_module_defs is not None:
+            self.link_depends.append(vs_module_defs)
 
     def post_init(self) -> None:
         super().post_init()
@@ -2311,26 +2294,6 @@ class SharedLibrary(BuildTarget):
                 # If unspecified, pick the soversion
                 self.darwin_versions = 2 * [self.soversion]
 
-        # Visual Studio module-definitions file
-        if 'vs_module_defs' in kwargs:
-            path = kwargs['vs_module_defs']
-            if isinstance(path, str):
-                if os.path.isabs(path):
-                    self.vs_module_defs = File.from_absolute_file(path)
-                else:
-                    self.vs_module_defs = File.from_source_file(self.environment.source_dir, self.subdir, path)
-            elif isinstance(path, File):
-                # When passing a generated file.
-                self.vs_module_defs = path
-            elif hasattr(path, 'get_filename'):
-                # When passing output of a Custom Target
-                self.vs_module_defs = File.from_built_file(path.subdir, path.get_filename())
-            else:
-                raise InvalidArguments(
-                    'Shared library vs_module_defs must be either a string, '
-                    'a file object or a Custom Target')
-            self.process_link_depends(path)
-
     def get_import_filename(self) -> T.Optional[str]:
         """
         The name of the import library that will be outputted by the compiler
@@ -2444,6 +2407,7 @@ class SharedModule(SharedLibrary):
             vala_header: T.Optional[str] = None,
             vala_vapi: T.Optional[str] = None,
             vala_gir: T.Optional[str] = None,
+            vs_module_defs: T.Optional[T.Union[File, CustomTarget, CustomTargetIndex]] = None,
             c_pch: T.Optional[T.List[str]] = None,
             cpp_pch: T.Optional[T.List[str]] = None,
             ):
@@ -2484,6 +2448,7 @@ class SharedModule(SharedLibrary):
                          vala_header=vala_header,
                          vala_vapi=vala_vapi,
                          vala_gir=vala_gir,
+                         vs_module_defs=vs_module_defs,
                          c_pch=c_pch,
                          cpp_pch=cpp_pch,
                          )

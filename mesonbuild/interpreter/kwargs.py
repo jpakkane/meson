@@ -391,7 +391,8 @@ class StaticLibrary(_BuildTargetBase, _StaticLibraryMixin):
 
 
 class _SharedModuleMixin(TypedDict):
-    pass
+
+    vs_module_defs: T.Optional[T.Union[str, File, CustomTarget, build.CustomTargetIndex]]
 
 
 class SharedModule(_BuildTargetBase, _SharedModuleMixin):

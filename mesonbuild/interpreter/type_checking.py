@@ -551,6 +551,11 @@ _PCH_KW: KwargInfo[T.List[str]] = KwargInfo(
     feature_validator=lambda x, _: [FeatureDeprecated('PCH source files', '0.50.0', 'Only a single header file should be used.')] if len(x) == 2 else [],
 )
 
+_VS_MODULE_DEF_KW: KwargInfo[T.Union[str, File, CustomTarget, CustomTargetIndex]] = KwargInfo(
+    'vs_module_defs',
+    (str, File, CustomTarget, CustomTargetIndex, NoneType),
+)
+
 _NAME_PREFIX_KW: KwargInfo[T.Union[str, list, None]] = KwargInfo(
     'name_prefix',
     (str, list, NoneType),
@@ -731,6 +736,7 @@ SHARED_LIB_KWS: T.List[KwargInfo] = [
     *_LANGUAGE_KWS,
     _LINK_WITH_KW,
     _SHARED_LIB_RUST_CRATE,
+    _VS_MODULE_DEF_KW,
 ]
 
 SHARED_MOD_KWS: T.List[KwargInfo] = [
@@ -738,6 +744,7 @@ SHARED_MOD_KWS: T.List[KwargInfo] = [
     *_BUILD_TARGET_KWS,
     *_LANGUAGE_KWS,
     _SHARED_LIB_RUST_CRATE,
+    _VS_MODULE_DEF_KW.evolve(since='0.52.0'),
     # Shared modules can additionally by linked with Executables
     KwargInfo(
         'link_with',
@@ -761,6 +768,7 @@ BOTH_LIB_KWS: T.List[KwargInfo] = [
         validator=in_set_validator({'lib', 'rlib', 'staticlib', 'cdylib', 'dylib', 'proc-macro'}),
         since_values={'proc-macro': '0.62.0'},
     ),
+    _VS_MODULE_DEF_KW,
 ]
 
 EXECUTABLE_KWS: T.List[KwargInfo] = [
@@ -817,6 +825,7 @@ BUILD_TARGET_KWS: T.List[KwargInfo] = [
         validator=in_set_validator({'bin', 'lib', 'rlib', 'staticlib', 'cdylib', 'dylib', 'proc-macro'}),
         since_values={'proc-macro': '0.62.0'},
     ),
+    _VS_MODULE_DEF_KW,
     KwargInfo(
         'link_with',
         ContainerTypeInfo(
