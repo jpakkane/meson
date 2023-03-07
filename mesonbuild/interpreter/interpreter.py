@@ -3203,6 +3203,54 @@ class Interpreter(InterpreterBase, HoldableObject):
         else:
             raise InterpreterException(f'Unknown default_library value: {default_library}.')
 
+    def __build_jar(self, name: str, sources: T.List[BuildTargetSource],
+                    struct_src: T.Optional[build.StructuredSources],
+                    kwargs: kwtypes.Jar) -> build.Jar:
+        return build.Jar(
+            name, self.subdir, self.subproject, MachineChoice.HOST, sources,
+            struct_src, [], self.environment, self.compilers[MachineChoice.HOST], kwargs,
+        )
+
+    def __build_exe(self, name: str, sources: T.List[BuildTargetSource],
+                    struct_src: T.Optional[build.StructuredSources],
+                    objects: T.List[T.Union[mesonlib.File, build.ExtractedObjects, build.CustomTarget, build.CustomTargetIndex, build.GeneratedList]],
+                    for_machine: MachineChoice,
+                    kwargs: kwtypes.Executable) -> build.Executable:
+        return build.Executable(
+            name, self.subdir, self.subproject, for_machine, sources,
+            struct_src, objects, self.environment, self.compilers[for_machine], kwargs,
+        )
+
+    def __build_sh_lib(self, name: str, sources: T.List[BuildTargetSource],
+                       struct_src: T.Optional[build.StructuredSources],
+                       objects: T.List[T.Union[mesonlib.File, build.ExtractedObjects, build.CustomTarget, build.CustomTargetIndex, build.GeneratedList]],
+                       for_machine: MachineChoice,
+                       kwargs: kwtypes.SharedLibrary) -> build.SharedLibrary:
+        return build.SharedLibrary(
+            name, self.subdir, self.subproject, for_machine, sources,
+            struct_src, objects, self.environment, self.compilers[for_machine], kwargs,
+        )
+
+    def __build_sh_mod(self, name: str, sources: T.List[BuildTargetSource],
+                       struct_src: T.Optional[build.StructuredSources],
+                       objects: T.List[T.Union[mesonlib.File, build.ExtractedObjects, build.CustomTarget, build.CustomTargetIndex, build.GeneratedList]],
+                       for_machine: MachineChoice,
+                       kwargs: kwtypes.SharedModule) -> build.SharedModule:
+        return build.SharedModule(
+            name, self.subdir, self.subproject, for_machine, sources,
+            struct_src, objects, self.environment, self.compilers[for_machine], kwargs,
+        )
+
+    def __build_st_lib(self, name: str, sources: T.List[BuildTargetSource],
+                       struct_src: T.Optional[build.StructuredSources],
+                       objects: T.List[T.Union[mesonlib.File, build.ExtractedObjects, build.CustomTarget, build.CustomTargetIndex, build.GeneratedList]],
+                       for_machine: MachineChoice,
+                       kwargs: kwtypes.StaticLibrary) -> build.StaticLibrary:
+        return build.StaticLibrary(
+            name, self.subdir, self.subproject, for_machine, sources,
+            struct_src, objects, self.environment, self.compilers[for_machine], kwargs,
+        )
+
     def build_target(
             self, node: mparser.BaseNode,
             args: T.Tuple[str, T.List[BuildTargetSource]],
@@ -3283,8 +3331,17 @@ class Interpreter(InterpreterBase, HoldableObject):
                     outputs.update(o)
 
         kwargs['include_directories'] = self.extract_incdirs(kwargs)
-        target = targetclass(name, self.subdir, self.subproject, for_machine, srcs, struct, objs,
-                             self.environment, self.compilers[for_machine], kwargs)
+
+        if targetclass is build.Jar:
+            target = self. __build_jar(name, srcs, struct, kwargs)
+        elif targetclass is build.Executable:
+            target = self.__build_exe(name, srcs, struct, objs, for_machine, kwargs)
+        elif targetclass is build.StaticLibrary:
+            target = self.__build_st_lib(name, srcs, struct, objs, for_machine, kwargs)
+        elif targetclass is build.SharedLibrary:
+            target = self.__build_sh_lib(name, srcs, struct, objs, for_machine, kwargs)
+        else:
+            target = self.__build_sh_mod(name, srcs, struct, objs, for_machine, kwargs)
         target.project_version = self.project_version
 
         self.add_target(name, target)
