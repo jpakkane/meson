@@ -47,7 +47,7 @@ from .compilers import (
 from .interpreterbase import FeatureNew, FeatureDeprecated
 
 if T.TYPE_CHECKING:
-    from typing_extensions import Literal
+    from typing_extensions import Literal, TypedDict
     from ._typing import ImmutableListProtocol
     from .backend.backends import Backend, ExecutableSerialisation
     from .compilers import Compiler
@@ -63,6 +63,13 @@ if T.TYPE_CHECKING:
     LibTypes = T.Union['SharedLibrary', 'StaticLibrary', 'CustomTarget', 'CustomTargetIndex']
     BuildTargetTypes = T.Union['BuildTarget', 'CustomTarget', 'CustomTargetIndex']
     ObjectTypes = T.Union[str, 'File', 'ExtractedObjects', 'GeneratedTypes']
+
+    class DFeatures(TypedDict):
+
+        unittest: bool
+        debug: T.List[T.Union[str, int]]
+        import_dirs: T.List[IncludeDirs]
+        versions: T.List[T.Union[str, int]]
 
 pch_kwargs = {'c_pch', 'cpp_pch'}
 
@@ -692,11 +699,12 @@ class BuildTarget(Target):
                          install, extra_files=extra_files or [], override_options=override_options)
         self.all_compilers = compilers
         self.build_rpath = build_rpath
-        self.d_features = defaultdict(list)
-        self.d_features['debug'] = d_debug or []
-        self.d_features['import_dirs'] = d_import_dirs or []
-        self.d_features['versions'] = d_versions or []
-        self.d_features['unittest'] = d_unittest
+        self.d_features: DFeatures = {
+            'debug': d_debug or [],
+            'import_dirs': d_import_dirs or [],
+            'versions': d_versions or [],
+            'unittest': d_unittest,
+        }
         self.implicit_include_directories = implicit_include_directories
         self.install_dir = install_dir if install_dir is not None else []
         self.install_mode = install_mode if install_mode is not None else FileMode()
