@@ -2808,20 +2808,16 @@ class Jar(BuildTarget):
 
     typename = 'jar'
 
-    def __init__(self, name: str, subdir: str, subproject: str, for_machine: MachineChoice,
-                 sources: T.List[SourceOutputs], structured_sources: T.Optional['StructuredSources'],
-                 objects, environment: environment.Environment, compilers: T.Dict[str, 'Compiler'],
+    def __init__(self, name: str, subdir: str, subproject: str,
+                 for_machine: MachineChoice,
+                 sources: T.List[SourceOutputs], environment:
+                 environment.Environment, compilers: T.Dict[str, 'Compiler'],
                  kwargs):
-        super().__init__(name, subdir, subproject, for_machine, sources, structured_sources, objects,
+        super().__init__(name, subdir, subproject, for_machine, sources, None, [],
                          environment, compilers, kwargs)
-        for s in self.sources:
-            if not s.endswith('.java'):
-                raise InvalidArguments(f'Jar source {s} is not a java file.')
         for t in self.link_targets:
             if not isinstance(t, Jar):
                 raise InvalidArguments(f'Link target {t} is not a jar target.')
-        if self.structured_sources:
-            raise InvalidArguments('structured sources are not supported in Java targets.')
         self.filename = self.name + '.jar'
         self.outputs = [self.filename]
         self.java_args = kwargs.get('java_args', [])

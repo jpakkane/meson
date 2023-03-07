@@ -3206,9 +3206,13 @@ class Interpreter(InterpreterBase, HoldableObject):
     def __build_jar(self, name: str, sources: T.List[BuildTargetSource],
                     struct_src: T.Optional[build.StructuredSources],
                     kwargs: kwtypes.Jar) -> build.Jar:
+        if any(not s.endswith('.java') for s in sources):
+            raise InvalidArguments('Jar sources must all be java files.')
+        if struct_src is not None:
+            raise InvalidArguments('Jar does not support structured_sources')
         return build.Jar(
             name, self.subdir, self.subproject, MachineChoice.HOST, sources,
-            struct_src, [], self.environment, self.compilers[MachineChoice.HOST], kwargs,
+            self.environment, self.compilers[MachineChoice.HOST], kwargs,
         )
 
     def __build_exe(self, name: str, sources: T.List[BuildTargetSource],
