@@ -140,8 +140,6 @@ class RustModule(ExtensionModule):
         tkwargs['args'] = extra_args + ['--test', '--format', 'pretty']
         tkwargs['protocol'] = 'rust'
 
-        new_target_kwargs = base_target.kwargs.copy()
-
         lang_args = copy.deepcopy(base_target.extra_args)
         lang_args['rust'].append('--test')
 
@@ -151,7 +149,7 @@ class RustModule(ExtensionModule):
         new_target = Executable(
             name, base_target.subdir, state.subproject, base_target.for_machine,
             sources, base_target.structured_sources, base_target.objects,
-            base_target.environment, base_target.compilers, new_target_kwargs,
+            base_target.environment, base_target.compilers,
             build_by_default=True,
             dependencies=list(itertools.chain(base_target.added_deps, kwargs['dependencies'])),
             include_directories=base_target.include_dirs.copy(),

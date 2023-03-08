@@ -3160,7 +3160,7 @@ class Interpreter(InterpreterBase, HoldableObject):
             raise InvalidArguments('Jar does not support structured_sources')
         return build.Jar(
             name, self.subdir, self.subproject, MachineChoice.HOST, sources,
-            self.environment, self.compilers[MachineChoice.HOST], kwargs,
+            self.environment, self.compilers[MachineChoice.HOST],
             build_by_default=kwargs['build_by_default'],
             dependencies=kwargs['dependencies'],
             extra_files=kwargs['extra_files'],
@@ -3218,7 +3218,7 @@ class Interpreter(InterpreterBase, HoldableObject):
 
         return build.Executable(
             name, self.subdir, self.subproject, for_machine, sources,
-            struct_src, objects, self.environment, self.compilers[for_machine], kwargs,
+            struct_src, objects, self.environment, self.compilers[for_machine],
             build_by_default=kwargs['build_by_default'],
             build_rpath=kwargs['build_rpath'],
             dependencies=kwargs['dependencies'],
@@ -3263,7 +3263,7 @@ class Interpreter(InterpreterBase, HoldableObject):
                        kwargs: kwtypes.SharedLibrary) -> build.SharedLibrary:
         return build.SharedLibrary(
             name, self.subdir, self.subproject, for_machine, sources,
-            struct_src, objects, self.environment, self.compilers[for_machine], kwargs,
+            struct_src, objects, self.environment, self.compilers[for_machine],
             build_by_default=kwargs['build_by_default'],
             build_rpath=kwargs['build_rpath'],
             dependencies=kwargs['dependencies'],
@@ -3307,7 +3307,7 @@ class Interpreter(InterpreterBase, HoldableObject):
                        kwargs: kwtypes.SharedModule) -> build.SharedModule:
         return build.SharedModule(
             name, self.subdir, self.subproject, for_machine, sources,
-            struct_src, objects, self.environment, self.compilers[for_machine], kwargs,
+            struct_src, objects, self.environment, self.compilers[for_machine],
             build_by_default=kwargs['build_by_default'],
             build_rpath=kwargs['build_rpath'],
             dependencies=kwargs['dependencies'],
@@ -3349,7 +3349,7 @@ class Interpreter(InterpreterBase, HoldableObject):
                        kwargs: kwtypes.StaticLibrary) -> build.StaticLibrary:
         return build.StaticLibrary(
             name, self.subdir, self.subproject, for_machine, sources,
-            struct_src, objects, self.environment, self.compilers[for_machine], kwargs,
+            struct_src, objects, self.environment, self.compilers[for_machine],
             build_by_default=kwargs['build_by_default'],
             build_rpath=kwargs['build_rpath'],
             dependencies=kwargs['dependencies'],

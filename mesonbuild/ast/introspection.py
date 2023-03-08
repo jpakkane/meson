@@ -291,10 +291,9 @@ class IntrospectionInterpreter(AstInterpreter):
         for_machine = MachineChoice.HOST
         objects = []        # type: T.List[T.Any]
         empty_sources = []  # type: T.List[T.Any]
-        # Passing the unresolved sources list causes errors
-        kwargs_reduced['_allow_no_sources'] = True
-        target = targetclass(name, self.subdir, self.subproject, for_machine, empty_sources, [], objects,
-                             self.environment, self.coredata.compilers[for_machine], kwargs_reduced)
+        # TODO: need to actually calculate structured sources?
+        target = targetclass(name, self.subdir, self.subproject, for_machine, empty_sources, None, objects,
+                             self.environment, self.coredata.compilers[for_machine], **kwargs_reduced, _allow_no_sources=True)
         target.process_compilers()
         target.process_compilers_late([])
 

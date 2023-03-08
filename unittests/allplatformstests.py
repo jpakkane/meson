@@ -3272,7 +3272,7 @@ class AllPlatformTests(BasePlatformTests):
             for k in ('install_filename', 'dependencies', 'win_subsystem'):
                 if k in i:
                     del i[k]
-                    
+
             sources = []
             for j in i['target_sources']:
                 sources += j.get('sources', [])
@@ -4374,8 +4374,7 @@ class AllPlatformTests(BasePlatformTests):
             target = type_(name=name, subdir=None, subproject=None,
                            for_machine=MachineChoice.HOST, sources=[],
                            structured_sources=None,
-                           objects=[], environment=env, compilers=env.coredata.compilers[MachineChoice.HOST],
-                           kwargs={})
+                           objects=[], environment=env, compilers=env.coredata.compilers[MachineChoice.HOST])
             target.process_compilers()
             target.process_compilers_late([])
             return target.filename

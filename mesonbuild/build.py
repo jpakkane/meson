@@ -18,7 +18,6 @@ from collections import defaultdict, OrderedDict
 from dataclasses import dataclass, field, InitVar
 from functools import lru_cache
 import abc
-import copy
 import hashlib
 import itertools, pathlib
 import os
@@ -620,7 +619,6 @@ class BuildTarget(Target):
             objects: T.List[ObjectTypes],
             environment: environment.Environment,
             compilers: T.Dict[str, 'Compiler'],
-            kwargs,
             *,
             build_by_default: bool = True,
             build_rpath: str = '',
@@ -722,7 +720,6 @@ class BuildTarget(Target):
         # 1. Preexisting objects provided by the user with the `objects:` kwarg
         # 2. Compiled objects created by and extracted from another target
         self.process_objectlist(objects)
-        self.process_kwargs(kwargs)
         if not any([self.sources, self.generated, self.objects, self.link_whole_targets,
                     self.structured_sources, _allow_no_sources]):
             mlog.warning(f'Build target {name} has no sources. '
@@ -914,18 +911,6 @@ class BuildTarget(Target):
             langs = ', '.join(self.compilers.keys())
             raise InvalidArguments(f'Cannot mix those languages into a target: {langs}')
 
-    def get_original_kwargs(self):
-        return self.kwargs
-
-    def copy_kwargs(self, kwargs):
-        self.kwargs = copy.copy(kwargs)
-        for k, v in self.kwargs.items():
-            if isinstance(v, list):
-                self.kwargs[k] = listify(v, flatten=True)
-        for t in ['dependencies', 'link_with', 'include_directories', 'sources']:
-            if t in self.kwargs:
-                self.kwargs[t] = listify(self.kwargs[t], flatten=True)
-
     def extract_objects(self, srclist: T.List[T.Union['FileOrString', 'GeneratedTypes']]) -> ExtractedObjects:
         sources_set = set(self.sources)
         generated_set = set(self.generated)
@@ -996,9 +981,6 @@ class BuildTarget(Target):
 
     def get_custom_install_mode(self) -> T.Optional['FileMode']:
         return self.install_mode
-
-    def process_kwargs(self, kwargs):
-        self.copy_kwargs(kwargs)
 
     def _extract_pic_pie(self, value: T.Optional[bool], arg: Literal['pic', 'pie']) -> bool:
         # Check if we have -fPIC, -fpic, -fPIE, or -fpie in cflags
@@ -1529,7 +1511,6 @@ class Executable(BuildTarget):
             objects: T.List[ObjectTypes],
             environment: environment.Environment,
             compilers: T.Dict[str, 'Compiler'],
-            kwargs,
             *,
             build_by_default: bool = True,
             build_rpath: str = '',
@@ -1571,7 +1552,7 @@ class Executable(BuildTarget):
             win_subsystem: str = 'console',
             ):
         super().__init__(name, subdir, subproject, for_machine, sources, structured_sources, objects,
-                         environment, compilers, kwargs,
+                         environment, compilers,
                          build_by_default=build_by_default,
                          build_rpath=build_rpath,
                          d_debug=d_debug,
@@ -1749,7 +1730,6 @@ class StaticLibrary(BuildTarget):
             objects: T.List[ObjectTypes],
             environment: environment.Environment,
             compilers: T.Dict[str, 'Compiler'],
-            kwargs,
             *,
             build_by_default: bool = True,
             build_rpath: str = '',
@@ -1789,7 +1769,7 @@ class StaticLibrary(BuildTarget):
             prelink: bool = False,
             ):
         super().__init__(name, subdir, subproject, for_machine, sources, structured_sources, objects,
-                         environment, compilers, kwargs,
+                         environment, compilers,
                          build_by_default=build_by_default,
                          build_rpath=build_rpath,
                          d_debug=d_debug,
@@ -1886,7 +1866,6 @@ class SharedLibrary(BuildTarget):
             objects: T.List[ObjectTypes],
             environment: environment.Environment,
             compilers: T.Dict[str, 'Compiler'],
-            kwargs,
             *,
             build_by_default: bool = True,
             build_rpath: str = '',
@@ -1962,7 +1941,7 @@ class SharedLibrary(BuildTarget):
         assert hasattr(self, 'soversion')
 
         super().__init__(name, subdir, subproject, for_machine, sources, structured_sources, objects,
-                         environment, compilers, kwargs,
+                         environment, compilers,
                          build_by_default=build_by_default,
                          build_rpath=build_rpath,
                          d_debug=d_debug,
@@ -2223,7 +2202,6 @@ class SharedModule(SharedLibrary):
             objects: T.List[ObjectTypes],
             environment: environment.Environment,
             compilers: T.Dict[str, 'Compiler'],
-            kwargs,
             *,
             build_by_default: bool = True,
             build_rpath: str = '',
@@ -2262,7 +2240,7 @@ class SharedModule(SharedLibrary):
             _allow_no_sources: bool = False,
             ):
         super().__init__(name, subdir, subproject, for_machine, sources,
-                         structured_sources, objects, environment, compilers, kwargs,
+                         structured_sources, objects, environment, compilers,
                          build_by_default=build_by_default,
                          build_rpath=build_rpath,
                          d_debug=d_debug,
@@ -2587,7 +2565,7 @@ class CompileTarget(BuildTarget):
         comp_args[compiler.language] = compile_args
 
         super().__init__(name, subdir, subproject, compiler.for_machine,
-                         sources, None, [], environment, compilers, {},
+                         sources, None, [], environment, compilers,
                          build_by_default=False,
                          dependencies=dependencies,
                          include_directories=include_directories,
@@ -2691,7 +2669,6 @@ class Jar(BuildTarget):
                  for_machine: MachineChoice,
                  sources: T.List[SourceOutputs], environment:
                  environment.Environment, compilers: T.Dict[str, 'Compiler'],
-                 kwargs,
                  *,
                  build_by_default: bool = True,
                  dependencies: T.Optional[T.List[dependencies.Dependency]] = None,
@@ -2710,7 +2687,7 @@ class Jar(BuildTarget):
                  main_class: str = '',
                  resources: T.Optional[StructuredSources] = None):
         super().__init__(name, subdir, subproject, for_machine, sources, None, [],
-                         environment, compilers, kwargs,
+                         environment, compilers,
                          build_by_default=build_by_default,
                          extra_files=extra_files,
                          dependencies=dependencies,
