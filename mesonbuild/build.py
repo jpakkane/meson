@@ -1081,12 +1081,14 @@ class BuildTarget(Target):
         kwargs.get('modules', [])
         self.need_install = kwargs.get('install', self.need_install)
 
-    def _extract_pic_pie(self, kwargs, arg: str, option: str):
+    def _extract_pic_pie(self, value: T.Optional[bool], arg: Literal['pic', 'pie']) -> bool:
         # Check if we have -fPIC, -fpic, -fPIE, or -fpie in cflags
         all_flags = self.extra_args['c'] + self.extra_args['cpp']
         if '-f' + arg.lower() in all_flags or '-f' + arg.upper() in all_flags:
             mlog.warning(f"Use the '{arg}' kwarg instead of passing '-f{arg}' manually to {self.name!r}")
             return True
+
+        option = 'b_pie' if arg == 'pie' else 'b_staticpic'
 
         m = self.environment.machines[self.for_machine]
         # You can't disable PIC on OS X. The compiler ignores -fno-PIC.
@@ -1100,15 +1102,13 @@ class BuildTarget(Target):
             return True
 
         k = OptionKey(option)
-        if kwargs.get(arg) is not None:
-            val = kwargs[arg]
+        if value is not None:
+            val = value
         elif k in self.environment.coredata.options:
             val = self.environment.coredata.options[k].value
+            assert isinstance(val, bool), 'for mypy'
         else:
             val = False
-
-        if not isinstance(val, bool):
-            raise InvalidArguments(f'Argument {arg} to {self.name!r} must be boolean')
         return val
 
     def get_filename(self) -> str:
@@ -1691,7 +1691,7 @@ class Executable(BuildTarget):
         self.export_dynamic = export_dynamic
         self.win_subsystem = win_subsystem
         self.implib = implib
-        self.pie = self._extract_pic_pie({'pie': pie}, 'pie', 'b_pie')
+        self.pie = self._extract_pic_pie(pie, 'pie')
         # Only linkwithable if using export_dynamic
         self.is_linkwithable = self.export_dynamic
         # Remember that this exe was returned by `find_program()` through an override
@@ -1904,8 +1904,8 @@ class StaticLibrary(BuildTarget):
                          c_pch=c_pch,
                          cpp_pch=cpp_pch,
                          )
-        self.pic = self._extract_pic_pie({'pic': pic}, 'pic', 'b_staticpic')
-        self.pie = False if self.pic else self._extract_pic_pie({'pie': None}, 'pie', 'b_pie')
+        self.pic = self._extract_pic_pie(pic, 'pic')
+        self.pie = False if self.pic else self._extract_pic_pie(None, 'pie')
 
         self.prelink = prelink
 
