@@ -3230,6 +3230,7 @@ class Interpreter(InterpreterBase, HoldableObject):
             link_language=kwargs['link_language'],
             link_whole=kwargs['link_whole'],
             name_prefix=kwargs['name_prefix'],
+            name_suffix=kwargs['name_suffix'],
             gnu_symbol_visibility=kwargs['gnu_symbol_visibility'],
             override_options=kwargs['override_options'],
         )
@@ -3261,6 +3262,7 @@ class Interpreter(InterpreterBase, HoldableObject):
             link_language=kwargs['link_language'],
             link_whole=kwargs['link_whole'],
             name_prefix=kwargs['name_prefix'],
+            name_suffix=kwargs['name_suffix'],
             gnu_symbol_visibility=kwargs['gnu_symbol_visibility'],
             override_options=kwargs['override_options'],
         )
@@ -3292,6 +3294,7 @@ class Interpreter(InterpreterBase, HoldableObject):
             link_language=kwargs['link_language'],
             link_whole=kwargs['link_whole'],
             name_prefix=kwargs['name_prefix'],
+            name_suffix=kwargs['name_suffix'],
             gnu_symbol_visibility=kwargs['gnu_symbol_visibility'],
             override_options=kwargs['override_options'],
         )
@@ -3323,6 +3326,7 @@ class Interpreter(InterpreterBase, HoldableObject):
             link_language=kwargs['link_language'],
             link_whole=kwargs['link_whole'],
             name_prefix=kwargs['name_prefix'],
+            name_suffix=kwargs['name_suffix'],
             gnu_symbol_visibility=kwargs['gnu_symbol_visibility'],
             override_options=kwargs['override_options'],
         )
