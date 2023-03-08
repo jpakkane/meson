@@ -419,6 +419,7 @@ class _ExecutableMixin(TypedDict):
 
     export_dynamic: bool
     gui_app: T.Optional[bool]
+    win_subsystem: T.Optional[str]
 
 
 class Executable(_BuildTargetBase, _ExecutableMixin):

@@ -33,7 +33,7 @@ from ..interpreterbase import ContainerTypeInfo, InterpreterBase, KwargInfo, typ
 from ..interpreterbase import noPosargs, noKwargs, permittedKwargs, noArgsFlattening, noSecondLevelHolderResolving, unholder_return
 from ..interpreterbase import InterpreterException, InvalidArguments, InvalidCode, SubdirDoneRequest
 from ..interpreterbase import Disabler, disablerIfNotFound
-from ..interpreterbase import FeatureNew, FeatureDeprecated, FeatureNewKwargs, FeatureDeprecatedKwargs
+from ..interpreterbase import FeatureNew, FeatureDeprecated, FeatureNewKwargs
 from ..interpreterbase import ObjectHolder, ContextManagerObject
 from ..modules import ExtensionModule, ModuleObject, MutableModuleObject, NewExtensionModule, NotFoundExtensionModule
 from ..cmake import CMakeInterpreter
@@ -1798,10 +1798,6 @@ class Interpreter(InterpreterBase, HoldableObject):
     def func_disabler(self, node, args, kwargs):
         return Disabler()
 
-    @FeatureNewKwargs('executable', '0.42.0', ['implib'])
-    @FeatureNewKwargs('executable', '0.56.0', ['win_subsystem'])
-    @FeatureDeprecatedKwargs('executable', '0.56.0', ['gui_app'], extra_message="Use 'win_subsystem' instead.")
-    @permittedKwargs(build.known_exe_kwargs)
     @typed_pos_args('executable', str, varargs=(str, mesonlib.File, build.CustomTarget, build.CustomTargetIndex, build.GeneratedList, build.StructuredSources, build.ExtractedObjects, build.BuildTarget))
     @typed_kwargs('executable', *EXECUTABLE_KWS, allow_unknown=True)
     def func_executable(self, node: mparser.BaseNode,
@@ -3232,7 +3228,7 @@ class Interpreter(InterpreterBase, HoldableObject):
         # This kwarg is deprecated. The value of "none" means that the kwarg
         # was not specified and win_subsystem should be used instead.
         if kwargs['gui_app'] is not None:
-            if 'win_subsystem' in kwargs:
+            if kwargs['win_subsystem'] is not None:
                 raise InvalidArguments('Can specify only gui_app or win_subsystem for a target, not both.')
             kwargs['win_subsystem'] = 'windows' if kwargs['gui_app'] else 'console'
 
@@ -3270,7 +3266,8 @@ class Interpreter(InterpreterBase, HoldableObject):
             vala_gir=kwargs['vala_gir'],
             c_pch=kwargs['c_pch'],
             cpp_pch=kwargs['cpp_pch'],
-            export_dynamic=kwargs['export_dynamic']
+            export_dynamic=kwargs['export_dynamic'],
+            win_subsystem=kwargs['win_subsystem'],
         )
 
     def __build_sh_lib(self, name: str, sources: T.List[BuildTargetSource],

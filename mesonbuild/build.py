@@ -22,8 +22,8 @@ import copy
 import hashlib
 import itertools, pathlib
 import os
-import pickle
 import re
+import pickle
 import textwrap
 import typing as T
 
@@ -1081,22 +1081,12 @@ class BuildTarget(Target):
         kwargs.get('modules', [])
         self.need_install = kwargs.get('install', self.need_install)
 
-        if isinstance(self, Executable):
-            self.win_subsystem = self.validate_win_subsystem(kwargs.get('win_subsystem', 'console'))
-        elif 'win_subsystem' in kwargs:
-            raise InvalidArguments('Argument win_subsystem can only be used on executables.')
         if isinstance(self, Executable) or (isinstance(self, StaticLibrary) and not self.pic):
             # Executables must be PIE on Android
             if self.environment.machines[self.for_machine].is_android():
                 self.pie = True
             else:
                 self.pie = self._extract_pic_pie(kwargs, 'pie', 'b_pie')
-
-    def validate_win_subsystem(self, value: str) -> str:
-        value = value.lower()
-        if re.fullmatch(r'(boot_application|console|efi_application|efi_boot_service_driver|efi_rom|efi_runtime_driver|native|posix|windows)(,\d+(\.\d+)?)?', value) is None:
-            raise InvalidArguments(f'Invalid value for win_subsystem: {value}.')
-        return value
 
     def _extract_pic_pie(self, kwargs, arg: str, option: str):
         # Check if we have -fPIC, -fpic, -fPIE, or -fpie in cflags
@@ -1660,6 +1650,7 @@ class Executable(BuildTarget):
             c_pch: T.Optional[T.List[str]] = None,
             cpp_pch: T.Optional[T.List[str]] = None,
             export_dynamic: bool = False,
+            win_subsystem: str = 'console',
             ):
         key = OptionKey('b_pie')
         if 'pie' not in kwargs and key in environment.coredata.options:
@@ -1702,6 +1693,7 @@ class Executable(BuildTarget):
                          )
         # Check for export_dynamic
         self.export_dynamic = export_dynamic
+        self.win_subsystem = win_subsystem
         self.implib = kwargs.get('implib')
         if not isinstance(self.implib, (bool, str, type(None))):
             raise InvalidArguments('"export_dynamic" keyword argument must be a boolean or string')
