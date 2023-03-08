@@ -916,13 +916,9 @@ class Vs2010Backend(backends.Backend):
         self.handled_target_deps[target.get_id()] = []
         if isinstance(target, build.Executable):
             conftype = 'Application'
-            if target.gui_app is not None:
-                if not target.gui_app:
-                    subsystem = 'Console'
-            else:
-                # If someone knows how to set the version properly,
-                # please send a patch.
-                subsystem = target.win_subsystem.split(',')[0]
+            # If someone knows how to set the version properly,
+            # please send a patch.
+            subsystem = target.win_subsystem.split(',')[0]
         elif isinstance(target, build.StaticLibrary):
             conftype = 'StaticLibrary'
         elif isinstance(target, build.SharedLibrary):

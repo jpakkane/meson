@@ -3229,6 +3229,13 @@ class Interpreter(InterpreterBase, HoldableObject):
                     objects: T.List[T.Union[mesonlib.File, build.ExtractedObjects, build.CustomTarget, build.CustomTargetIndex, build.GeneratedList]],
                     for_machine: MachineChoice,
                     kwargs: kwtypes.Executable) -> build.Executable:
+        # This kwarg is deprecated. The value of "none" means that the kwarg
+        # was not specified and win_subsystem should be used instead.
+        if kwargs['gui_app'] is not None:
+            if 'win_subsystem' in kwargs:
+                raise InvalidArguments('Can specify only gui_app or win_subsystem for a target, not both.')
+            kwargs['win_subsystem'] = 'windows' if kwargs['gui_app'] else 'console'
+
         return build.Executable(
             name, self.subdir, self.subproject, for_machine, sources,
             struct_src, objects, self.environment, self.compilers[for_machine], kwargs,

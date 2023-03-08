@@ -960,10 +960,6 @@ class Compiler(HoldableObject, metaclass=abc.ABCMeta):
     def gnu_symbol_visibility_args(self, vistype: str) -> T.List[str]:
         return []
 
-    def get_gui_app_args(self, value: bool) -> T.List[str]:
-        # Only used on Windows
-        return self.linker.get_gui_app_args(value)
-
     def get_win_subsystem_args(self, value: str) -> T.List[str]:
         # By default the dynamic linker is going to return an empty
         # array in case it either doesn't support Windows subsystems

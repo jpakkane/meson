@@ -3123,16 +3123,14 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
     def get_target_type_link_args_post_dependencies(self, target, linker):
         commands = []
         if isinstance(target, build.Executable):
-            # If gui_app is significant on this platform, add the appropriate linker arguments.
-            # Unfortunately this can't be done in get_target_type_link_args, because some misguided
-            # libraries (such as SDL2) add -mwindows to their link flags.
+            # If win_subsystem is significant on this platform, add the
+            # appropriate linker arguments.  Unfortunately this can't be done in
+            # get_target_type_link_args, because some misguided libraries (such
+            # as SDL2) add -mwindows to their link flags.
             m = self.environment.machines[target.for_machine]
 
             if m.is_windows() or m.is_cygwin():
-                if target.gui_app is not None:
-                    commands += linker.get_gui_app_args(target.gui_app)
-                else:
-                    commands += linker.get_win_subsystem_args(target.win_subsystem)
+                commands += linker.get_win_subsystem_args(target.win_subsystem)
         return commands
 
     def get_link_whole_args(self, linker, target):
