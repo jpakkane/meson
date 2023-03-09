@@ -2388,7 +2388,8 @@ class CustomTarget(Target, CommandBase):
                  ):
         # TODO expose keyword arg to make MachineChoice.HOST configurable
         super().__init__(name, subdir, subproject, False, MachineChoice.HOST, environment,
-                         install, build_always_stale)
+                         install)
+        self.build_always_stale = build_always_stale
         self.sources = list(sources)
         self.outputs = substitute_values(
             outputs, get_filenames_templates_dict(
