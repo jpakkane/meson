@@ -36,7 +36,7 @@ if T.TYPE_CHECKING:
     from ..interpreterbase import FeatureCheckBase
     from ..build import (
         CustomTarget, IncludeDirs, CustomTargetIndex, LibTypes,
-        StaticLibrary, StructuredSources, ExtractedObjects
+        StaticLibrary, StructuredSources, ObjectTypes
     )
     from ..mesonlib import FileOrString
 
@@ -258,7 +258,7 @@ class InternalDependency(Dependency):
                  extra_files: T.Sequence[mesonlib.File],
                  ext_deps: T.List[Dependency], variables: T.Dict[str, str],
                  d_module_versions: T.List[T.Union[str, int]], d_import_dirs: T.List['IncludeDirs'],
-                 objects: T.List['ExtractedObjects']):
+                 objects: T.List[ObjectTypes]):
         super().__init__(DependencyTypeName('internal'), {})
         self.version = version
         self.is_found = True

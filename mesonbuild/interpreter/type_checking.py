@@ -27,6 +27,7 @@ NoneType: T.Type[None] = type(None)
 if T.TYPE_CHECKING:
     from typing_extensions import Literal
 
+    from ..build import ObjectTypes
     from ..interpreterbase import TYPE_var
     from ..interpreterbase.decorators import ValidatorState
     from ..mesonlib import EnvInitValueType
@@ -548,6 +549,18 @@ def _object_validator(vals: T.List[T.Union[str, File, ExtractedObjects, Generate
     return None
 
 
+OBJECTS_KW: KwargInfo[T.List[ObjectTypes]] = KwargInfo(
+    'objects',
+    ContainerTypeInfo(list, (str, File, ExtractedObjects, GeneratedList, CustomTarget, CustomTargetIndex)),
+    default=[],
+    listify=True,
+    validator=_object_validator,
+    since_values={
+        ContainerTypeInfo(list, (GeneratedList, CustomTarget, CustomTargetIndex)):
+            ('1.1.0', 'Pass generated sources as positional source arguments')
+    }
+)
+
 # For all BuildTarget derived classes except `Jar()``
 _BUILD_TARGET_KWS: T.List[KwargInfo] = [
     KwargInfo('build_rpath', str, default='', since='0.42.0'),
@@ -571,17 +584,7 @@ _BUILD_TARGET_KWS: T.List[KwargInfo] = [
     _NAME_PREFIX_KW,
     _NAME_PREFIX_KW.evolve(name='name_suffix'),
     NATIVE_KW,
-    KwargInfo(
-        'objects',
-        ContainerTypeInfo(list, (str, File, ExtractedObjects, GeneratedList, CustomTarget, CustomTargetIndex)),
-        default=[],
-        listify=True,
-        validator=_object_validator,
-        since_values={
-            ContainerTypeInfo(list, (GeneratedList, CustomTarget, CustomTargetIndex)):
-                ('1.1.0', 'Pass generated sources as positional source arguments')
-        }
-    ),
+    OBJECTS_KW,
     # sources is here because JAR needs to have it's own implementation
     KwargInfo(
         'sources',

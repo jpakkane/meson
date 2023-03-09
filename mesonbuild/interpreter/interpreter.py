@@ -59,6 +59,7 @@ from .type_checking import (
     CT_INPUT_KW,
     CT_INSTALL_DIR_KW,
     MULTI_OUTPUT_KW,
+    OBJECTS_KW,
     OUTPUT_KW,
     DEFAULT_OPTIONS,
     DEPENDENCIES_KW,
@@ -706,7 +707,7 @@ class Interpreter(InterpreterBase, HoldableObject):
         KwargInfo('extra_files', ContainerTypeInfo(list, (mesonlib.File, str)), listify=True, default=[], since='1.2.0'),
         VARIABLES_KW.evolve(since='0.54.0', since_values={list: '0.56.0'}),
         KwargInfo('version', (str, NoneType)),
-        KwargInfo('objects', ContainerTypeInfo(list, build.ExtractedObjects), listify=True, default=[], since='1.1.0'),
+        OBJECTS_KW,
     )
     def func_declare_dependency(self, node, args, kwargs):
         deps = kwargs['dependencies']
