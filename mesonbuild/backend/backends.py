@@ -454,11 +454,7 @@ class Backend:
         obj_list: T.List[str] = []
         deps: T.List[build.BuildTargetTypes] = []
         for obj in objects:
-            if isinstance(obj, str):
-                o = os.path.join(proj_dir_to_build_root,
-                                 self.build_to_src, target.get_subdir(), obj)
-                obj_list.append(o)
-            elif isinstance(obj, mesonlib.File):
+            if isinstance(obj, mesonlib.File):
                 if obj.is_built:
                     o = os.path.join(proj_dir_to_build_root,
                                      obj.rel_to_builddir(self.build_to_src))

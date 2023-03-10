@@ -714,7 +714,7 @@ class Interpreter(InterpreterBase, HoldableObject):
         incs = self.extract_incdirs(kwargs)
         libs = kwargs['link_with']
         libs_whole = kwargs['link_whole']
-        objects = kwargs['objects']
+        objects = self.source_strings_to_files(kwargs['objects'])
         sources = self.source_strings_to_files(kwargs['sources'])
         extra_files = self.source_strings_to_files(kwargs['extra_files'])
         compile_args = kwargs['compile_args']
@@ -3056,6 +3056,9 @@ class Interpreter(InterpreterBase, HoldableObject):
     def source_strings_to_files(self, sources: T.List[T.Union[mesonlib.FileOrString, build.GeneratedTypes]]) -> T.List[T.Union[mesonlib.File, build.GeneratedTypes]]: ... # noqa: F811
 
     @T.overload
+    def source_strings_to_files(self, sources: T.List[T.Union[str, build.ObjectTypes]]) -> T.List[build.ObjectTypes]: ...
+
+    @T.overload
     def source_strings_to_files(self, sources: T.List['SourceInputs'], strict: bool = True) -> T.List['SourceOutputs']: ... # noqa: F811
 
     def source_strings_to_files(self, sources: T.List['SourceInputs'], strict: bool = True) -> T.List['SourceOutputs']: # noqa: F811
@@ -3361,7 +3364,7 @@ class Interpreter(InterpreterBase, HoldableObject):
         sources = [s for s in sources
                    if not isinstance(s, (build.BuildTarget, build.ExtractedObjects))]
         sources = self.source_strings_to_files(sources)
-        objs = kwargs['objects']
+        objs = self.source_strings_to_files(kwargs['objects'])
         kwargs['extra_files'] = self.source_strings_to_files(kwargs['extra_files'])
         self.check_sources_exist(os.path.join(self.source_root, self.subdir), sources)
         if targetclass not in {build.Executable, build.SharedLibrary, build.SharedModule, build.StaticLibrary, build.Jar}:

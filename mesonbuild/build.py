@@ -63,7 +63,7 @@ if T.TYPE_CHECKING:
     GeneratedTypes = T.Union['CustomTarget', 'CustomTargetIndex', 'GeneratedList']
     LibTypes = T.Union['SharedLibrary', 'StaticLibrary', 'CustomTarget', 'CustomTargetIndex']
     BuildTargetTypes = T.Union['BuildTarget', 'CustomTarget', 'CustomTargetIndex']
-    ObjectTypes = T.Union[str, 'File', 'ExtractedObjects', 'GeneratedTypes']
+    ObjectTypes = T.Union['File', 'ExtractedObjects', 'GeneratedTypes']
 
     class DFeatures(TypedDict):
 
@@ -808,7 +808,7 @@ class BuildTarget(Target):
 
     def process_objectlist(self, objects: T.List[ObjectTypes]) -> None:
         for s in objects:
-            if isinstance(s, (str, File, ExtractedObjects)):
+            if isinstance(s, (File, ExtractedObjects)):
                 self.objects.append(s)
             else:
                 self.generated.append(s)
