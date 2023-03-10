@@ -449,7 +449,7 @@ class Backend:
         return list(dict.fromkeys(obj_list))
 
     def _flatten_object_list(self, target: build.BuildTarget,
-                             objects: T.Sequence[T.Union[str, 'File', build.ExtractedObjects]],
+                             objects: T.Sequence[build.ObjectTypes],
                              proj_dir_to_build_root: str) -> T.Tuple[T.List[str], T.List[build.BuildTargetTypes]]:
         obj_list: T.List[str] = []
         deps: T.List[build.BuildTargetTypes] = []
