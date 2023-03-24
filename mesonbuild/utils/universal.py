@@ -15,7 +15,7 @@
 """A library of random helper functionality."""
 
 from __future__ import annotations
-from pathlib import Path
+from pathlib import Path, PurePath
 import argparse
 import enum
 import sys
@@ -103,6 +103,7 @@ __all__ = [
     'default_mandir',
     'default_sbindir',
     'default_sysconfdir',
+    'destdir_join',
     'detect_subprojects',
     'detect_vcs',
     'do_conf_file',
@@ -2390,3 +2391,9 @@ def first(iter: T.Iterable[_T], predicate: T.Callable[[_T], bool]) -> T.Optional
         if predicate(i):
             return i
     return None
+
+def destdir_join(d1: str, d2: str) -> str:
+    if not d1:
+        return d2
+    # c:\destdir + c:\prefix must produce c:\destdir\prefix
+    return str(PurePath(d1, *PurePath(d2).parts[1:]))

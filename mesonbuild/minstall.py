@@ -26,8 +26,9 @@ import typing as T
 
 from . import build, coredata, environment
 from .backend.backends import InstallData
-from .mesonlib import MesonException, Popen_safe, RealPathAction, is_windows, setup_vsenv, pickle_load, is_osx
-from .scripts import depfixer, destdir_join
+from .mesonlib import (MesonException, Popen_safe, RealPathAction, is_windows,
+                       setup_vsenv, pickle_load, is_osx, destdir_join)
+from .scripts import depfixer
 from .scripts.meson_exe import run_exe
 try:
     from __main__ import __file__ as main_file

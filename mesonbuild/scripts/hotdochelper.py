@@ -4,7 +4,7 @@ import os
 import shutil
 import subprocess
 
-from . import destdir_join
+from ..mesonlib import destdir_join
 
 import argparse
 import typing as T

@@ -42,7 +42,7 @@ from mesonbuild.mesonlib import (
     is_sunos, windows_proof_rmtree, python_command, version_compare, split_args, quote_arg,
     relpath, is_linux, git, search_version, do_conf_file, do_conf_str, default_prefix,
     MesonException, EnvironmentException, OptionKey, ExecutableSerialisation, EnvironmentVariables,
-    windows_proof_rm
+    windows_proof_rm, destdir_join
 )
 from mesonbuild.programs import ExternalProgram
 
@@ -59,7 +59,6 @@ from mesonbuild.compilers import (
 from mesonbuild.dependencies import PkgConfigDependency
 from mesonbuild.build import Target, ConfigurationData, Executable, SharedLibrary, StaticLibrary
 import mesonbuild.modules.pkgconfig
-from mesonbuild.scripts import destdir_join
 
 from mesonbuild.wrap.wrap import PackageDefinition, WrapException
 

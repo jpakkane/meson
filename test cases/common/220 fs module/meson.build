@@ -142,3 +142,13 @@ assert(fs.stem('foo/bar/baz.dll.a') == 'baz.dll', 'failed to get stem with compo
 subdir('subdir')
 
 subproject('subbie')
+
+if is_windows
+  assert(fs.join_absolute('C:\\foo', 'D:\\bar') == 'C:\\foo\\bar')
+  assert(fs.join_absolute('C:\\foo', '\\\\Server\\Volume\\file.txt') == 'C:\\foo\\file.txt')
+  # /bar is considered absolute by os.path.isabs() but not by PurePath.is_absolute().
+  # Meson has always used the former to validate --prefix value, so it has to work.
+  assert(fs.join_absolute('C:\\foo', '/bar') == 'C:\\foo\\bar')
+else
+  assert(fs.join_absolute('/foo', '/bar') == '/foo/bar')
+endif

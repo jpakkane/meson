@@ -17,8 +17,7 @@ import sys, os
 import subprocess
 import shutil
 import argparse
-from ..mesonlib import MesonException, Popen_safe, is_windows, is_cygwin, split_args
-from . import destdir_join
+from ..mesonlib import MesonException, Popen_safe, is_windows, is_cygwin, split_args, destdir_join
 import typing as T
 
 parser = argparse.ArgumentParser()

@@ -28,6 +28,7 @@ from ..mesonlib import (
     MesonException,
     has_path_sep,
     path_is_in_root,
+    destdir_join,
 )
 
 if T.TYPE_CHECKING:
@@ -75,6 +76,7 @@ class FSModule(ExtensionModule):
             'stem': self.stem,
             'read': self.read,
             'copyfile': self.copyfile,
+            'join_absolute': self.join_absolute,
         })
 
     def _absolute_dir(self, state: 'ModuleState', arg: 'FileOrString') -> Path:
@@ -309,6 +311,15 @@ class FSModule(ExtensionModule):
         )
 
         return ModuleReturnValue(ct, [ct])
+
+    @noKwargs
+    @FeatureNew('fs.join_absolute', '1.1.0')
+    @typed_pos_args('fs.join_absolute', (str, File), (str, File))
+    def join_absolute(self, state: 'ModuleState', args: T.Tuple['FileOrString', 'FileOrString'], kwargs: T.Dict[str, T.Any]) -> str:
+        d1, d2 = str(args[0]), str(args[1])
+        if not os.path.isabs(d2):
+            raise InvalidArguments('Second argument must be an absolute path')
+        return destdir_join(d1, d2)
 
 
 def initialize(*args: T.Any, **kwargs: T.Any) -> FSModule:
