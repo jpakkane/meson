@@ -283,6 +283,7 @@ class Interpreter(InterpreterBase, HoldableObject):
         self.build = _build
         self.environment = self.build.environment
         self.coredata = self.environment.get_coredata()
+        self.options = coredata.OptionsView(self.coredata.options, self.subproject)
         self.backend = backend
         self.summary: T.Dict[str, 'Summary'] = {}
         self.modules: T.Dict[str, NewExtensionModule] = {}
@@ -1056,41 +1057,6 @@ class Interpreter(InterpreterBase, HoldableObject):
         mlog.log()
         return result
 
-    def get_option_internal(self, optname: str) -> coredata.UserOption:
-        key = OptionKey.from_string(optname).evolve(subproject=self.subproject)
-
-        if not key.is_project():
-            for opts in [self.coredata.options, compilers.base_options]:
-                v = opts.get(key)
-                if v is None or v.yielding:
-                    v = opts.get(key.as_root())
-                if v is not None:
-                    assert isinstance(v, coredata.UserOption), 'for mypy'
-                    return v
-
-        try:
-            opt = self.coredata.options[key]
-            if opt.yielding and key.subproject and key.as_root() in self.coredata.options:
-                popt = self.coredata.options[key.as_root()]
-                if type(opt) is type(popt):
-                    opt = popt
-                else:
-                    # Get class name, then option type as a string
-                    opt_type = opt.__class__.__name__[4:][:-6].lower()
-                    popt_type = popt.__class__.__name__[4:][:-6].lower()
-                    # This is not a hard error to avoid dependency hell, the workaround
-                    # when this happens is to simply set the subproject's option directly.
-                    mlog.warning('Option {0!r} of type {1!r} in subproject {2!r} cannot yield '
-                                 'to parent option of type {3!r}, ignoring parent value. '
-                                 'Use -D{2}:{0}=value to set the value for this option manually'
-                                 '.'.format(optname, opt_type, self.subproject, popt_type),
-                                 location=self.current_node)
-            return opt
-        except KeyError:
-            pass
-
-        raise InterpreterException(f'Tried to access unknown option {optname!r}.')
-
     @typed_pos_args('get_option', str)
     @noKwargs
     def func_get_option(self, nodes: mparser.BaseNode, args: T.Tuple[str],
@@ -1100,7 +1066,9 @@ class Interpreter(InterpreterBase, HoldableObject):
             raise InterpreterException('Having a colon in option name is forbidden, '
                                        'projects are not allowed to directly access '
                                        'options of other subprojects.')
-        opt = self.get_option_internal(optname)
+        opt = self.options.get(OptionKey.from_string(optname))
+        if opt is None:
+            raise InterpreterException(f'Tried to access unknown option {optname!r}.')
         if isinstance(opt, coredata.UserFeatureOption):
             opt.name = optname
             return opt

@@ -19,7 +19,9 @@ import pickle, os, uuid
 import sys
 from itertools import chain
 from pathlib import PurePath
-from collections import OrderedDict
+from collections import OrderedDict, abc
+from dataclasses import dataclass
+
 from .mesonlib import (
     HoldableObject,
     MesonException, EnvironmentException, MachineChoice, PerMachine,
@@ -42,12 +44,12 @@ if T.TYPE_CHECKING:
     from .compilers.compilers import Compiler, CompileResult, RunResult
     from .dependencies.detect import TV_DepID
     from .environment import Environment
-    from .mesonlib import OptionOverrideProxy, FileOrString
+    from .mesonlib import FileOrString
     from .cmake.traceparser import CMakeCacheEntry
 
-    OptionDictType = T.Union[T.Dict[str, 'UserOption[T.Any]'], OptionOverrideProxy]
+    OptionDictType = T.Union[T.Dict[str, 'UserOption[T.Any]'], OptionsView]
     MutableKeyedOptionDictType = T.Dict['OptionKey', 'UserOption[T.Any]']
-    KeyedOptionDictType = T.Union[MutableKeyedOptionDictType, OptionOverrideProxy]
+    KeyedOptionDictType = T.Union[MutableKeyedOptionDictType, OptionsView]
     CompilerCheckCacheKey = T.Tuple[T.Tuple[str, ...], str, FileOrString, T.Tuple[str, ...], str]
     # code, args
     RunCheckCacheKey = T.Tuple[str, T.Tuple[str, ...]]
@@ -438,6 +440,44 @@ class CMakeStateCache:
     def languages(self) -> T.Set[str]:
         return set(self.__cache.keys())
 
+@dataclass
+class OptionsView(abc.Mapping):
+    '''A view on an options dictionary for a given subproject and with overrides.
+    '''
+
+    # TODO: the typing here could be made more explicit using a TypeDict from
+    # python 3.8 or typing_extensions
+    options: 'KeyedOptionDictType'
+    subproject: T.Optional[str] = None
+    overrides: T.Optional[T.Dict['OptionKey', T.Any]] = None
+
+    def __getitem__(self, key: 'OptionKey') -> 'UserOption':
+        key = key.evolve(subproject=self.subproject)
+        opt = self.options.get(key)
+        # BUILTIN, BACKEND and BASE options can be global, which means we can
+        # fallback to take the value from parent project.
+        if opt is None and key.type in {OptionType.BUILTIN, OptionType.BACKEND, OptionType.BASE}:
+            opt = self.options.get(key.as_root())
+        # Need to check in compilers.base_options because if the current
+        # compiler does not support an option it is still valid to take its
+        # default value.
+        if opt is None and key.is_base():
+            from .compilers import base_options
+            opt = base_options.get(key.as_root())
+        if opt is None:
+            raise KeyError(key)
+        if self.overrides:
+            override_value = self.overrides.get(key.as_root())
+            if override_value is not None:
+                opt = copy.copy(opt)
+                opt.set_value(override_value)
+        return opt
+
+    def __iter__(self) -> T.Iterator['OptionKey']:
+        return iter(self.options)
+
+    def __len__(self) -> int:
+        return len(self.options)
 
 # Can't bind this near the class method it seems, sadly.
 _V = T.TypeVar('_V')
@@ -463,6 +503,7 @@ class CoreData:
         self.target_guids = {}
         self.version = version
         self.options: 'MutableKeyedOptionDictType' = {}
+        self.options_view = OptionsView(self.options)
         self.cross_files = self.__load_config_files(options, scratch_dir, 'cross')
         self.compilers = PerMachine(OrderedDict(), OrderedDict())  # type: PerMachine[T.Dict[str, Compiler]]
 
@@ -614,9 +655,10 @@ class CoreData:
     def add_builtin_option(opts_map: 'MutableKeyedOptionDictType', key: OptionKey,
                            opt: 'BuiltinOption') -> None:
         if key.subproject:
-            if opt.yielding:
+            if not opt.yielding:
                 # This option is global and not per-subproject
                 return
+            # Yielding options take their initial value from main project.
             value = opts_map[key.as_root()].value
         else:
             value = None
@@ -634,24 +676,12 @@ class CoreData:
                 '')
 
     def get_option(self, key: OptionKey) -> T.Union[T.List[str], str, int, bool, WrapMode]:
-        try:
-            v = self.options[key].value
-            if key.name == 'wrap_mode':
-                return WrapMode[v]
-            return v
-        except KeyError:
-            pass
-
-        try:
-            v = self.options[key.as_root()]
-            if v.yielding:
-                if key.name == 'wrap_mode':
-                    return WrapMode[v.value]
-                return v.value
-        except KeyError:
-            pass
-
-        raise MesonException(f'Tried to get unknown builtin option {str(key)}')
+        v = self.options_view.get(key)
+        if v is None:
+            raise MesonException(f'Tried to access unknown option {str(key)}.')
+        if key.name == 'wrap_mode':
+            return WrapMode[v.value]
+        return v.value
 
     def set_option(self, key: OptionKey, value) -> bool:
         dirty = False
@@ -786,22 +816,32 @@ class CoreData:
             if not key.is_project():
                 continue
             if key not in self.options:
+                # Yielding options take their initial value from main project.
+                if value.yielding and key.subproject:
+                    root_value = self.options.get(key.as_root())
+                    if root_value:
+                        if type(value) is not type(root_value):
+                            # Get class name, then option type as a string
+                            opt_type = value.__class__.__name__[4:][:-6].lower()
+                            popt_type = root_value.__class__.__name__[4:][:-6].lower()
+                            # This is not a hard error to avoid dependency hell, the workaround
+                            # when this happens is to simply set the subproject's option directly.
+                            mlog.warning(f'Option {str(key.as_root())!r} of type {opt_type!r} in subproject {key.subproject!r}',
+                                         f'cannot yield to parent option of type {popt_type!r}, ignoring parent value.')
+                            mlog.warning(f'Use -D{str(key)}=value to set the value for this option manually.')
+                        else:
+                            value.set_value(root_value.value)
                 self.options[key] = value
                 continue
-
-            oldval = self.options[key]
-            if type(oldval) != type(value):
-                self.options[key] = value
-            elif oldval.choices != value.choices:
-                # If the choices have changed, use the new value, but attempt
-                # to keep the old options. If they are not valid keep the new
-                # defaults but warn.
-                self.options[key] = value
-                try:
-                    value.set_value(oldval.value)
-                except MesonException:
-                    mlog.warning(f'Old value(s) of {key} are no longer valid, resetting to default ({value.value}).',
-                                 fatal=False)
+            # This is a reconfigure, make sure old value still applies,
+            # otherwise warn and reset to default.
+            oldval = self.options[key].value
+            self.options[key] = value
+            try:
+                value.set_value(oldval)
+            except MesonException:
+                mlog.warning(f'Old value(s) of {key} are no longer valid, resetting to default ({value.value}).',
+                             fatal=False)
 
     def is_cross_build(self, when_building_for: MachineChoice = MachineChoice.HOST) -> bool:
         if when_building_for == MachineChoice.BUILD:
@@ -879,12 +919,8 @@ class CoreData:
             # If this is a subproject, don't use other subproject options
             if k.subproject and k.subproject != subproject:
                 continue
-            # If the option is a builtin and is yielding then it's not allowed per subproject.
-            #
-            # Always test this using the HOST machine, as many builtin options
-            # are not valid for the BUILD machine, but the yielding value does
-            # not differ between them even when they are valid for both.
-            if subproject and k.is_builtin() and self.options[k.evolve(subproject='', machine=MachineChoice.HOST)].yielding:
+            # Some built-in options are global
+            if subproject and k.is_builtin() and k not in self.options:
                 continue
             # Skip base, compiler, and backend options, they are handled when
             # adding languages and setting backend.
@@ -1144,7 +1180,7 @@ class BuiltinOption(T.Generic[_T, _U]):
     There are some cases that are not fully supported yet.
     """
 
-    def __init__(self, opt_type: T.Type[_U], description: str, default: T.Any, yielding: bool = True, *,
+    def __init__(self, opt_type: T.Type[_U], description: str, default: T.Any, yielding: bool = False, *,
                  choices: T.Any = None):
         self.opt_type = opt_type
         self.description = description
@@ -1237,7 +1273,7 @@ BUILTIN_CORE_OPTIONS: 'MutableKeyedOptionDictType' = OrderedDict([
                                                  choices=['plain', 'debug', 'debugoptimized', 'release', 'minsize', 'custom'])),
     (OptionKey('debug'),           BuiltinOption(UserBooleanOption, 'Enable debug symbols and other information', True)),
     (OptionKey('default_library'), BuiltinOption(UserComboOption, 'Default library type', 'shared', choices=['shared', 'static', 'both'],
-                                                 yielding=False)),
+                                                 yielding=True)),
     (OptionKey('errorlogs'),       BuiltinOption(UserBooleanOption, "Whether to print the logs from failing tests", True)),
     (OptionKey('install_umask'),   BuiltinOption(UserUmaskOption, 'Default umask to apply on permissions of installed files', '022')),
     (OptionKey('layout'),          BuiltinOption(UserComboOption, 'Build directory layout', 'mirror', choices=['mirror', 'flat'])),
@@ -1247,8 +1283,10 @@ BUILTIN_CORE_OPTIONS: 'MutableKeyedOptionDictType' = OrderedDict([
     (OptionKey('strip'),           BuiltinOption(UserBooleanOption, 'Strip targets on install', False)),
     (OptionKey('unity'),           BuiltinOption(UserComboOption, 'Unity build', 'off', choices=['on', 'off', 'subprojects'])),
     (OptionKey('unity_size'),      BuiltinOption(UserIntegerOption, 'Unity block size', (2, None, 4))),
-    (OptionKey('warning_level'),   BuiltinOption(UserComboOption, 'Compiler warning level to use', '1', choices=['0', '1', '2', '3', 'everything'], yielding=False)),
-    (OptionKey('werror'),          BuiltinOption(UserBooleanOption, 'Treat warnings as errors', False, yielding=False)),
+    (OptionKey('warning_level'),   BuiltinOption(UserComboOption, 'Compiler warning level to use', '1', choices=['0', '1', '2', '3', 'everything'],
+                                                 yielding=True)),
+    (OptionKey('werror'),          BuiltinOption(UserBooleanOption, 'Treat warnings as errors', False,
+                                                 yielding=True)),
     (OptionKey('wrap_mode'),       BuiltinOption(UserComboOption, 'Wrap mode', 'default', choices=['default', 'nofallback', 'nodownload', 'forcefallback', 'nopromote'])),
     (OptionKey('force_fallback_for'), BuiltinOption(UserArrayOption, 'Force fallback for those subprojects', [])),
 

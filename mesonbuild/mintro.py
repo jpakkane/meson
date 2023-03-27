@@ -289,7 +289,7 @@ def list_buildoptions(coredata: cdata.CoreData, subprojects: T.Optional[T.List[s
             test_options[k] = v
         elif k.is_builtin():
             core_options[k] = v
-            if not v.yielding:
+            if v.yielding:
                 for s in subprojects:
                     core_options[k.evolve(subproject=s)] = v
 
