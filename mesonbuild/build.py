@@ -655,6 +655,7 @@ class BuildTarget(Target):
             vala_gir: T.Optional[str] = None,
             c_pch: T.Optional[T.List[str]] = None,
             cpp_pch: T.Optional[T.List[str]] = None,
+            _allow_no_sources: bool = False,
             ):
         super().__init__(name, subdir, subproject, build_by_default, for_machine, environment,
                          install, extra_files=extra_files or [], override_options=override_options)
@@ -722,8 +723,8 @@ class BuildTarget(Target):
         # 2. Compiled objects created by and extracted from another target
         self.process_objectlist(objects)
         self.process_kwargs(kwargs)
-        if not any([self.sources, self.generated, self.objects, self.link_whole_targets, self.structured_sources,
-                    kwargs.get('_allow_no_sources', False)]):
+        if not any([self.sources, self.generated, self.objects, self.link_whole_targets,
+                    self.structured_sources, _allow_no_sources]):
             mlog.warning(f'Build target {name} has no sources. '
                          'This was never supposed to be allowed but did because of a bug, '
                          'support will be removed in a future release of Meson')
@@ -1563,6 +1564,7 @@ class Executable(BuildTarget):
             vala_gir: T.Optional[str] = None,
             c_pch: T.Optional[T.List[str]] = None,
             cpp_pch: T.Optional[T.List[str]] = None,
+            _allow_no_sources: bool = False,
             pie: T.Optional[bool] = None,
             implib: T.Union[str, bool] = False,
             export_dynamic: bool = False,
@@ -1603,6 +1605,7 @@ class Executable(BuildTarget):
                          vala_gir=vala_gir,
                          c_pch=c_pch,
                          cpp_pch=cpp_pch,
+                         _allow_no_sources=_allow_no_sources,
                          )
         # Check for export_dynamic
         self.export_dynamic = export_dynamic
@@ -1781,6 +1784,7 @@ class StaticLibrary(BuildTarget):
             vala_gir: T.Optional[str] = None,
             c_pch: T.Optional[T.List[str]] = None,
             cpp_pch: T.Optional[T.List[str]] = None,
+            _allow_no_sources: bool = False,
             pic: T.Optional[bool] = None,
             prelink: bool = False,
             ):
@@ -1819,6 +1823,7 @@ class StaticLibrary(BuildTarget):
                          vala_gir=vala_gir,
                          c_pch=c_pch,
                          cpp_pch=cpp_pch,
+                         _allow_no_sources=_allow_no_sources,
                          )
         self.pic = self._extract_pic_pie(pic, 'pic')
         self.pie = False if self.pic else self._extract_pic_pie(None, 'pie')
@@ -1917,6 +1922,7 @@ class SharedLibrary(BuildTarget):
             vs_module_defs: T.Optional[T.Union[File, CustomTarget, CustomTargetIndex]] = None,
             c_pch: T.Optional[T.List[str]] = None,
             cpp_pch: T.Optional[T.List[str]] = None,
+            _allow_no_sources: bool = False,
             darwin_versions: T.Optional[T.Tuple[str, str]] = None,
             soversion: T.Optional[str] = None,
             version: T.Optional[str] = None,
@@ -1990,6 +1996,7 @@ class SharedLibrary(BuildTarget):
                          vala_gir=vala_gir,
                          c_pch=c_pch,
                          cpp_pch=cpp_pch,
+                         _allow_no_sources=_allow_no_sources,
                          )
 
         if isinstance(vs_module_defs, (CustomTarget, CustomTargetIndex)):
@@ -2252,6 +2259,7 @@ class SharedModule(SharedLibrary):
             vs_module_defs: T.Optional[T.Union[File, CustomTarget, CustomTargetIndex]] = None,
             c_pch: T.Optional[T.List[str]] = None,
             cpp_pch: T.Optional[T.List[str]] = None,
+            _allow_no_sources: bool = False,
             ):
         super().__init__(name, subdir, subproject, for_machine, sources,
                          structured_sources, objects, environment, compilers, kwargs,
@@ -2289,6 +2297,7 @@ class SharedModule(SharedLibrary):
                          vs_module_defs=vs_module_defs,
                          c_pch=c_pch,
                          cpp_pch=cpp_pch,
+                         _allow_no_sources=_allow_no_sources,
                          )
         # We need to set the soname in cases where build files link the module
         # to build targets, see: https://github.com/mesonbuild/meson/issues/9492
@@ -2696,6 +2705,7 @@ class Jar(BuildTarget):
                  link_depends: T.Optional[T.List[T.Union[File, CustomTarget, CustomTargetIndex]]] = None,
                  link_with: T.Optional[T.List[Jar]] = None,
                  override_options: T.Optional[T.Dict[OptionKey, str]] = None,
+                 _allow_no_sources: bool = False,
                  java_args: T.Optional[T.List[str]] = None,
                  main_class: str = '',
                  resources: T.Optional[StructuredSources] = None):
@@ -2713,6 +2723,7 @@ class Jar(BuildTarget):
                          link_depends=link_depends,
                          link_with=link_with,
                          override_options=override_options,
+                         _allow_no_sources=_allow_no_sources,
                          rust_crate_type='lib')  # this shouldn't be necessary
 
         self.filename = self.name + '.jar'
