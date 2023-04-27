@@ -656,6 +656,12 @@ _BUILD_TARGET_KWS: T.List[KwargInfo] = [
                                if os.path.splitext(x)[1] not in {'.txt', '.resx', '.resources'}
                                else None,
     ),
+    KwargInfo(
+        'rust_dependency_map',
+        ContainerTypeInfo(dict, str),
+        default={},
+        since='1.2.0',
+    ),
     _PCH_KW,
     _PCH_KW.evolve(name='cpp_pch'),
     KwargInfo('vala_header', (str, NoneType), validator=_empty_string_validator),

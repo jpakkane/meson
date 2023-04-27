@@ -358,6 +358,7 @@ class _BuildTargetBase(_AllTargetBase):
     native: MachineChoice
     objects: T.Sequence[build.ObjectTypes]
     resources: T.List[File]
+    rust_dependency_map: T.Mapping[str, str]
     vala_header: T.Optional[str]
     vala_vapi: T.Optional[str]
     vala_gir: T.Optional[str]

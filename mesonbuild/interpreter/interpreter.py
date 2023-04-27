@@ -3255,6 +3255,7 @@ class Interpreter(InterpreterBase, HoldableObject):
             gnu_symbol_visibility=kwargs['gnu_symbol_visibility'],
             override_options=kwargs['override_options'],
             resources=self.source_strings_to_files(kwargs['resources']),
+            rust_dependency_map=kwargs['rust_dependency_map'],
             vala_header=kwargs['vala_header'],
             vala_vapi=kwargs['vala_vapi'],
             vala_gir=kwargs['vala_gir'],
@@ -3294,6 +3295,7 @@ class Interpreter(InterpreterBase, HoldableObject):
             gnu_symbol_visibility=kwargs['gnu_symbol_visibility'],
             override_options=kwargs['override_options'],
             resources=self.source_strings_to_files(kwargs['resources']),
+            rust_dependency_map=kwargs['rust_dependency_map'],
             vala_header=kwargs['vala_header'],
             vala_vapi=kwargs['vala_vapi'],
             vala_gir=kwargs['vala_gir'],
@@ -3333,6 +3335,7 @@ class Interpreter(InterpreterBase, HoldableObject):
             gnu_symbol_visibility=kwargs['gnu_symbol_visibility'],
             override_options=kwargs['override_options'],
             resources=self.source_strings_to_files(kwargs['resources']),
+            rust_dependency_map=kwargs['rust_dependency_map'],
             vala_header=kwargs['vala_header'],
             vala_vapi=kwargs['vala_vapi'],
             vala_gir=kwargs['vala_gir'],
@@ -3372,6 +3375,7 @@ class Interpreter(InterpreterBase, HoldableObject):
             gnu_symbol_visibility=kwargs['gnu_symbol_visibility'],
             override_options=kwargs['override_options'],
             resources=self.source_strings_to_files(kwargs['resources']),
+            rust_dependency_map=kwargs['rust_dependency_map'],
             vala_header=kwargs['vala_header'],
             vala_vapi=kwargs['vala_vapi'],
             vala_gir=kwargs['vala_gir'],
@@ -3384,12 +3388,6 @@ class Interpreter(InterpreterBase, HoldableObject):
             args: T.Tuple[str, T.List[BuildTargetSource]],
             kwargs: kwtypes.BuildTarget,
             targetclass: T.Type[_BuildClassType]) -> _BuildClassType:
-        @FeatureNewKwargs('build target', '1.2.0', ['rust_dependency_map'])
-        def build_target_decorator_caller(self, node, args, kwargs):
-            return True
-
-        build_target_decorator_caller(self, node, args, kwargs)
-
         name, sources = args
         for_machine = kwargs['native']
         sources = sources + kwargs['sources']
