@@ -25,15 +25,16 @@ if T.TYPE_CHECKING:
     from typing_extensions import Literal
 
     from ..interpreterbase import TYPE_var
+    from ..interpreterbase.decorators import ValidatorState
     from ..mesonlib import EnvInitValueType
 
     _FullEnvInitValueType = T.Union[EnvironmentVariables, T.List[str], T.List[T.List[str]], EnvInitValueType, str, None]
 
 
-def in_set_validator(choices: T.Set[str]) -> T.Callable[[str], T.Optional[str]]:
+def in_set_validator(choices: T.Set[str]) -> T.Callable[[str, ValidatorState], T.Optional[str]]:
     """Check that the choice given was one of the given set."""
 
-    def inner(check: str) -> T.Optional[str]:
+    def inner(check: str, _: ValidatorState) -> T.Optional[str]:
         if check not in choices:
             return f"must be one of {', '.join(sorted(choices))}, not {check}"
         return None
@@ -41,7 +42,7 @@ def in_set_validator(choices: T.Set[str]) -> T.Callable[[str], T.Optional[str]]:
     return inner
 
 
-def _language_validator(l: T.List[str]) -> T.Optional[str]:
+def _language_validator(l: T.List[str], _: ValidatorState) -> T.Optional[str]:
     """Validate language keyword argument.
 
     Particularly for functions like `add_compiler()`, and `add_*_args()`
@@ -52,7 +53,7 @@ def _language_validator(l: T.List[str]) -> T.Optional[str]:
     return None
 
 
-def _install_mode_validator(mode: T.List[T.Union[str, bool, int]]) -> T.Optional[str]:
+def _install_mode_validator(mode: T.List[T.Union[str, bool, int]], _: ValidatorState) -> T.Optional[str]:
     """Validate the `install_mode` keyword argument.
 
     This is a rather odd thing, it's a scalar, or an array of 3 values in the form:
@@ -114,7 +115,7 @@ def _lower_strlist(input: T.List[str]) -> T.List[str]:
     return [i.lower() for i in input]
 
 
-def variables_validator(contents: T.Union[str, T.List[str], T.Dict[str, str]]) -> T.Optional[str]:
+def variables_validator(contents: T.Union[str, T.List[str], T.Dict[str, str]], _: ValidatorState) -> T.Optional[str]:
     if isinstance(contents, str):
         contents = [contents]
     if isinstance(contents, dict):
@@ -180,6 +181,7 @@ REQUIRED_KW: KwargInfo[T.Union[bool, UserFeatureOption]] = KwargInfo(
 DISABLER_KW: KwargInfo[bool] = KwargInfo('disabler', bool, default=False)
 
 def _env_validator(value: T.Union[EnvironmentVariables, T.List['TYPE_var'], T.Dict[str, 'TYPE_var'], str, None],
+                   _: ValidatorState,
                    allow_dict_list: bool = True) -> T.Optional[str]:
     def _splitter(v: str) -> T.Optional[str]:
         split = v.split('=', 1)
@@ -210,9 +212,10 @@ def _env_validator(value: T.Union[EnvironmentVariables, T.List['TYPE_var'], T.Di
     # we're okay at this point
     return None
 
-def _options_validator(value: T.Union[EnvironmentVariables, T.List['TYPE_var'], T.Dict[str, 'TYPE_var'], str, None]) -> T.Optional[str]:
+def _options_validator(value: T.Union[EnvironmentVariables, T.List['TYPE_var'], T.Dict[str, 'TYPE_var'], str, None],
+                       vstate: ValidatorState) -> T.Optional[str]:
     # Reusing the env validator is a little overkill, but nicer than duplicating the code
-    return _env_validator(value, allow_dict_list=False)
+    return _env_validator(value, vstate, allow_dict_list=False)
 
 def split_equal_string(input: str) -> T.Tuple[str, str]:
     """Split a string in the form `x=y`
@@ -250,7 +253,7 @@ ENV_KW: KwargInfo[T.Union[EnvironmentVariables, T.List, T.Dict, str, None]] = Kw
 DEPFILE_KW: KwargInfo[T.Optional[str]] = KwargInfo(
     'depfile',
     (str, type(None)),
-    validator=lambda x: 'Depfile must be a plain filename with a subdirectory' if has_path_sep(x) else None
+    validator=lambda x, _: 'Depfile must be a plain filename with a subdirectory' if has_path_sep(x) else None
 )
 
 # TODO: CustomTargetIndex should be supported here as well
@@ -295,7 +298,7 @@ OVERRIDE_OPTIONS_KW: KwargInfo[T.List[str]] = KwargInfo(
 )
 
 
-def _output_validator(outputs: T.List[str]) -> T.Optional[str]:
+def _output_validator(outputs: T.List[str], _: ValidatorState) -> T.Optional[str]:
     output_set = set(outputs)
     if len(output_set) != len(outputs):
         seen = set()
@@ -328,7 +331,7 @@ OUTPUT_KW: KwargInfo[str] = KwargInfo(
     'output',
     str,
     required=True,
-    validator=lambda x: _output_validator([x])
+    validator=lambda x, v: _output_validator([x], v)
 )
 
 CT_INPUT_KW: KwargInfo[T.List[T.Union[str, File, ExternalProgram, BuildTarget, CustomTarget, CustomTargetIndex, ExtractedObjects, GeneratedList]]] = KwargInfo(
@@ -356,7 +359,7 @@ CT_INSTALL_DIR_KW: KwargInfo[T.List[T.Union[str, Literal[False]]]] = KwargInfo(
     ContainerTypeInfo(list, (str, bool)),
     listify=True,
     default=[],
-    validator=lambda x: 'must be `false` if boolean' if True in x else None,
+    validator=lambda x, _: 'must be `false` if boolean' if True in x else None,
 )
 
 CT_BUILD_BY_DEFAULT: KwargInfo[T.Optional[bool]] = KwargInfo('build_by_default', (bool, type(None)), since='0.40.0')
@@ -419,10 +422,11 @@ LINK_WITH_KW: KwargInfo[T.List[T.Union[BothLibraries, SharedLibrary, StaticLibra
     ContainerTypeInfo(list, (BothLibraries, SharedLibrary, StaticLibrary, CustomTarget, CustomTargetIndex, Jar, Executable, Dependency)),
     listify=True,
     default=[],
-    validator=lambda x: _link_with_error if any(isinstance(i, Dependency) for i in x) else None,
+    validator=lambda x, _: _link_with_error if any(isinstance(i, Dependency) for i in x) else None,
 )
 
-def link_whole_validator(values: T.List[T.Union[StaticLibrary, CustomTarget, CustomTargetIndex, Dependency]]) -> T.Optional[str]:
+def link_whole_validator(values: T.List[T.Union[StaticLibrary, CustomTarget, CustomTargetIndex, Dependency]],
+                         _: ValidatorState) -> T.Optional[str]:
     for l in values:
         if isinstance(l, (CustomTarget, CustomTargetIndex)) and l.links_dynamically():
             return f'{type(l).__name__} returning a shared library is not allowed'
@@ -463,7 +467,7 @@ TEST_KWS: T.List[KwargInfo] = [
     KwargInfo('should_fail', bool, default=False),
     KwargInfo('timeout', int, default=30),
     KwargInfo('workdir', (str, NoneType), default=None,
-              validator=lambda x: 'must be an absolute path' if not os.path.isabs(x) else None),
+              validator=lambda x, _: 'must be an absolute path' if not os.path.isabs(x) else None),
     KwargInfo('protocol', str,
               default='exitcode',
               validator=in_set_validator({'exitcode', 'tap', 'gtest', 'rust'}),

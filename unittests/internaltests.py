@@ -1376,7 +1376,7 @@ class InternalTests(unittest.TestCase):
     def test_typed_kwarg_validator(self) -> None:
         @typed_kwargs(
             'testfunc',
-            KwargInfo('input', str, default='', validator=lambda x: 'invalid!' if x != 'foo' else None)
+            KwargInfo('input', str, default='', validator=lambda x, _: 'invalid!' if x != 'foo' else None)
         )
         def _(obj, node, args: T.Tuple, kwargs: T.Dict[str, str]) -> None:
             pass

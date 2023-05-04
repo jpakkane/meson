@@ -6,6 +6,8 @@ from __future__ import annotations
 import os
 import typing as T
 
+from mesonbuild.interpreterbase.decorators import ValidatorState
+
 from .. import mesonlib
 from .. import dependencies
 from .. import build
@@ -460,7 +462,11 @@ class MesonMain(MesonInterpreterObject):
     def add_devenv_method(self, args: T.Tuple[T.Union[str, list, dict, build.EnvironmentVariables]],
                           kwargs: 'AddDevenvKW') -> None:
         env = args[0]
-        msg = ENV_KW.validator(env)
+        msg = ENV_KW.validator(
+            env,
+            ValidatorState(self.interpreter.subdir,
+                           self.interpreter.environment.get_source_dir(),
+                           self.interpreter.environment.get_build_dir()))
         if msg:
             raise build.InvalidArguments(f'"add_devenv": {msg}')
         converted = env_convertor_with_method(env, kwargs['method'], kwargs['separator'])

@@ -13,6 +13,8 @@
 # limitations under the License.
 from __future__ import annotations
 
+from mesonbuild.utils.core import MesonBugException
+
 from .. import mesonlib, mlog
 from .disabler import Disabler
 from .exceptions import InterpreterException, InvalidArguments
@@ -29,7 +31,11 @@ if T.TYPE_CHECKING:
     from typing_extensions import Protocol
 
     from .. import mparser
-    from .baseobjects import InterpreterObject, TV_func, TYPE_var, TYPE_kwargs
+    from ..interpreter import Interpreter
+    from ..interpreter.mesonmain import MesonMain
+    from ..modules import ModuleObject, ModuleState
+    from ..optinterpreter import OptionInterpreter
+    from .baseobjects import InterpreterObject, TV_func, TYPE_var, TYPE_kwargs, ObjectHolder
     from .interpreterbase import SubProject
     from .operator import MesonOperator
 
@@ -39,6 +45,35 @@ if T.TYPE_CHECKING:
     class FN_Operator(Protocol[_TV_IntegerObject, _TV_ARG1]):
         def __call__(s, self: _TV_IntegerObject, other: _TV_ARG1) -> TYPE_var: ...
     _TV_FN_Operator = T.TypeVar('_TV_FN_Operator', bound=FN_Operator)
+
+
+@dataclass
+class ValidatorState:
+
+    subdir: str
+    source_root: str
+    build_root: str
+
+
+def _get_validator_state(obj: T.Union[Interpreter, MesonMain, ObjectHolder, ModuleObject, OptionInterpreter], state: T.Union[ModuleState, object]) -> ValidatorState:
+    if hasattr(obj, 'subdir'):
+        # We have to cast because mypy doesn't check hasattr
+        obj = T.cast('Interpreter', obj)
+        return ValidatorState(obj.subdir, obj.environment.get_source_dir(), obj.environment.get_build_dir())
+    elif hasattr(state, 'environment'):
+        state = T.cast('ModuleState', state)
+        # Mypy gets really confused here.
+        return ValidatorState(state.subdir, state.environment.get_source_dir(), state.environment.get_build_dir())  # type: ignore[has-type]
+    elif hasattr(obj, 'interpreter'):
+        obj = T.cast('T.Union[MesonMain, ObjectHolder]', obj)
+        return ValidatorState(obj.interpreter.subdir, obj.interpreter.environment.get_source_dir(), obj.interpreter.environment.get_build_dir())
+    elif hasattr(obj, 'feature_parser'):
+        # In this case we have an OptionInterpreter, which doesn't have the
+        # necessary information. Fortunately we don't need it in this case, so
+        # we can just return a dummy instance
+        return ValidatorState('', '', '')
+    raise MesonBugException('Unhandled input for getting validator state')
+
 
 def get_callee_args(wrapped_args: T.Sequence[T.Any]) -> T.Tuple['mparser.BaseNode', T.List['TYPE_var'], 'TYPE_kwargs', 'SubProject']:
     # First argument could be InterpreterBase, InterpreterObject or ModuleObject.
@@ -403,7 +438,7 @@ class KwargInfo(T.Generic[_T]):
                  deprecated: T.Optional[str] = None,
                  deprecated_message: T.Optional[str] = None,
                  deprecated_values: T.Optional[T.Dict[T.Union[_T, ContainerTypeInfo, type], T.Union[str, T.Tuple[str, str]]]] = None,
-                 validator: T.Optional[T.Callable[[T.Any], T.Optional[str]]] = None,
+                 validator: T.Optional[T.Callable[[T.Any, ValidatorState], T.Optional[str]]] = None,
                  convertor: T.Optional[T.Callable[[_T], object]] = None,
                  not_set_warning: T.Optional[str] = None):
         self.name = name
@@ -432,7 +467,7 @@ class KwargInfo(T.Generic[_T]):
                deprecated: T.Union[str, None, _NULL_T] = _NULL,
                deprecated_message: T.Union[str, None, _NULL_T] = _NULL,
                deprecated_values: T.Union[T.Dict[T.Union[_T, ContainerTypeInfo, type], T.Union[str, T.Tuple[str, str]]], None, _NULL_T] = _NULL,
-               validator: T.Union[T.Callable[[_T], T.Optional[str]], None, _NULL_T] = _NULL,
+               validator: T.Union[T.Callable[[T.Any, ValidatorState], T.Optional[str]], None, _NULL_T] = _NULL,
                convertor: T.Union[T.Callable[[_T], TYPE_var], None, _NULL_T] = _NULL) -> 'KwargInfo':
         """Create a shallow copy of this KwargInfo, with modifications.
 
@@ -551,6 +586,8 @@ def typed_kwargs(name: str, *types: KwargInfo, allow_unknown: bool = False) -> T
                     ustr = ', '.join([f'"{u}"' for u in sorted(unknowns)])
                     raise InvalidArguments(f'{name} got unknown keyword arguments {ustr}')
 
+            vstate: T.Optional[ValidatorState] = None
+
             for info in types:
                 types_tuple = info.types if isinstance(info.types, tuple) else (info.types,)
                 value = kwargs.get(info.name)
@@ -568,7 +605,9 @@ def typed_kwargs(name: str, *types: KwargInfo, allow_unknown: bool = False) -> T
                         raise InvalidArguments(f'{name} keyword argument {info.name!r} was of type {raw_description(value)} but should have been {shouldbe}')
 
                     if info.validator is not None:
-                        msg = info.validator(value)
+                        if vstate is None:
+                            vstate = _get_validator_state(wrapped_args[0], wrapped_args[1])
+                        msg = info.validator(value, vstate)
                         if msg is not None:
                             raise InvalidArguments(f'{name} keyword argument "{info.name}" {msg}')
 

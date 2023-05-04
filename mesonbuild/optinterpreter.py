@@ -222,7 +222,7 @@ class OptionInterpreter:
             'value',
             (bool, str),
             default=True,
-            validator=lambda x: None if isinstance(x, bool) or x in {'true', 'false'} else 'boolean options must have boolean values',
+            validator=lambda x, _: None if isinstance(x, bool) or x in {'true', 'false'} else 'boolean options must have boolean values',
             deprecated_values={str: ('1.1.0', 'use a boolean, not a string')},
         ),
     )

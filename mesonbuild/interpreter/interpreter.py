@@ -112,6 +112,7 @@ if T.TYPE_CHECKING:
     from . import kwargs as kwtypes
     from ..backend.backends import Backend
     from ..interpreterbase.baseobjects import InterpreterObject, TYPE_var, TYPE_kwargs
+    from ..interpreterbase.decorators import ValidatorState
     from ..programs import OverrideProgram
 
     # Input source types passed to Targets
@@ -126,7 +127,7 @@ if T.TYPE_CHECKING:
     BuildTargetSource = T.Union[mesonlib.FileOrString, build.GeneratedTypes, build.StructuredSources]
 
 
-def _project_version_validator(value: T.Union[T.List, str, mesonlib.File, None]) -> T.Optional[str]:
+def _project_version_validator(value: T.Union[T.List, str, mesonlib.File, None], _: ValidatorState) -> T.Optional[str]:
     if isinstance(value, list):
         if len(value) != 1:
             return 'when passed as array must have a length of 1'
@@ -2146,7 +2147,7 @@ class Interpreter(InterpreterBase, HoldableObject):
         envlist = kwargs.get('env')
         if envlist is None:
             return build.EnvironmentVariables()
-        msg = ENV_KW.validator(envlist)
+        msg = ENV_KW.validator(envlist, None)
         if msg:
             raise InvalidArguments(f'"env": {msg}')
         return ENV_KW.convertor(envlist)
@@ -2335,7 +2336,7 @@ class Interpreter(InterpreterBase, HoldableObject):
         KwargInfo(
             'if_found',
             ContainerTypeInfo(list, object),
-            validator=lambda a: 'Objects must have a found() method' if not all(hasattr(x, 'found') for x in a) else None,
+            validator=lambda a, _: 'Objects must have a found() method' if not all(hasattr(x, 'found') for x in a) else None,
             since='0.44.0',
             default=[],
             listify=True,
@@ -2355,7 +2356,7 @@ class Interpreter(InterpreterBase, HoldableObject):
             if not i.found():
                 return
 
-        prev_subdir = self.subdir
+        prev_subdir: str = self.subdir
         subdir = os.path.join(prev_subdir, args[0])
         if os.path.isabs(subdir):
             raise InvalidArguments('Subdir argument must be a relative path.')
@@ -2484,10 +2485,10 @@ class Interpreter(InterpreterBase, HoldableObject):
         KwargInfo('strip_directory', bool, default=False),
         KwargInfo('exclude_files', ContainerTypeInfo(list, str),
                   default=[], listify=True, since='0.42.0',
-                  validator=lambda x: 'cannot be absolute' if any(os.path.isabs(d) for d in x) else None),
+                  validator=lambda x, _: 'cannot be absolute' if any(os.path.isabs(d) for d in x) else None),
         KwargInfo('exclude_directories', ContainerTypeInfo(list, str),
                   default=[], listify=True, since='0.42.0',
-                  validator=lambda x: 'cannot be absolute' if any(os.path.isabs(d) for d in x) else None),
+                  validator=lambda x, _: 'cannot be absolute' if any(os.path.isabs(d) for d in x) else None),
         INSTALL_MODE_KW.evolve(since='0.38.0'),
         INSTALL_TAG_KW.evolve(since='0.60.0'),
     )
@@ -2551,7 +2552,7 @@ class Interpreter(InterpreterBase, HoldableObject):
         # Cannot use shared implementation until None backwards compat is dropped
         KwargInfo('install', (bool, NoneType), since='0.50.0'),
         KwargInfo('install_dir', (str, bool), default='',
-                  validator=lambda x: 'must be `false` if boolean' if x is True else None),
+                  validator=lambda x, _: 'must be `false` if boolean' if x is True else None),
         OUTPUT_KW,
         KwargInfo('output_format', str, default='c', since='0.47.0',
                   validator=in_set_validator({'c', 'nasm'})),
@@ -2947,7 +2948,7 @@ class Interpreter(InterpreterBase, HoldableObject):
         init = args[0]
         if init is not None:
             FeatureNew.single_use('environment positional arguments', '0.52.0', self.subproject, location=node)
-            msg = ENV_KW.validator(init)
+            msg = ENV_KW.validator(init, None)
             if msg:
                 raise InvalidArguments(f'"environment": {msg}')
             if isinstance(init, dict) and any(i for i in init.values() if isinstance(i, list)):
