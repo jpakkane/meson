@@ -439,7 +439,7 @@ class KwargInfo(T.Generic[_T]):
                  deprecated_message: T.Optional[str] = None,
                  deprecated_values: T.Optional[T.Dict[T.Union[_T, ContainerTypeInfo, type], T.Union[str, T.Tuple[str, str]]]] = None,
                  validator: T.Optional[T.Callable[[T.Any, ValidatorState], T.Optional[str]]] = None,
-                 convertor: T.Optional[T.Callable[[_T], object]] = None,
+                 convertor: T.Optional[T.Callable[[_T, ValidatorState], object]] = None,
                  not_set_warning: T.Optional[str] = None):
         self.name = name
         self.types = types
@@ -468,7 +468,7 @@ class KwargInfo(T.Generic[_T]):
                deprecated_message: T.Union[str, None, _NULL_T] = _NULL,
                deprecated_values: T.Union[T.Dict[T.Union[_T, ContainerTypeInfo, type], T.Union[str, T.Tuple[str, str]]], None, _NULL_T] = _NULL,
                validator: T.Union[T.Callable[[T.Any, ValidatorState], T.Optional[str]], None, _NULL_T] = _NULL,
-               convertor: T.Union[T.Callable[[_T], TYPE_var], None, _NULL_T] = _NULL) -> 'KwargInfo':
+               convertor: T.Union[T.Callable[[_T, ValidatorState], TYPE_var], None, _NULL_T] = _NULL) -> 'KwargInfo':
         """Create a shallow copy of this KwargInfo, with modifications.
 
         This allows us to create a new copy of a KwargInfo with modifications.
@@ -630,7 +630,9 @@ def typed_kwargs(name: str, *types: KwargInfo, allow_unknown: bool = False) -> T
                         mlog.warning(info.not_set_warning)
 
                 if info.convertor:
-                    kwargs[info.name] = info.convertor(kwargs[info.name])
+                    if vstate is None:
+                        vstate = _get_validator_state(wrapped_args[0], wrapped_args[1])
+                    kwargs[info.name] = info.convertor(kwargs[info.name], vstate)
 
             return f(*wrapped_args, **wrapped_kwargs)
         return T.cast('TV_func', wrapper)

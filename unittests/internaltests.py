@@ -1391,7 +1391,7 @@ class InternalTests(unittest.TestCase):
     def test_typed_kwarg_convertor(self) -> None:
         @typed_kwargs(
             'testfunc',
-            KwargInfo('native', bool, default=False, convertor=lambda n: MachineChoice.BUILD if n else MachineChoice.HOST)
+            KwargInfo('native', bool, default=False, convertor=lambda n, _: MachineChoice.BUILD if n else MachineChoice.HOST)
         )
         def _(obj, node, args: T.Tuple, kwargs: T.Dict[str, MachineChoice]) -> None:
             assert isinstance(kwargs['native'], MachineChoice)

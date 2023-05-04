@@ -1161,7 +1161,7 @@ class Interpreter(InterpreterBase, HoldableObject):
             (str, mesonlib.File, NoneType, list),
             default='undefined',
             validator=_project_version_validator,
-            convertor=lambda x: x[0] if isinstance(x, list) else x,
+            convertor=lambda x, _: x[0] if isinstance(x, list) else x,
         ),
         KwargInfo('license', (ContainerTypeInfo(list, str), NoneType), default=None, listify=True),
         KwargInfo('license_files', ContainerTypeInfo(list, str), default=[], listify=True, since='1.1.0'),
@@ -2150,7 +2150,7 @@ class Interpreter(InterpreterBase, HoldableObject):
         msg = ENV_KW.validator(envlist, None)
         if msg:
             raise InvalidArguments(f'"env": {msg}')
-        return ENV_KW.convertor(envlist)
+        return ENV_KW.convertor(envlist, None)
 
     def make_test(self, node: mparser.BaseNode,
                   args: T.Tuple[str, T.Union[build.Executable, build.Jar, ExternalProgram, mesonlib.File]],

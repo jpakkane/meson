@@ -1592,7 +1592,7 @@ class GnomeModule(ExtensionModule):
             'annotations', ContainerTypeInfo(list, (list, str)),
             default=[],
             validator=annotations_validator,
-            convertor=lambda x: [x] if x and isinstance(x[0], str) else x,
+            convertor=lambda x, _: [x] if x and isinstance(x[0], str) else x,
         ),
         KwargInfo('install_header', bool, default=False, since='0.46.0'),
         KwargInfo('docbook', (str, NoneType)),

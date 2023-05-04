@@ -95,7 +95,7 @@ def _install_mode_validator(mode: T.List[T.Union[str, bool, int]], _: ValidatorS
     return None
 
 
-def _install_mode_convertor(mode: T.Optional[T.List[T.Union[str, bool, int]]]) -> FileMode:
+def _install_mode_convertor(mode: T.Optional[T.List[T.Union[str, bool, int]]], _: ValidatorState) -> FileMode:
     """Convert the DSL form of the `install_mode` keyword argument to `FileMode`
 
     This is not required, and if not required returns None
@@ -107,7 +107,7 @@ def _install_mode_convertor(mode: T.Optional[T.List[T.Union[str, bool, int]]]) -
     return FileMode(*(m if isinstance(m, str) else None for m in mode))
 
 
-def _lower_strlist(input: T.List[str]) -> T.List[str]:
+def _lower_strlist(input: T.List[str], _: ValidatorState) -> T.List[str]:
     """Lower a list of strings.
 
     mypy (but not pyright) gets confused about using a lambda as the convertor function
@@ -138,7 +138,7 @@ def variables_validator(contents: T.Union[str, T.List[str], T.Dict[str, str]], _
     return None
 
 
-def variables_convertor(contents: T.Union[str, T.List[str], T.Dict[str, str]]) -> T.Dict[str, str]:
+def variables_convertor(contents: T.Union[str, T.List[str], T.Dict[str, str]], _: ValidatorState) -> T.Dict[str, str]:
     if isinstance(contents, str):
         contents = [contents]
     if isinstance(contents, dict):
@@ -153,7 +153,7 @@ def variables_convertor(contents: T.Union[str, T.List[str], T.Dict[str, str]]) -
 NATIVE_KW = KwargInfo(
     'native', bool,
     default=False,
-    convertor=lambda n: MachineChoice.BUILD if n else MachineChoice.HOST)
+    convertor=lambda n, _: MachineChoice.BUILD if n else MachineChoice.HOST)
 
 LANGUAGE_KW = KwargInfo(
     'language', ContainerTypeInfo(list, str, allow_empty=False),
@@ -240,7 +240,7 @@ def env_convertor_with_method(value: _FullEnvInitValueType,
         return EnvironmentVariables()
     return value
 
-def _env_convertor(value: _FullEnvInitValueType) -> EnvironmentVariables:
+def _env_convertor(value: _FullEnvInitValueType, _: ValidatorState) -> EnvironmentVariables:
     return env_convertor_with_method(value)
 
 ENV_KW: KwargInfo[T.Union[EnvironmentVariables, T.List, T.Dict, str, None]] = KwargInfo(
@@ -280,7 +280,7 @@ COMMAND_KW: KwargInfo[T.List[T.Union[str, BuildTarget, CustomTarget, CustomTarge
     default=[],
 )
 
-def _override_options_convertor(raw: T.List[str]) -> T.Dict[OptionKey, str]:
+def _override_options_convertor(raw: T.List[str], _: ValidatorState) -> T.Dict[OptionKey, str]:
     output: T.Dict[OptionKey, str] = {}
     for each in raw:
         k, v = split_equal_string(each)
@@ -347,7 +347,7 @@ CT_INSTALL_TAG_KW: KwargInfo[T.List[T.Union[str, bool]]] = KwargInfo(
     listify=True,
     default=[],
     since='0.60.0',
-    convertor=lambda x: [y if isinstance(y, str) else None for y in x],
+    convertor=lambda x, _: [y if isinstance(y, str) else None for y in x],
 )
 
 INSTALL_TAG_KW: KwargInfo[T.Optional[str]] = KwargInfo('install_tag', (str, NoneType))

@@ -248,7 +248,7 @@ class OptionInterpreter:
             (int, str),
             default=True,
             deprecated_values={str: ('1.1.0', 'use an integer, not a string')},
-            convertor=int,
+            convertor=lambda x, _: int(x),
         ),
         KwargInfo('min', (int, NoneType)),
         KwargInfo('max', (int, NoneType)),

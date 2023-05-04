@@ -361,7 +361,7 @@ class CmakeModule(ExtensionModule):
         KwargInfo('input',
                   (str, mesonlib.File, ContainerTypeInfo(list, mesonlib.File)), required=True,
                   validator=lambda x, _: 'requires exactly one file' if isinstance(x, list) and len(x) != 1 else None,
-                  convertor=lambda x: x[0] if isinstance(x, list) else x),
+                  convertor=lambda x, _: x[0] if isinstance(x, list) else x),
         KwargInfo('name', str, required=True),
         INSTALL_DIR_KW,
     )
