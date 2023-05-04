@@ -714,7 +714,7 @@ class Interpreter(InterpreterBase, HoldableObject):
         incs = self.extract_incdirs(kwargs)
         libs = kwargs['link_with']
         libs_whole = kwargs['link_whole']
-        objects = self.source_strings_to_files(kwargs['objects'])
+        objects = kwargs['objects']
         sources = self.source_strings_to_files(kwargs['sources'])
         extra_files = self.source_strings_to_files(kwargs['extra_files'])
         compile_args = kwargs['compile_args']
@@ -3364,7 +3364,7 @@ class Interpreter(InterpreterBase, HoldableObject):
         sources = [s for s in sources
                    if not isinstance(s, (build.BuildTarget, build.ExtractedObjects))]
         sources = self.source_strings_to_files(sources)
-        objs = self.source_strings_to_files(kwargs['objects'])
+        objs = kwargs['objects']
         kwargs['extra_files'] = self.source_strings_to_files(kwargs['extra_files'])
         self.check_sources_exist(os.path.join(self.source_root, self.subdir), sources)
         if targetclass not in {build.Executable, build.SharedLibrary, build.SharedModule, build.StaticLibrary, build.Jar}:

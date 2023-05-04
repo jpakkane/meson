@@ -356,7 +356,7 @@ class _BuildTargetBase(_AllTargetBase):
     name_prefix: T.Optional[str]
     name_suffix: T.Optional[str]
     native: MachineChoice
-    objects: T.List[T.Union[str, build.ObjectTypes]]
+    objects: T.Sequence[build.ObjectTypes]
 
 
 class _StaticLibraryMixin(TypedDict):

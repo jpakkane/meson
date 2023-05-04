@@ -566,6 +566,7 @@ OBJECTS_KW: KwargInfo[T.List[ObjectTypes]] = KwargInfo(
     default=[],
     listify=True,
     validator=_object_validator,
+    convertor=_str_to_file_convertor,
     since_values={
         ContainerTypeInfo(list, (GeneratedList, CustomTarget, CustomTargetIndex)):
             ('1.1.0', 'Pass generated sources as positional source arguments')
