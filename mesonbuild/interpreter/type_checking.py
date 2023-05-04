@@ -616,6 +616,7 @@ _ALL_TARGET_KWS: T.List[KwargInfo] = [
         ContainerTypeInfo(list, (str, File, CustomTarget, CustomTargetIndex)),
         default=[],
         listify=True,
+        convertor=_str_to_file_convertor,
     ),
     OVERRIDE_OPTIONS_KW.evolve(since='0.40.0'),
 ]

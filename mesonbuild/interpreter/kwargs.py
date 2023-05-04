@@ -336,7 +336,7 @@ class _AllTargetBase(TypedDict):
     install_mode: FileMode
     install_tag: T.Optional[str]
     link_args: T.List[str]
-    link_depends: T.List[T.Union[str, File, build.CustomTarget, build.CustomTargetIndex]]
+    link_depends: T.Sequence[T.Union[File, build.CustomTarget, build.CustomTargetIndex]]
     override_options: T.Dict[coredata.OptionKey, str]
     sources: T.List[T.Union[FileOrString, build.GeneratedTypes]]
 
