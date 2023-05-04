@@ -25,7 +25,7 @@ from ..programs import ExternalProgram
 NoneType: T.Type[None] = type(None)
 
 if T.TYPE_CHECKING:
-    from typing_extensions import Literal
+    from typing_extensions import Literal, TypeVarTuple, Unpack
 
     from ..build import ObjectTypes
     from ..interpreterbase import TYPE_var
@@ -33,6 +33,17 @@ if T.TYPE_CHECKING:
     from ..mesonlib import EnvInitValueType
 
     _FullEnvInitValueType = T.Union[EnvironmentVariables, T.List[str], T.List[T.List[str]], EnvInitValueType, str, None]
+    # Mypy as of 1.0.1 doesn't fully support TypeVarTuple and errors
+    _Ts = TypeVarTuple('_Ts')  # type: ignore[misc]
+
+
+# Mypy as of 1.0.1 doesn't fully support Unpack and errors
+def _str_to_file_convertor(value: T.Sequence[T.Union[str, Unpack[_Ts]]], state: ValidatorState) -> T.List[T.Union[File, Unpack[_Ts]]]:  # type: ignore[misc]
+    # Handle raw str to make using a sequence safe
+    if isinstance(value, str):
+        value = [str]
+    return [File.from_source_file(state.source_root, state.subdir, f) if isinstance(f, str) else f
+            for f in value]
 
 
 def in_set_validator(choices: T.Set[str]) -> T.Callable[[str, ValidatorState], T.Optional[str]]:
