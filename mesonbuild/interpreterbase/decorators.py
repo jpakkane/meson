@@ -427,6 +427,7 @@ class KwargInfo(T.Generic[_T]):
         added in.
     :param not_set_warning: A warning message that is logged if the kwarg is not
         set by the user.
+    :param feature_validator: A callable returning an iterable of FeatureNew | FeatureDeprecated objects.
     """
     def __init__(self, name: str,
                  types: T.Union[T.Type[_T], T.Tuple[T.Union[T.Type[_T], ContainerTypeInfo], ...], ContainerTypeInfo],
@@ -438,8 +439,9 @@ class KwargInfo(T.Generic[_T]):
                  deprecated: T.Optional[str] = None,
                  deprecated_message: T.Optional[str] = None,
                  deprecated_values: T.Optional[T.Dict[T.Union[_T, ContainerTypeInfo, type], T.Union[str, T.Tuple[str, str]]]] = None,
+                 feature_validator: T.Optional[T.Callable[[_T, ValidatorState], T.Iterable[FeatureCheckBase]]] = None,
                  validator: T.Optional[T.Callable[[T.Any, ValidatorState], T.Optional[str]]] = None,
-                 convertor: T.Optional[T.Callable[[_T, ValidatorState], object]] = None,
+                 convertor: T.Optional[T.Callable[[_T, ValidatorState], TYPE_var]] = None,
                  not_set_warning: T.Optional[str] = None):
         self.name = name
         self.types = types
@@ -449,6 +451,7 @@ class KwargInfo(T.Generic[_T]):
         self.since = since
         self.since_message = since_message
         self.since_values = since_values
+        self.feature_validator = feature_validator
         self.deprecated = deprecated
         self.deprecated_message = deprecated_message
         self.deprecated_values = deprecated_values
@@ -467,6 +470,7 @@ class KwargInfo(T.Generic[_T]):
                deprecated: T.Union[str, None, _NULL_T] = _NULL,
                deprecated_message: T.Union[str, None, _NULL_T] = _NULL,
                deprecated_values: T.Union[T.Dict[T.Union[_T, ContainerTypeInfo, type], T.Union[str, T.Tuple[str, str]]], None, _NULL_T] = _NULL,
+               feature_validator: T.Union[T.Callable[[_T, ValidatorState], T.Iterable[FeatureCheckBase]], None, _NULL_T] = _NULL,
                validator: T.Union[T.Callable[[T.Any, ValidatorState], T.Optional[str]], None, _NULL_T] = _NULL,
                convertor: T.Union[T.Callable[[_T, ValidatorState], TYPE_var], None, _NULL_T] = _NULL) -> 'KwargInfo':
         """Create a shallow copy of this KwargInfo, with modifications.
@@ -492,6 +496,7 @@ class KwargInfo(T.Generic[_T]):
             deprecated=deprecated if not isinstance(deprecated, _NULL_T) else self.deprecated,
             deprecated_message=deprecated_message if not isinstance(deprecated_message, _NULL_T) else self.deprecated_message,
             deprecated_values=deprecated_values if not isinstance(deprecated_values, _NULL_T) else self.deprecated_values,
+            feature_validator=feature_validator if not isinstance(feature_validator, _NULL_T) else self.feature_validator,
             validator=validator if not isinstance(validator, _NULL_T) else self.validator,
             convertor=convertor if not isinstance(convertor, _NULL_T) else self.convertor,
         )
@@ -610,6 +615,12 @@ def typed_kwargs(name: str, *types: KwargInfo, allow_unknown: bool = False) -> T
                         msg = info.validator(value, vstate)
                         if msg is not None:
                             raise InvalidArguments(f'{name} keyword argument "{info.name}" {msg}')
+
+                    if info.feature_validator is not None:
+                        if vstate is None:
+                            vstate = _get_validator_state(wrapped_args[0], wrapped_args[1])
+                        for each in info.feature_validator(value, vstate):
+                            each.use(subproject, node)
 
                     if info.deprecated_values is not None:
                         emit_feature_change(info.deprecated_values, FeatureDeprecated)
