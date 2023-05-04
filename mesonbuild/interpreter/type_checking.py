@@ -703,6 +703,7 @@ _BUILD_TARGET_KWS: T.List[KwargInfo] = [
         validator=lambda x, _: 'Must be either a .resources, .txt, or .resx file'
                                if os.path.splitext(x)[1] not in {'.txt', '.resx', '.resources'}
                                else None,
+        convertor=_str_to_file_convertor,
     ),
     KwargInfo(
         'rust_dependency_map',
