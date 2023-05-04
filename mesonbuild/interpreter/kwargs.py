@@ -393,7 +393,7 @@ class StaticLibrary(_BuildTargetBase, _StaticLibraryMixin):
 
 class _SharedModuleMixin(TypedDict):
 
-    vs_module_defs: T.Optional[T.Union[str, File, CustomTarget, build.CustomTargetIndex]]
+    vs_module_defs: T.Optional[T.Union[File, CustomTarget, build.CustomTargetIndex]]
 
 
 class SharedModule(_BuildTargetBase, _SharedModuleMixin):

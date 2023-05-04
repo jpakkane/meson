@@ -3293,7 +3293,7 @@ class Interpreter(InterpreterBase, HoldableObject):
             vala_header=kwargs['vala_header'],
             vala_vapi=kwargs['vala_vapi'],
             vala_gir=kwargs['vala_gir'],
-            vs_module_defs=self.source_strings_to_files([kwargs['vs_module_defs']])[0] if kwargs['vs_module_defs'] else None,
+            vs_module_defs=kwargs['vs_module_defs'],
             c_pch=kwargs['c_pch'],
             cpp_pch=kwargs['cpp_pch'],
             soversion=kwargs['soversion'],
@@ -3337,7 +3337,7 @@ class Interpreter(InterpreterBase, HoldableObject):
             vala_header=kwargs['vala_header'],
             vala_vapi=kwargs['vala_vapi'],
             vala_gir=kwargs['vala_gir'],
-            vs_module_defs=self.source_strings_to_files([kwargs['vs_module_defs']])[0] if kwargs['vs_module_defs'] else None,
+            vs_module_defs=kwargs['vs_module_defs'],
             c_pch=kwargs['c_pch'],
             cpp_pch=kwargs['cpp_pch'],
         )

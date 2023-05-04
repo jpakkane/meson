@@ -555,6 +555,7 @@ _PCH_KW: KwargInfo[T.List[str]] = KwargInfo(
 _VS_MODULE_DEF_KW: KwargInfo[T.Union[str, File, CustomTarget, CustomTargetIndex]] = KwargInfo(
     'vs_module_defs',
     (str, File, CustomTarget, CustomTargetIndex, NoneType),
+    convertor=lambda x, v: _str_to_file_convertor([x], v) if x is not None else x,
 )
 
 _NAME_PREFIX_KW: KwargInfo[T.Union[str, list, None]] = KwargInfo(
