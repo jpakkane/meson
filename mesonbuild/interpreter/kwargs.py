@@ -338,7 +338,7 @@ class _AllTargetBase(TypedDict):
     link_args: T.List[str]
     link_depends: T.Sequence[T.Union[File, build.CustomTarget, build.CustomTargetIndex]]
     override_options: T.Dict[coredata.OptionKey, str]
-    sources: T.List[T.Union[FileOrString, build.GeneratedTypes]]
+    sources: T.List[T.Union[File, build.GeneratedTypes]]
 
 
 class _BuildTargetBase(_AllTargetBase):

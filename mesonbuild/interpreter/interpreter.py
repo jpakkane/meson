@@ -709,7 +709,7 @@ class Interpreter(InterpreterBase, HoldableObject):
         libs = kwargs['link_with']
         libs_whole = kwargs['link_whole']
         objects = kwargs['objects']
-        sources = self.source_strings_to_files(kwargs['sources'])
+        sources = kwargs['sources']
         extra_files = kwargs['extra_files']
         compile_args = kwargs['compile_args']
         link_args = kwargs['link_args']

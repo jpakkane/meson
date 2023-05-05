@@ -605,6 +605,7 @@ SOURCES_KW: KwargInfo[T.List[T.Union[str, File, CustomTarget, CustomTargetIndex,
     ContainerTypeInfo(list, (str, File, CustomTarget, CustomTargetIndex, GeneratedList)),
     listify=True,
     default=[],
+    convertor=_str_to_file_convertor,
 )
 
 VARIABLES_KW: KwargInfo[T.Dict[str, str]] = KwargInfo(
@@ -821,6 +822,7 @@ _BUILD_TARGET_KWS: T.List[KwargInfo] = [
         ContainerTypeInfo(list, (str, File, CustomTarget, CustomTargetIndex, GeneratedList, StructuredSources)),
         default=[],
         listify=True,
+        convertor=_str_to_file_convertor,
     ),
     KwargInfo(
         'resources',
