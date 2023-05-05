@@ -95,7 +95,8 @@ from .type_checking import (
     JAR_KWS,
     NoneType,
     in_set_validator,
-    env_convertor_with_method
+    env_convertor_with_method,
+    validate_within_subproject,
 )
 from . import primitives as P_OBJ
 
@@ -2959,59 +2960,19 @@ class Interpreter(InterpreterBase, HoldableObject):
                     Try setting b_lundef to false instead.'''),
                 location=self.current_node)  # noqa: E128
 
-    # Check that the indicated file is within the same subproject
-    # as we currently are. This is to stop people doing
-    # nasty things like:
-    #
-    # f = files('../../master_src/file.c')
-    #
-    # Note that this is validated only when the file
-    # object is generated. The result can be used in a different
-    # subproject than it is defined in (due to e.g. a
-    # declare_dependency).
-    def validate_within_subproject(self, subdir, fname):
-        srcdir = Path(self.environment.source_dir)
-        builddir = Path(self.environment.build_dir)
-        if isinstance(fname, P_OBJ.DependencyVariableString):
-            def validate_installable_file(fpath: Path) -> bool:
-                installablefiles: T.Set[Path] = set()
-                for d in self.build.data:
-                    for s in d.sources:
-                        installablefiles.add(Path(s.absolute_path(srcdir, builddir)))
-                installabledirs = [str(Path(srcdir, s.source_subdir)) for s in self.build.install_dirs]
-                if fpath in installablefiles:
-                    return True
-                for d in installabledirs:
-                    if str(fpath).startswith(d):
-                        return True
-                return False
+    def validate_within_subproject(self, subdir: str, fname: str) -> None:
+        """Validate that a file is within the current subproject
 
-            norm = Path(fname)
-            # variables built from a dep.get_variable are allowed to refer to
-            # subproject files, as long as they are scheduled to be installed.
-            if validate_installable_file(norm):
-                return
-        norm = Path(os.path.abspath(Path(srcdir, subdir, fname)))
-        if os.path.isdir(norm):
-            inputtype = 'directory'
-        else:
-            inputtype = 'file'
-        if InterpreterRuleRelaxation.ALLOW_BUILD_DIR_FILE_REFERENCES in self.relaxations and builddir in norm.parents:
-            return
-        if srcdir not in norm.parents:
-            # Grabbing files outside the source tree is ok.
-            # This is for vendor stuff like:
-            #
-            # /opt/vendorsdk/src/file_with_license_restrictions.c
-            return
-        project_root = Path(srcdir, self.root_subdir)
-        subproject_dir = project_root / self.subproject_dir
-        if norm == project_root:
-            return
-        if project_root not in norm.parents:
-            raise InterpreterException(f'Sandbox violation: Tried to grab {inputtype} {norm.name} outside current (sub)project.')
-        if subproject_dir == norm or subproject_dir in norm.parents:
-            raise InterpreterException(f'Sandbox violation: Tried to grab {inputtype} {norm.name} from a nested subproject.')
+        :param subdir: the current subdir
+        :param fname: the filename
+        :raises InterpreterException: when a sandbox violation occurs
+        """
+        val = validate_within_subproject(
+            subdir, fname, self.environment.source_dir,
+            self.environment.build_dir, self.subproject_dir, self.relaxations,
+            self.build)
+        if val is not None:
+            raise InterpreterException(val)
 
     @T.overload
     def source_strings_to_files(self, sources: T.List['mesonlib.FileOrString'], strict: bool = True) -> T.List['mesonlib.File']: ...

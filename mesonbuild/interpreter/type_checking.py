@@ -8,7 +8,10 @@ import os
 import re
 import typing as T
 
+from mesonbuild.interpreter.primitives.string import DependencyVariableString
+
 from .. import compilers
+from .._pathlib import Path
 from ..build import (CustomTarget, BuildTarget,
                      CustomTargetIndex, ExtractedObjects, GeneratedList, IncludeDirs,
                      BothLibraries, SharedLibrary, StaticLibrary, Jar, Executable,
@@ -28,7 +31,8 @@ NoneType: T.Type[None] = type(None)
 if T.TYPE_CHECKING:
     from typing_extensions import Literal, TypeVarTuple, Unpack
 
-    from ..build import LibTypes, ObjectTypes
+    from ..build import Build, LibTypes, ObjectTypes
+    from ..interpreter.interpreter import InterpreterRuleRelaxation
     from ..interpreterbase import TYPE_var
     from ..interpreterbase.decorators import ValidatorState
     from ..mesonlib import EnvInitValueType
@@ -45,6 +49,71 @@ def _str_to_file_convertor(value: T.Sequence[T.Union[str, Unpack[_Ts]]], state: 
         value = [str]
     return [File.from_source_file(state.source_root, state.subdir, f) if isinstance(f, str) else f
             for f in value]
+
+
+def validate_within_subproject(subdir: str, fname: str, source_dir: str,
+                               build_dir: str, subproject_dir: str,
+                               relaxations: T.Set[InterpreterRuleRelaxation],
+                               build: Build) -> T.Optional[str]:
+    """Check that a file is withing the same subproject we are currently operating on.
+
+    We want to forbid such foot guns as:
+    ```meson
+    f = files('../../master_src/file.c')
+    ```
+
+    :note: this should only be used when creating a new File object, as it is valid
+        to return a File from a subproject, which would then fail this test.
+
+    :param subdir: The current subdir within the project
+    :param fname: The name of the file
+    :param source_dir: The root source directory
+    :param build_dir: The root build directory
+    :param subproject_dir: The subproject directory
+    :param relaxations: Any rule exceptions that need to be applied
+    :param build: The `build` object of the subproject
+    :return: None if valid, otherwise an error message
+    """
+    srcdir = Path(source_dir)
+    builddir = Path(build_dir)
+    if isinstance(fname, DependencyVariableString):
+        def validate_installable_file(fpath: Path) -> bool:
+            installablefiles: T.Set[Path] = set()
+            for d in build.data:
+                for s in d.sources:
+                    installablefiles.add(Path(s.absolute_path(srcdir, builddir)))
+            installabledirs = [str(Path(srcdir, s.source_subdir)) for s in build.install_dirs]
+            if fpath in installablefiles:
+                return True
+            return any(str(fpath).startswith(d) for d in installabledirs)
+
+        norm = Path(fname)
+        # variables built from a dep.get_variable are allowed to refer to
+        # subproject files, as long as they are scheduled to be installed.
+        if validate_installable_file(norm):
+            return None
+    norm = Path(os.path.abspath(Path(srcdir, subdir, fname)))
+    if os.path.isdir(norm):
+        inputtype = 'directory'
+    else:
+        inputtype = 'file'
+    if InterpreterRuleRelaxation.ALLOW_BUILD_DIR_FILE_REFERENCES in relaxations and builddir in norm.parents:
+        return None
+    if srcdir not in norm.parents:
+        # Grabbing files outside the source tree is ok.
+        # This is for vendor stuff like:
+        #
+        # /opt/vendorsdk/src/file_with_license_restrictions.c
+        return None
+    project_root = Path(srcdir, subdir)
+    subproject_dir = project_root / subproject_dir
+    if norm == project_root:
+        return None
+    if project_root not in norm.parents:
+        return f'Sandbox violation: Tried to grab {inputtype} {norm.name} outside current (sub)project.'
+    if subproject_dir == norm or subproject_dir in norm.parents:
+        return f'Sandbox violation: Tried to grab {inputtype} {norm.name} from a nested subproject.'
+    return None
 
 
 def in_set_validator(choices: T.Set[str]) -> T.Callable[[str, ValidatorState], T.Optional[str]]:
