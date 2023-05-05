@@ -708,17 +708,21 @@ _LINK_WITH_KW: KwargInfo[T.List[T.Union[BothLibraries, SharedLibrary, SharedModu
     validator=lambda x, _: _link_with_error if isinstance(x, Dependency) else None,
 )
 
+EXTRA_FILES_KW: KwargInfo[T.List[T.Union[str, File, CustomTarget, CustomTargetIndex]]] = KwargInfo(
+    'extra_files',
+    ContainerTypeInfo(list, (str, File, CustomTarget, CustomTargetIndex)),
+    default=[],
+    listify=True,
+    convertor=_str_to_file_convertor,
+)
+
 _ALL_TARGET_KWS: T.List[KwargInfo] = [
     KwargInfo('build_by_default', bool, default=True, since='0.40.0'),
     DEPENDENCIES_KW,
-    KwargInfo(
-        'extra_files',
-        ContainerTypeInfo(list, (str, File, CustomTarget, CustomTargetIndex)),
-        default=[],
-        listify=True,
+    EXTRA_FILES_KW.evolve(
         since_values={
             ContainerTypeInfo(list, File): '0.41.0',
-            ContainerTypeInfo(list, (CustomTarget, CustomTargetIndex)): '1.1.0',
+            ContainerTypeInfo(list, (CustomTarget, CustomTargetIndex)): '1.2.0',
         },
     ),
     INCLUDE_DIRECTORIES.evolve(since_values={ContainerTypeInfo(list, str): ('0.50', 'Use include_dirctories() instead')}),

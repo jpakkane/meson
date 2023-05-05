@@ -59,6 +59,7 @@ from .type_checking import (
     CT_INPUT_KW,
     CT_INSTALL_DIR_KW,
     D_IMPORT_DIRECTORIES,
+    EXTRA_FILES_KW,
     MULTI_OUTPUT_KW,
     OBJECTS_KW,
     OUTPUT_KW,
@@ -697,7 +698,7 @@ class Interpreter(InterpreterBase, HoldableObject):
         LINK_WITH_KW,
         LINK_WHOLE_KW.evolve(since='0.46.0'),
         SOURCES_KW,
-        KwargInfo('extra_files', ContainerTypeInfo(list, (mesonlib.File, str)), listify=True, default=[], since='1.2.0'),
+        EXTRA_FILES_KW.evolve(since='1.2.0'),
         VARIABLES_KW.evolve(since='0.54.0', since_values={list: '0.56.0'}),
         KwargInfo('version', (str, NoneType)),
         OBJECTS_KW,
@@ -709,7 +710,7 @@ class Interpreter(InterpreterBase, HoldableObject):
         libs_whole = kwargs['link_whole']
         objects = kwargs['objects']
         sources = self.source_strings_to_files(kwargs['sources'])
-        extra_files = self.source_strings_to_files(kwargs['extra_files'])
+        extra_files = kwargs['extra_files']
         compile_args = kwargs['compile_args']
         link_args = kwargs['link_args']
         variables = kwargs['variables']
@@ -3353,7 +3354,6 @@ class Interpreter(InterpreterBase, HoldableObject):
                    if not isinstance(s, (build.BuildTarget, build.ExtractedObjects))]
         sources = self.source_strings_to_files(sources)
         objs = kwargs['objects']
-        kwargs['extra_files'] = self.source_strings_to_files(kwargs['extra_files'])
         self.check_sources_exist(os.path.join(self.source_root, self.subdir), sources)
 
         # Filter out kwargs from other target types. For example 'soversion'
