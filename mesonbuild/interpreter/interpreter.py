@@ -58,6 +58,7 @@ from .type_checking import (
     CT_BUILD_BY_DEFAULT,
     CT_INPUT_KW,
     CT_INSTALL_DIR_KW,
+    D_IMPORT_DIRECTORIES,
     MULTI_OUTPUT_KW,
     OBJECTS_KW,
     OUTPUT_KW,
@@ -686,7 +687,7 @@ class Interpreter(InterpreterBase, HoldableObject):
     @typed_kwargs(
         'declare_dependency',
         KwargInfo('compile_args', ContainerTypeInfo(list, str), listify=True, default=[]),
-        INCLUDE_DIRECTORIES.evolve(name='d_import_dirs', since='0.62.0'),
+        D_IMPORT_DIRECTORIES.evolve(since='0.62.0'),
         D_MODULE_VERSIONS_KW.evolve(since='0.62.0'),
         KwargInfo('link_args', ContainerTypeInfo(list, str), listify=True, default=[]),
         DEPENDENCIES_KW,
@@ -703,7 +704,7 @@ class Interpreter(InterpreterBase, HoldableObject):
     )
     def func_declare_dependency(self, node, args, kwargs):
         deps = kwargs['dependencies']
-        incs = self._convert_include_dirs(kwargs['include_directories'])
+        incs = kwargs['include_directories']
         libs = kwargs['link_with']
         libs_whole = kwargs['link_whole']
         objects = kwargs['objects']
@@ -716,7 +717,7 @@ class Interpreter(InterpreterBase, HoldableObject):
         if version is None:
             version = self.project_version
         d_module_versions = kwargs['d_module_versions']
-        d_import_dirs = self._convert_include_dirs(kwargs['d_import_dirs'], is_d_lang=True)
+        d_import_dirs = kwargs['d_import_dirs']
         srcdir = Path(self.environment.source_dir)
         for k, v in variables.items():
             try:
@@ -2673,22 +2674,6 @@ class Interpreter(InterpreterBase, HoldableObject):
                                               install_tag=install_tag, data_type='configure'))
         return mesonlib.File.from_built_file(self.subdir, output)
 
-    def _convert_include_dirs(self, prospectives: T.Iterable[T.Union[str, build.IncludeDirs]], *, is_d_lang: bool = False) -> T.List[build.IncludeDirs]:
-        result: T.List[build.IncludeDirs] = []
-        strings: T.List[str] = []
-        for p in prospectives:
-            if isinstance(p, build.IncludeDirs):
-                result.append(p)
-            else:
-                if is_d_lang and os.path.normpath(p).startswith(self.environment.source_dir):
-                    FeatureDeprecated.single_use('Absolute paths to the source directory for d_import_dirs', '0.45.0', self.subproject,
-                                                 'use a relative path instead.', self.current_node)
-                    p = os.path.relpath(p, os.path.join(self.environment.source_dir, self.subdir))
-                strings.append(p)
-        if strings:
-            result.append(self.build_incdir_object(strings))
-        return result
-
     @typed_pos_args('include_directories', varargs=str)
     @typed_kwargs('include_directories', KwargInfo('is_system', bool, default=False))
     def func_include_directories(self, node: mparser.BaseNode, args: T.Tuple[T.List[str]],
@@ -3125,7 +3110,7 @@ class Interpreter(InterpreterBase, HoldableObject):
             build_by_default=kwargs['build_by_default'],
             dependencies=kwargs['dependencies'],
             extra_files=kwargs['extra_files'],
-            include_directories=self._convert_include_dirs(kwargs['include_directories']),
+            include_directories=kwargs['include_directories'],
             install=kwargs['install'],
             install_dir=kwargs['install_dir'],
             link_args=kwargs['link_args'],
@@ -3184,11 +3169,11 @@ class Interpreter(InterpreterBase, HoldableObject):
             build_rpath=kwargs['build_rpath'],
             dependencies=kwargs['dependencies'],
             d_debug=kwargs['d_debug'],
-            d_import_dirs=self._convert_include_dirs(kwargs['d_import_dirs'], is_d_lang=True),
+            d_import_dirs=kwargs['d_import_dirs'],
             d_versions=kwargs['d_module_versions'],
             extra_files=kwargs['extra_files'],
             implicit_include_directories=kwargs['implicit_include_directories'],
-            include_directories=self._convert_include_dirs(kwargs['include_directories']),
+            include_directories=kwargs['include_directories'],
             install=kwargs['install'],
             install_dir=kwargs['install_dir'],
             install_mode=kwargs['install_mode'],
@@ -3229,11 +3214,11 @@ class Interpreter(InterpreterBase, HoldableObject):
             build_rpath=kwargs['build_rpath'],
             dependencies=kwargs['dependencies'],
             d_debug=kwargs['d_debug'],
-            d_import_dirs=self._convert_include_dirs(kwargs['d_import_dirs'], is_d_lang=True),
+            d_import_dirs=kwargs['d_import_dirs'],
             d_versions=kwargs['d_module_versions'],
             extra_files=kwargs['extra_files'],
             implicit_include_directories=kwargs['implicit_include_directories'],
-            include_directories=self._convert_include_dirs(kwargs['include_directories']),
+            include_directories=kwargs['include_directories'],
             install=kwargs['install'],
             install_dir=kwargs['install_dir'],
             install_mode=kwargs['install_mode'],
@@ -3273,11 +3258,11 @@ class Interpreter(InterpreterBase, HoldableObject):
             build_rpath=kwargs['build_rpath'],
             dependencies=kwargs['dependencies'],
             d_debug=kwargs['d_debug'],
-            d_import_dirs=self._convert_include_dirs(kwargs['d_import_dirs'], is_d_lang=True),
+            d_import_dirs=kwargs['d_import_dirs'],
             d_versions=kwargs['d_module_versions'],
             extra_files=kwargs['extra_files'],
             implicit_include_directories=kwargs['implicit_include_directories'],
-            include_directories=self._convert_include_dirs(kwargs['include_directories']),
+            include_directories=kwargs['include_directories'],
             install=kwargs['install'],
             install_dir=kwargs['install_dir'],
             install_mode=kwargs['install_mode'],
@@ -3315,11 +3300,11 @@ class Interpreter(InterpreterBase, HoldableObject):
             build_rpath=kwargs['build_rpath'],
             dependencies=kwargs['dependencies'],
             d_debug=kwargs['d_debug'],
-            d_import_dirs=self._convert_include_dirs(kwargs['d_import_dirs'], is_d_lang=True),
+            d_import_dirs=kwargs['d_import_dirs'],
             d_versions=kwargs['d_module_versions'],
             extra_files=kwargs['extra_files'],
             implicit_include_directories=kwargs['implicit_include_directories'],
-            include_directories=self._convert_include_dirs(kwargs['include_directories']),
+            include_directories=kwargs['include_directories'],
             install=kwargs['install'],
             install_dir=kwargs['install_dir'],
             install_mode=kwargs['install_mode'],

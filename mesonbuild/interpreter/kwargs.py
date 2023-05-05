@@ -330,7 +330,7 @@ class _AllTargetBase(TypedDict):
     build_by_default: bool
     dependencies: T.List[dependencies.Dependency]
     extra_files: T.List[T.Union[File, CustomTarget, build.CustomTargetIndex]]
-    include_directories: T.List[T.Union[build.IncludeDirs, str]]
+    include_directories: T.List[build.IncludeDirs]
     install: bool
     install_dir: T.List[T.Union[str, bool]]
     install_mode: FileMode
@@ -346,7 +346,7 @@ class _BuildTargetBase(_AllTargetBase):
     implicit_include_directories: bool
     build_rpath: str
     d_debug: T.List[str]
-    d_import_dirs: T.List[T.Union[str, build.IncludeDirs]]
+    d_import_dirs: T.List[build.IncludeDirs]
     d_module_versions: T.List[T.Union[str, int]]
     d_unittest: bool
     gnu_symbol_visibility: GNU_SYMBOL_VISIBILITY

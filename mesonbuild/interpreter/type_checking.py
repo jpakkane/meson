@@ -19,7 +19,7 @@ from ..build import (CustomTarget, BuildTarget,
 from ..coredata import UserFeatureOption
 from ..compilers import is_object, is_header, is_source
 from ..dependencies import Dependency, InternalDependency
-from ..interpreterbase.decorators import FeatureDeprecated, KwargInfo, ContainerTypeInfo
+from ..interpreterbase.decorators import FeatureCheckBase, FeatureDeprecated, KwargInfo, ContainerTypeInfo
 from ..mesonlib import (File, FileMode, MachineChoice, listify, has_path_sep,
                         OptionKey, EnvironmentVariables)
 from ..programs import ExternalProgram
@@ -114,6 +114,52 @@ def validate_within_subproject(subdir: str, fname: str, source_dir: str,
     if subproject_dir == norm or subproject_dir in norm.parents:
         return f'Sandbox violation: Tried to grab {inputtype} {norm.name} from a nested subproject.'
     return None
+
+
+def _include_dirs_validator(incs: T.List[T.Union[str, IncludeDirs]], state: ValidatorState) -> T.Optional[str]:
+    for inc in incs:
+        if not isinstance(inc, str):
+            continue
+        if inc.startswith(state.source_root):
+            return "Tried to form an absolute path to a directory in the source tree. Use relative path instead."
+        if not any(os.path.exists(os.path.join(d, state.subdir, inc)) for d in
+                   [state.source_root, state.build_root]):
+            return f'Include dir {inc} does not exist.'
+        sbx_viol = validate_within_subproject(
+            state.subdir, inc, state.source_root, state.build_root,
+            state.subproject_dir, state.relaxations, state.build)
+        if sbx_viol is not None:
+            return sbx_viol
+    return None
+
+
+def _include_dirs_convertor(is_dlang: bool = False) -> T.Callable[[T.List[T.Union[str, IncludeDirs]], ValidatorState], T.List[IncludeDirs]]:
+
+    def inner(values: T.List[T.Union[str, IncludeDirs]], state: ValidatorState) -> T.List[IncludeDirs]:
+        result: T.List[IncludeDirs] = []
+        strings: T.List[str] = []
+
+        for i in values:
+            if isinstance(i, IncludeDirs):
+                result.append(i)
+                continue
+            if is_dlang and os.path.normpath(i).startswith(state.source_root):
+                i = os.path.relpath(i, os.path.join(state.source_root, state.subdir))
+            strings.append(i)
+
+        if strings:
+            result.append(IncludeDirs(state.subdir, strings, False))
+
+        return result
+
+    return inner
+
+
+def _include_dirs_dlang_feature_validator(values: T.List[T.Union[str, IncludeDirs]], state: ValidatorState) -> T.Iterable[FeatureCheckBase]:
+    for inc in values:
+        if isinstance(inc, str) and os.path.normpath(inc).startswith(state.source_root):
+            yield FeatureDeprecated('Absolute paths to the source directory', '0.45.0',
+                                    'use a relative path instead.')
 
 
 def in_set_validator(choices: T.Set[str]) -> T.Callable[[str, ValidatorState], T.Optional[str]]:
@@ -473,6 +519,14 @@ INCLUDE_DIRECTORIES: KwargInfo[T.List[T.Union[str, IncludeDirs]]] = KwargInfo(
     ContainerTypeInfo(list, (str, IncludeDirs)),
     listify=True,
     default=[],
+    validator=_include_dirs_validator,
+    convertor=_include_dirs_convertor(),
+)
+
+D_IMPORT_DIRECTORIES = INCLUDE_DIRECTORIES.evolve(
+    name='d_import_dirs',
+    convertor=_include_dirs_convertor(True),
+    feature_validator=_include_dirs_dlang_feature_validator,
 )
 
 # for cases like default_options and override_options
@@ -738,7 +792,7 @@ _BUILD_TARGET_KWS: T.List[KwargInfo] = [
     KwargInfo('build_rpath', str, default='', since='0.42.0'),
     KwargInfo('d_debug', ContainerTypeInfo(list, (str, int)), default=[], listify=True),
     KwargInfo('implicit_include_directories', bool, default=True, since='0.42.0'),
-    INCLUDE_DIRECTORIES.evolve(name='d_import_dirs'),
+    D_IMPORT_DIRECTORIES,
     D_MODULE_VERSIONS_KW,
     KwargInfo('d_unittest', bool, default=False),
     KwargInfo(

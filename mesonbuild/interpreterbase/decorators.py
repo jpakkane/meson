@@ -482,7 +482,7 @@ class KwargInfo(T.Generic[_T]):
                deprecated_values: T.Union[T.Dict[T.Union[_T, ContainerTypeInfo, type], T.Union[str, T.Tuple[str, str]]], None, _NULL_T] = _NULL,
                feature_validator: T.Union[T.Callable[[_T, ValidatorState], T.Iterable[FeatureCheckBase]], None, _NULL_T] = _NULL,
                validator: T.Union[T.Callable[[T.Any, ValidatorState], T.Optional[str]], None, _NULL_T] = _NULL,
-               convertor: T.Union[T.Callable[[_T, ValidatorState], TYPE_var], None, _NULL_T] = _NULL) -> 'KwargInfo':
+               convertor: T.Union[T.Callable[[_T, ValidatorState], TYPE_var], None, _NULL_T] = _NULL) -> 'KwargInfo[_T]':
         """Create a shallow copy of this KwargInfo, with modifications.
 
         This allows us to create a new copy of a KwargInfo with modifications.
