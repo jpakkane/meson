@@ -20,7 +20,7 @@ from .disabler import Disabler
 from .exceptions import InterpreterException, InvalidArguments
 from ._unholder import _unholder
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import wraps
 import abc
 import itertools
@@ -31,7 +31,9 @@ if T.TYPE_CHECKING:
     from typing_extensions import Protocol
 
     from .. import mparser
+    from ..build import Build
     from ..interpreter import Interpreter
+    from ..interpreter.interpreter import InterpreterRuleRelaxation
     from ..interpreter.mesonmain import MesonMain
     from ..modules import ModuleObject, ModuleState
     from ..optinterpreter import OptionInterpreter
@@ -53,26 +55,34 @@ class ValidatorState:
     subdir: str
     source_root: str
     build_root: str
+    subproject_dir: str
+    relaxations: T.Set[InterpreterRuleRelaxation] = field(default_factory=set)
+    build: T.Optional[Build] = None
 
 
 def _get_validator_state(obj: T.Union[Interpreter, MesonMain, ObjectHolder, ModuleObject, OptionInterpreter], state: T.Union[ModuleState, object]) -> ValidatorState:
+    # Lets avoid importing the actual classes and just deal with hasattr and
+    # casting, otherwise we end up doing an import inside the function body to
+    # avoid circular imports
     if hasattr(obj, 'subdir'):
-        # We have to cast because mypy doesn't check hasattr
         obj = T.cast('Interpreter', obj)
-        return ValidatorState(obj.subdir, obj.environment.get_source_dir(), obj.environment.get_build_dir())
-    elif hasattr(state, 'environment'):
-        state = T.cast('ModuleState', state)
-        # Mypy gets really confused here.
-        return ValidatorState(state.subdir, state.environment.get_source_dir(), state.environment.get_build_dir())  # type: ignore[has-type]
     elif hasattr(obj, 'interpreter'):
-        obj = T.cast('T.Union[MesonMain, ObjectHolder]', obj)
-        return ValidatorState(obj.interpreter.subdir, obj.interpreter.environment.get_source_dir(), obj.interpreter.environment.get_build_dir())
+        # This is both the MesonMain and ObjectHolder case
+        obj = T.cast('Interpreter', obj.intepreter)
+    elif hasattr(state, '_interpreter'):
+        # This is the ModuleObject case, where we use ModuleState
+        obj = T.cast('Interpreter', state._interpreter)
     elif hasattr(obj, 'feature_parser'):
         # In this case we have an OptionInterpreter, which doesn't have the
         # necessary information. Fortunately we don't need it in this case, so
         # we can just return a dummy instance
-        return ValidatorState('', '', '')
-    raise MesonBugException('Unhandled input for getting validator state')
+        return ValidatorState('', '', '', '')
+    else:
+        raise MesonBugException('Unhandled input for getting validator state')
+
+    return ValidatorState(
+        obj.subdir, obj.environment.get_source_dir(), obj.environment.get_build_dir(),
+        obj.subproject_dir, obj.relaxations, obj.build)
 
 
 def get_callee_args(wrapped_args: T.Sequence[T.Any]) -> T.Tuple['mparser.BaseNode', T.List['TYPE_var'], 'TYPE_kwargs', 'SubProject']:
