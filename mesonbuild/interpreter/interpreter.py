@@ -3098,31 +3098,6 @@ class Interpreter(InterpreterBase, HoldableObject):
         else:
             raise InterpreterException(f'Unknown default_library value: {default_library}.')
 
-    def __build_jar(self, name: str, sources: T.List[BuildTargetSource],
-                    struct_src: T.Optional[build.StructuredSources],
-                    kwargs: kwtypes.Jar) -> build.Jar:
-        if any(not s.endswith('.java') for s in sources):
-            raise InvalidArguments('Jar sources must all be java files.')
-        if struct_src is not None:
-            raise InvalidArguments('Jar does not support structured_sources')
-        return build.Jar(
-            name, self.subdir, self.subproject, MachineChoice.HOST, sources,
-            self.environment, self.compilers[MachineChoice.HOST],
-            build_by_default=kwargs['build_by_default'],
-            dependencies=kwargs['dependencies'],
-            extra_files=kwargs['extra_files'],
-            include_directories=kwargs['include_directories'],
-            install=kwargs['install'],
-            install_dir=kwargs['install_dir'],
-            link_args=kwargs['link_args'],
-            link_depends=kwargs['link_depends'],
-            link_with=kwargs['link_with'],
-            override_options=kwargs['override_options'],
-            java_args=kwargs['java_args'],
-            main_class=kwargs['main_class'],
-            resources=kwargs['java_resources'],
-        )
-
     @staticmethod
     def __extract_language_args(kwargs: kwtypes.BuildTarget) -> T.DefaultDict[str, T.List[mesonlib.FileOrString]]:
         """Convert split language args into a combined dictionary.
@@ -3421,7 +3396,11 @@ class Interpreter(InterpreterBase, HoldableObject):
                 '''), location=node)
 
         if targetclass is build.Jar:
-            target = self. __build_jar(name, srcs, struct, kwargs)
+            if any(not s.endswith('.java') for s in srcs):
+                raise InvalidArguments('Jar sources must all be java files.')
+            if struct is not None:
+                raise InvalidArguments('Jar does not support structured_sources')
+            target = build.Jar(name, self.subdir, self.subproject, MachineChoice.BUILD, srcs, struct, **kwargs)
         elif targetclass is build.Executable:
             target = self.__build_exe(name, srcs, struct, objs, for_machine, kwargs, node)
         elif targetclass is build.StaticLibrary:
