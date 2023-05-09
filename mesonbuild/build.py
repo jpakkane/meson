@@ -656,7 +656,7 @@ class BuildTarget(Target):
             _allow_no_sources: bool = False,
             ):
         super().__init__(name, subdir, subproject, build_by_default, for_machine, environment,
-                         install, extra_files or [], override_options)
+                         install, False, extra_files or [], override_options)
         self.all_compilers = compilers
         self.build_rpath = build_rpath
         self.d_features: DFeatures = {
