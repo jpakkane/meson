@@ -52,7 +52,7 @@ def _str_to_file_convertor(value: T.Sequence[T.Union[str, Unpack[_Ts]]], state: 
 
 
 def validate_within_subproject(subdir: str, fname: str, source_dir: str,
-                               build_dir: str, subproject_dir: str,
+                               build_dir: str, subproject_dir: str, root_subdir: str,
                                relaxations: T.Set[InterpreterRuleRelaxation],
                                build: Build) -> T.Optional[str]:
     """Check that a file is withing the same subproject we are currently operating on.
@@ -74,6 +74,7 @@ def validate_within_subproject(subdir: str, fname: str, source_dir: str,
     :param build: The `build` object of the subproject
     :return: None if valid, otherwise an error message
     """
+    from ..interpreter.interpreter import InterpreterRuleRelaxation
     srcdir = Path(source_dir)
     builddir = Path(build_dir)
     if isinstance(fname, DependencyVariableString):
@@ -105,7 +106,7 @@ def validate_within_subproject(subdir: str, fname: str, source_dir: str,
         #
         # /opt/vendorsdk/src/file_with_license_restrictions.c
         return None
-    project_root = Path(srcdir, subdir)
+    project_root = Path(srcdir, root_subdir)
     subproject_dir = project_root / subproject_dir
     if norm == project_root:
         return None
@@ -127,7 +128,8 @@ def _include_dirs_validator(incs: T.List[T.Union[str, IncludeDirs]], state: Vali
             return f'Include dir {inc} does not exist.'
         sbx_viol = validate_within_subproject(
             state.subdir, inc, state.source_root, state.build_root,
-            state.subproject_dir, state.relaxations, state.build)
+            state.subproject_dir, state.root_subdir, state.relaxations,
+            state.build)
         if sbx_viol is not None:
             return sbx_viol
     return None

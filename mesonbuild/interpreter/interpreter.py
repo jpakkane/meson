@@ -2955,8 +2955,8 @@ class Interpreter(InterpreterBase, HoldableObject):
         """
         val = validate_within_subproject(
             subdir, fname, self.environment.source_dir,
-            self.environment.build_dir, self.subproject_dir, self.relaxations,
-            self.build)
+            self.environment.build_dir, self.subproject_dir, self.root_subdir,
+            self.relaxations, self.build)
         if val is not None:
             raise InterpreterException(val)
 
