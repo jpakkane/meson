@@ -3343,7 +3343,7 @@ class Interpreter(InterpreterBase, HoldableObject):
             checks = SHARED_MOD_KWS
         else:
             checks = JAR_KWS
-        keys = {k.name for k in checks}
+        keys = {k.name for k in checks if k.name not in {'sources', 'objects', 'native'}}
         kwargs = {k: v for k, v in kwargs.items() if k in keys}
 
         if targetclass is build.Executable:
@@ -3400,7 +3400,11 @@ class Interpreter(InterpreterBase, HoldableObject):
                 raise InvalidArguments('Jar sources must all be java files.')
             if struct is not None:
                 raise InvalidArguments('Jar does not support structured_sources')
-            target = build.Jar(name, self.subdir, self.subproject, MachineChoice.BUILD, srcs, struct, **kwargs)
+            keys = {k.name for k in checks if not k.deprecated}
+            kwargs = {k: v for k, v in kwargs.items() if k in keys}
+            target = build.Jar(name, self.subdir, self.subproject,
+                              MachineChoice.BUILD, srcs, self.environment,
+                              self.compilers[MachineChoice.BUILD], **kwargs)
         elif targetclass is build.Executable:
             target = self.__build_exe(name, srcs, struct, objs, for_machine, kwargs, node)
         elif targetclass is build.StaticLibrary:

@@ -2700,7 +2700,7 @@ class Jar(BuildTarget):
                  _allow_no_sources: bool = False,
                  java_args: T.Optional[T.List[str]] = None,
                  main_class: str = '',
-                 resources: T.Optional[StructuredSources] = None):
+                 java_resources: T.Optional[StructuredSources] = None):
         super().__init__(name, subdir, subproject, for_machine, sources, None, [],
                          environment, compilers,
                          build_by_default=build_by_default,
@@ -2721,7 +2721,7 @@ class Jar(BuildTarget):
         self.filename = self.name + '.jar'
         self.outputs[0] = self.filename
         self.java_args = java_args or []
-        self.java_resources = resources
+        self.java_resources = java_resources
         self.main_class = main_class
 
     def get_main_class(self):

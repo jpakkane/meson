@@ -1028,7 +1028,6 @@ _EXCLUSIVE_JAVA_KWS: T.List[KwargInfo] = [
 
 JAR_KWS: T.List[KwargInfo] = [
     *_ALL_TARGET_KWS,
-    *_LANGUAGE_KWS,
     *_EXCLUSIVE_JAVA_KWS,
     _LANGUAGE_JAVA_KW,
     SOURCES_KW,  # this doesn't include StructuredSources, which is correct for Jar
@@ -1042,6 +1041,8 @@ JAR_KWS: T.List[KwargInfo] = [
 
     # For backwards compatibility reasons (we're post 1.0), we can't just remove
     # these, we have to deprecate them and remove then in 2.0
+    *[a.evolve(deprecated='1.1.0', deprecated_message='has always been ignored, and is safe to delete')
+      for a in _LANGUAGE_KWS],
     *[a.evolve(deprecated='1.1.0', deprecated_message='has always been ignored, and is safe to delete')
       for a in _BUILD_TARGET_KWS if a.name not in {'sources', 'link_with'}],
     *[a.evolve(deprecated='1.1.0', deprecated_message='has always been ignored, and is safe to delete')
