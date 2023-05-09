@@ -1993,7 +1993,7 @@ class SharedLibrary(BuildTarget):
                          )
 
         if isinstance(vs_module_defs, (CustomTarget, CustomTargetIndex)):
-            vs_module_defs = File.from_built_file(vs_module_defs.subdir, vs_module_defs.get_filename())
+            vs_module_defs = File.from_built_file(vs_module_defs.get_subdir(), vs_module_defs.get_filename())
         self.vs_module_defs = vs_module_defs
         if vs_module_defs is not None:
             self.link_depends.append(vs_module_defs)
