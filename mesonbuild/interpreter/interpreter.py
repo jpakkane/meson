@@ -3109,203 +3109,11 @@ class Interpreter(InterpreterBase, HoldableObject):
         """
         args: T.DefaultDict[str, T.List[mesonlib.FileOrString]] = collections.defaultdict(list)
         for l in compilers.all_languages:
-            lang = kwargs[f'{l}_args']
-            args[l].extend(lang)
+            lang: T.Optional[T.List[mesonlib.FileOrString]] = kwargs.pop(f'{l}_args', None)
+            if lang:
+                args[l].extend(lang)
         return args
 
-    def __build_exe(self, name: str, sources: T.List[BuildTargetSource],
-                    struct_src: T.Optional[build.StructuredSources],
-                    objects: T.List[T.Union[mesonlib.File, build.ExtractedObjects, build.CustomTarget, build.CustomTargetIndex, build.GeneratedList]],
-                    for_machine: MachineChoice,
-                    kwargs: kwtypes.Executable,
-                    node: mparser.BaseNode) -> build.Executable:
-        # This kwarg is deprecated. The value of "none" means that the kwarg
-        # was not specified and win_subsystem should be used instead.
-        if kwargs['gui_app'] is not None:
-            if kwargs['win_subsystem'] is not None:
-                raise InvalidArguments('Can specify only gui_app or win_subsystem for a target, not both.')
-            kwargs['win_subsystem'] = 'windows' if kwargs['gui_app'] else 'console'
-
-        implib = kwargs['implib']
-        export_dynamic = kwargs['export_dynamic']
-        if export_dynamic and implib is False:
-            raise InvalidArguments.from_node('"implib" keyword argument must not be false if "export_dynamic" is true', node=node)
-        if implib and not export_dynamic:
-            mlog.deprecation('setting "implib" to true and "export_dynamic" to false',
-                             'currently results in "export_dynamic" being set to true unconditionally,',
-                             'in the future this will change, and setting "implib" without "export_dynamic"',
-                             'will not result in an implib being generated', location=node)
-        if implib is None:
-            implib = export_dynamic
-
-        return build.Executable(
-            name, self.subdir, self.subproject, for_machine, sources,
-            struct_src, objects, self.environment, self.compilers[for_machine],
-            build_by_default=kwargs['build_by_default'],
-            build_rpath=kwargs['build_rpath'],
-            dependencies=kwargs['dependencies'],
-            d_debug=kwargs['d_debug'],
-            d_import_dirs=kwargs['d_import_dirs'],
-            d_versions=kwargs['d_module_versions'],
-            extra_files=kwargs['extra_files'],
-            implicit_include_directories=kwargs['implicit_include_directories'],
-            include_directories=kwargs['include_directories'],
-            install=kwargs['install'],
-            install_dir=kwargs['install_dir'],
-            install_mode=kwargs['install_mode'],
-            install_rpath=kwargs['build_rpath'],
-            install_tag=kwargs['install_tag'],
-            language_args=self.__extract_language_args(kwargs),
-            link_args=kwargs['link_args'],
-            link_depends=kwargs['link_depends'],
-            link_language=kwargs['link_language'],
-            link_with=kwargs['link_with'],
-            link_whole=kwargs['link_whole'],
-            name_prefix=kwargs['name_prefix'],
-            name_suffix=kwargs['name_suffix'],
-            gnu_symbol_visibility=kwargs['gnu_symbol_visibility'],
-            override_options=kwargs['override_options'],
-            resources=kwargs['resources'],
-            rust_dependency_map=kwargs['rust_dependency_map'],
-            vala_header=kwargs['vala_header'],
-            vala_vapi=kwargs['vala_vapi'],
-            vala_gir=kwargs['vala_gir'],
-            c_pch=kwargs['c_pch'],
-            cpp_pch=kwargs['cpp_pch'],
-            pie=kwargs['pie'],
-            implib=implib,
-            export_dynamic=export_dynamic,
-            win_subsystem=kwargs['win_subsystem'],
-        )
-
-    def __build_sh_lib(self, name: str, sources: T.List[BuildTargetSource],
-                       struct_src: T.Optional[build.StructuredSources],
-                       objects: T.List[T.Union[mesonlib.File, build.ExtractedObjects, build.CustomTarget, build.CustomTargetIndex, build.GeneratedList]],
-                       for_machine: MachineChoice,
-                       kwargs: kwtypes.SharedLibrary) -> build.SharedLibrary:
-        return build.SharedLibrary(
-            name, self.subdir, self.subproject, for_machine, sources,
-            struct_src, objects, self.environment, self.compilers[for_machine],
-            build_by_default=kwargs['build_by_default'],
-            build_rpath=kwargs['build_rpath'],
-            dependencies=kwargs['dependencies'],
-            d_debug=kwargs['d_debug'],
-            d_import_dirs=kwargs['d_import_dirs'],
-            d_versions=kwargs['d_module_versions'],
-            extra_files=kwargs['extra_files'],
-            implicit_include_directories=kwargs['implicit_include_directories'],
-            include_directories=kwargs['include_directories'],
-            install=kwargs['install'],
-            install_dir=kwargs['install_dir'],
-            install_mode=kwargs['install_mode'],
-            install_rpath=kwargs['build_rpath'],
-            install_tag=kwargs['install_tag'],
-            language_args=self.__extract_language_args(kwargs),
-            link_args=kwargs['link_args'],
-            link_depends=kwargs['link_depends'],
-            link_language=kwargs['link_language'],
-            link_with=kwargs['link_with'],
-            link_whole=kwargs['link_whole'],
-            name_prefix=kwargs['name_prefix'],
-            name_suffix=kwargs['name_suffix'],
-            gnu_symbol_visibility=kwargs['gnu_symbol_visibility'],
-            override_options=kwargs['override_options'],
-            resources=kwargs['resources'],
-            rust_dependency_map=kwargs['rust_dependency_map'],
-            vala_header=kwargs['vala_header'],
-            vala_vapi=kwargs['vala_vapi'],
-            vala_gir=kwargs['vala_gir'],
-            vs_module_defs=kwargs['vs_module_defs'],
-            c_pch=kwargs['c_pch'],
-            cpp_pch=kwargs['cpp_pch'],
-            soversion=kwargs['soversion'],
-            version=kwargs['version'],
-        )
-
-    def __build_sh_mod(self, name: str, sources: T.List[BuildTargetSource],
-                       struct_src: T.Optional[build.StructuredSources],
-                       objects: T.List[T.Union[mesonlib.File, build.ExtractedObjects, build.CustomTarget, build.CustomTargetIndex, build.GeneratedList]],
-                       for_machine: MachineChoice,
-                       kwargs: kwtypes.SharedModule) -> build.SharedModule:
-        return build.SharedModule(
-            name, self.subdir, self.subproject, for_machine, sources,
-            struct_src, objects, self.environment, self.compilers[for_machine],
-            build_by_default=kwargs['build_by_default'],
-            build_rpath=kwargs['build_rpath'],
-            dependencies=kwargs['dependencies'],
-            d_debug=kwargs['d_debug'],
-            d_import_dirs=kwargs['d_import_dirs'],
-            d_versions=kwargs['d_module_versions'],
-            extra_files=kwargs['extra_files'],
-            implicit_include_directories=kwargs['implicit_include_directories'],
-            include_directories=kwargs['include_directories'],
-            install=kwargs['install'],
-            install_dir=kwargs['install_dir'],
-            install_mode=kwargs['install_mode'],
-            install_rpath=kwargs['build_rpath'],
-            install_tag=kwargs['install_tag'],
-            language_args=self.__extract_language_args(kwargs),
-            link_args=kwargs['link_args'],
-            link_depends=kwargs['link_depends'],
-            link_language=kwargs['link_language'],
-            link_with=kwargs['link_with'],
-            link_whole=kwargs['link_whole'],
-            name_prefix=kwargs['name_prefix'],
-            name_suffix=kwargs['name_suffix'],
-            gnu_symbol_visibility=kwargs['gnu_symbol_visibility'],
-            override_options=kwargs['override_options'],
-            resources=kwargs['resources'],
-            rust_dependency_map=kwargs['rust_dependency_map'],
-            vala_header=kwargs['vala_header'],
-            vala_vapi=kwargs['vala_vapi'],
-            vala_gir=kwargs['vala_gir'],
-            vs_module_defs=kwargs['vs_module_defs'],
-            c_pch=kwargs['c_pch'],
-            cpp_pch=kwargs['cpp_pch'],
-        )
-
-    def __build_st_lib(self, name: str, sources: T.List[BuildTargetSource],
-                       struct_src: T.Optional[build.StructuredSources],
-                       objects: T.List[T.Union[mesonlib.File, build.ExtractedObjects, build.CustomTarget, build.CustomTargetIndex, build.GeneratedList]],
-                       for_machine: MachineChoice,
-                       kwargs: kwtypes.StaticLibrary) -> build.StaticLibrary:
-        return build.StaticLibrary(
-            name, self.subdir, self.subproject, for_machine, sources,
-            struct_src, objects, self.environment, self.compilers[for_machine],
-            build_by_default=kwargs['build_by_default'],
-            build_rpath=kwargs['build_rpath'],
-            dependencies=kwargs['dependencies'],
-            d_debug=kwargs['d_debug'],
-            d_import_dirs=kwargs['d_import_dirs'],
-            d_versions=kwargs['d_module_versions'],
-            extra_files=kwargs['extra_files'],
-            implicit_include_directories=kwargs['implicit_include_directories'],
-            include_directories=kwargs['include_directories'],
-            install=kwargs['install'],
-            install_dir=kwargs['install_dir'],
-            install_mode=kwargs['install_mode'],
-            install_rpath=kwargs['build_rpath'],
-            install_tag=kwargs['install_tag'],
-            language_args=self.__extract_language_args(kwargs),
-            link_args=kwargs['link_args'],
-            link_depends=kwargs['link_depends'],
-            link_language=kwargs['link_language'],
-            link_with=kwargs['link_with'],
-            link_whole=kwargs['link_whole'],
-            name_prefix=kwargs['name_prefix'],
-            name_suffix=kwargs['name_suffix'],
-            gnu_symbol_visibility=kwargs['gnu_symbol_visibility'],
-            override_options=kwargs['override_options'],
-            resources=kwargs['resources'],
-            rust_dependency_map=kwargs['rust_dependency_map'],
-            vala_header=kwargs['vala_header'],
-            vala_vapi=kwargs['vala_vapi'],
-            vala_gir=kwargs['vala_gir'],
-            c_pch=kwargs['c_pch'],
-            cpp_pch=kwargs['cpp_pch'],
-            pic=kwargs['pic'],
-            prelink=kwargs['prelink'],
-        )
 
     def build_target(
             self, node: mparser.BaseNode,
@@ -3331,6 +3139,25 @@ class Interpreter(InterpreterBase, HoldableObject):
         objs = kwargs['objects']
         self.check_sources_exist(os.path.join(self.source_root, self.subdir), sources)
 
+        if targetclass is build.Executable:
+            if kwargs['gui_app'] is not None:
+                if kwargs['win_subsystem'] is not None:
+                    raise InvalidArguments('Executable: can not specify both "gui_app" and "win_subsystem" together, they are mutually exclusive')
+                kwargs['win_subsystem'] = 'windows' if kwargs['gui_app'] else 'console'
+
+            implib = kwargs['implib']
+            export_dynamic = kwargs['export_dynamic']
+            if export_dynamic and implib is False:
+                raise InvalidArguments.from_node('"implib" keyword argument must not be false if "export_dynamic" is true', node=node)
+            if implib and not export_dynamic:
+                mlog.deprecation('setting "implib" to true and "export_dynamic" to false',
+                                 'currently results in "export_dynamic" being set to true unconditionally,',
+                                 'in the future this will change, and setting "implib" without "export_dynamic"',
+                                 'will not result in an implib being generated', location=node)
+            if implib is None:
+                implib = export_dynamic
+            kwargs['implib'] = implib
+
         # Filter out kwargs from other target types. For example 'soversion'
         # passed to library() when default_library == 'static'.
         if targetclass is build.Executable:
@@ -3343,15 +3170,9 @@ class Interpreter(InterpreterBase, HoldableObject):
             checks = SHARED_MOD_KWS
         else:
             checks = JAR_KWS
-        keys = {k.name for k in checks if k.name not in {'sources', 'objects', 'native'}}
+        keys = {k.name for k in checks if not
+                (k.name in {'sources', 'objects', 'native'} or k.deprecated)}
         kwargs = {k: v for k, v in kwargs.items() if k in keys}
-
-        if targetclass is build.Executable:
-            if kwargs['gui_app'] is not None:
-                if kwargs['win_subsystem'] is not None:
-                    raise InvalidArguments('Executable: can not specify both "gui_app" and "win_subsystem" together, they are mutually exclusive')
-                kwargs['win_subsystem'] = 'windows' if kwargs['gui_app'] else 'console'
-                kwargs['gui_app'] = None
 
         srcs: T.List['SourceInputs'] = []
         struct: T.Optional[build.StructuredSources] = build.StructuredSources()
@@ -3400,19 +3221,15 @@ class Interpreter(InterpreterBase, HoldableObject):
                 raise InvalidArguments('Jar sources must all be java files.')
             if struct is not None:
                 raise InvalidArguments('Jar does not support structured_sources')
-            keys = {k.name for k in checks if not k.deprecated}
-            kwargs = {k: v for k, v in kwargs.items() if k in keys}
             target = build.Jar(name, self.subdir, self.subproject,
-                              MachineChoice.BUILD, srcs, self.environment,
-                              self.compilers[MachineChoice.BUILD], **kwargs)
-        elif targetclass is build.Executable:
-            target = self.__build_exe(name, srcs, struct, objs, for_machine, kwargs, node)
-        elif targetclass is build.StaticLibrary:
-            target = self.__build_st_lib(name, srcs, struct, objs, for_machine, kwargs)
-        elif targetclass is build.SharedLibrary:
-            target = self.__build_sh_lib(name, srcs, struct, objs, for_machine, kwargs)
+                               MachineChoice.BUILD, srcs, self.environment,
+                               self.compilers[MachineChoice.BUILD], **kwargs)
         else:
-            target = self.__build_sh_mod(name, srcs, struct, objs, for_machine, kwargs)
+            language_args = self.__extract_language_args(kwargs)
+            target = targetclass(
+                name, self.subdir, self.subproject, for_machine, srcs, struct,
+                objs, self.environment, self.compilers[for_machine],
+                language_args=language_args, **kwargs)
         target.project_version = self.project_version
 
         self.add_target(name, target)
