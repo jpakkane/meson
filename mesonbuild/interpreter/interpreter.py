@@ -3144,6 +3144,9 @@ class Interpreter(InterpreterBase, HoldableObject):
                 if kwargs['win_subsystem'] is not None:
                     raise InvalidArguments('Executable: can not specify both "gui_app" and "win_subsystem" together, they are mutually exclusive')
                 kwargs['win_subsystem'] = 'windows' if kwargs['gui_app'] else 'console'
+            # This must be done here to avoid having both gui_app and win_subsystem defined at the same time
+            if kwargs['win_subsystem'] is None:
+                kwargs['win_subsystem'] = 'console'
 
             implib = kwargs['implib']
             export_dynamic = kwargs['export_dynamic']

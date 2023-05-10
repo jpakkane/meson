@@ -986,7 +986,9 @@ BOTH_LIB_KWS: T.List[KwargInfo] = [
 ]
 
 
-def _win_subsystem_validator(value: str, _: ValidatorState) -> T.Optional[str]:
+def _win_subsystem_validator(value: T.Optional[str], _: ValidatorState) -> T.Optional[str]:
+    if value is None:
+        return None
     value = value.lower()
     if re.fullmatch(r'(boot_application|console|efi_application|efi_boot_service_driver|efi_rom|efi_runtime_driver|native|posix|windows)(,\d+(\.\d+)?)?', value) is None:
         return f'Invalid value for win_subsystem: {value}.'
@@ -1004,8 +1006,7 @@ _EXCLUSIVE_EXECUTABLE_KWS: T.List[KwargInfo] = [
     ),
     KwargInfo(
         'win_subsystem',
-        str,
-        default='console',
+        (str, NoneType),
         since='0.56.0',
         validator=_win_subsystem_validator,
     ),
