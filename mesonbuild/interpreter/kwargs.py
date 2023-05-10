@@ -428,7 +428,7 @@ class Executable(_BuildTargetBase, _ExecutableMixin):
     link_with: T.List[T.Union[build.BothLibraries, build.SharedLibrary, build.StaticLibrary, build.SharedModule, build.CustomTarget, build.CustomTargetIndex]]
 
 
-class BothLibrary(_BuildTargetBase, _ExecutableMixin, _SharedLibraryMixin, _StaticLibraryMixin):
+class BothLibrary(_BuildTargetBase, _SharedLibraryMixin, _StaticLibraryMixin):
 
     rust_crate_type: Literal['lib', 'rlib', 'staticlib', 'dylib', 'cdylib', 'proc-macro']
     link_with: T.List[T.Union[build.BothLibraries, build.SharedLibrary, build.StaticLibrary, build.SharedModule, build.CustomTarget, build.CustomTargetIndex]]
