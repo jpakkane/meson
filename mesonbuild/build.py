@@ -469,7 +469,6 @@ class Target(HoldableObject, metaclass=abc.ABCMeta):
     for_machine: MachineChoice
     environment: environment.Environment
     install: bool = False
-    build_always_stale: bool = False
     extra_files: T.List[T.Union[File, CustomTarget, CustomTargetIndex]] = field(default_factory=list)
     override_options: InitVar[T.Optional[T.Dict[OptionKey, str]]] = None
 
