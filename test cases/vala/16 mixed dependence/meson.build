@@ -1,4 +1,4 @@
-project('mixed dependence', 'vala', 'c')
+project('mixed dependence', 'vala', 'c', default_options: ['c_legal_code=false'])
 
 cc = meson.get_compiler('c')
 

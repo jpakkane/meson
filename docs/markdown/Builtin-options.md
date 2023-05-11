@@ -272,6 +272,7 @@ or compiler being used:
 | c_args           |               | free-form comma-separated list           | C compile arguments to use |
 | c_link_args      |               | free-form comma-separated list           | C link arguments to use |
 | c_std            | none          | none, c89, c99, c11, c17, c18, c2x, c23, gnu89, gnu99, gnu11, gnu17, gnu18, gnu2x, gnu23 | C language standard to use |
+| c_legal_code     | true          | true, false                              | Ban C dangerous constructs by default in C99 or later |
 | c_winlibs        | see below     | free-form comma-separated list           | Standard Windows libs to link against |
 | c_thread_count   | 4             | integer value ≥ 0                        | Number of threads to use with emcc when using threads |
 | cpp_args         |               | free-form comma-separated list           | C++ compile arguments to use |

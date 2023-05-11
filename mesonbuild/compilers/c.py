@@ -153,6 +153,15 @@ class ClangCCompiler(_ClangCStds, ClangCompiler, CCompiler):
 
     def get_options(self) -> 'MutableKeyedOptionDictType':
         opts = super().get_options()
+
+        self.update_options(
+            opts,
+            self.create_option(options.UserBooleanOption,
+                               self.form_compileropt_key('legal_code'),
+                               'Ban use of dangerous constructs',
+                               True),
+        )
+
         if self.info.is_windows() or self.info.is_cygwin():
             self.update_options(
                 opts,
@@ -169,6 +178,15 @@ class ClangCCompiler(_ClangCStds, ClangCompiler, CCompiler):
         std = options.get_value(key)
         if std != 'none':
             args.append('-std=' + std)
+
+        if options.get_value(self.form_compileropt_key('legal_code')):
+            if version_compare(self.version, '>=3.3.0') and std.value not in ('c89', 'c90', 'gnu89', 'gnu90'):
+                args.extend(('-Werror=implicit',
+                             '-Werror=int-conversion',
+                             '-Werror=incompatible-pointer-types',
+                             '-Wno-error=incompatible-pointer-types-discards-qualifiers')
+                )
+
         return args
 
     def get_option_link_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
@@ -306,6 +324,15 @@ class GnuCCompiler(GnuCompiler, CCompiler):
         std_opt = opts[key]
         assert isinstance(std_opt, options.UserStdOption), 'for mypy'
         std_opt.set_versions(stds, gnu=True)
+
+        self.update_options(
+            opts,
+            self.create_option(options.UserBooleanOption,
+                               self.form_compileropt_key('legal_code'),
+                               'Ban use of dangerous constructs',
+                               True),
+        )
+
         if self.info.is_windows() or self.info.is_cygwin():
             self.update_options(
                 opts,
@@ -322,6 +349,14 @@ class GnuCCompiler(GnuCompiler, CCompiler):
         std = options.get_value(key)
         if std != 'none':
             args.append('-std=' + std)
+
+        if options.get_value(self.form_compileropt_key('legal_code')):
+            if version_compare(self.version, '>=5.1.0') and version_compare(self.version, '<14.0.0') and std.value not in ('c89', 'c90', 'gnu89', 'gnu90'):
+                args.extend(('-Werror=implicit',
+                             '-Werror=int-conversion',
+                             '-Werror=incompatible-pointer-types')
+                )
+
         return args
 
     def get_option_link_args(self, options: 'KeyedOptionDictType') -> T.List[str]:

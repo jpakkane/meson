@@ -1,4 +1,4 @@
-project('vapi-test', ['c', 'vala'])
+project('vapi-test', ['c', 'vala'], default_options: ['c_legal_code=false'])
 
 gnome = import('gnome')
 subdir('libfoo')
