@@ -1,0 +1,10 @@
+{
+  "matrix": {
+    "options": {
+      "b_staticpic": [
+        { "val": true },
+        { "val": false }
+      ]
+    }
+  }
+}

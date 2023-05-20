@@ -29,7 +29,7 @@ kwargs:
       `soversion` is not defined, it is set to `3`.
 
   darwin_versions:
-    type: str | int | list[str]
+    type: str | int | list[str | int]
     since: 0.48.0
     description: |
       Defines the `compatibility version` and `current version` for the dylib on macOS.

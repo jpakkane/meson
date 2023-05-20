@@ -18,6 +18,7 @@ kwargs:
 
   prelink:
     type: bool
+    default: false
     since: 0.57.0
     description: |
       If `true` the object files in the target will be prelinked,

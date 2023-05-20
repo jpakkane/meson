@@ -1396,15 +1396,16 @@ class NinjaBackend(backends.Backend):
         # Create introspection information
         self.create_target_source_introspection(target, compiler, compile_args, src_list, gen_src_list)
 
-    def generate_cs_resource_tasks(self, target):
-        args = []
-        deps = []
+    def generate_cs_resource_tasks(self, target: build.BuildTarget) -> T.Tuple[T.List[str], T.List[str]]:
+        args: T.List[str] = []
+        deps: T.List[str] = []
         for r in target.resources:
-            rel_sourcefile = os.path.join(self.build_to_src, target.subdir, r)
+            rel_sourcefile = r.rel_to_builddir(self.build_to_src)
             if r.endswith('.resources'):
                 a = '-resource:' + rel_sourcefile
-            elif r.endswith('.txt') or r.endswith('.resx'):
-                ofilebase = os.path.splitext(os.path.basename(r))[0] + '.resources'
+            else:
+                # TODO: this should really be handled by a CustomTarget higher up in the stack
+                ofilebase = os.path.splitext(r.fname)[0] + '.resources'
                 ofilename = os.path.join(self.get_target_private_dir(target), ofilebase)
                 elem = NinjaBuildElement(self.all_outputs, ofilename, "CUSTOM_COMMAND", rel_sourcefile)
                 elem.add_item('COMMAND', ['resgen', rel_sourcefile, ofilename])
@@ -1412,8 +1413,6 @@ class NinjaBackend(backends.Backend):
                 self.add_build(elem)
                 deps.append(ofilename)
                 a = '-resource:' + ofilename
-            else:
-                raise InvalidArguments(f'Unknown resource file {r}.')
             args.append(a)
         return args, deps
 
@@ -1657,23 +1656,11 @@ class NinjaBackend(backends.Backend):
             # Without this, it will write it inside c_out_dir
             args += ['--vapi', os.path.join('..', target.vala_vapi)]
             valac_outputs.append(vapiname)
-            target.outputs += [target.vala_header, target.vala_vapi]
-            target.install_tag += ['devel', 'devel']
-            # Install header and vapi to default locations if user requests this
-            if len(target.install_dir) > 1 and target.install_dir[1] is True:
-                target.install_dir[1] = self.environment.get_includedir()
-            if len(target.install_dir) > 2 and target.install_dir[2] is True:
-                target.install_dir[2] = os.path.join(self.environment.get_datadir(), 'vala', 'vapi')
             # Generate GIR if requested
             if isinstance(target.vala_gir, str):
                 girname = os.path.join(self.get_target_dir(target), target.vala_gir)
                 args += ['--gir', os.path.join('..', target.vala_gir)]
                 valac_outputs.append(girname)
-                target.outputs.append(target.vala_gir)
-                target.install_tag.append('devel')
-                # Install GIR to default location if requested by user
-                if len(target.install_dir) > 3 and target.install_dir[3] is True:
-                    target.install_dir[3] = os.path.join(self.environment.get_datadir(), 'gir-1.0')
         # Detect gresources and add --gresources arguments for each
         for gensrc in other_src[1].values():
             if isinstance(gensrc, gnome.GResourceTarget):
@@ -1904,23 +1891,13 @@ class NinjaBackend(backends.Backend):
         if main_rust_file is None:
             raise RuntimeError('A Rust target has no Rust sources. This is weird. Also a bug. Please report')
         target_name = os.path.join(target.subdir, target.get_filename())
-        if isinstance(target, build.Executable):
-            cratetype = 'bin'
-        elif hasattr(target, 'rust_crate_type'):
-            cratetype = target.rust_crate_type
-        elif isinstance(target, build.SharedLibrary):
-            cratetype = 'dylib'
-        elif isinstance(target, build.StaticLibrary):
-            cratetype = 'rlib'
-        else:
-            raise InvalidArguments('Unknown target type for rustc.')
-        args.extend(['--crate-type', cratetype])
+        args.extend(['--crate-type', target.rust_crate_type])
 
         # If we're dynamically linking, add those arguments
         #
         # Rust is super annoying, calling -C link-arg foo does not work, it has
         # to be -C link-arg=foo
-        if cratetype in {'bin', 'dylib'}:
+        if target.rust_crate_type in {'bin', 'dylib'}:
             args.extend(rustc.get_linker_always_args())
 
         args += self.generate_basic_compiler_args(target, rustc, False)
@@ -2036,7 +2013,7 @@ class NinjaBackend(backends.Backend):
             has_rust_shared_deps = any(isinstance(dep, build.SharedLibrary) and dep.uses_rust()
                                        and dep.rust_crate_type not in {'cdylib', 'proc-macro'}
                                        for dep in target_deps)
-            if cratetype not in {'cdylib', 'proc-macro'} or has_rust_shared_deps:
+            if target.rust_crate_type not in {'cdylib', 'proc-macro'} or has_rust_shared_deps:
                 # add prefer-dynamic if any of the Rust libraries we link
                 # against are dynamic or this is a dynamic library itself,
                 # otherwise we'll end up with multiple implementations of crates
@@ -2067,7 +2044,7 @@ class NinjaBackend(backends.Backend):
                 args += ['-C', 'link-arg=' + rpath_arg + ':' + os.path.join(rustc.get_sysroot(), 'lib')]
 
         proc_macro_dylib_path = None
-        if getattr(target, 'rust_crate_type', '') == 'proc-macro':
+        if target.rust_crate_type == 'proc-macro':
             proc_macro_dylib_path = os.path.abspath(os.path.join(target.subdir, target.get_filename()))
 
         self._add_rust_project_entry(target.name,
@@ -2085,7 +2062,7 @@ class NinjaBackend(backends.Backend):
             element.add_dep(deps)
         element.add_item('ARGS', args)
         element.add_item('targetdep', depfile)
-        element.add_item('cratetype', cratetype)
+        element.add_item('cratetype', target.rust_crate_type)
         self.add_build(element)
         if isinstance(target, build.SharedLibrary):
             self.generate_shsym(target)
@@ -3144,16 +3121,14 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
     def get_target_type_link_args_post_dependencies(self, target, linker):
         commands = []
         if isinstance(target, build.Executable):
-            # If gui_app is significant on this platform, add the appropriate linker arguments.
-            # Unfortunately this can't be done in get_target_type_link_args, because some misguided
-            # libraries (such as SDL2) add -mwindows to their link flags.
+            # If win_subsystem is significant on this platform, add the
+            # appropriate linker arguments.  Unfortunately this can't be done in
+            # get_target_type_link_args, because some misguided libraries (such
+            # as SDL2) add -mwindows to their link flags.
             m = self.environment.machines[target.for_machine]
 
             if m.is_windows() or m.is_cygwin():
-                if target.gui_app is not None:
-                    commands += linker.get_gui_app_args(target.gui_app)
-                else:
-                    commands += linker.get_win_subsystem_args(target.win_subsystem)
+                commands += linker.get_win_subsystem_args(target.win_subsystem)
         return commands
 
     def get_link_whole_args(self, linker, target):

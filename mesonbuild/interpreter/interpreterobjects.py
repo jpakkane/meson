@@ -493,7 +493,7 @@ class DependencyHolder(ObjectHolder[Dependency]):
             ContainerTypeInfo(list, str, pairs=True),
             default=[],
             listify=True,
-            validator=lambda x: 'must be of length 2 or empty' if len(x) not in {0, 2} else None,
+            validator=lambda x, _: 'must be of length 2 or empty' if len(x) not in {0, 2} else None,
         ),
     )
     def pkgconfig_method(self, args: T.Tuple[str], kwargs: 'kwargs.DependencyPkgConfigVar') -> str:

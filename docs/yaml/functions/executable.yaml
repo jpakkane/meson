@@ -20,6 +20,7 @@ kwargs_inherit: _build_target_base
 kwargs:
   export_dynamic:
     type: bool
+    default: false
     since: 0.45.0
     description: |
        when set to true causes the target's symbols to be
@@ -44,3 +45,24 @@ kwargs:
     type: bool
     since: 0.49.0
     description: Build a position-independent executable.
+
+  gui_app:
+    type: bool
+    default: false
+    deprecated: 0.56
+    description: |
+      If set to true this executable will be compiled as a Windows GUI subsystem
+      application. Hs no effect on non-windows platforms.
+
+      Use `win_subsystem` instead
+
+  win_subsystem:
+    type: str
+    default: console
+    since: 0.56
+    description: |
+      Pick which windows subsystem this executable should be built format.
+
+      This replaces `gui_app`, and setting it to `console` is equivalent to
+      `gui_app : false`, setting it to `windows` is equivalent to `gui_app :
+      true`.

@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from __future__ import annotations
-
+import itertools
+import copy
 import os
 import typing as T
 
@@ -139,21 +140,24 @@ class RustModule(ExtensionModule):
         tkwargs['args'] = extra_args + ['--test', '--format', 'pretty']
         tkwargs['protocol'] = 'rust'
 
-        new_target_kwargs = base_target.kwargs.copy()
-        # Don't mutate the shallow copied list, instead replace it with a new
-        # one
-        new_target_kwargs['rust_args'] = new_target_kwargs.get('rust_args', []) + ['--test']
-        new_target_kwargs['install'] = False
-        new_target_kwargs['dependencies'] = new_target_kwargs.get('dependencies', []) + kwargs['dependencies']
+        lang_args = copy.deepcopy(base_target.extra_args)
+        lang_args['rust'].append('--test')
 
         sources = T.cast('T.List[SourceOutputs]', base_target.sources.copy())
         sources.extend(base_target.generated)
 
         new_target = Executable(
             name, base_target.subdir, state.subproject, base_target.for_machine,
-            sources, base_target.structured_sources,
-            base_target.objects, base_target.environment, base_target.compilers,
-            new_target_kwargs
+            sources, base_target.structured_sources, base_target.objects,
+            base_target.environment, base_target.compilers,
+            build_by_default=True,
+            dependencies=list(itertools.chain(base_target.added_deps, kwargs['dependencies'])),
+            include_directories=base_target.include_dirs.copy(),
+            install=False,
+            link_args=base_target.link_args.copy(),
+            link_depends=base_target.link_depends.copy(),
+            link_whole=base_target.link_whole_targets.copy(),
+            language_args=lang_args,
         )
 
         test = self.interpreter.make_test(

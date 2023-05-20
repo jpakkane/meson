@@ -13,12 +13,14 @@
 # limitations under the License.
 from __future__ import annotations
 
+from mesonbuild.utils.core import MesonBugException
+
 from .. import mesonlib, mlog
 from .disabler import Disabler
 from .exceptions import InterpreterException, InvalidArguments
 from ._unholder import _unholder
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import wraps
 import abc
 import itertools
@@ -29,7 +31,13 @@ if T.TYPE_CHECKING:
     from typing_extensions import Protocol
 
     from .. import mparser
-    from .baseobjects import InterpreterObject, TV_func, TYPE_var, TYPE_kwargs
+    from ..build import Build
+    from ..interpreter import Interpreter
+    from ..interpreter.interpreter import InterpreterRuleRelaxation
+    from ..interpreter.mesonmain import MesonMain
+    from ..modules import ModuleObject, ModuleState
+    from ..optinterpreter import OptionInterpreter
+    from .baseobjects import InterpreterObject, TV_func, TYPE_var, TYPE_kwargs, ObjectHolder
     from .interpreterbase import SubProject
     from .operator import MesonOperator
 
@@ -39,6 +47,55 @@ if T.TYPE_CHECKING:
     class FN_Operator(Protocol[_TV_IntegerObject, _TV_ARG1]):
         def __call__(s, self: _TV_IntegerObject, other: _TV_ARG1) -> TYPE_var: ...
     _TV_FN_Operator = T.TypeVar('_TV_FN_Operator', bound=FN_Operator)
+
+
+@dataclass
+class ValidatorState:
+
+    """State used by Validators and Convertors
+
+    :param subdir: The current subdir
+    :param root_subdir: The root subdir for the current subproject
+    :param source_root: the source root for the root project
+    :param build_root: the build root for the root project
+    :param subproject_dir: The directory that holds all of the subprojects
+    :param relaxations: Any relaxations to the normal interpreter rules
+    :param build: The Build object for the current subproject
+    """
+
+    subdir: str
+    root_subdir: str
+    source_root: str
+    build_root: str
+    subproject_dir: str
+    relaxations: T.Set[InterpreterRuleRelaxation] = field(default_factory=set)
+    build: T.Optional[Build] = None
+
+
+def _get_validator_state(obj: T.Union[Interpreter, MesonMain, ObjectHolder, ModuleObject, OptionInterpreter], state: T.Union[ModuleState, object]) -> ValidatorState:
+    # Lets avoid importing the actual classes and just deal with hasattr and
+    # casting, otherwise we end up doing an import inside the function body to
+    # avoid circular imports
+    if hasattr(obj, 'subdir'):
+        obj = T.cast('Interpreter', obj)
+    elif hasattr(obj, 'interpreter'):
+        # This is both the MesonMain and ObjectHolder case
+        obj = T.cast('Interpreter', obj.interpreter)
+    elif hasattr(state, '_interpreter'):
+        # This is the ModuleObject case, where we use ModuleState
+        obj = T.cast('Interpreter', state._interpreter)
+    elif hasattr(obj, 'feature_parser'):
+        # In this case we have an OptionInterpreter, which doesn't have the
+        # necessary information. Fortunately we don't need it in this case, so
+        # we can just return a dummy instance
+        return ValidatorState('', '', '', '', '')
+    else:
+        raise MesonBugException('Unhandled input for getting validator state')
+
+    return ValidatorState(
+        obj.subdir, obj.root_subdir, obj.environment.get_source_dir(), obj.environment.get_build_dir(),
+        obj.subproject_dir, obj.relaxations, obj.build)
+
 
 def get_callee_args(wrapped_args: T.Sequence[T.Any]) -> T.Tuple['mparser.BaseNode', T.List['TYPE_var'], 'TYPE_kwargs', 'SubProject']:
     # First argument could be InterpreterBase, InterpreterObject or ModuleObject.
@@ -392,6 +449,7 @@ class KwargInfo(T.Generic[_T]):
         added in.
     :param not_set_warning: A warning message that is logged if the kwarg is not
         set by the user.
+    :param feature_validator: A callable returning an iterable of FeatureNew | FeatureDeprecated objects.
     """
     def __init__(self, name: str,
                  types: T.Union[T.Type[_T], T.Tuple[T.Union[T.Type[_T], ContainerTypeInfo], ...], ContainerTypeInfo],
@@ -403,8 +461,9 @@ class KwargInfo(T.Generic[_T]):
                  deprecated: T.Optional[str] = None,
                  deprecated_message: T.Optional[str] = None,
                  deprecated_values: T.Optional[T.Dict[T.Union[_T, ContainerTypeInfo, type], T.Union[str, T.Tuple[str, str]]]] = None,
-                 validator: T.Optional[T.Callable[[T.Any], T.Optional[str]]] = None,
-                 convertor: T.Optional[T.Callable[[_T], object]] = None,
+                 feature_validator: T.Optional[T.Callable[[_T, ValidatorState], T.Iterable[FeatureCheckBase]]] = None,
+                 validator: T.Optional[T.Callable[[T.Any, ValidatorState], T.Optional[str]]] = None,
+                 convertor: T.Optional[T.Callable[[_T, ValidatorState], TYPE_var]] = None,
                  not_set_warning: T.Optional[str] = None):
         self.name = name
         self.types = types
@@ -414,6 +473,7 @@ class KwargInfo(T.Generic[_T]):
         self.since = since
         self.since_message = since_message
         self.since_values = since_values
+        self.feature_validator = feature_validator
         self.deprecated = deprecated
         self.deprecated_message = deprecated_message
         self.deprecated_values = deprecated_values
@@ -432,8 +492,9 @@ class KwargInfo(T.Generic[_T]):
                deprecated: T.Union[str, None, _NULL_T] = _NULL,
                deprecated_message: T.Union[str, None, _NULL_T] = _NULL,
                deprecated_values: T.Union[T.Dict[T.Union[_T, ContainerTypeInfo, type], T.Union[str, T.Tuple[str, str]]], None, _NULL_T] = _NULL,
-               validator: T.Union[T.Callable[[_T], T.Optional[str]], None, _NULL_T] = _NULL,
-               convertor: T.Union[T.Callable[[_T], TYPE_var], None, _NULL_T] = _NULL) -> 'KwargInfo':
+               feature_validator: T.Union[T.Callable[[_T, ValidatorState], T.Iterable[FeatureCheckBase]], None, _NULL_T] = _NULL,
+               validator: T.Union[T.Callable[[T.Any, ValidatorState], T.Optional[str]], None, _NULL_T] = _NULL,
+               convertor: T.Union[T.Callable[[_T, ValidatorState], TYPE_var], None, _NULL_T] = _NULL) -> 'KwargInfo[_T]':
         """Create a shallow copy of this KwargInfo, with modifications.
 
         This allows us to create a new copy of a KwargInfo with modifications.
@@ -457,6 +518,7 @@ class KwargInfo(T.Generic[_T]):
             deprecated=deprecated if not isinstance(deprecated, _NULL_T) else self.deprecated,
             deprecated_message=deprecated_message if not isinstance(deprecated_message, _NULL_T) else self.deprecated_message,
             deprecated_values=deprecated_values if not isinstance(deprecated_values, _NULL_T) else self.deprecated_values,
+            feature_validator=feature_validator if not isinstance(feature_validator, _NULL_T) else self.feature_validator,
             validator=validator if not isinstance(validator, _NULL_T) else self.validator,
             convertor=convertor if not isinstance(convertor, _NULL_T) else self.convertor,
         )
@@ -551,6 +613,8 @@ def typed_kwargs(name: str, *types: KwargInfo, allow_unknown: bool = False) -> T
                     ustr = ', '.join([f'"{u}"' for u in sorted(unknowns)])
                     raise InvalidArguments(f'{name} got unknown keyword arguments {ustr}')
 
+            vstate: T.Optional[ValidatorState] = None
+
             for info in types:
                 types_tuple = info.types if isinstance(info.types, tuple) else (info.types,)
                 value = kwargs.get(info.name)
@@ -568,9 +632,17 @@ def typed_kwargs(name: str, *types: KwargInfo, allow_unknown: bool = False) -> T
                         raise InvalidArguments(f'{name} keyword argument {info.name!r} was of type {raw_description(value)} but should have been {shouldbe}')
 
                     if info.validator is not None:
-                        msg = info.validator(value)
+                        if vstate is None:
+                            vstate = _get_validator_state(wrapped_args[0], wrapped_args[1])
+                        msg = info.validator(value, vstate)
                         if msg is not None:
                             raise InvalidArguments(f'{name} keyword argument "{info.name}" {msg}')
+
+                    if info.feature_validator is not None:
+                        if vstate is None:
+                            vstate = _get_validator_state(wrapped_args[0], wrapped_args[1])
+                        for each in info.feature_validator(value, vstate):
+                            each.use(subproject, node)
 
                     if info.deprecated_values is not None:
                         emit_feature_change(info.deprecated_values, FeatureDeprecated)
@@ -591,7 +663,9 @@ def typed_kwargs(name: str, *types: KwargInfo, allow_unknown: bool = False) -> T
                         mlog.warning(info.not_set_warning)
 
                 if info.convertor:
-                    kwargs[info.name] = info.convertor(kwargs[info.name])
+                    if vstate is None:
+                        vstate = _get_validator_state(wrapped_args[0], wrapped_args[1])
+                    kwargs[info.name] = info.convertor(kwargs[info.name], vstate)
 
             return f(*wrapped_args, **wrapped_kwargs)
         return T.cast('TV_func', wrapper)

@@ -36,7 +36,7 @@ if T.TYPE_CHECKING:
     from ..interpreterbase import FeatureCheckBase
     from ..build import (
         CustomTarget, IncludeDirs, CustomTargetIndex, LibTypes,
-        StaticLibrary, StructuredSources, ExtractedObjects
+        StaticLibrary, StructuredSources, ObjectTypes
     )
     from ..mesonlib import FileOrString
 
@@ -110,7 +110,7 @@ class Dependency(HoldableObject):
         # If None, self.link_args will be used
         self.raw_link_args: T.Optional[T.List[str]] = None
         self.sources: T.List[T.Union['FileOrString', 'CustomTarget', 'StructuredSources']] = []
-        self.extra_files: T.List[mesonlib.File] = []
+        self.extra_files: T.List[T.Union[mesonlib.File, CustomTarget, CustomTargetIndex]] = []
         self.include_type = self._process_include_type_kw(kwargs)
         self.ext_deps: T.List[Dependency] = []
         self.d_features: T.DefaultDict[str, T.List[T.Any]] = collections.defaultdict(list)
@@ -172,7 +172,7 @@ class Dependency(HoldableObject):
         As an example, gtest-all.cc when using GTest."""
         return self.sources
 
-    def get_extra_files(self) -> T.List[mesonlib.File]:
+    def get_extra_files(self) -> T.List[T.Union[mesonlib.File, CustomTargetIndex, CustomTarget]]:
         """Mostly for introspection and IDEs"""
         return self.extra_files
 
@@ -255,10 +255,10 @@ class InternalDependency(Dependency):
                  libraries: T.List[LibTypes],
                  whole_libraries: T.List[T.Union[StaticLibrary, CustomTarget, CustomTargetIndex]],
                  sources: T.Sequence[T.Union[FileOrString, CustomTarget, StructuredSources]],
-                 extra_files: T.Sequence[mesonlib.File],
+                 extra_files: T.Sequence[T.Union[mesonlib.File, CustomTargetIndex, CustomTarget]],
                  ext_deps: T.List[Dependency], variables: T.Dict[str, str],
                  d_module_versions: T.List[T.Union[str, int]], d_import_dirs: T.List['IncludeDirs'],
-                 objects: T.List['ExtractedObjects']):
+                 objects: T.List[ObjectTypes]):
         super().__init__(DependencyTypeName('internal'), {})
         self.version = version
         self.is_found = True

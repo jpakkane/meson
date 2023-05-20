@@ -1,0 +1,9 @@
+# ifdef __cplusplus
+extern "C" {
+# endif
+
+DO_EXPORT int foo(void);
+
+# ifdef __cplusplus
+}
+# endif

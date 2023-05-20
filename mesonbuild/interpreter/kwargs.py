@@ -1,20 +1,24 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright © 2021 The Meson Developers
-# Copyright © 2021 Intel Corporation
-from __future__ import annotations
+# Copyright © 2021, 2023 Intel Corporation
 
 """Keyword Argument type annotations."""
 
+# We very intentionally don't use `__future__.annotations` here, as it is
+# unnecessary and confues flake8
 import typing as T
 
 from typing_extensions import TypedDict, Literal, Protocol
 
 from .. import build
 from .. import coredata
+from .. import dependencies
 from ..compilers import Compiler
 from ..mesonlib import MachineChoice, File, FileMode, FileOrString
 from ..modules.cmake import CMakeSubprojectOptions
 from ..programs import ExternalProgram
+
+assert T.TYPE_CHECKING, 'this module should not be imported into live code!'
 
 
 class FuncAddProjectArgs(TypedDict):
@@ -308,3 +312,141 @@ class DoSubproject(ExtractRequired):
     version: T.List[str]
     cmake_options: T.List[str]
     options: T.Optional[CMakeSubprojectOptions]
+
+
+# '' in this case means "don't do anything"
+GNU_SYMBOL_VISIBILITY = Literal['', 'default', 'internal', 'hidden', 'protected', 'inlineshidden']
+
+# Must be kept in sync with the list in
+# mesonbuild/compilers/compilers.py:all_languages
+#
+# nasm and asm are intentionally left off this list as they do not link, instead
+# they rely on C/C++ for linking
+LINK_LANGUAGE = Literal['c', 'cpp', 'objc', 'objcpp', 'd', 'rust', 'swift', 'cuda', 'fortran', 'vala', 'cs', 'java', 'cython']
+
+
+class _AllTargetBase(TypedDict):
+
+    build_by_default: bool
+    dependencies: T.List[dependencies.Dependency]
+    extra_files: T.List[T.Union[File, CustomTarget, build.CustomTargetIndex]]
+    include_directories: T.List[build.IncludeDirs]
+    install: bool
+    install_dir: T.List[T.Union[str, bool]]
+    install_mode: FileMode
+    install_tag: T.Optional[str]
+    link_args: T.List[str]
+    link_depends: T.Sequence[T.Union[File, build.CustomTarget, build.CustomTargetIndex]]
+    override_options: T.Dict[coredata.OptionKey, str]
+    sources: T.List[T.Union[File, build.GeneratedTypes]]
+
+
+class _BuildTargetBase(_AllTargetBase):
+
+    implicit_include_directories: bool
+    build_rpath: str
+    d_debug: T.List[str]
+    d_import_dirs: T.List[build.IncludeDirs]
+    d_module_versions: T.List[T.Union[str, int]]
+    d_unittest: bool
+    gnu_symbol_visibility: GNU_SYMBOL_VISIBILITY
+    install_rpath: str
+    link_language: T.Optional[LINK_LANGUAGE]
+    link_whole: T.List[T.Union[build.BothLibraries, build.StaticLibrary, build.CustomTarget, build.CustomTargetIndex]]
+    name_prefix: T.Optional[str]
+    name_suffix: T.Optional[str]
+    native: MachineChoice
+    objects: T.Sequence[build.ObjectTypes]
+    resources: T.List[File]
+    rust_dependency_map: T.Mapping[str, str]
+    vala_header: T.Optional[str]
+    vala_vapi: T.Optional[str]
+    vala_gir: T.Optional[str]
+    c_pch: T.List[str]
+    cpp_pch: T.List[str]
+
+    c_args: T.List[str]
+    cpp_args: T.List[str]
+    cs_args: T.List[str]
+    cuda_args: T.List[str]
+    cython_args: T.List[str]
+    d_args: T.List[str]
+    fortran_args: T.List[str]
+    objc_args: T.List[str]
+    objcpp_args: T.List[str]
+    rust_args: T.List[str]
+    swift_args: T.List[str]
+    vala_args: T.List[str]
+
+
+class _StaticLibraryMixin(TypedDict):
+
+    pic: T.Optional[bool]
+    prelink: bool
+
+
+class StaticLibrary(_BuildTargetBase, _StaticLibraryMixin):
+
+    rust_crate_type: Literal['lib', 'rlib', 'staticlib']
+    link_with: T.List[T.Union[build.BothLibraries, build.SharedLibrary, build.StaticLibrary, build.SharedModule, build.CustomTarget, build.CustomTargetIndex]]
+
+
+class _SharedModuleMixin(TypedDict):
+
+    vs_module_defs: T.Optional[T.Union[File, CustomTarget, build.CustomTargetIndex]]
+
+
+class SharedModule(_BuildTargetBase, _SharedModuleMixin):
+
+    link_with: T.List[T.Union[build.BothLibraries, build.SharedLibrary, build.StaticLibrary, build.SharedModule, build.CustomTarget, build.CustomTargetIndex, build.Executable]]
+
+
+class _SharedLibraryMixin(TypedDict):
+
+    version: T.Optional[str]
+    soversion: T.Optional[str]
+    darwin_versions: T.Tuple[T.Optional[str], T.Optional[str]]
+
+
+class SharedLibrary(_BuildTargetBase, _SharedModuleMixin, _SharedLibraryMixin):
+
+    rust_crate_type: Literal['lib', 'dylib', 'cdylib', 'proc-macro']
+    link_with: T.List[T.Union[build.BothLibraries, build.SharedLibrary, build.StaticLibrary, build.SharedModule, build.CustomTarget, build.CustomTargetIndex]]
+
+
+class _ExecutableMixin(TypedDict):
+
+    export_dynamic: bool
+    gui_app: T.Optional[bool]
+    implib: T.Optional[T.Union[str, bool]]
+    pie: T.Optional[bool]
+    win_subsystem: T.Optional[str]
+
+
+class Executable(_BuildTargetBase, _ExecutableMixin):
+
+    link_with: T.List[T.Union[build.BothLibraries, build.SharedLibrary, build.StaticLibrary, build.SharedModule, build.CustomTarget, build.CustomTargetIndex]]
+
+
+class BothLibrary(_BuildTargetBase, _SharedLibraryMixin, _StaticLibraryMixin):
+
+    rust_crate_type: Literal['lib', 'rlib', 'staticlib', 'dylib', 'cdylib', 'proc-macro']
+    link_with: T.List[T.Union[build.BothLibraries, build.SharedLibrary, build.StaticLibrary, build.SharedModule, build.CustomTarget, build.CustomTargetIndex]]
+
+
+class _JarMixin(TypedDict):
+
+    main_class: str
+    java_args: T.List[str]
+    java_resources: T.Optional[build.StructuredSources]
+
+
+class Jar(_AllTargetBase, _JarMixin):
+
+    link_with: T.List[build.Jar]
+
+
+class BuildTarget(BothLibrary, _ExecutableMixin, _JarMixin):
+
+    target_type: Literal['executable', 'shared_library', 'static_library', 'shared_module',
+                         'both_libraries', 'library', 'jar']

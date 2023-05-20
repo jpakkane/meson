@@ -50,6 +50,7 @@ if T.TYPE_CHECKING:
     from ..compilers import Compiler
     from ..interpreter import Interpreter
     from ..interpreterbase import TYPE_var, TYPE_kwargs
+    from ..interpreterbase.decorators import ValidatorState
     from ..mesonlib import FileOrString
     from ..programs import ExternalProgram
 
@@ -226,7 +227,7 @@ _MK_ENUMS_COMMON_KWS: T.List[KwargInfo] = [
     KwargInfo('symbol_prefix', (str, NoneType)),
 ]
 
-def annotations_validator(annotations: T.List[T.Union[str, T.List[str]]]) -> T.Optional[str]:
+def annotations_validator(annotations: T.List[T.Union[str, T.List[str]]], _: ValidatorState) -> T.Optional[str]:
     """Validate gdbus-codegen annotations argument"""
 
     badlist = 'must be made up of 3 strings for ELEMENT, KEY, and VALUE'
@@ -1112,11 +1113,11 @@ class GnomeModule(ExtensionModule):
         KwargInfo('install_gir', (bool, NoneType), since='0.61.0'),
         KwargInfo('install_dir_gir', (str, bool, NoneType),
                   deprecated_values={False: ('0.61.0', 'Use install_gir to disable installation')},
-                  validator=lambda x: 'as boolean can only be false' if x is True else None),
+                  validator=lambda x, _: 'as boolean can only be false' if x is True else None),
         KwargInfo('install_typelib', (bool, NoneType), since='0.61.0'),
         KwargInfo('install_dir_typelib', (str, bool, NoneType),
                   deprecated_values={False: ('0.61.0', 'Use install_typelib to disable installation')},
-                  validator=lambda x: 'as boolean can only be false' if x is True else None),
+                  validator=lambda x, _: 'as boolean can only be false' if x is True else None),
         KwargInfo('link_with', ContainerTypeInfo(list, (build.SharedLibrary, build.StaticLibrary)), default=[], listify=True),
         KwargInfo('namespace', str, required=True),
         KwargInfo('nsversion', str, required=True),
@@ -1591,7 +1592,7 @@ class GnomeModule(ExtensionModule):
             'annotations', ContainerTypeInfo(list, (list, str)),
             default=[],
             validator=annotations_validator,
-            convertor=lambda x: [x] if x and isinstance(x[0], str) else x,
+            convertor=lambda x, _: [x] if x and isinstance(x[0], str) else x,
         ),
         KwargInfo('install_header', bool, default=False, since='0.46.0'),
         KwargInfo('docbook', (str, NoneType)),

@@ -604,8 +604,8 @@ class PkgConfigModule(NewExtensionModule):
         KwargInfo('dataonly', bool, default=False, since='0.54.0'),
         KwargInfo('description', (str, NoneType)),
         KwargInfo('extra_cflags', ContainerTypeInfo(list, str), default=[], listify=True, since='0.42.0'),
-        KwargInfo('filebase', (str, NoneType), validator=lambda x: 'must not be an empty string' if x == '' else None),
-        KwargInfo('name', (str, NoneType), validator=lambda x: 'must not be an empty string' if x == '' else None),
+        KwargInfo('filebase', (str, NoneType), validator=lambda x, _: 'must not be an empty string' if x == '' else None),
+        KwargInfo('name', (str, NoneType), validator=lambda x, _: 'must not be an empty string' if x == '' else None),
         KwargInfo('subdirs', ContainerTypeInfo(list, str), default=[], listify=True),
         KwargInfo('url', str, default=''),
         KwargInfo('version', (str, NoneType)),
@@ -681,7 +681,8 @@ class PkgConfigModule(NewExtensionModule):
         if dversions:
             compiler = state.environment.coredata.compilers.host.get('d')
             if compiler:
-                deps.add_cflags(compiler.get_feature_args({'versions': dversions}, None))
+                deps.add_cflags(compiler.get_feature_args(
+                    {'versions': dversions, 'import_dirs': [], 'debug': [], 'unittest': False}, None))
 
         deps.remove_dups()
 

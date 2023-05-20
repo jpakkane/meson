@@ -12,7 +12,7 @@ description: |
   - `static_library` (see [[static_library]])
   - `both_libraries` (see [[both_libraries]])
   - `library` (see [[library]])
-  - `jar` (see [[jar]])
+  - `jar` (see [[jar]]) *(deprecated since 1.1.0)*
 
   This declaration:
 

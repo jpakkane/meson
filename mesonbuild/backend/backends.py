@@ -449,16 +449,12 @@ class Backend:
         return list(dict.fromkeys(obj_list))
 
     def _flatten_object_list(self, target: build.BuildTarget,
-                             objects: T.Sequence[T.Union[str, 'File', build.ExtractedObjects]],
+                             objects: T.Sequence[build.ObjectTypes],
                              proj_dir_to_build_root: str) -> T.Tuple[T.List[str], T.List[build.BuildTargetTypes]]:
         obj_list: T.List[str] = []
         deps: T.List[build.BuildTargetTypes] = []
         for obj in objects:
-            if isinstance(obj, str):
-                o = os.path.join(proj_dir_to_build_root,
-                                 self.build_to_src, target.get_subdir(), obj)
-                obj_list.append(o)
-            elif isinstance(obj, mesonlib.File):
+            if isinstance(obj, mesonlib.File):
                 if obj.is_built:
                     o = os.path.join(proj_dir_to_build_root,
                                      obj.rel_to_builddir(self.build_to_src))
@@ -1651,7 +1647,7 @@ class Backend:
                     "Pass 'false' for outputs that should not be installed and 'true' for\n" \
                     'using the default installation directory for an output.'
                 raise MesonException(m.format(t.name, num_out, t.get_outputs(), num_outdirs))
-            assert len(t.install_tag) == num_out
+            assert len(t.install_tag) == num_out, f'Have {len(t.install_tag)}, but expected {num_out}'
             install_mode = t.get_custom_install_mode()
             # because mypy gets confused type narrowing in lists
             first_outdir = outdirs[0]

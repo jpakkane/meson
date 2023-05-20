@@ -32,7 +32,7 @@ from ..mesonlib import (
 from ..arglist import CompilerArgs
 
 if T.TYPE_CHECKING:
-    from ..build import BuildTarget
+    from ..build import BuildTarget, DFeatures
     from ..coredata import MutableKeyedOptionDictType, KeyedOptionDictType
     from ..envconfig import MachineInfo
     from ..environment import Environment
@@ -54,6 +54,8 @@ lib_suffixes = {'a', 'lib', 'dll', 'dll.a', 'dylib', 'so', 'js'}
 # Mapping of language to suffixes of files that should always be in that language
 # This means we can't include .h headers here since they could be C, C++, ObjC, etc.
 # First suffix is the language's default.
+#
+# Must be kept in sync with the list in mesonbuild/interpreter/kwargs.py: LINK_LANGUAGE
 lang_suffixes = {
     'c': ('c',),
     'cpp': ('cpp', 'cc', 'cxx', 'c++', 'hh', 'hpp', 'ipp', 'hxx', 'ino', 'ixx', 'C'),
@@ -958,10 +960,6 @@ class Compiler(HoldableObject, metaclass=abc.ABCMeta):
     def gnu_symbol_visibility_args(self, vistype: str) -> T.List[str]:
         return []
 
-    def get_gui_app_args(self, value: bool) -> T.List[str]:
-        # Only used on Windows
-        return self.linker.get_gui_app_args(value)
-
     def get_win_subsystem_args(self, value: str) -> T.List[str]:
         # By default the dynamic linker is going to return an empty
         # array in case it either doesn't support Windows subsystems
@@ -1315,7 +1313,7 @@ class Compiler(HoldableObject, metaclass=abc.ABCMeta):
         return self.compiles(code, env, extra_args=extra_args,
                              dependencies=dependencies, mode='link', disable_cache=disable_cache)
 
-    def get_feature_args(self, kwargs: T.Dict[str, T.Any], build_to_src: str) -> T.List[str]:
+    def get_feature_args(self, kwargs: DFeatures, build_to_src: str) -> T.List[str]:
         """Used by D for extra language features."""
         # TODO: using a TypeDict here would improve this
         raise EnvironmentException(f'{self.id} does not implement get_feature_args')
