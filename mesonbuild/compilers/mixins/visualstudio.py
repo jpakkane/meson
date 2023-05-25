@@ -62,6 +62,12 @@ vs64_instruction_set_args = {
     'neon': None,
 }  # T.Dicst[str, T.Optional[T.List[str]]]
 
+clang_color_args = {
+    'auto': ['-fcolor-diagnostics', '-fansi-escape-codes'],
+    'always': ['-fcolor-diagnostics', '-fansi-escape-codes'],
+    'never': ['-fno-color-diagnostics'],
+}  # type: T.Dict[str, T.List[str]]
+
 msvc_optimization_args = {
     'plain': [],
     '0': ['/Od'],
@@ -470,6 +476,12 @@ class ClangClCompiler(VisualStudioLikeCompiler):
         # Assembly
         self.can_compile_suffixes.add('s')
         self.can_compile_suffixes.add('sx')
+
+    def get_colorout_args(self, colortype: str) -> T.List[str]:
+        return clang_color_args[colortype][:]
+
+    def openmp_link_flags(self) -> T.List[str]:
+        return ['-openmp:llvm']
 
     def has_arguments(self, args: T.List[str], env: 'Environment', code: str, mode: str) -> T.Tuple[bool, bool]:
         if mode != 'link':
