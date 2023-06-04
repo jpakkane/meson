@@ -23,6 +23,7 @@ from ..mesonlib import listify, MachineChoice, PerMachine
 from .. import mlog
 import functools
 import typing as T
+import collections
 
 if T.TYPE_CHECKING:
     from ..environment import Environment
@@ -43,7 +44,13 @@ def get_dep_identifier(name: str, kwargs: T.Dict[str, T.Any]) -> 'TV_DepID':
     from ..interpreter import permitted_dependency_kwargs
     assert len(permitted_dependency_kwargs) == 19, \
            'Extra kwargs have been added to dependency(), please review if it makes sense to handle it here'
-    for key, value in kwargs.items():
+
+    #ITCS Changes for modules param support
+    # FIX unordered items in identifier, if it unordered we will get a new ifentifier for the same item due to the broken dict order
+    ordered_kwargs = collections.OrderedDict(sorted(kwargs.items(), key=lambda t: t[0]))
+    for key, value in ordered_kwargs.items():
+    #ITCS Changes for modules param support
+
         # 'version' is irrelevant for caching; the caller must check version matches
         # 'native' is handled above with `for_machine`
         # 'required' is irrelevant for caching; the caller handles it separately

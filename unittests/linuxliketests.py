@@ -845,6 +845,72 @@ class LinuxlikeTests(BasePlatformTests):
                     return
         raise RuntimeError('Linker entries not found in the Ninja file.')
 
+    @skipIfNoPkgconfig
+    def test_pkg_config_modules_selection(self):
+        testdir = os.path.join(self.unit_test_dir, '111 pkgconfig modules selection')
+        expected_res = (
+          '-Wl,--start-group -lfoo1 -lfoo2 -lfoo3 -lfoo4 -lfoo5 -Wl,--end-group',
+          '-Wl,--start-group -lfoo1 -Wl,--end-group',
+          '-Wl,--start-group -lfoo1 -lfoo2 -Wl,--end-group',
+          '-Wl,--start-group -lfoo3 -Wl,--end-group',
+          '-Wl,--start-group -lfoo4 -lfoo5 -Wl,--end-group',
+          '-Wl,--start-group -lfoo5 -Wl,--end-group',
+          '-Wl,--start-group -lfoo1 -lfoo3 -lfoo5 -Wl,--end-group',
+          'Header only case', # Header only case
+          # Apple frameworks
+          '-F /me/first -F /me/second -framework frmwk1 -framework frmwk2 -framework frmwk3 -framework frmwk4 -framework frmwk5',
+          '-F /me/first -F /me/second -framework frmwk1',
+          '-F /me/first -F /me/second -framework frmwk1 -framework frmwk2',
+          '-F /me/first -F /me/second -framework frmwk3',
+          '-F /me/first -F /me/second -framework frmwk4 -framework frmwk5',
+          '-F /me/first -F /me/second -framework frmwk5',
+          '-F /me/first -F /me/second -framework frmwk1 -framework frmwk3 -framework frmwk5',
+          'Header only case', # Header only case
+          '-Wl,--as-needed -Wl,--no-undefined -F /me/first -F /me/second -framework frmwk1 -L/me/libs -Wl,--start-group -lfoo1 -Wl,--end-group',
+          '-Wl,--as-needed -Wl,--no-undefined -F /me/first -F /me/second -framework frmwk2 -L/me/libs -Wl,--start-group -lfoo2 -Wl,--end-group',
+          '-Wl,--as-needed -Wl,--no-undefined -F /me/first -F /me/second -framework frmwk2 -framework frmwk3 -L/me/libs -Wl,--start-group -lfoo1 -lfoo2 -Wl,--end-group',
+          '-Wl,--as-needed -Wl,--no-undefined -F /me/first -F /me/second -L/me/libs -Wl,--start-group -lfoo3 -Wl,--end-group',
+          '-Wl,--as-needed -Wl,--no-undefined -F /me/first -F /me/second -framework frmwk3 -L/me/libs'
+          )
+
+        HEADER_ONLY_CASE = 7
+        HEADER_ONLY_CASE_2 = 15
+
+        for case in range (len(expected_res)):
+            if case == HEADER_ONLY_CASE or case == HEADER_ONLY_CASE_2:
+                continue
+            self.init(testdir, override_envvars={'PKG_CONFIG_PATH': testdir}, extra_args = [f'-Dcase_num={case}'], inprocess=True)
+            found = False
+            with open(os.path.join(self.builddir, 'build.ninja')) as ifile:
+                for line in ifile:
+                    if line.find(expected_res[case]) != -1:
+                        found = True
+                        break
+            if not found:
+                print('^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^')
+                with open(os.path.join(self.builddir, 'build.ninja')) as ifile:
+                    for line in ifile:
+                        print(line)
+                raise RuntimeError('Linker entries not found in the Ninja file,' + str(case) + ' :' + str(expected_res[case]))
+
+            self.wipe()
+
+        # Case for empty modules[] - deps is header only
+        self.init(testdir, override_envvars={'PKG_CONFIG_PATH': testdir}, extra_args = [f'-Dcase_num={HEADER_ONLY_CASE}'])
+        with open(os.path.join(self.builddir, 'build.ninja')) as ifile:
+            for line in ifile:
+                if line.find('-lfoo') != -1:
+                    raise RuntimeError('Linker entries found in the Ninja file')
+        self.wipe()
+
+        # Case for empty modules[] - deps is header only
+        self.init(testdir, override_envvars={'PKG_CONFIG_PATH': testdir}, extra_args = [f'-Dcase_num={HEADER_ONLY_CASE_2}'])
+        with open(os.path.join(self.builddir, 'build.ninja')) as ifile:
+            for line in ifile:
+                if line.find('-framework') != -1:
+                    raise RuntimeError('Linker entries found in the Ninja file')
+        self.wipe()
+
     def test_introspect_dependencies(self):
         '''
         Tests that mesonintrospect --dependencies returns expected output.

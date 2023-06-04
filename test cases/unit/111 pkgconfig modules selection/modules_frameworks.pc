@@ -1,0 +1,11 @@
+prefix=/usr
+libdir=${prefix}/lib
+includedir=${prefix}/frmwk.framework/Headers
+
+Name: modules_framework_test
+Description: modules_test framework library
+Version: 1.0.0
+
+Requires:
+Libs: -F /me/first -framework frmwk1 -F /me/second -framework frmwk2 -framework frmwk3 -framework frmwk4 -framework frmwk5
+Cflags: -I${includedir}

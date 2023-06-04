@@ -1,0 +1,13 @@
+prefix=/usr
+exec_prefix=${prefix}
+libdir=${prefix}/lib/x86_64-linux-gnu
+sharedlibdir=${libdir}
+includedir=${prefix}/include
+
+Name: modules_test
+Description: modules_test library
+Version: 1.0.0
+
+Requires:
+Libs: -L/me/first -lfoo1 -L/me/second -lfoo2 -lfoo3 -lfoo4 -lfoo5
+Cflags: -I${includedir}

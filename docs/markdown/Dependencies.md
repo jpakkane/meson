@@ -90,6 +90,47 @@ following will happen: If 'default_value' was provided that value will
 be returned, if 'default_value' was not provided then an error will be
 raised.
 
+# Modules 
+
+In complex projects consisting of many different dependencies, you 
+often have to link modules with separate libraries from the 
+package (NOT with all libraries at once). Simply list which 
+libraries you would like to use. Before it this was avaliable 
+only for "Boost". If you dont use modules, it will work like before. 
+
+```meson
+dep = dependency('name', modules: [library1, library2, ...])
+```
+
+If you only need header files, you must specify an empty list []
+
+```meson
+dep_headers = dependency('name', modules: [])
+```
+
+The exception is the boost for it header files are defined as follows:
+
+```meson
+dep_boost_headers = dependency('boost')
+```
+
+In other cases (other dependencies), this will mean adding all the 
+libraries found.If you defined a dependency without specifying the 
+modules parameter in some module (meson.build):
+
+```meson
+dep_all_libs = dependency('name')
+```
+
+Then subsequent attempts to determine the same dependency by limiting 
+the list of libraries to the modules parameter will not work:
+
+```meson
+dep_lib1 = dependency ('name', modules: ['lib1']) # Will still connect 
+all libraries from the package, despite the explicit indication to use 
+one lib1 library!
+```
+
 ## Dependencies that provide resource files
 
 Sometimes a dependency provides installable files which other projects then

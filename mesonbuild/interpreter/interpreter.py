@@ -41,6 +41,7 @@ from ..backend.backends import ExecutableSerialisation
 
 from . import interpreterobjects as OBJ
 from . import compiler as compilerOBJ
+from .. import stringify
 from .mesonmain import MesonMain
 from .dependencyfallbacks import DependencyFallbacksHolder
 from .interpreterobjects import (
@@ -147,6 +148,9 @@ def stringifyUserArguments(args: T.List[T.Any], quote: bool = False) -> str:
     elif isinstance(args, str):
         return f"'{args}'" if quote else args
     raise InvalidArguments('Function accepts only strings, integers, bools, lists, dictionaries and lists thereof.')
+    
+#def stringifyUserArguments(args, quote=False):
+    #return stringify.stringifyUserArguments(args, quote, InvalidArguments())
 
 class Summary:
     def __init__(self, project_name: str, project_version: str):

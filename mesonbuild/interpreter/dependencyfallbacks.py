@@ -241,8 +241,14 @@ class DependencyFallbacksHolder(MesonInterpreterObject):
                 return self._notfound_dependency()
             if found_vers:
                 info = [mlog.normal_cyan(found_vers), *info]
-            mlog.log('Dependency', mlog.bold(self._display_name),
-                     'found:', mlog.green('YES'), *info)
+            #ITCS Changes for modules param support
+            if hasattr(cached_dep, 'log_details'):
+                details = cached_dep.log_details()
+                if details:
+                    details = '(' + details + ') '
+                mlog.log('Dependency', mlog.bold(name), details +
+                         'found:', mlog.green('YES'), *info)
+            #ITCS Changes for modules param support
             return cached_dep
         return None
 

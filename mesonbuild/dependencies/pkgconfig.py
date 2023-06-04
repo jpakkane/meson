@@ -16,8 +16,9 @@ from __future__ import annotations
 from pathlib import Path
 
 from .base import ExternalDependency, DependencyException, sort_libpaths, DependencyTypeName
-from ..mesonlib import OptionKey, OrderedSet, PerMachine, Popen_safe
+from ..mesonlib import OptionKey, OrderedSet, PerMachine, Popen_safe, extract_as_list
 from ..programs import find_external_program, ExternalProgram
+from .. import stringify
 from .. import mlog
 from pathlib import PurePath
 import re
@@ -46,6 +47,25 @@ class PkgConfigDependency(ExternalDependency):
         super().__init__(DependencyTypeName('pkgconfig'), environment, kwargs, language=language)
         self.name = name
         self.is_libtool = False
+
+        #ITCS Changes for modules param support
+        # Modules param support
+        if 'modules' in kwargs:
+            # Extract and validate modules
+            self.modules = extract_as_list(kwargs, 'modules')  # type: T.List[str]
+            for i in self.modules:
+                if not isinstance(i, str):
+                    raise DependencyException('Dependency module argument is not a string.')
+
+            # Copy list. Save specified modules for advance to check wether we found all modules.
+            # We will remove by one if we found an item
+            self.modules_missing = list(self.modules)  # type: T.List[str]
+        else:
+            # For default behaiviour (include all libs)
+            self.modules = None
+            self.modules_missing = None
+        #ITCS Changes for modules param support
+
         # Store a copy of the pkg-config path on the object itself so it is
         # stored in the pickled coredata and recovered.
         self.pkgbin = self._detect_pkgbin(self.silent, self.env, self.for_machine)
@@ -206,10 +226,24 @@ class PkgConfigDependency(ExternalDependency):
             converted.append(arg)
         return converted
 
+    def _join_framework_args(self, arg_list: T.List[str]) -> T.List[str]:
+        l: T.List[str] = list()
+        it = iter(arg_list)
+        for i in it:
+            if i == '-F':
+                ni = next(it, '')
+                l.append('-F' + ni)
+            elif i == '-framework':
+                ni = next(it, '')
+                l.append('-framework' + ni)
+            else:
+                l.append(i)
+        return l
+
     def _split_args(self, cmd: str) -> T.List[str]:
         # pkg-config paths follow Unix conventions, even on Windows; split the
         # output using shlex.split rather than mesonlib.split_args
-        return shlex.split(cmd)
+        return self._join_framework_args(shlex.split(cmd))
 
     def _set_cargs(self) -> None:
         env = None
@@ -222,6 +256,17 @@ class PkgConfigDependency(ExternalDependency):
         if ret != 0:
             raise DependencyException(f'Could not generate cargs for {self.name}:\n{err}\n')
         self.compile_args = self._convert_mingw_paths(self._split_args(out))
+
+    def _split_frameworks_flags(self, link_args: T.List[str]) -> T.List[str]:
+        normalized_framework_args: T.List[str] = list()
+        for item in link_args:
+            if item.startswith('-framework'):
+                index = len('-framework')
+                normalized_framework_args.append(item[:index])
+                normalized_framework_args.append(item[index:])
+            else:
+                normalized_framework_args.append(item)
+        return normalized_framework_args
 
     def _search_libs(self, out: str, out_raw: str) -> T.Tuple[T.List[str], T.List[str]]:
         '''
@@ -249,6 +294,7 @@ class PkgConfigDependency(ExternalDependency):
         # Separate system and prefix paths, and ensure that prefix paths are
         # always searched first.
         prefix_libpaths: OrderedSet[str] = OrderedSet()
+        prefix_frameworkpaths: T.List[str] = list()
         # We also store this raw_link_args on the object later
         raw_link_args = self._convert_mingw_paths(self._split_args(out_raw))
         for arg in raw_link_args:
@@ -258,6 +304,13 @@ class PkgConfigDependency(ExternalDependency):
                     # Resolve the path as a compiler in the build directory would
                     path = os.path.join(self.env.get_build_dir(), path)
                 prefix_libpaths.add(path)
+            # Apple framework paths
+            if arg.startswith('-F'):
+                path = arg[2:]
+                if not os.path.isabs(path):
+                    # Resolve the path as a compiler in the build directory would
+                    path = os.path.join(self.env.get_build_dir(), path)
+                prefix_frameworkpaths.append(path)
         # Library paths are not always ordered in a meaningful way
         #
         # Instead of relying on pkg-config or pkgconf to provide -L flags in a
@@ -287,10 +340,11 @@ class PkgConfigDependency(ExternalDependency):
         # Generate link arguments for this library
         link_args = []
         for lib in full_args:
+            libname = None
             if lib.startswith(('-L-l', '-L-L')):
                 # These are D language arguments, add them as-is
                 pass
-            elif lib.startswith('-L'):
+            elif lib.startswith(('-L','-F')):
                 # We already handled library paths above
                 continue
             elif lib.startswith('-l:'):
@@ -317,11 +371,34 @@ class PkgConfigDependency(ExternalDependency):
                     libs_notfound.append(lib)
                 else:
                     lib = foundname
-            elif lib.startswith('-l'):
+            elif lib.startswith(('-l','-framework')):
+                if lib.startswith('-framework'):
+                    is_framework = True
+                    flag_skip_index = len('-framework')
+                else:
+                    is_framework = False
+                    flag_skip_index = len('-l')
+
                 # Don't resolve the same -lfoo argument again
                 if lib in libs_found:
                     continue
-                if self.clib_compiler:
+
+                #ITCS Changes for modules param support
+                # Add libs specified in 'modules' arg, if it is
+                # If modules is empty it is a header only dep don't add libs
+                # If modules is None add all libs (keep default behaivour)
+                libname = lib[flag_skip_index:]
+
+                # If modules is empty [] that it is a header only. Don't add libs to link args.
+                if self.modules is not None and not self.modules:
+                    continue
+
+                # if lib is in modules arg then add it to link args
+                if self.modules and libname not in self.modules:
+                    continue
+                #ITCS Changes for modules param support
+
+                if self.clib_compiler and not is_framework:
                     args = self.clib_compiler.find_library(lib[2:], self.env,
                                                            libpaths, self.libtype,
                                                            lib_prefix_warning=False)
@@ -351,7 +428,7 @@ class PkgConfigDependency(ExternalDependency):
                         continue
                     if self.static:
                         mlog.warning('Static library {!r} not found for dependency {!r}, may '
-                                     'not be statically linked'.format(lib[2:], self.name))
+                                     'not be statically linked'.format(lib[flag_skip_index:], self.name))
                     libs_notfound.append(lib)
             elif lib.endswith(".la"):
                 shared_libname = self.extract_libtool_shlib(lib)
@@ -368,11 +445,23 @@ class PkgConfigDependency(ExternalDependency):
                 if lib in link_args:
                     continue
             link_args.append(lib)
+
+            #ITCS Changes for modules param support
+            #Remove found lib from missing modules (user modules arg) list
+            if self.modules_missing and libname is not None:
+                self.modules_missing.remove(libname)
+            #ITCS Changes for modules param support
+
         # Add all -Lbar args if we have -lfoo args in link_args
         if libs_notfound:
             # Order of -L flags doesn't matter with ld, but it might with other
             # linkers such as MSVC, so prepend them.
-            link_args = ['-L' + lp for lp in prefix_libpaths] + link_args
+            link_args = self._split_frameworks_flags(link_args)
+            frameworkpaths:T.List[str] = list()
+            for lp in prefix_frameworkpaths:
+                frameworkpaths.append('-F')
+                frameworkpaths.append(lp)
+            link_args = ['-L' + lp for lp in prefix_libpaths] + frameworkpaths + link_args
         return link_args, raw_link_args
 
     def _set_libs(self) -> None:
@@ -398,6 +487,13 @@ class PkgConfigDependency(ExternalDependency):
         if ret != 0:
             raise DependencyException(f'Could not generate libs for {self.name}:\n\n{out_raw}')
         self.link_args, self.raw_link_args = self._search_libs(out, out_raw)
+        
+        #ITCS Changes for modules param support
+        if self.modules_missing:
+            raise DependencyException('Could not find libs for arg modules: %s' %
+                                      (stringify.stringifyUserArguments(self.modules_missing,
+                                                            ex = DependencyException())))
+       #ITCS Changes for modules param support
 
     def get_pkgconfig_variable(self, variable_name: str,
                                define_variable: 'ImmutableListProtocol[str]',
@@ -492,6 +588,14 @@ class PkgConfigDependency(ExternalDependency):
     @staticmethod
     def log_tried() -> str:
         return 'pkgconfig'
+
+    #ITCS Changes for modules param support
+    # prints modules specified in module parameter
+    def log_details(self) -> str:
+        if self.modules:
+            return 'modules: ' + ', '.join(self.modules)
+        return ''
+    #ITCS Changes
 
     def get_variable(self, *, cmake: T.Optional[str] = None, pkgconfig: T.Optional[str] = None,
                      configtool: T.Optional[str] = None, internal: T.Optional[str] = None,
