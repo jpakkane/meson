@@ -75,13 +75,13 @@ class CythonCompiler(Compiler):
         opts.update({
             OptionKey('version', machine=self.for_machine, lang=self.language): coredata.UserComboOption(
                 'Python version to target',
-                ['2', '3'],
                 '3',
+                choices=['2', '3'],
             ),
             OptionKey('language', machine=self.for_machine, lang=self.language): coredata.UserComboOption(
                 'Output C or C++ files',
-                ['c', 'cpp'],
                 'c',
+                choices=['c', 'cpp'],
             )
         })
         return opts

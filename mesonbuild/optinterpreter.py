@@ -57,7 +57,7 @@ if T.TYPE_CHECKING:
         max: T.Optional[int]
 
     class StringArrayArgs(TypedDict):
-        value: T.Optional[T.Union[str, T.List[str]]]
+        value: T.Optional[T.List[str]]
         choices: T.List[str]
 
     class FeatureArgs(TypedDict):
@@ -239,7 +239,7 @@ class OptionInterpreter:
         value = kwargs['value']
         if value is None:
             value = kwargs['choices'][0]
-        return coredata.UserComboOption(description, choices, value, *args)
+        return coredata.UserComboOption(description, value, *args, choices=choices)
 
     @typed_kwargs(
         'integer option',
@@ -254,9 +254,8 @@ class OptionInterpreter:
         KwargInfo('max', (int, NoneType)),
     )
     def integer_parser(self, description: str, args: T.Tuple[bool, _DEPRECATED_ARGS], kwargs: IntegerArgs) -> coredata.UserOption:
-        value = kwargs['value']
-        inttuple = (kwargs['min'], kwargs['max'], value)
-        return coredata.UserIntegerOption(description, inttuple, *args)
+        return coredata.UserIntegerOption(description, kwargs['value'], *args,
+                                          min_value=kwargs['min'], max_value=kwargs['max'])
 
     @typed_kwargs(
         'string array option',
@@ -267,9 +266,9 @@ class OptionInterpreter:
         choices = kwargs['choices']
         value = kwargs['value'] if kwargs['value'] is not None else choices
         return coredata.UserArrayOption(description, value,
-                                        choices=choices,
                                         yielding=args[0],
-                                        deprecated=args[1])
+                                        deprecated=args[1],
+                                        choices=choices)
 
     @typed_kwargs(
         'feature option',

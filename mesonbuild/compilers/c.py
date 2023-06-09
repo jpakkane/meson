@@ -104,8 +104,8 @@ class CCompiler(CLikeCompiler, Compiler):
         opts.update({
             OptionKey('std', machine=self.for_machine, lang=self.language): coredata.UserComboOption(
                 'C language standard to use',
-                ['none'],
                 'none',
+                choices=['none'],
             )
         })
         return opts

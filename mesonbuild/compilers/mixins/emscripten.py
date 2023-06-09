@@ -72,7 +72,8 @@ class EmscriptenMixin(Compiler):
         opts.update({
             key: coredata.UserIntegerOption(
                 'Number of threads to use in web assembly, set to 0 to disable',
-                (0, None, 4),  # Default was picked at random
+                4,  # picked at random
+                min_value=0,
             ),
         })
 

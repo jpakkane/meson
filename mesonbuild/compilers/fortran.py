@@ -133,8 +133,8 @@ class FortranCompiler(CLikeCompiler, Compiler):
         opts.update({
             key: coredata.UserComboOption(
                 'Fortran language standard to use',
-                ['none'],
                 'none',
+                choices=['none'],
             ),
         })
         return opts

@@ -634,7 +634,7 @@ class CudaCompiler(Compiler):
 
         opts.update({
             std_key:      coredata.UserComboOption('C++ language standard to use with CUDA',
-                                                   cpp_stds, 'none'),
+                                                   'none', choices=cpp_stds),
             ccbindir_key: coredata.UserStringOption('CUDA non-default toolchain directory to use (-ccbin)',
                                                     ''),
         })

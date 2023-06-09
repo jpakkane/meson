@@ -35,7 +35,7 @@ if T.TYPE_CHECKING:
     import argparse
 
 def array_arg(value: str) -> T.List[str]:
-    return UserArrayOption(None, value, allow_dups=True, user_input=True).value
+    return UserArrayOption('', [value], allow_dups=True, user_input=True).value
 
 def validate_builddir(builddir: Path) -> None:
     if not (builddir / 'meson-private' / 'coredata.dat').is_file():

@@ -320,14 +320,14 @@ def list_buildoptions(coredata: cdata.CoreData, subprojects: T.Optional[T.List[s
             elif isinstance(opt, cdata.UserComboOption):
                 optdict['choices'] = opt.choices
                 typestr = 'combo'
-            elif isinstance(opt, cdata.UserIntegerOption):
+            elif isinstance(opt, (cdata.UserIntegerOption, cdata.UserUmaskOption)):
                 typestr = 'integer'
             elif isinstance(opt, cdata.UserArrayOption):
                 typestr = 'array'
                 if opt.choices:
                     optdict['choices'] = opt.choices
             else:
-                raise RuntimeError("Unknown option type")
+                raise RuntimeError(f"Unknown option type: {type(opt)}")
             optdict['type'] = typestr
             optdict['description'] = opt.description
             optlist.append(optdict)
