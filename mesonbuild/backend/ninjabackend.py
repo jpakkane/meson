@@ -1846,6 +1846,27 @@ class NinjaBackend(backends.Backend):
         # in Rust
         return target.rust_dependency_map.get(dependency.name, dependency.name).replace('-', '_')
 
+    def _add_rust_indirect_dependency_linkdirs(self, linkdirs: OrderedSet[str], dependency: LibTypes):
+        # Add all the linkdirs of indirect dependencies to the linkdirs if
+        # they're rlib/proc-macro/dylib dependencies. rustc requires this to
+        # be able to find the indirect dependencies during the build.
+        indirect_rust_deps = [dependency]
+
+        # Instead of actually recursing over the dependencies use a stack here
+        while indirect_rust_deps:
+            indirect_dep = indirect_rust_deps.pop()
+            if not indirect_dep.uses_rust() or indirect_dep.rust_crate_type in {'staticlib', 'cdylib'}:
+                continue
+            for d in indirect_dep.kwargs.get('dependencies', []):
+                if not hasattr(d, 'libraries'):
+                    continue
+                indirect_rust_deps += d.libraries
+                indirect_rust_deps += d.whole_libraries
+            indirect_rust_deps += indirect_dep.link_targets
+            indirect_rust_deps += indirect_dep.link_whole_targets
+
+            linkdirs.add(indirect_dep.subdir)
+
     def generate_rust_target(self, target: build.BuildTarget) -> None:
         rustc = target.compilers['rust']
         # Rust compiler takes only the main file as input and
@@ -1955,6 +1976,7 @@ class NinjaBackend(backends.Backend):
                 d_name = self._get_rust_dependency_name(target, d)
                 args += ['--extern', '{}={}'.format(d_name, os.path.join(d.subdir, d.filename))]
                 project_deps.append(RustDep(d_name, self.rust_crates[d.name].order))
+                self._add_rust_indirect_dependency_linkdirs(linkdirs, d)
             elif isinstance(d, build.StaticLibrary):
                 # Rustc doesn't follow Meson's convention that static libraries
                 # are called .a, and import libraries are .lib, so we have to
@@ -1994,6 +2016,7 @@ class NinjaBackend(backends.Backend):
                 d_name = self._get_rust_dependency_name(target, d)
                 args += ['--extern', '{}={}'.format(d_name, os.path.join(d.subdir, d.filename))]
                 project_deps.append(RustDep(d_name, self.rust_crates[d.name].order))
+                self._add_rust_indirect_dependency_linkdirs(linkdirs, d)
             else:
                 if rustc.linker.id in {'link', 'lld-link'}:
                     if verbatim:
