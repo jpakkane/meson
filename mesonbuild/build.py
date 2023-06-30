@@ -1301,7 +1301,7 @@ class BuildTarget(Target):
             if t in transitive_deps or t in exclude:
                 continue
             transitive_deps.append(t)
-            if isinstance(t, StaticLibrary):
+            if isinstance(t, StaticLibrary) and (not t.uses_rust() or t.rust_crate_type == 'rlib'):
                 transitive_deps += t.get_dependencies(transitive_deps + exclude)
         return transitive_deps
 
