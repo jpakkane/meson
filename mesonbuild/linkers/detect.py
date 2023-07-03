@@ -242,6 +242,8 @@ def guess_nix_linker(env: 'Environment', compiler: T.List[str], comp_class: T.Ty
         else:
             __failed_to_detect_linker(compiler, check_args, o, e)
         linker = linkers.AppleDynamicLinker(compiler, for_machine, comp_class.LINKER_PREFIX, override, version=v)
+    elif 'ld.exe: unrecognized option' in e or 'emxomfld: invalid option' in e:
+        linker = linkers.OS2DynamicLinker(compiler, for_machine, comp_class.LINKER_PREFIX, override, version='none')
     else:
         __failed_to_detect_linker(compiler, check_args, o, e)
     return linker

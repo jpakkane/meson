@@ -1734,3 +1734,22 @@ class TaskingLinker(DynamicLinker):
         for a in args:
             l.extend(self._apply_prefix('-Wl--whole-archive=' + a))
         return l
+
+
+class OS2DynamicLinker(PosixDynamicLinkerMixin, DynamicLinker):
+    """ld and emxomfld"""
+
+    id = 'ld.os2'
+
+    def get_allow_undefined_args(self) -> T.List[str]:
+        return []
+
+    def thread_flags(self, env: 'Environment') -> T.List[str]:
+        return ['-lpthread']
+
+    def get_std_shared_lib_args(self) -> T.List[str]:
+        return ['-Zdll']
+
+    def get_soname_args(self, env: 'Environment', prefix: str, shlib_name: str,
+                        suffix: str, soversion: str, darwin_versions: T.Tuple[str, str]) -> T.List[str]:
+        return []
