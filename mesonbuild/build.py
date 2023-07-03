@@ -2372,6 +2372,15 @@ class SharedLibrary(BuildTarget):
             suffix = 'so'
             # Android doesn't support shared_library versioning
             self.filename_tpl = '{0.prefix}{0.name}.{0.suffix}'
+        elif self.environment.machines[self.for_machine].is_os2():
+            suffix = 'dll'
+            import_filename_tpl = '{0.name}_dll.a'
+            if self.soversion:
+                # fooX.dll
+                self.filename_tpl = '{0.name}{0.soversion}.{0.suffix}'
+            else:
+                # No versioning, foo.dll
+                self.filename_tpl = '{0.name}.{0.suffix}'
         else:
             prefix = 'lib'
             suffix = 'so'
@@ -2389,6 +2398,14 @@ class SharedLibrary(BuildTarget):
         if self.suffix is None:
             self.suffix = suffix
         self.filename = self.filename_tpl.format(self)
+        if self.environment.machines[self.for_machine].is_os2():
+            # OS/2 does not allow a longer DLL name than 8 chars
+            name = os.path.splitext(self.filename)[0]
+            if len(name) > 8:
+                name = name[:8]
+                if self.soversion:
+                    name = name[:-len(self.soversion)] + self.soversion
+            self.filename = '{}.{}'.format(name, self.suffix)
         if import_filename_tpl:
             self.import_filename = import_filename_tpl.format(self)
         # There may have been more outputs added by the time we get here, so
