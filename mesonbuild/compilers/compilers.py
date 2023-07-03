@@ -342,6 +342,8 @@ def get_base_compile_args(options: 'KeyedOptionDictType', compiler: 'Compiler', 
 def get_base_link_args(options: 'KeyedOptionDictType', linker: 'Compiler',
                        is_shared_module: bool, build_dir: str) -> T.List[str]:
     args: T.List[str] = []
+    if mesonlib.is_os2():
+        args += ['-Zomf']
     try:
         if options.get_value('b_lto'):
             if options.get_value('werror'):
