@@ -377,7 +377,7 @@ class MachineInfo(HoldableObject):
     # static libraries, and executables.
     # Versioning is added to these names in the backends as-needed.
     def get_exe_suffix(self) -> str:
-        if self.is_windows() or self.is_cygwin():
+        if self.is_windows() or self.is_cygwin() or self.is_os2():
             return 'exe'
         else:
             return ''
