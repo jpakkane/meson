@@ -367,6 +367,12 @@ class MachineInfo(HoldableObject):
         """Machine is IRIX?"""
         return self.system.startswith('irix')
 
+    def is_os2(self) -> bool:
+        """
+        Machine is OS/2?
+        """
+        return self.system == 'os/2'
+
     # Various prefixes and suffixes for import libraries, shared libraries,
     # static libraries, and executables.
     # Versioning is added to these names in the backends as-needed.

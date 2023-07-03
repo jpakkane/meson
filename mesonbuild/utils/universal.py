@@ -123,6 +123,7 @@ __all__ = [
     'is_linux',
     'is_netbsd',
     'is_openbsd',
+    'is_os2',
     'is_osx',
     'is_qnx',
     'is_sunos',
@@ -690,6 +691,9 @@ def is_qnx() -> bool:
 
 def is_aix() -> bool:
     return platform.system().lower() == 'aix'
+
+def is_os2() -> bool:
+    return platform.system().lower() == 'os/2'
 
 @lru_cache(maxsize=None)
 def darwin_get_object_archs(objpath: str) -> 'ImmutableListProtocol[str]':
