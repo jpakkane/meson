@@ -387,8 +387,10 @@ class ArLinker(ArLikeLinker, StaticLinker):
         # on Mac OS X, Solaris, or illumos, so don't build them on those OSes.
         # OS X ld rejects with: "file built for unknown-unsupported file format"
         # illumos/Solaris ld rejects with: "unknown file type"
+        # OS/2 ld rejects with: "malformed input file (not rel or archive)"
         if is_thin and not env.machines[self.for_machine].is_darwin() \
-          and not env.machines[self.for_machine].is_sunos():
+          and not env.machines[self.for_machine].is_sunos() \
+          and not env.machines[self.for_machine].is_os2():
             return self.std_thin_args
         else:
             return self.std_args
