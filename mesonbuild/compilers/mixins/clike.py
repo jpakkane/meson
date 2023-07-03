@@ -1255,6 +1255,8 @@ class CLikeCompiler(Compiler):
         host_m = env.machines[self.for_machine]
         if host_m.is_haiku() or host_m.is_darwin():
             return []
+        if host_m.is_os2():
+            return ['-lpthread']
         return ['-pthread']
 
     def linker_to_compiler_args(self, args: T.List[str]) -> T.List[str]:
