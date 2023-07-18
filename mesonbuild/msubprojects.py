@@ -12,12 +12,14 @@ from pathlib import Path
 import typing as T
 import tarfile
 import zipfile
+import urllib.parse
 
 from . import mlog
 from .ast import IntrospectionInterpreter, AstIDGenerator
 from .mesonlib import quiet_git, GitException, Popen_safe, MesonException, windows_proof_rmtree
 from .wrap.wrap import (Resolver, WrapException, ALL_TYPES, PackageDefinition,
-                        parse_patch_url, update_wrap_file, get_releases)
+                        parse_patch_url, update_wrap_file, get_releases,
+                        get_crates_io_info, update_crates_io_wrap_file)
 
 if T.TYPE_CHECKING:
     from typing_extensions import Protocol
@@ -136,44 +138,87 @@ class Runner:
         return result
 
     @staticmethod
-    def pre_update_wrapdb(options: 'UpdateWrapDBArguments') -> None:
+    def pre_fetch_wrapdb(options: 'UpdateWrapDBArguments') -> None:
         options.releases = get_releases(options.allow_insecure)
 
-    def update_wrapdb(self) -> bool:
-        self.log(f'Checking latest WrapDB version for {self.wrap.name}...')
+    def _get_current_version(self) -> T.Tuple[T.Optional[str], T.Optional[str]]:
+        try:
+            source_url = self.wrap.get('source_url')
+            u = urllib.parse.urlparse(source_url)
+            arr = u.path.strip('/').split('/')
+            if u.netloc == 'crates.io' and arr[1] == 'v1':
+                return arr[4], arr[3]
+        except WrapException:
+            pass
+        try:
+            return self.wrap.get('wrapdb_version'), None
+        except WrapException:
+            pass
+        # Fallback to parsing the patch URL to determine current version.
+        # This won't work for projects that have upstream Meson support.
+        try:
+            patch_url = self.wrap.get('patch_url')
+            branch, revision = parse_patch_url(patch_url)
+            return f'{branch}-{revision}', None
+        except WrapException:
+            return None, None
+
+    def wrap_update(self) -> bool:
+        self.log(f'Checking latest version for {self.wrap.name}...')
         options = T.cast('UpdateWrapDBArguments', self.options)
 
-        # Check if this wrap is in WrapDB
-        info = options.releases.get(self.wrap.name)
-        if not info:
-            self.log('  -> Wrap not found in wrapdb')
-            return True
+        # Check if this wrap is in WrapDB or crates.io
+        version, crates_io_name = self._get_current_version()
+        if crates_io_name:
+            latest_version, _, _ = get_crates_io_info(crates_io_name, options.allow_insecure)
+        else:
+            info = options.releases.get(self.wrap.name)
+            if not info:
+                self.log('  -> Wrap not found in wrapdb')
+                return True
+            latest_version = info['versions'][0]
 
-        # Determine current version
-        try:
-            wrapdb_version = self.wrap.get('wrapdb_version')
-            branch, revision = wrapdb_version.split('-', 1)
-        except WrapException:
-            # Fallback to parsing the patch URL to determine current version.
-            # This won't work for projects that have upstream Meson support.
-            try:
-                patch_url = self.wrap.get('patch_url')
-                branch, revision = parse_patch_url(patch_url)
-            except WrapException:
-                if not options.force:
-                    self.log('  ->', mlog.red('Could not determine current version, use --force to update any way'))
-                    return False
-                branch = revision = None
+        if version is None and not options.force:
+            self.log('  ->', mlog.red('Could not determine current version, use --force to update any way'))
+            return False
 
         # Download latest wrap if version differs
-        latest_version = info['versions'][0]
-        new_branch, new_revision = latest_version.rsplit('-', 1)
-        if new_branch != branch or new_revision != revision:
+        if version != latest_version:
             filename = self.wrap.filename if self.wrap.has_wrap else f'{self.wrap.filename}.wrap'
-            update_wrap_file(filename, self.wrap.name,
-                             new_branch, new_revision,
-                             options.allow_insecure)
-            self.log('  -> New version downloaded:', mlog.blue(latest_version))
+            if crates_io_name:
+                update_crates_io_wrap_file(filename, self.wrap.name, crates_io_name, options.allow_insecure)
+            else:
+                new_branch, new_revision = latest_version.rsplit('-', 1)
+                update_wrap_file(filename, self.wrap.name,
+                                 new_branch, new_revision,
+                                 options.allow_insecure)
+            self.log('  -> New version downloaded:', mlog.blue(version), '→', mlog.blue(latest_version))
+        else:
+            self.log('  -> Already at latest version:', mlog.blue(latest_version))
+
+        return True
+
+    def wrap_status(self) -> bool:
+        self.log(f'Checking latest version for {self.wrap.name}...')
+        options = T.cast('UpdateWrapDBArguments', self.options)
+
+        # Check if this wrap is in WrapDB or crates.io
+        version, crates_io_name = self._get_current_version()
+        if crates_io_name:
+            latest_version, _, _ = get_crates_io_info(crates_io_name, options.allow_insecure)
+        else:
+            info = options.releases.get(self.wrap.name)
+            if not info:
+                self.log('  -> Wrap not found in wrapdb')
+                return True
+            latest_version = info['versions'][0]
+
+        if version is None:
+            self.log('  ->', mlog.red('Could not determine current version'))
+            return False
+
+        if version != latest_version:
+            self.log('  -> New version available:', mlog.blue(version), '→', mlog.blue(latest_version))
         else:
             self.log('  -> Already at latest version:', mlog.blue(latest_version))
 
@@ -627,8 +672,16 @@ def add_wrap_update_parser(subparsers: 'SubParsers') -> argparse.ArgumentParser:
                    help='Update wraps that does not seems to come from WrapDB')
     add_common_arguments(p)
     add_subprojects_argument(p)
-    p.set_defaults(subprojects_func=Runner.update_wrapdb)
-    p.set_defaults(pre_func=Runner.pre_update_wrapdb)
+    p.set_defaults(subprojects_func=Runner.wrap_update)
+    p.set_defaults(pre_func=Runner.pre_fetch_wrapdb)
+    return p
+
+def add_wrap_status_parser(subparsers: 'SubParsers') -> argparse.ArgumentParser:
+    p = subparsers.add_parser('status', help='Show installed and available versions of your projects')
+    add_common_arguments(p)
+    add_subprojects_argument(p)
+    p.set_defaults(subprojects_func=Runner.wrap_status)
+    p.set_defaults(pre_func=Runner.pre_fetch_wrapdb)
     return p
 
 def add_arguments(parser: argparse.ArgumentParser) -> None:

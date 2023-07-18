@@ -72,18 +72,18 @@ def whitelist_wrapdb(urlstr: str) -> urllib.parse.ParseResult:
         raise WrapException(f'WrapDB did not have expected SSL https url, instead got {urlstr}')
     return url
 
-def open_wrapdburl(urlstring: str, allow_insecure: bool = False, have_opt: bool = False) -> 'http.client.HTTPResponse':
+def open_url(urlstring: str, allow_insecure: bool = False, have_opt: bool = False) -> 'http.client.HTTPResponse':
     if have_opt:
         insecure_msg = '\n\n    To allow connecting anyway, pass `--allow-insecure`.'
     else:
         insecure_msg = ''
 
-    url = whitelist_wrapdb(urlstring)
+    url = urllib.parse.urlparse(urlstring)
     if has_ssl:
         try:
             return T.cast('http.client.HTTPResponse', urllib.request.urlopen(urllib.parse.urlunparse(url), timeout=REQ_TIMEOUT))
         except urllib.error.URLError as excp:
-            msg = f'WrapDB connection failed to {urlstring} with error {excp}.'
+            msg = f'Connection failed to {urlstring} with error {excp}.'
             if isinstance(excp.reason, ssl.SSLCertVerificationError):
                 if allow_insecure:
                     mlog.warning(f'{msg}\n\n    Proceeding without authentication.')
@@ -92,17 +92,21 @@ def open_wrapdburl(urlstring: str, allow_insecure: bool = False, have_opt: bool 
             else:
                 raise WrapException(msg)
     elif not allow_insecure:
-        raise WrapException(f'SSL module not available in {sys.executable}: Cannot contact the WrapDB.{insecure_msg}')
+        raise WrapException(f'SSL module not available in {sys.executable}: Cannot contact the server.{insecure_msg}')
     else:
         # following code is only for those without Python SSL
-        mlog.warning(f'SSL module not available in {sys.executable}: WrapDB traffic not authenticated.', once=True)
+        mlog.warning(f'SSL module not available in {sys.executable}: traffic not authenticated.', once=True)
 
     # If we got this far, allow_insecure was manually passed
     nossl_url = url._replace(scheme='http')
     try:
         return T.cast('http.client.HTTPResponse', urllib.request.urlopen(urllib.parse.urlunparse(nossl_url), timeout=REQ_TIMEOUT))
     except urllib.error.URLError as excp:
-        raise WrapException(f'WrapDB connection failed to {urlstring} with error {excp}')
+        raise WrapException(f'Connection failed to {urlstring} with error {excp}')
+
+def open_wrapdburl(urlstring: str, allow_insecure: bool = False, have_opt: bool = False) -> 'http.client.HTTPResponse':
+    whitelist_wrapdb(urlstring)
+    return open_url(urlstring, allow_insecure, have_opt)
 
 def get_releases_data(allow_insecure: bool) -> bytes:
     url = open_wrapdburl('https://wrapdb.mesonbuild.com/v2/releases.json', allow_insecure, True)
@@ -134,6 +138,32 @@ def parse_patch_url(patch_url: str) -> T.Tuple[str, str]:
         return version, revision
     else:
         raise WrapException(f'Invalid wrapdb URL {patch_url}')
+
+CRATES_IO_WRAP_TMPL = '''\
+[wrap-file]
+directory = {0}-{1}
+source_url = https://crates.io{2}
+source_filename = {0}-{1}.tar.gz
+source_hash = {3}
+
+[provide]
+dependency_names = {4}
+'''
+
+def get_crates_io_info(name: str, allow_insecure: bool) -> T.Tuple[str, str, str]:
+    url = open_url(f'https://crates.io/api/v1/crates/{name}/versions', allow_insecure)
+    try:
+        data = json.loads(url.read().decode())
+        info = data['versions'][0]
+        return info['num'], info['dl_path'], info['checksum'],
+    except:
+        raise WrapException('crate.io reply not in expected format')
+
+def update_crates_io_wrap_file(wrapfile: str, name: str, crates_io_name: str, allow_insecure: bool) -> str:
+    version, dl_path, checksum = get_crates_io_info(crates_io_name, allow_insecure)
+    with open(wrapfile, 'w', encoding='utf-8') as f:
+        f.write(CRATES_IO_WRAP_TMPL.format(crates_io_name, version, dl_path, checksum, name))
+    return version
 
 class WrapException(MesonException):
     pass
