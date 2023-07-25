@@ -24,7 +24,7 @@ if T.TYPE_CHECKING:
     from . import ModuleState
     from ..dependencies.qt import QtPkgConfigDependency, QmakeQtDependency
     from ..interpreter import Interpreter
-    from ..interpreter import kwargs
+    from ..interpreter import kwargs as kwtypes
     from ..mesonlib import FileOrString
     from ..programs import ExternalProgram
 
@@ -74,7 +74,7 @@ if T.TYPE_CHECKING:
         dependencies: T.List[T.Union[Dependency, ExternalLibrary]]
         method: str
 
-    class HasToolKwArgs(kwargs.ExtractRequired):
+    class HasToolKwArgs(kwtypes.ExtractRequired):
 
         method: str
 
@@ -161,7 +161,7 @@ class QtBaseModule(ExtensionModule):
             return
         self._tools_detected = True
         mlog.log(f'Detecting Qt{self.qt_version} tools')
-        kwargs = {'required': required, 'modules': 'Core', 'method': method}
+        kwargs: kwtypes.Dependency = {'required': required, 'modules': 'Core', 'method': method}  # type: ignore
         # Just pick one to make mypy happy
         qt = T.cast('QtPkgConfigDependency', find_external_dependency(f'qt{self.qt_version}', state.environment, kwargs))
         if qt.found():

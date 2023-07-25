@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2013-2019 The Meson development team
+# Copyright © 2023 Intel Corporation
+
+# mypy: disable-error-code="typeddict-item, typeddict-unknown-key"
 
 from __future__ import annotations
 
@@ -19,6 +22,7 @@ from .detect import packages
 if T.TYPE_CHECKING:
     from ..environment import Environment
     from ..compilers import Compiler
+    from ..interpreter.kwargs import Dependency as DependencyKw
 
     TV_ResultTuple = T.Tuple[T.Optional[str], T.Optional[str], bool]
 
@@ -26,7 +30,7 @@ class CudaDependency(SystemDependency):
 
     supported_languages = ['cuda', 'cpp', 'c'] # see also _default_language
 
-    def __init__(self, environment: 'Environment', kwargs: T.Dict[str, T.Any]) -> None:
+    def __init__(self, environment: 'Environment', kwargs: DependencyKw) -> None:
         compilers = environment.coredata.compilers[self.get_for_machine_from_kwargs(kwargs)]
         language = self._detect_language(compilers)
         if language not in self.supported_languages:
@@ -277,8 +281,8 @@ class CudaDependency(SystemDependency):
     def log_info(self) -> str:
         return self.cuda_path if self.cuda_path else ''
 
-    def get_requested(self, kwargs: T.Dict[str, T.Any]) -> T.List[str]:
-        candidates = mesonlib.extract_as_list(kwargs, 'modules')
+    def get_requested(self, kwargs: DependencyKw) -> T.List[str]:
+        candidates: T.List[str] = mesonlib.extract_as_list(kwargs, 'modules')  # type: ignore
         for c in candidates:
             if not isinstance(c, str):
                 raise DependencyException('CUDA module argument is not a string.')

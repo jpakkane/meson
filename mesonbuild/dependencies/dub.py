@@ -2,6 +2,8 @@
 # Copyright 2013-2021 The Meson development team
 # Copyright © 2023 Intel Corporation
 
+# mypy: disable-error-code="typeddict-item, typeddict-unknown-key"
+
 from __future__ import annotations
 
 from .base import ExternalDependency, DependencyException, DependencyTypeName
@@ -16,6 +18,7 @@ import typing as T
 
 if T.TYPE_CHECKING:
     from ..environment import Environment
+    from ..interpreter.kwargs import Dependency as DependencyKw
 
 
 class DubDependency(ExternalDependency):
@@ -23,7 +26,7 @@ class DubDependency(ExternalDependency):
     class_dubbin: T.Optional[T.Tuple[ExternalProgram, str]] = None
     class_dubbin_searched = False
 
-    def __init__(self, name: str, environment: 'Environment', kwargs: T.Dict[str, T.Any]):
+    def __init__(self, name: str, environment: 'Environment', kwargs: DependencyKw):
         super().__init__(DependencyTypeName('dub'), environment, kwargs, language='d')
         self.name = name
         from ..compilers.d import DCompiler, d_feature_args
@@ -34,9 +37,6 @@ class DubDependency(ExternalDependency):
             return
         assert isinstance(_temp_comp, DCompiler), 'Compiler must be a D language compiler'
         self.compiler = _temp_comp
-
-        if 'required' in kwargs:
-            self.required = kwargs.get('required')
 
         if DubDependency.class_dubbin is None and not DubDependency.class_dubbin_searched:
             DubDependency.class_dubbin = self._check_dub()

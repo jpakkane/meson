@@ -1,5 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2013-2019 The Meson development team
+# Copyright © 2023 Intel Corporation
+
+# mypy: disable-error-code="typeddict-item"
+# mypy: disable-error-code="typeddict-unknown-key"
 
 from __future__ import annotations
 
@@ -16,12 +20,13 @@ if T.TYPE_CHECKING:
     from . factory import DependencyGenerator
     from ..environment import Environment
     from ..mesonlib import MachineChoice
+    from ..interpreter.kwargs import Dependency as DependencyKw
 
 
 @factory_methods({DependencyMethods.PKGCONFIG, DependencyMethods.CMAKE, DependencyMethods.SYSTEM})
 def coarray_factory(env: 'Environment',
                     for_machine: 'MachineChoice',
-                    kwargs: T.Dict[str, T.Any],
+                    kwargs: DependencyKw,
                     methods: T.List[DependencyMethods]) -> T.List['DependencyGenerator']:
     fcid = detect_compiler('coarray', env, for_machine, 'fortran').get_id()
     candidates: T.List['DependencyGenerator'] = []
@@ -55,7 +60,7 @@ class CoarrayDependency(SystemDependency):
     Coarrays may be thought of as a high-level language abstraction of
     low-level MPI calls.
     """
-    def __init__(self, environment: 'Environment', kwargs: T.Dict[str, T.Any]) -> None:
+    def __init__(self, environment: 'Environment', kwargs: DependencyKw) -> None:
         super().__init__('coarray', environment, kwargs, language='fortran')
         kwargs['required'] = False
         kwargs['silent'] = True

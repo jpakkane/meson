@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2013-2020 The Meson development team
+# Copyright © 2023 Intel Corporation
 
 from __future__ import annotations
 
@@ -19,11 +20,12 @@ if T.TYPE_CHECKING:
     from ..environment import Environment
     from ..mesonlib import MachineChoice
     from .factory import DependencyGenerator
+    from ..interpreter.kwargs import Dependency as DependencyKw
 
 
 @factory_methods({DependencyMethods.PKGCONFIG, DependencyMethods.CMAKE})
 def scalapack_factory(env: 'Environment', for_machine: 'MachineChoice',
-                      kwargs: T.Dict[str, T.Any],
+                      kwargs: DependencyKw,
                       methods: T.List[DependencyMethods]) -> T.List['DependencyGenerator']:
     candidates: T.List['DependencyGenerator'] = []
 
@@ -54,7 +56,7 @@ class MKLPkgConfigDependency(PkgConfigDependency):
     bunch of fixups to make it work correctly.
     """
 
-    def __init__(self, name: str, env: 'Environment', kwargs: T.Dict[str, T.Any],
+    def __init__(self, name: str, env: 'Environment', kwargs: DependencyKw,
                  language: T.Optional[str] = None):
         _m = os.environ.get('MKLROOT')
         self.__mklroot = Path(_m).resolve() if _m else None

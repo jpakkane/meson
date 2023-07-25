@@ -1,3 +1,7 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2023 The Meson Developers
+# Copyright © 2023 Intel Corporation
+
 from __future__ import annotations
 
 import os, subprocess
@@ -81,7 +85,7 @@ def bash_completion_files(b: build.Build, install_data: 'InstallData') -> T.List
     from .dependencies.pkgconfig import PkgConfigDependency
     result = []
     dep = PkgConfigDependency('bash-completion', b.environment,
-                              {'required': False, 'silent': True, 'version': '>=2.10'})
+                              {'required': False, 'silent': True, 'version': '>=2.10'})  # type: ignore
     if dep.found():
         prefix = b.environment.coredata.get_option(OptionKey('prefix'))
         assert isinstance(prefix, str), 'for mypy'

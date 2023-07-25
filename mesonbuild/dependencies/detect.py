@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2013-2021 The Meson development team
+# Copyright © 2023 Intel Corporation
+
+# mypy: disable-error-code="typeddict-item, typeddict-unknown-key"
 
 from __future__ import annotations
 
@@ -15,6 +18,7 @@ if T.TYPE_CHECKING:
     from typing_extensions import TypedDict
 
     from ..environment import Environment
+    from ..interpreter.kwargs import Dependency as DependencyKw
     from .factory import DependencyFactory, WrappedFactoryFunc, DependencyGenerator
 
     PackageTypes = T.Union[T.Type[ExternalDependency], DependencyFactory, WrappedFactoryFunc]
@@ -75,7 +79,7 @@ class DependencyCacheKey:
 _DEPEDNENCY_CACHE_KEYS = frozenset({k.name for k in fields(DependencyCacheKey)})
 
 
-def get_dep_identifier(name: str, kwargs: T.Dict[str, T.Any]) -> DependencyCacheKey:
+def get_dep_identifier(name: str, kwargs: DependencyKw) -> DependencyCacheKey:
     nkwargs: DependencyCacheKeyInit = {}
     for k, v in kwargs.items():
         # 'version' is irrelevant for caching; the caller must check version matches
@@ -112,7 +116,7 @@ display_name_map = {
     'wxwidgets': 'WxWidgets',
 }
 
-def find_external_dependency(name: str, env: 'Environment', kwargs: T.Dict[str, object], candidates: T.Optional[T.List['DependencyGenerator']] = None) -> T.Union['ExternalDependency', NotFoundDependency]:
+def find_external_dependency(name: str, env: 'Environment', kwargs: DependencyKw, candidates: T.Optional[T.List['DependencyGenerator']] = None) -> T.Union['ExternalDependency', NotFoundDependency]:
     assert name
     required = kwargs.get('required', True)
     if not isinstance(required, bool):
@@ -201,7 +205,7 @@ def find_external_dependency(name: str, env: 'Environment', kwargs: T.Dict[str, 
 
 
 def _build_external_dependency_list(name: str, env: 'Environment', for_machine: MachineChoice,
-                                    kwargs: T.Dict[str, T.Any]) -> T.List['DependencyGenerator']:
+                                    kwargs: DependencyKw) -> T.List['DependencyGenerator']:
     # First check if the method is valid
     if 'method' in kwargs and kwargs['method'] not in [e.value for e in DependencyMethods]:
         raise DependencyException('method {!r} is invalid'.format(kwargs['method']))

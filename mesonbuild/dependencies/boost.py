@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2013-2020 The Meson development team
+# Copyright © 2023 Intel Corporation
+
+# mypy: disable-error-code="typeddict-item, typeddict-unknown-key"
 
 from __future__ import annotations
 
@@ -20,6 +23,7 @@ from .misc import threads_factory
 if T.TYPE_CHECKING:
     from ..envconfig import Properties
     from ..environment import Environment
+    from ..interpreter.kwargs import Dependency as DependencyKw
 
 # On windows 3 directory layouts are supported:
 # * The default layout (versioned) installed:
@@ -338,7 +342,7 @@ class BoostLibraryFile():
         return [self.path.as_posix()]
 
 class BoostDependency(SystemDependency):
-    def __init__(self, environment: Environment, kwargs: T.Dict[str, T.Any]) -> None:
+    def __init__(self, environment: Environment, kwargs: DependencyKw) -> None:
         super().__init__('boost', environment, kwargs, language='cpp')
         buildtype = environment.coredata.get_option(mesonlib.OptionKey('buildtype'))
         assert isinstance(buildtype, str)
@@ -349,7 +353,7 @@ class BoostDependency(SystemDependency):
         self.explicit_static = 'static' in kwargs
 
         # Extract and validate modules
-        self.modules: T.List[str] = mesonlib.extract_as_list(kwargs, 'modules')
+        self.modules: T.List[str] = mesonlib.extract_as_list(kwargs, 'modules')  # type: ignore
         for i in self.modules:
             if not isinstance(i, str):
                 raise DependencyException('Boost module argument is not a string.')

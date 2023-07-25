@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2013-2019 The Meson development team
+# Copyright © 2023 Intel Corporation
+
+# mypy: disable-error-code="typeddict-item, typeddict-unknown-key"
 
 from __future__ import annotations
 
@@ -19,12 +22,13 @@ if T.TYPE_CHECKING:
     from .factory import DependencyGenerator
     from ..environment import Environment
     from ..mesonlib import MachineChoice
+    from ..interpreter.kwargs import Dependency as DependencyKw
 
 
 @factory_methods({DependencyMethods.PKGCONFIG, DependencyMethods.CONFIG_TOOL, DependencyMethods.SYSTEM})
 def mpi_factory(env: 'Environment',
                 for_machine: 'MachineChoice',
-                kwargs: T.Dict[str, T.Any],
+                kwargs: DependencyKw,
                 methods: T.List[DependencyMethods]) -> T.List['DependencyGenerator']:
     language = kwargs.get('language', 'c')
     if language not in {'c', 'cpp', 'fortran'}:
@@ -32,7 +36,7 @@ def mpi_factory(env: 'Environment',
         return []
 
     candidates: T.List['DependencyGenerator'] = []
-    compiler = detect_compiler('mpi', env, for_machine, language)
+    compiler = detect_compiler('mpi', env, for_machine, language)  # type: ignore
     if not compiler:
         return []
     compiler_is_intel = compiler.get_id() in {'intel', 'intel-cl'}
@@ -153,7 +157,7 @@ class IntelMPIConfigToolDependency(_MPIConfigToolDependency):
 
     version_arg = '-v'  # --version is not the same as -v
 
-    def __init__(self, name: str, env: 'Environment', kwargs: T.Dict[str, T.Any],
+    def __init__(self, name: str, env: 'Environment', kwargs: DependencyKw,
                  language: T.Optional[str] = None):
         super().__init__(name, env, kwargs, language=language)
         if not self.is_found:
@@ -176,7 +180,7 @@ class OpenMPIConfigToolDependency(_MPIConfigToolDependency):
 
     version_arg = '--showme:version'
 
-    def __init__(self, name: str, env: 'Environment', kwargs: T.Dict[str, T.Any],
+    def __init__(self, name: str, env: 'Environment', kwargs: DependencyKw,
                  language: T.Optional[str] = None):
         super().__init__(name, env, kwargs, language=language)
         if not self.is_found:
@@ -199,7 +203,7 @@ class MSMPIDependency(SystemDependency):
 
     """The Microsoft MPI."""
 
-    def __init__(self, name: str, env: 'Environment', kwargs: T.Dict[str, T.Any],
+    def __init__(self, name: str, env: 'Environment', kwargs: DependencyKw,
                  language: T.Optional[str] = None):
         super().__init__(name, env, kwargs, language=language)
         # MSMPI only supports the C API

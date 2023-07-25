@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2012-2021 The Meson development team
-# Copyright © 2021 Intel Corporation
+# Copyright © 2021-2023 Intel Corporation
 from __future__ import annotations
 
 import os
@@ -27,6 +27,7 @@ if T.TYPE_CHECKING:
     from ..interpreterbase import TYPE_kwargs, TYPE_var
     from ..mesonlib import ExecutableSerialisation
     from .interpreter import Interpreter
+    from .kwargs import Dependency as DependencyKw
 
     class FuncOverrideDependency(TypedDict):
 
@@ -377,11 +378,11 @@ class MesonMain(MesonInterpreterObject):
                                   static: T.Optional[bool], permissive: bool = False) -> None:
         # We need the cast here as get_dep_identifier works on such a dict,
         # which FuncOverrideDependency is, but mypy can't figure that out
-        nkwargs = T.cast('T.Dict[str, T.Any]', kwargs.copy())
+        nkwargs = T.cast('DependencyKw', kwargs.copy())
         if static is None:
-            del nkwargs['static']
+            del nkwargs['static']  # type: ignore
         else:
-            nkwargs['static'] = static
+            nkwargs['static'] = static  # type: ignore
         identifier = dependencies.get_dep_identifier(name, nkwargs)
         for_machine = kwargs['native']
         override = self.build.dependency_overrides[for_machine].get(identifier)

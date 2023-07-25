@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2013-2019 The Meson development team
+# Copyright © 2023 Intel Corporation
+
+# mypy: disable-error-code="typeddict-item, typeddict-unknown-key"
 
 # This file contains the detection logic for miscellaneous external dependencies.
 from __future__ import annotations
@@ -21,12 +24,13 @@ from .pkgconfig import PkgConfigDependency
 if T.TYPE_CHECKING:
     from ..environment import Environment
     from .factory import DependencyGenerator
+    from ..interpreter.kwargs import Dependency as DependencyKw
 
 
 @factory_methods({DependencyMethods.PKGCONFIG, DependencyMethods.CMAKE})
 def netcdf_factory(env: 'Environment',
                    for_machine: 'mesonlib.MachineChoice',
-                   kwargs: T.Dict[str, T.Any],
+                   kwargs: DependencyKw,
                    methods: T.List[DependencyMethods]) -> T.List['DependencyGenerator']:
     language = kwargs.get('language', 'c')
     if language not in ('c', 'cpp', 'fortran'):
@@ -51,7 +55,7 @@ packages['netcdf'] = netcdf_factory
 
 
 class DlBuiltinDependency(BuiltinDependency):
-    def __init__(self, name: str, env: 'Environment', kwargs: T.Dict[str, T.Any]):
+    def __init__(self, name: str, env: 'Environment', kwargs: DependencyKw):
         super().__init__(name, env, kwargs)
         self.feature_since = ('0.62.0', "consider checking for `dlopen` with and without `find_library('dl')`")
 
@@ -60,7 +64,7 @@ class DlBuiltinDependency(BuiltinDependency):
 
 
 class DlSystemDependency(SystemDependency):
-    def __init__(self, name: str, env: 'Environment', kwargs: T.Dict[str, T.Any]):
+    def __init__(self, name: str, env: 'Environment', kwargs: DependencyKw):
         super().__init__(name, env, kwargs)
         self.feature_since = ('0.62.0', "consider checking for `dlopen` with and without `find_library('dl')`")
 
@@ -87,9 +91,9 @@ class OpenMPDependency(SystemDependency):
         '199810': '1.0',
     }
 
-    def __init__(self, environment: 'Environment', kwargs: T.Dict[str, T.Any]) -> None:
+    def __init__(self, environment: 'Environment', kwargs: DependencyKw) -> None:
         language = kwargs.get('language')
-        super().__init__('openmp', environment, kwargs, language=language)
+        super().__init__('openmp', environment, kwargs, language=language)  # type: ignore
         self.is_found = False
         if self.clib_compiler.get_id() == 'nagfor':
             # No macro defined for OpenMP, but OpenMP 3.1 is supported.
@@ -134,7 +138,7 @@ packages['openmp'] = OpenMPDependency
 
 
 class ThreadDependency(SystemDependency):
-    def __init__(self, name: str, environment: 'Environment', kwargs: T.Dict[str, T.Any]) -> None:
+    def __init__(self, name: str, environment: 'Environment', kwargs: DependencyKw) -> None:
         super().__init__(name, environment, kwargs)
         self.is_found = True
         # Happens if you are using a language with threads
@@ -148,7 +152,7 @@ class ThreadDependency(SystemDependency):
 
 
 class BlocksDependency(SystemDependency):
-    def __init__(self, environment: 'Environment', kwargs: T.Dict[str, T.Any]) -> None:
+    def __init__(self, environment: 'Environment', kwargs: DependencyKw) -> None:
         super().__init__('blocks', environment, kwargs)
         self.name = 'blocks'
         self.is_found = False
@@ -191,7 +195,7 @@ class PcapDependencyConfigTool(ConfigToolDependency):
     # version 1.10.3 will hopefully add actual support for --version
     skip_version = '--help'
 
-    def __init__(self, name: str, environment: 'Environment', kwargs: T.Dict[str, T.Any]):
+    def __init__(self, name: str, environment: 'Environment', kwargs: DependencyKw):
         super().__init__(name, environment, kwargs)
         if not self.is_found:
             return
@@ -220,7 +224,7 @@ class CupsDependencyConfigTool(ConfigToolDependency):
     tools = ['cups-config']
     tool_name = 'cups-config'
 
-    def __init__(self, name: str, environment: 'Environment', kwargs: T.Dict[str, T.Any]):
+    def __init__(self, name: str, environment: 'Environment', kwargs: DependencyKw):
         super().__init__(name, environment, kwargs)
         if not self.is_found:
             return
@@ -233,7 +237,7 @@ class LibWmfDependencyConfigTool(ConfigToolDependency):
     tools = ['libwmf-config']
     tool_name = 'libwmf-config'
 
-    def __init__(self, name: str, environment: 'Environment', kwargs: T.Dict[str, T.Any]):
+    def __init__(self, name: str, environment: 'Environment', kwargs: DependencyKw):
         super().__init__(name, environment, kwargs)
         if not self.is_found:
             return
@@ -246,7 +250,7 @@ class LibGCryptDependencyConfigTool(ConfigToolDependency):
     tools = ['libgcrypt-config']
     tool_name = 'libgcrypt-config'
 
-    def __init__(self, name: str, environment: 'Environment', kwargs: T.Dict[str, T.Any]):
+    def __init__(self, name: str, environment: 'Environment', kwargs: DependencyKw):
         super().__init__(name, environment, kwargs)
         if not self.is_found:
             return
@@ -260,7 +264,7 @@ class GpgmeDependencyConfigTool(ConfigToolDependency):
     tools = ['gpgme-config']
     tool_name = 'gpg-config'
 
-    def __init__(self, name: str, environment: 'Environment', kwargs: T.Dict[str, T.Any]):
+    def __init__(self, name: str, environment: 'Environment', kwargs: DependencyKw):
         super().__init__(name, environment, kwargs)
         if not self.is_found:
             return
@@ -271,7 +275,7 @@ class GpgmeDependencyConfigTool(ConfigToolDependency):
 
 class ShadercDependency(SystemDependency):
 
-    def __init__(self, environment: 'Environment', kwargs: T.Dict[str, T.Any]):
+    def __init__(self, environment: 'Environment', kwargs: DependencyKw):
         super().__init__('shaderc', environment, kwargs)
 
         static_lib = 'shaderc_combined'
@@ -303,7 +307,7 @@ class CursesConfigToolDependency(ConfigToolDependency):
     # ncurses5.4-config is for macOS Catalina
     tools = ['ncursesw6-config', 'ncursesw5-config', 'ncurses6-config', 'ncurses5-config', 'ncurses5.4-config']
 
-    def __init__(self, name: str, env: 'Environment', kwargs: T.Dict[str, T.Any], language: T.Optional[str] = None):
+    def __init__(self, name: str, env: 'Environment', kwargs: DependencyKw, language: T.Optional[str] = None):
         super().__init__(name, env, kwargs, language)
         if not self.is_found:
             return
@@ -320,7 +324,7 @@ class CursesSystemDependency(SystemDependency):
     implementations, and the differences between them can be very annoying.
     """
 
-    def __init__(self, name: str, env: 'Environment', kwargs: T.Dict[str, T.Any]):
+    def __init__(self, name: str, env: 'Environment', kwargs: DependencyKw):
         super().__init__(name, env, kwargs)
 
         candidates = [
@@ -354,7 +358,7 @@ class CursesSystemDependency(SystemDependency):
                         req = kwargs.get('version')
                         if req:
                             if self.version:
-                                self.is_found = mesonlib.version_compare(self.version, req)
+                                self.is_found = mesonlib.version_compare(self.version, req)  # type: ignore
                             else:
                                 mlog.warning('Cannot determine version of curses to compare against.')
 
@@ -367,7 +371,7 @@ class CursesSystemDependency(SystemDependency):
 
 
 class IconvBuiltinDependency(BuiltinDependency):
-    def __init__(self, name: str, env: 'Environment', kwargs: T.Dict[str, T.Any]):
+    def __init__(self, name: str, env: 'Environment', kwargs: DependencyKw):
         super().__init__(name, env, kwargs)
         self.feature_since = ('0.60.0', "consider checking for `iconv_open` with and without `find_library('iconv')`")
         code = '''#include <iconv.h>\n\nint main() {\n    iconv_open("","");\n}''' # [ignore encoding] this is C, not python, Mr. Lint
@@ -377,7 +381,7 @@ class IconvBuiltinDependency(BuiltinDependency):
 
 
 class IconvSystemDependency(SystemDependency):
-    def __init__(self, name: str, env: 'Environment', kwargs: T.Dict[str, T.Any]):
+    def __init__(self, name: str, env: 'Environment', kwargs: DependencyKw):
         super().__init__(name, env, kwargs)
         self.feature_since = ('0.60.0', "consider checking for `iconv_open` with and without find_library('iconv')")
 
@@ -389,7 +393,7 @@ class IconvSystemDependency(SystemDependency):
 
 
 class IntlBuiltinDependency(BuiltinDependency):
-    def __init__(self, name: str, env: 'Environment', kwargs: T.Dict[str, T.Any]):
+    def __init__(self, name: str, env: 'Environment', kwargs: DependencyKw):
         super().__init__(name, env, kwargs)
         self.feature_since = ('0.59.0', "consider checking for `ngettext` with and without `find_library('intl')`")
         code = '''#include <libintl.h>\n\nint main() {\n    gettext("Hello world");\n}'''
@@ -399,7 +403,7 @@ class IntlBuiltinDependency(BuiltinDependency):
 
 
 class IntlSystemDependency(SystemDependency):
-    def __init__(self, name: str, env: 'Environment', kwargs: T.Dict[str, T.Any]):
+    def __init__(self, name: str, env: 'Environment', kwargs: DependencyKw):
         super().__init__(name, env, kwargs)
         self.feature_since = ('0.59.0', "consider checking for `ngettext` with and without `find_library('intl')`")
 
@@ -416,10 +420,10 @@ class IntlSystemDependency(SystemDependency):
 
 
 class OpensslSystemDependency(SystemDependency):
-    def __init__(self, name: str, env: 'Environment', kwargs: T.Dict[str, T.Any]):
+    def __init__(self, name: str, env: 'Environment', kwargs: DependencyKw):
         super().__init__(name, env, kwargs)
 
-        dependency_kwargs = {
+        dependency_kwargs: DependencyKw = {
             'method': 'system',
             'static': self.static,
         }
@@ -467,7 +471,7 @@ class OpensslSystemDependency(SystemDependency):
 @factory_methods({DependencyMethods.PKGCONFIG, DependencyMethods.CONFIG_TOOL, DependencyMethods.SYSTEM})
 def curses_factory(env: 'Environment',
                    for_machine: 'mesonlib.MachineChoice',
-                   kwargs: T.Dict[str, T.Any],
+                   kwargs: DependencyKw,
                    methods: T.List[DependencyMethods]) -> T.List['DependencyGenerator']:
     candidates: T.List['DependencyGenerator'] = []
 
@@ -493,7 +497,7 @@ packages['curses'] = curses_factory
 @factory_methods({DependencyMethods.PKGCONFIG, DependencyMethods.SYSTEM})
 def shaderc_factory(env: 'Environment',
                     for_machine: 'mesonlib.MachineChoice',
-                    kwargs: T.Dict[str, T.Any],
+                    kwargs: DependencyKw,
                     methods: T.List[DependencyMethods]) -> T.List['DependencyGenerator']:
     """Custom DependencyFactory for ShaderC.
 

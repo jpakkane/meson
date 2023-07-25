@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2013-2019 The Meson development team
+# Copyright © 2023 Intel Corporation
+
+# mypy: disable-error-code="typeddict-item, typeddict-unknown-key"
 
 from __future__ import annotations
 
@@ -28,7 +31,9 @@ from .pkgconfig import PkgConfigDependency
 if T.TYPE_CHECKING:
     from ..envconfig import MachineInfo
     from ..environment import Environment
+    from ..interpreter.kwargs import Dependency as DependencyKw
     from ..mesonlib import MachineChoice
+
     from typing_extensions import TypedDict
 
     class JNISystemDependencyKW(TypedDict):
@@ -51,7 +56,7 @@ def get_shared_library_suffix(environment: 'Environment', for_machine: MachineCh
 
 
 class GTestDependencySystem(SystemDependency):
-    def __init__(self, name: str, environment: 'Environment', kwargs: T.Dict[str, T.Any]) -> None:
+    def __init__(self, name: str, environment: 'Environment', kwargs: DependencyKw) -> None:
         super().__init__(name, environment, kwargs, language='cpp')
         self.main = kwargs.get('main', False)
         self.src_dirs = ['/usr/src/gtest/src', '/usr/src/googletest/googletest/src']
@@ -106,7 +111,7 @@ class GTestDependencySystem(SystemDependency):
 
 class GTestDependencyPC(PkgConfigDependency):
 
-    def __init__(self, name: str, environment: 'Environment', kwargs: T.Dict[str, T.Any]):
+    def __init__(self, name: str, environment: 'Environment', kwargs: DependencyKw):
         assert name == 'gtest'
         if kwargs.get('main'):
             name = 'gtest_main'
@@ -114,7 +119,7 @@ class GTestDependencyPC(PkgConfigDependency):
 
 
 class GMockDependencySystem(SystemDependency):
-    def __init__(self, name: str, environment: 'Environment', kwargs: T.Dict[str, T.Any]) -> None:
+    def __init__(self, name: str, environment: 'Environment', kwargs: DependencyKw) -> None:
         super().__init__(name, environment, kwargs, language='cpp')
         self.main = kwargs.get('main', False)
         if not self._add_sub_dependency(threads_factory(environment, self.for_machine, {})):
@@ -174,7 +179,7 @@ class GMockDependencySystem(SystemDependency):
 
 class GMockDependencyPC(PkgConfigDependency):
 
-    def __init__(self, name: str, environment: 'Environment', kwargs: T.Dict[str, T.Any]):
+    def __init__(self, name: str, environment: 'Environment', kwargs: DependencyKw):
         assert name == 'gmock'
         if kwargs.get('main'):
             name = 'gmock_main'
@@ -189,7 +194,7 @@ class LLVMDependencyConfigTool(ConfigToolDependency):
     tool_name = 'llvm-config'
     __cpp_blacklist = {'-DNDEBUG'}
 
-    def __init__(self, name: str, environment: 'Environment', kwargs: T.Dict[str, T.Any]):
+    def __init__(self, name: str, environment: 'Environment', kwargs: DependencyKw):
         self.tools = get_llvm_tool_names('llvm-config')
 
         # Fedora starting with Fedora 30 adds a suffix of the number
@@ -211,9 +216,9 @@ class LLVMDependencyConfigTool(ConfigToolDependency):
             return
 
         self.provided_modules = self.get_config_value(['--components'], 'modules')
-        modules = stringlistify(extract_as_list(kwargs, 'modules'))
+        modules = stringlistify(extract_as_list(kwargs, 'modules'))  # type: ignore
         self.check_components(modules)
-        opt_modules = stringlistify(extract_as_list(kwargs, 'optional_modules'))
+        opt_modules = stringlistify(extract_as_list(kwargs, 'optional_modules'))  # type: ignore
         self.check_components(opt_modules, required=False)
 
         cargs = mesonlib.OrderedSet(self.get_config_value(['--cppflags'], 'compile_args'))
@@ -384,9 +389,9 @@ class LLVMDependencyConfigTool(ConfigToolDependency):
         return ''
 
 class LLVMDependencyCMake(CMakeDependency):
-    def __init__(self, name: str, env: 'Environment', kwargs: T.Dict[str, T.Any]) -> None:
-        self.llvm_modules = stringlistify(extract_as_list(kwargs, 'modules'))
-        self.llvm_opt_modules = stringlistify(extract_as_list(kwargs, 'optional_modules'))
+    def __init__(self, name: str, env: 'Environment', kwargs: DependencyKw) -> None:
+        self.llvm_modules = stringlistify(extract_as_list(kwargs, 'modules'))  # type: ignore
+        self.llvm_opt_modules = stringlistify(extract_as_list(kwargs, 'optional_modules'))  # type: ignore
 
         compilers = None
         if kwargs.get('native', False):
@@ -489,7 +494,7 @@ class ValgrindDependency(PkgConfigDependency):
     Consumers of Valgrind usually only need the compile args and do not want to
     link to its (static) libraries.
     '''
-    def __init__(self, env: 'Environment', kwargs: T.Dict[str, T.Any]):
+    def __init__(self, env: 'Environment', kwargs: DependencyKw):
         super().__init__('valgrind', env, kwargs)
 
     def get_link_args(self, language: T.Optional[str] = None, raw: bool = False) -> T.List[str]:
@@ -500,7 +505,7 @@ packages['valgrind'] = ValgrindDependency
 
 class ZlibSystemDependency(SystemDependency):
 
-    def __init__(self, name: str, environment: 'Environment', kwargs: T.Dict[str, T.Any]):
+    def __init__(self, name: str, environment: 'Environment', kwargs: DependencyKw):
         super().__init__(name, environment, kwargs)
         from ..compilers.c import AppleClangCCompiler
         from ..compilers.cpp import AppleClangCPPCompiler
@@ -538,7 +543,7 @@ class ZlibSystemDependency(SystemDependency):
 
 class JNISystemDependency(SystemDependency):
     def __init__(self, environment: 'Environment', kwargs: JNISystemDependencyKW):
-        super().__init__('jni', environment, T.cast('T.Dict[str, T.Any]', kwargs))
+        super().__init__('jni', environment, T.cast('DependencyKw', kwargs))
 
         self.feature_since = ('0.62.0', '')
 

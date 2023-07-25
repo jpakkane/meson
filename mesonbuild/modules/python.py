@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2018 The Meson development team
+# Copyright © 2023 Intel Corporation
 
 from __future__ import annotations
 
@@ -33,7 +34,7 @@ if T.TYPE_CHECKING:
     from ..dependencies import Dependency
     from ..interpreter import Interpreter
     from ..interpreter.interpreter import BuildTargetSource
-    from ..interpreter.kwargs import ExtractRequired, SharedModule as SharedModuleKw
+    from ..interpreter.kwargs import ExtractRequired, Dependency as DependencyKw, SharedModule as SharedModuleKw
     from ..interpreterbase.baseobjects import TYPE_var, TYPE_kwargs
 
     class PyInstallKw(TypedDict):
@@ -244,7 +245,7 @@ class PythonInstallation(_ExternalProgramHolder['PythonExternalProgram']):
 
         return '0x{:02x}{:02x}0000'.format(major, minor)
 
-    def _dependency_method_impl(self, kwargs: TYPE_kwargs) -> Dependency:
+    def _dependency_method_impl(self, kwargs: DependencyKw) -> Dependency:
         for_machine = self.interpreter.machine_from_native_kwarg(kwargs)
         identifier = get_dep_identifier(self._full_path(), kwargs)
 
@@ -252,7 +253,7 @@ class PythonInstallation(_ExternalProgramHolder['PythonExternalProgram']):
         if dep is not None:
             return dep
 
-        new_kwargs = kwargs.copy()
+        new_kwargs = copy.copy(kwargs)
         new_kwargs['required'] = False
         candidates = python_factory(self.interpreter.environment, for_machine, new_kwargs, self.held_object)
         dep = find_external_dependency('python', self.interpreter.environment, new_kwargs, candidates)
@@ -264,7 +265,7 @@ class PythonInstallation(_ExternalProgramHolder['PythonExternalProgram']):
     @permittedKwargs(permitted_dependency_kwargs | {'embed'})
     @FeatureNewKwargs('python_installation.dependency', '0.53.0', ['embed'])
     @noPosargs
-    def dependency_method(self, args: T.List['TYPE_var'], kwargs: 'TYPE_kwargs') -> 'Dependency':
+    def dependency_method(self, args: T.List['TYPE_var'], kwargs: DependencyKw) -> 'Dependency':
         disabled, required, feature = extract_required_kwarg(kwargs, self.subproject)
         if disabled:
             mlog.log('Dependency', mlog.bold('python'), 'skipped: feature', mlog.bold(feature), 'disabled')

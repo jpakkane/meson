@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2022 The Meson development team
+# Copyright © 2023 Intel Corporation
+
+# mypy: disable-error-code="typeddict-item, typeddict-unknown-key"
 
 from __future__ import annotations
 
@@ -23,6 +26,7 @@ if T.TYPE_CHECKING:
     from .factory import DependencyGenerator
     from ..environment import Environment
     from ..mesonlib import MachineChoice
+    from ..interpreter.kwargs import Dependency as DependencyKw
 
     class PythonIntrospectionDict(TypedDict):
 
@@ -54,7 +58,7 @@ class Pybind11ConfigToolDependency(ConfigToolDependency):
     # in the meantime
     skip_version = '--pkgconfigdir'
 
-    def __init__(self, name: str, environment: Environment, kwargs: T.Dict[str, T.Any]):
+    def __init__(self, name: str, environment: Environment, kwargs: DependencyKw):
         super().__init__(name, environment, kwargs)
         if not self.is_found:
             return
@@ -154,7 +158,7 @@ class _PythonDependencyBase(_Base):
 class PythonPkgConfigDependency(PkgConfigDependency, _PythonDependencyBase):
 
     def __init__(self, name: str, environment: 'Environment',
-                 kwargs: T.Dict[str, T.Any], installation: 'BasicPythonExternalProgram',
+                 kwargs: DependencyKw, installation: 'BasicPythonExternalProgram',
                  libpc: bool = False):
         if libpc:
             mlog.debug(f'Searching for {name!r} via pkgconfig lookup in LIBPC')
@@ -162,7 +166,7 @@ class PythonPkgConfigDependency(PkgConfigDependency, _PythonDependencyBase):
             mlog.debug(f'Searching for {name!r} via fallback pkgconfig lookup in default paths')
 
         PkgConfigDependency.__init__(self, name, environment, kwargs)
-        _PythonDependencyBase.__init__(self, installation, kwargs.get('embed', False))
+        _PythonDependencyBase.__init__(self, installation, kwargs.get('embed', False))  # type: ignore
 
         if libpc and not self.is_found:
             mlog.debug(f'"python-{self.version}" could not be found in LIBPC, this is likely due to a relocated python installation')
@@ -175,17 +179,17 @@ class PythonPkgConfigDependency(PkgConfigDependency, _PythonDependencyBase):
 class PythonFrameworkDependency(ExtraFrameworkDependency, _PythonDependencyBase):
 
     def __init__(self, name: str, environment: 'Environment',
-                 kwargs: T.Dict[str, T.Any], installation: 'BasicPythonExternalProgram'):
+                 kwargs: DependencyKw, installation: 'BasicPythonExternalProgram'):
         ExtraFrameworkDependency.__init__(self, name, environment, kwargs)
-        _PythonDependencyBase.__init__(self, installation, kwargs.get('embed', False))
+        _PythonDependencyBase.__init__(self, installation, kwargs.get('embed', False))  # type: ignore
 
 
 class PythonSystemDependency(SystemDependency, _PythonDependencyBase):
 
     def __init__(self, name: str, environment: 'Environment',
-                 kwargs: T.Dict[str, T.Any], installation: 'BasicPythonExternalProgram'):
+                 kwargs: DependencyKw, installation: 'BasicPythonExternalProgram'):
         SystemDependency.__init__(self, name, environment, kwargs)
-        _PythonDependencyBase.__init__(self, installation, kwargs.get('embed', False))
+        _PythonDependencyBase.__init__(self, installation, kwargs.get('embed', False))  # type: ignore
 
         # match pkg-config behavior
         if self.link_libpython:
@@ -341,7 +345,7 @@ class PythonSystemDependency(SystemDependency, _PythonDependencyBase):
         return 'sysconfig'
 
 def python_factory(env: 'Environment', for_machine: 'MachineChoice',
-                   kwargs: T.Dict[str, T.Any],
+                   kwargs: DependencyKw,
                    installation: T.Optional['BasicPythonExternalProgram'] = None) -> T.List['DependencyGenerator']:
     # We can't use the factory_methods decorator here, as we need to pass the
     # extra installation argument
@@ -362,7 +366,7 @@ def python_factory(env: 'Environment', for_machine: 'MachineChoice',
             pkg_name = f'python-{pkg_version}{pkg_embed}'
 
             # If python-X.Y.pc exists in LIBPC, we will try to use it
-            def wrap_in_pythons_pc_dir(name: str, env: 'Environment', kwargs: T.Dict[str, T.Any],
+            def wrap_in_pythons_pc_dir(name: str, env: 'Environment', kwargs: DependencyKw,
                                        installation: 'BasicPythonExternalProgram') -> 'ExternalDependency':
                 if not pkg_libdir:
                     # there is no LIBPC, so we can't search in it

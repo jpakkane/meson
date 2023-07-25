@@ -23,6 +23,7 @@ if T.TYPE_CHECKING:
     from ..compilers.compilers import Compiler
     from ..environment import Environment
     from ..interpreterbase import FeatureCheckBase
+    from ..interpreter.kwargs import Dependency as DependencyKw
     from ..build import (
         CustomTarget, IncludeDirs, CustomTargetIndex, LibTypes,
         StaticLibrary, StructuredSources, ExtractedObjects, GeneratedTypes
@@ -349,15 +350,15 @@ class InternalDependency(Dependency):
         return new_dep
 
 class HasNativeKwarg:
-    def __init__(self, kwargs: T.Dict[str, T.Any]):
+    def __init__(self, kwargs: DependencyKw):
         self.for_machine = self.get_for_machine_from_kwargs(kwargs)
 
-    def get_for_machine_from_kwargs(self, kwargs: T.Dict[str, T.Any]) -> MachineChoice:
+    def get_for_machine_from_kwargs(self, kwargs: DependencyKw) -> MachineChoice:
         return MachineChoice.BUILD if kwargs.get('native', False) else MachineChoice.HOST
 
 class ExternalDependency(Dependency, HasNativeKwarg):
-    def __init__(self, type_name: DependencyTypeName, environment: 'Environment', kwargs: T.Dict[str, T.Any], language: T.Optional[str] = None):
-        Dependency.__init__(self, type_name, kwargs.get('include_type'))
+    def __init__(self, type_name: DependencyTypeName, environment: 'Environment', kwargs: DependencyKw, language: T.Optional[str] = None):
+        Dependency.__init__(self, type_name, T.cast('T.Optional[str]', kwargs.get('include_type')))
         self.env = environment
         self.name = type_name # default
         self.is_found = False
@@ -365,10 +366,12 @@ class ExternalDependency(Dependency, HasNativeKwarg):
         version_reqs = kwargs.get('version', None)
         if isinstance(version_reqs, str):
             version_reqs = [version_reqs]
-        self.version_reqs: T.Optional[T.List[str]] = version_reqs
-        self.required = kwargs.get('required', True)
-        self.silent = kwargs.get('silent', False)
-        self.static = kwargs.get('static', self.env.coredata.get_option(OptionKey('prefer_static')))
+        self.version_reqs: T.Optional[T.List[str]] = version_reqs  # type: ignore
+        self.required = T.cast('bool', kwargs.get('required', True))
+        self.silent = T.cast('bool', kwargs.get('silent', False))
+        static = kwargs.get('static', self.env.coredata.get_option(OptionKey('prefer_static')))
+        assert isinstance(static, bool), 'for mypy'
+        self.static = static
         self.libtype = LibType.STATIC if self.static else LibType.PREFER_SHARED
         if not isinstance(self.static, bool):
             raise DependencyException('Static keyword must be boolean')
@@ -558,8 +561,8 @@ def strip_system_includedirs(environment: 'Environment', for_machine: MachineCho
     exclude = {f'-I{p}' for p in environment.get_compiler_system_include_dirs(for_machine)}
     return [i for i in include_args if i not in exclude]
 
-def process_method_kw(possible: T.Iterable[DependencyMethods], kwargs: T.Dict[str, T.Any]) -> T.List[DependencyMethods]:
-    method: T.Union[DependencyMethods, str] = kwargs.get('method', 'auto')
+def process_method_kw(possible: T.Iterable[DependencyMethods], kwargs: DependencyKw) -> T.List[DependencyMethods]:
+    method: T.Union[DependencyMethods, str] = kwargs.get('method', 'auto')  # type: ignore
     if isinstance(method, DependencyMethods):
         return [method]
     # TODO: try/except?
@@ -624,7 +627,7 @@ class SystemDependency(ExternalDependency):
 
     """Dependency base for System type dependencies."""
 
-    def __init__(self, name: str, env: 'Environment', kwargs: T.Dict[str, T.Any],
+    def __init__(self, name: str, env: 'Environment', kwargs: DependencyKw,
                  language: T.Optional[str] = None) -> None:
         super().__init__(DependencyTypeName('system'), env, kwargs, language=language)
         self.name = name
@@ -638,7 +641,7 @@ class BuiltinDependency(ExternalDependency):
 
     """Dependency base for Builtin type dependencies."""
 
-    def __init__(self, name: str, env: 'Environment', kwargs: T.Dict[str, T.Any],
+    def __init__(self, name: str, env: 'Environment', kwargs: DependencyKw,
                  language: T.Optional[str] = None) -> None:
         super().__init__(DependencyTypeName('builtin'), env, kwargs, language=language)
         self.name = name
