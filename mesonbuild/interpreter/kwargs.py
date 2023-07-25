@@ -479,4 +479,5 @@ class FuncDeclareDependency(TypedDict):
 
 class Dependency(TypedDict, total=False):
 
+    allow_fallback: T.Optional[bool]
     default_options: T.Dict[OptionKey, T.Union[str, int, bool, T.List[str]]]

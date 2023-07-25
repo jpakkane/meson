@@ -51,6 +51,7 @@ from .type_checking import (
     CT_BUILD_BY_DEFAULT,
     CT_INPUT_KW,
     CT_INSTALL_DIR_KW,
+    DEPENDENCY_KWS,
     EXECUTABLE_KWS,
     JAR_KWS,
     LIBRARY_KWS,
@@ -1757,7 +1758,6 @@ class Interpreter(InterpreterBase, HoldableObject):
 
     # When adding kwargs, please check if they make sense in dependencies.get_dep_identifier()
     @FeatureNewKwargs('dependency', '0.57.0', ['cmake_package_version'])
-    @FeatureNewKwargs('dependency', '0.56.0', ['allow_fallback'])
     @FeatureNewKwargs('dependency', '0.54.0', ['components'])
     @FeatureNewKwargs('dependency', '0.52.0', ['include_type'])
     @FeatureNewKwargs('dependency', '0.50.0', ['not_found_message', 'cmake_module_path', 'cmake_args'])
@@ -1766,15 +1766,13 @@ class Interpreter(InterpreterBase, HoldableObject):
     @disablerIfNotFound
     @permittedKwargs(permitted_dependency_kwargs)
     @typed_pos_args('dependency', varargs=str, min_varargs=1)
-    @typed_kwargs('dependency', DEFAULT_OPTIONS.evolve(since='0.38.0'), allow_unknown=True)
+    @typed_kwargs('dependency', *DEPENDENCY_KWS, allow_unknown=True)
     def func_dependency(self, node: mparser.BaseNode, args: T.Tuple[T.List[str]], kwargs: kwtypes.Dependency) -> Dependency:
         # Replace '' by empty list of names
         names = [n for n in args[0] if n]
         if len(names) > 1:
             FeatureNew('dependency with more than one name', '0.60.0').use(self.subproject)
-        allow_fallback = kwargs.get('allow_fallback')
-        if allow_fallback is not None and not isinstance(allow_fallback, bool):
-            raise InvalidArguments('"allow_fallback" argument must be boolean')
+        allow_fallback = kwargs['allow_fallback']
         fallback = kwargs.get('fallback')
         default_options = kwargs.get('default_options')
         df = DependencyFallbacksHolder(self, names, allow_fallback, default_options)

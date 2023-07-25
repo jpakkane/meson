@@ -853,3 +853,8 @@ PKGCONFIG_DEFINE_KW: KwargInfo = KwargInfo(
     default=[],
     convertor=_pkgconfig_define_convertor,
 )
+
+DEPENDENCY_KWS: T.List[KwargInfo] = [
+    DEFAULT_OPTIONS.evolve(since='0.38.0'),
+    KwargInfo('allow_fallback', (bool, NoneType), since='0.56.0'),
+]
