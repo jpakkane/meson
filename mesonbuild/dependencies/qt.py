@@ -139,9 +139,7 @@ class _QtBase:
         if not self.requested_modules:
             raise DependencyException('No ' + self.qtname + '  modules specified.')
 
-        self.qtmain = T.cast('bool', kwargs.get('main', False))
-        if not isinstance(self.qtmain, bool):
-            raise DependencyException('"main" argument must be a boolean')
+        self.qtmain = kwargs.get('main', False)
 
     def _link_with_qt_winmain(self, is_debug: bool, libdir: T.Union[str, T.List[str]]) -> bool:
         libdir = mesonlib.listify(libdir)  # TODO: shouldn't be necessary

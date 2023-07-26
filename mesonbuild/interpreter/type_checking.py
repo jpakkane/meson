@@ -884,4 +884,5 @@ DEPENDENCY_KWS: T.List[KwargInfo] = [
         since='0.52.0',
     ),
     KwargInfo('language', (str, NoneType), validator=_language_validator),
+    KwargInfo('main', bool, default=False),
 ]

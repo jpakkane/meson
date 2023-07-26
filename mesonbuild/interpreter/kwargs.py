@@ -488,3 +488,4 @@ class Dependency(TypedDict, total=False):
     fallback: T.Optional[T.List[str]]
     include_type: IncludeTypes
     language: T.Optional[str]
+    main: bool
