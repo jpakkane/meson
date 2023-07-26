@@ -1759,7 +1759,6 @@ class Interpreter(InterpreterBase, HoldableObject):
     # When adding kwargs, please check if they make sense in dependencies.get_dep_identifier()
     @FeatureNewKwargs('dependency', '0.50.0', ['not_found_message'])
     @FeatureNewKwargs('dependency', '0.49.0', ['disabler'])
-    @FeatureNewKwargs('dependency', '0.40.0', ['method'])
     @disablerIfNotFound
     @permittedKwargs(permitted_dependency_kwargs)
     @typed_pos_args('dependency', varargs=str, min_varargs=1)

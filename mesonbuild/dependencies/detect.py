@@ -206,10 +206,6 @@ def find_external_dependency(name: str, env: 'Environment', kwargs: DependencyKw
 
 def _build_external_dependency_list(name: str, env: 'Environment', for_machine: MachineChoice,
                                     kwargs: DependencyKw) -> T.List['DependencyGenerator']:
-    # First check if the method is valid
-    if 'method' in kwargs and kwargs['method'] not in [e.value for e in DependencyMethods]:
-        raise DependencyException('method {!r} is invalid'.format(kwargs['method']))
-
     # Is there a specific dependency detector for this dependency?
     lname = name.lower()
     if lname in packages:

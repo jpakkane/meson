@@ -489,3 +489,4 @@ class Dependency(TypedDict, total=False):
     include_type: IncludeTypes
     language: T.Optional[str]
     main: bool
+    method: str

@@ -144,11 +144,11 @@ class FailureTests(BasePlatformTests):
     def test_dependency(self):
         if subprocess.call(['pkg-config', '--exists', 'zlib']) != 0:
             raise unittest.SkipTest('zlib not found with pkg-config')
-        a = (("dependency('zlib', method : 'fail')", "'fail' is invalid"),
+        a = (("dependency('zlib', method : 'fail')", 'dependency keyword argument "method" must be one of .* not fail'),
              ("dependency('zlib', static : '1')", "[Ss]tatic.*boolean"),
              ("dependency('zlib', version : 1)", "Item must be a list or one of <class 'str'>"),
              ("dependency('zlib', required : 1)", "[Rr]equired.*boolean"),
-             ("dependency('zlib', method : 1)", "[Mm]ethod.*string"),
+             ("dependency('zlib', method : 1)", "dependency keyword argument 'method' was of type int but should have been str"),
              ("dependency('zlibfail')", self.dnf),)
         for contents, match in a:
             self.assertMesonRaises(contents, match)

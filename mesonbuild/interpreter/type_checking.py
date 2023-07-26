@@ -12,7 +12,7 @@ from ..build import (CustomTarget, BuildTarget,
                      CustomTargetIndex, ExtractedObjects, GeneratedList, IncludeDirs,
                      BothLibraries, SharedLibrary, StaticLibrary, Jar, Executable, StructuredSources)
 from ..coredata import UserFeatureOption
-from ..dependencies import Dependency, InternalDependency
+from ..dependencies import Dependency, InternalDependency, DependencyMethods
 from ..interpreterbase.decorators import KwargInfo, ContainerTypeInfo, FeatureNew
 from ..mesonlib import (File, FileMode, MachineChoice, listify, has_path_sep,
                         OptionKey, EnvironmentVariables)
@@ -885,4 +885,11 @@ DEPENDENCY_KWS: T.List[KwargInfo] = [
     ),
     KwargInfo('language', (str, NoneType), validator=_language_validator),
     KwargInfo('main', bool, default=False),
+    KwargInfo(
+        'method',
+        str,
+        default='auto',
+        since='0.40.0',
+        validator=in_set_validator({e.value for e in DependencyMethods}),
+    ),
 ]
