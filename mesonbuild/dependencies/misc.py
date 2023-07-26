@@ -93,7 +93,7 @@ class OpenMPDependency(SystemDependency):
 
     def __init__(self, environment: 'Environment', kwargs: DependencyKw) -> None:
         language = kwargs.get('language')
-        super().__init__('openmp', environment, kwargs, language=language)  # type: ignore
+        super().__init__('openmp', environment, kwargs, language=language)
         self.is_found = False
         if self.clib_compiler.get_id() == 'nagfor':
             # No macro defined for OpenMP, but OpenMP 3.1 is supported.

@@ -45,11 +45,13 @@ def in_set_validator(choices: T.Set[str]) -> T.Callable[[str], T.Optional[str]]:
     return inner
 
 
-def _language_validator(l: T.List[str]) -> T.Optional[str]:
+def _language_validator(l: T.Sequence[str]) -> T.Optional[str]:
     """Validate language keyword argument.
 
     Particularly for functions like `add_compiler()`, and `add_*_args()`
     """
+    if isinstance(l, str):
+        l = [l]
     diff = {a.lower() for a in l}.difference(compilers.all_languages)
     if diff:
         return f'unknown languages: {", ".join(diff)}'
@@ -881,4 +883,5 @@ DEPENDENCY_KWS: T.List[KwargInfo] = [
         validator=in_set_validator({'preserve', 'system', 'non-system'}),
         since='0.52.0',
     ),
+    KwargInfo('language', (str, NoneType), validator=_language_validator),
 ]

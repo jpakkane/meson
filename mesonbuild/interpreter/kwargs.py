@@ -487,3 +487,4 @@ class Dependency(TypedDict, total=False):
     default_options: T.Dict[OptionKey, T.Union[str, int, bool, T.List[str]]]
     fallback: T.Optional[T.List[str]]
     include_type: IncludeTypes
+    language: T.Optional[str]

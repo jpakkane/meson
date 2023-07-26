@@ -89,7 +89,7 @@ from .type_checking import (
     TEST_KWS,
     NoneType,
     in_set_validator,
-    env_convertor_with_method
+    env_convertor_with_method,
 )
 from . import primitives as P_OBJ
 

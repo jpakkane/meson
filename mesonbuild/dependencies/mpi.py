@@ -36,7 +36,7 @@ def mpi_factory(env: 'Environment',
         return []
 
     candidates: T.List['DependencyGenerator'] = []
-    compiler = detect_compiler('mpi', env, for_machine, language)  # type: ignore
+    compiler = detect_compiler('mpi', env, for_machine, language)
     if not compiler:
         return []
     compiler_is_intel = compiler.get_id() in {'intel', 'intel-cl'}
