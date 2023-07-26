@@ -99,16 +99,16 @@ DependencyTypeName = T.NewType('DependencyTypeName', str)
 class Dependency(HoldableObject):
 
     @classmethod
-    def _process_include_type_kw(cls, kwargs: T.Dict[str, T.Any]) -> str:
-        if 'include_type' not in kwargs:
+    def _process_include_type_kw(cls, include_type: T.Optional[str]) -> str:
+        if include_type is None:
             return 'preserve'
-        if not isinstance(kwargs['include_type'], str):
+        if not isinstance(include_type, str):
             raise DependencyException('The include_type kwarg must be a string type')
-        if kwargs['include_type'] not in ['preserve', 'system', 'non-system']:
+        if include_type not in ['preserve', 'system', 'non-system']:
             raise DependencyException("include_type may only be one of ['preserve', 'system', 'non-system']")
-        return kwargs['include_type']
+        return include_type
 
-    def __init__(self, type_name: DependencyTypeName, kwargs: T.Dict[str, T.Any]) -> None:
+    def __init__(self, type_name: DependencyTypeName, include_type: T.Optional[str] = None) -> None:
         self.name = f'dep{id(self)}'
         self.version:  T.Optional[str] = None
         self.language: T.Optional[str] = None # None means C-like
@@ -121,7 +121,7 @@ class Dependency(HoldableObject):
         self.raw_link_args: T.Optional[T.List[str]] = None
         self.sources: T.List[T.Union[mesonlib.File, GeneratedTypes, 'StructuredSources']] = []
         self.extra_files: T.List[mesonlib.File] = []
-        self.include_type = self._process_include_type_kw(kwargs)
+        self.include_type = self._process_include_type_kw(include_type)
         self.ext_deps: T.List[Dependency] = []
         self.d_features: T.DefaultDict[str, T.List[T.Any]] = collections.defaultdict(list)
         self.featurechecks: T.List['FeatureCheckBase'] = []
@@ -248,7 +248,7 @@ class Dependency(HoldableObject):
 
     def generate_system_dependency(self, include_type: str) -> 'Dependency':
         new_dep = copy.deepcopy(self)
-        new_dep.include_type = self._process_include_type_kw({'include_type': include_type})
+        new_dep.include_type = self._process_include_type_kw(include_type)
         return new_dep
 
 class InternalDependency(Dependency):
@@ -261,7 +261,7 @@ class InternalDependency(Dependency):
                  ext_deps: T.List[Dependency], variables: T.Dict[str, str],
                  d_module_versions: T.List[T.Union[str, int]], d_import_dirs: T.List['IncludeDirs'],
                  objects: T.List['ExtractedObjects']):
-        super().__init__(DependencyTypeName('internal'), {})
+        super().__init__(DependencyTypeName('internal'))
         self.version = version
         self.is_found = True
         self.include_directories = incdirs
@@ -357,7 +357,7 @@ class HasNativeKwarg:
 
 class ExternalDependency(Dependency, HasNativeKwarg):
     def __init__(self, type_name: DependencyTypeName, environment: 'Environment', kwargs: T.Dict[str, T.Any], language: T.Optional[str] = None):
-        Dependency.__init__(self, type_name, kwargs)
+        Dependency.__init__(self, type_name, kwargs.get('include_type'))
         self.env = environment
         self.name = type_name # default
         self.is_found = False
@@ -445,7 +445,7 @@ class ExternalDependency(Dependency, HasNativeKwarg):
 
 class NotFoundDependency(Dependency):
     def __init__(self, name: str, environment: 'Environment') -> None:
-        super().__init__(DependencyTypeName('not-found'), {})
+        super().__init__(DependencyTypeName('not-found'))
         self.env = environment
         self.name = name
         self.is_found = False
