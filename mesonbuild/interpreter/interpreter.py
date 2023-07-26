@@ -590,8 +590,7 @@ class Interpreter(InterpreterBase, HoldableObject):
                     continue
                 if len(di) == 1:
                     FeatureNew.single_use('stdlib without variable name', '0.56.0', self.subproject, location=self.current_node)
-                kwargs = {'native': for_machine is MachineChoice.BUILD,
-                          }
+                kwargs = {'native': for_machine}
                 name = l + '_stdlib'
                 df = DependencyFallbacksHolder(self, [name])
                 df.set_fallback(di)

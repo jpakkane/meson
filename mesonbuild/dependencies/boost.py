@@ -12,6 +12,8 @@ import functools
 import typing as T
 from pathlib import Path
 
+from mesonbuild.utils.universal import MachineChoice
+
 from .. import mlog
 from .. import mesonlib
 
@@ -652,7 +654,7 @@ class BoostDependency(SystemDependency):
         # Try getting the BOOST_ROOT from a boost.pc if it exists. This primarily
         # allows BoostDependency to find boost from Conan. See #5438
         try:
-            boost_pc = PkgConfigDependency('boost', self.env, {'required': False})
+            boost_pc = PkgConfigDependency('boost', self.env, {'required': False, 'native': MachineChoice.BUILD})
             if boost_pc.found():
                 boost_root = boost_pc.get_variable(pkgconfig='prefix')
                 if boost_root:

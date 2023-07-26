@@ -10,7 +10,7 @@ import collections, functools, importlib
 from dataclasses import dataclass, field, fields
 import typing as T
 
-from .base import ExternalDependency, DependencyException, DependencyMethods, NotFoundDependency
+from .base import ExternalDependency, DependencyException, NotFoundDependency
 from ..mesonlib import MachineChoice, PerMachine
 from .. import mlog
 
@@ -132,7 +132,7 @@ def find_external_dependency(name: str, env: 'Environment', kwargs: DependencyKw
     # display the dependency name with correct casing
     display_name = display_name_map.get(lname, lname)
 
-    for_machine = MachineChoice.BUILD if kwargs.get('native', False) else MachineChoice.HOST
+    for_machine = kwargs['native']
 
     type_text = PerMachine('Build-time', 'Run-time')[for_machine] + ' dependency'
 

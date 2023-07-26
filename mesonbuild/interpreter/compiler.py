@@ -637,6 +637,7 @@ class CompilerHolder(ObjectHolder['Compiler']):
         lib = dependencies.ExternalLibrary(libname, None,
                                            self.environment,
                                            self.compiler.language,
+                                           self.compiler.for_machine,
                                            silent=True)
         return lib
 
@@ -695,7 +696,7 @@ class CompilerHolder(ObjectHolder['Compiler']):
                                        .format(self.compiler.get_display_language(),
                                                libtype_s, libname))
         lib = dependencies.ExternalLibrary(libname, linkargs, self.environment,
-                                           self.compiler.language)
+                                           self.compiler.language, self.compiler.for_machine)
         return lib
 
     def _has_argument_impl(self, arguments: T.Union[str, T.List[str]],

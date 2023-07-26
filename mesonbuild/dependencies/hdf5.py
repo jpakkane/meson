@@ -24,8 +24,8 @@ import typing as T
 if T.TYPE_CHECKING:
     from .factory import DependencyGenerator
     from ..environment import Environment
-    from ..mesonlib import MachineChoice
     from ..interpreter.kwargs import Dependency as DependencyKw
+    from ..utils.universal import MachineChoice
 
 
 class HDF5PkgConfigDependency(PkgConfigDependency):
@@ -104,7 +104,7 @@ class HDF5ConfigToolDependency(ConfigToolDependency):
             raise DependencyException('How did you get here?')
 
         # We need this before we call super()
-        for_machine = self.get_for_machine_from_kwargs(kwargs)
+        for_machine = kwargs['native']
 
         nkwargs = kwargs.copy()
         nkwargs['tools'] = tools

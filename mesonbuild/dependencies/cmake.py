@@ -75,12 +75,7 @@ class CMakeDependency(ExternalDependency):
         # Gather a list of all languages to support
         self.language_list: T.List[str] = []
         if kwargs.get('language') is None or force_use_global_compilers:
-            compilers = None
-            if kwargs.get('native', False):
-                compilers = environment.coredata.compilers.build
-            else:
-                compilers = environment.coredata.compilers.host
-
+            compilers = environment.coredata.compilers[kwargs['native']]
             candidates = ['c', 'cpp', 'fortran', 'objc', 'objcxx']
             self.language_list += [x for x in candidates if x in compilers]
         else:

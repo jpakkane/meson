@@ -31,7 +31,7 @@ class CudaDependency(SystemDependency):
     supported_languages = ['cuda', 'cpp', 'c'] # see also _default_language
 
     def __init__(self, environment: 'Environment', kwargs: DependencyKw) -> None:
-        compilers = environment.coredata.compilers[self.get_for_machine_from_kwargs(kwargs)]
+        compilers = environment.coredata.compilers[kwargs['native']]
         language = self._detect_language(compilers)
         if language not in self.supported_languages:
             raise DependencyException(f'Language \'{language}\' is not supported by the CUDA Toolkit. Supported languages are {self.supported_languages}.')

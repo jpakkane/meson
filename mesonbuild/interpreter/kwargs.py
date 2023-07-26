@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import typing as T
 
-from typing_extensions import TypedDict, Literal, Protocol, NotRequired
+from typing_extensions import TypedDict, Literal, Protocol, NotRequired, Required
 
 from .. import build
 from .. import coredata
@@ -491,3 +491,4 @@ class Dependency(TypedDict, total=False):
     main: bool
     method: str
     modules: T.List[str]
+    native: Required[MachineChoice]

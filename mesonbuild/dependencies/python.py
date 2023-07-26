@@ -370,7 +370,7 @@ def python_factory(env: 'Environment', for_machine: 'MachineChoice',
                                        installation: 'BasicPythonExternalProgram') -> 'ExternalDependency':
                 if not pkg_libdir:
                     # there is no LIBPC, so we can't search in it
-                    empty = ExternalDependency(DependencyTypeName('pkgconfig'), env, {})
+                    empty = ExternalDependency(DependencyTypeName('pkgconfig'), env, {'native': kwargs['native']})
                     empty.name = 'python'
                     return empty
 

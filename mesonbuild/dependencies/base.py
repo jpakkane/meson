@@ -343,16 +343,11 @@ class InternalDependency(Dependency):
         new_dep.libraries = []
         return new_dep
 
-class HasNativeKwarg:
-    def __init__(self, kwargs: DependencyKw):
-        self.for_machine = self.get_for_machine_from_kwargs(kwargs)
 
-    def get_for_machine_from_kwargs(self, kwargs: DependencyKw) -> MachineChoice:
-        return MachineChoice.BUILD if kwargs.get('native', False) else MachineChoice.HOST
-
-class ExternalDependency(Dependency, HasNativeKwarg):
+class ExternalDependency(Dependency):
     def __init__(self, type_name: DependencyTypeName, environment: 'Environment', kwargs: DependencyKw):
         Dependency.__init__(self, type_name, kwargs.get('include_type'))
+        self.for_machine = kwargs['native']
         self.env = environment
         self.name = type_name # default
         self.is_found = False
@@ -370,7 +365,6 @@ class ExternalDependency(Dependency, HasNativeKwarg):
         if not isinstance(self.static, bool):
             raise DependencyException('Static keyword must be boolean')
         # Is this dependency to be run on the build platform?
-        HasNativeKwarg.__init__(self, kwargs)
         self.clib_compiler = detect_compiler(self.name, environment, self.for_machine, self.language)
 
     def get_compiler(self) -> T.Union['MissingCompiler', 'Compiler']:
@@ -455,8 +449,8 @@ class NotFoundDependency(Dependency):
 
 class ExternalLibrary(ExternalDependency):
     def __init__(self, name: str, link_args: T.List[str], environment: 'Environment',
-                 language: str, silent: bool = False) -> None:
-        super().__init__(DependencyTypeName('library'), environment, {'language': language})
+                 language: str, for_machine: MachineChoice, silent: bool = False) -> None:
+        super().__init__(DependencyTypeName('library'), environment, {'language': language, 'native': for_machine})
         self.name = name
         self.is_found = False
         if link_args:

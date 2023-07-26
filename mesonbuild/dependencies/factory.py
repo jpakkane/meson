@@ -121,6 +121,7 @@ class DependencyFactory:
         """Return a list of Dependencies with the arguments already attached."""
         methods = process_method_kw(self.methods, kwargs)
         nwargs = self.extra_kwargs.copy()
+        nwargs['native'] = for_machine
         nwargs.update(kwargs)
 
         return [functools.partial(self.classes[m], env, nwargs) for m in methods
