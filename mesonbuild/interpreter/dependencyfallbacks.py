@@ -50,24 +50,18 @@ class DependencyFallbacksHolder(MesonInterpreterObject):
             self.names.append(name)
         self._display_name = self.names[0] if self.names else '(anonymous)'
 
-    def set_fallback(self, fbinfo: T.Optional[T.Union[T.List[str], str]]) -> None:
+    def set_fallback(self, fbinfo: T.List[str]) -> None:
         # Legacy: This converts dependency()'s fallback kwargs.
-        if fbinfo is None:
-            return
         if self.allow_fallback is not None:
             raise InvalidArguments('"fallback" and "allow_fallback" arguments are mutually exclusive')
-        fbinfo = stringlistify(fbinfo)
-        if len(fbinfo) == 0:
+        if not fbinfo:
             # dependency('foo', fallback: []) is the same as dependency('foo', allow_fallback: false)
             self.allow_fallback = False
             return
         if len(fbinfo) == 1:
-            FeatureNew.single_use('Fallback without variable name', '0.53.0', self.subproject)
             subp_name, varname = fbinfo[0], None
-        elif len(fbinfo) == 2:
-            subp_name, varname = fbinfo
         else:
-            raise InterpreterException('Fallback info must have one or two items.')
+            subp_name, varname = fbinfo
         self._subproject_impl(subp_name, varname)
 
     def _subproject_impl(self, subp_name: str, varname: str) -> None:

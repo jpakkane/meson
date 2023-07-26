@@ -485,3 +485,4 @@ class Dependency(TypedDict, total=False):
     cmake_package_version: str
     components: T.List[str]
     default_options: T.Dict[OptionKey, T.Union[str, int, bool, T.List[str]]]
+    fallback: T.Optional[T.List[str]]

@@ -13,7 +13,7 @@ from ..build import (CustomTarget, BuildTarget,
                      BothLibraries, SharedLibrary, StaticLibrary, Jar, Executable, StructuredSources)
 from ..coredata import UserFeatureOption
 from ..dependencies import Dependency, InternalDependency
-from ..interpreterbase.decorators import KwargInfo, ContainerTypeInfo
+from ..interpreterbase.decorators import KwargInfo, ContainerTypeInfo, FeatureNew
 from ..mesonlib import (File, FileMode, MachineChoice, listify, has_path_sep,
                         OptionKey, EnvironmentVariables)
 from ..programs import ExternalProgram
@@ -26,6 +26,7 @@ if T.TYPE_CHECKING:
 
     from ..build import ObjectTypes
     from ..interpreterbase import TYPE_var
+    from ..interpreterbase import FeatureCheckBase
     from ..mesonlib import EnvInitValueType
 
     _FullEnvInitValueType = T.Union[EnvironmentVariables, T.List[str], T.List[T.List[str]], EnvInitValueType, str, None]
@@ -854,6 +855,11 @@ PKGCONFIG_DEFINE_KW: KwargInfo = KwargInfo(
     convertor=_pkgconfig_define_convertor,
 )
 
+def _dep_fallback_feat_validator(val: T.List[str]) -> T.Iterable[FeatureCheckBase]:
+    if len(val) == 1:
+        yield FeatureNew('feature as a string or array of one element', '0.54.0', 'use the two element form')
+
+
 DEPENDENCY_KWS: T.List[KwargInfo] = [
     KwargInfo('allow_fallback', (bool, NoneType), since='0.56.0'),
     KwargInfo('cmake_args', ContainerTypeInfo(list, str), default=[], listify=True, since='0.50.0'),
@@ -861,4 +867,11 @@ DEPENDENCY_KWS: T.List[KwargInfo] = [
     KwargInfo('cmake_package_version', str, default='', since='0.57.0'),
     KwargInfo('components', ContainerTypeInfo(list, str), default=[], listify=True, since='0.54.0'),
     DEFAULT_OPTIONS.evolve(since='0.38.0'),
+    KwargInfo(
+        'fallback',
+        (ContainerTypeInfo(list, str), NoneType),
+        listify=True,
+        validator=lambda x: 'Must be a string, or an array of 0, 1, or 2 elements' if len(x) > 2 else None,
+        feature_validator=_dep_fallback_feat_validator,
+    ),
 ]
