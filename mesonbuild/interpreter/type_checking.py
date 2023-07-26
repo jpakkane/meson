@@ -874,4 +874,11 @@ DEPENDENCY_KWS: T.List[KwargInfo] = [
         validator=lambda x: 'Must be a string, or an array of 0, 1, or 2 elements' if len(x) > 2 else None,
         feature_validator=_dep_fallback_feat_validator,
     ),
+    KwargInfo(
+        'include_type',
+        str,
+        default='preserve',
+        validator=in_set_validator({'preserve', 'system', 'non-system'}),
+        since='0.52.0',
+    ),
 ]

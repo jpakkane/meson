@@ -103,17 +103,7 @@ DependencyTypeName = T.NewType('DependencyTypeName', str)
 
 class Dependency(HoldableObject):
 
-    @classmethod
-    def _process_include_type_kw(cls, include_type: T.Optional[str]) -> IncludeTypes:
-        if include_type is None:
-            return 'preserve'
-        if not isinstance(include_type, str):
-            raise DependencyException('The include_type kwarg must be a string type')
-        if include_type not in ['preserve', 'system', 'non-system']:
-            raise DependencyException("include_type may only be one of ['preserve', 'system', 'non-system']")
-        return T.cast('IncludeTypes', include_type)
-
-    def __init__(self, type_name: DependencyTypeName, include_type: T.Optional[str] = None) -> None:
+    def __init__(self, type_name: DependencyTypeName, include_type: T.Optional[IncludeTypes] = None) -> None:
         self.name = f'dep{id(self)}'
         self.version:  T.Optional[str] = None
         self.language: T.Optional[str] = None # None means C-like
@@ -126,7 +116,7 @@ class Dependency(HoldableObject):
         self.raw_link_args: T.Optional[T.List[str]] = None
         self.sources: T.List[T.Union[mesonlib.File, GeneratedTypes, 'StructuredSources']] = []
         self.extra_files: T.List[mesonlib.File] = []
-        self.include_type = self._process_include_type_kw(include_type)
+        self.include_type = include_type or 'preserve'
         self.ext_deps: T.List[Dependency] = []
         self.d_features: T.DefaultDict[str, T.List[T.Any]] = collections.defaultdict(list)
         self.featurechecks: T.List['FeatureCheckBase'] = []
@@ -253,7 +243,7 @@ class Dependency(HoldableObject):
 
     def generate_system_dependency(self, include_type: IncludeTypes) -> 'Dependency':
         new_dep = copy.deepcopy(self)
-        new_dep.include_type = self._process_include_type_kw(include_type)
+        new_dep.include_type = include_type
         return new_dep
 
 class InternalDependency(Dependency):
@@ -362,7 +352,7 @@ class HasNativeKwarg:
 
 class ExternalDependency(Dependency, HasNativeKwarg):
     def __init__(self, type_name: DependencyTypeName, environment: 'Environment', kwargs: DependencyKw, language: T.Optional[str] = None):
-        Dependency.__init__(self, type_name, T.cast('T.Optional[str]', kwargs.get('include_type')))
+        Dependency.__init__(self, type_name, kwargs.get('include_type'))
         self.env = environment
         self.name = type_name # default
         self.is_found = False

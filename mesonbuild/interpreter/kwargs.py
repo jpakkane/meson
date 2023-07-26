@@ -12,7 +12,7 @@ from typing_extensions import TypedDict, Literal, Protocol, NotRequired
 from .. import build
 from .. import coredata
 from ..compilers import Compiler
-from ..dependencies.base import Dependency as DependencyType
+from ..dependencies.base import Dependency as DependencyType, IncludeTypes
 from ..mesonlib import EnvironmentVariables, MachineChoice, File, FileMode, FileOrString, OptionKey
 from ..modules.cmake import CMakeSubprojectOptions
 from ..programs import ExternalProgram
@@ -486,3 +486,4 @@ class Dependency(TypedDict, total=False):
     components: T.List[str]
     default_options: T.Dict[OptionKey, T.Union[str, int, bool, T.List[str]]]
     fallback: T.Optional[T.List[str]]
+    include_type: IncludeTypes
