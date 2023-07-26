@@ -132,8 +132,6 @@ class CMakeDependency(ExternalDependency):
             raise self._gen_exception('Unable to obtain CMake system information')
 
         package_version = kwargs.get('cmake_package_version', '')
-        if not isinstance(package_version, str):
-            raise DependencyException('Keyword "cmake_package_version" must be a string.')
         components = [(x, True) for x in stringlistify(extract_as_list(kwargs, 'components'))]  # type: ignore
         modules = [(x, True) for x in stringlistify(extract_as_list(kwargs, 'modules'))]  # type: ignore
         modules += [(x, False) for x in stringlistify(extract_as_list(kwargs, 'optional_modules'))]  # type: ignore
