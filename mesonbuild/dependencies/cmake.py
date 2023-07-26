@@ -132,7 +132,7 @@ class CMakeDependency(ExternalDependency):
             raise self._gen_exception('Unable to obtain CMake system information')
 
         package_version = kwargs.get('cmake_package_version', '')
-        components = [(x, True) for x in stringlistify(extract_as_list(kwargs, 'components'))]  # type: ignore
+        components: T.List[T.Tuple[str, bool]] = [(x, True) for x in kwargs.get('components', [])]
         modules = [(x, True) for x in stringlistify(extract_as_list(kwargs, 'modules'))]  # type: ignore
         modules += [(x, False) for x in stringlistify(extract_as_list(kwargs, 'optional_modules'))]  # type: ignore
         cm_path = kwargs.get('cmake_module_path', [])

@@ -483,4 +483,5 @@ class Dependency(TypedDict, total=False):
     cmake_args: T.List[str]
     cmake_module_path: T.List[str]
     cmake_package_version: str
+    components: T.List[str]
     default_options: T.Dict[OptionKey, T.Union[str, int, bool, T.List[str]]]
