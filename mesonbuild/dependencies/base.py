@@ -20,6 +20,8 @@ from ..mesonlib import version_compare_many
 #from ..interpreterbase import FeatureDeprecated, FeatureNew
 
 if T.TYPE_CHECKING:
+    from typing_extensions import Literal
+
     from ..compilers.compilers import Compiler
     from ..environment import Environment
     from ..interpreterbase import FeatureCheckBase
@@ -29,6 +31,8 @@ if T.TYPE_CHECKING:
         StaticLibrary, StructuredSources, ExtractedObjects, GeneratedTypes
     )
     from ..interpreter.type_checking import PkgConfigDefineType
+
+    IncludeTypes = Literal['system', 'non-system', 'preserve']
 
     _MissingCompilerBase = Compiler
 else:
@@ -100,14 +104,14 @@ DependencyTypeName = T.NewType('DependencyTypeName', str)
 class Dependency(HoldableObject):
 
     @classmethod
-    def _process_include_type_kw(cls, include_type: T.Optional[str]) -> str:
+    def _process_include_type_kw(cls, include_type: T.Optional[str]) -> IncludeTypes:
         if include_type is None:
             return 'preserve'
         if not isinstance(include_type, str):
             raise DependencyException('The include_type kwarg must be a string type')
         if include_type not in ['preserve', 'system', 'non-system']:
             raise DependencyException("include_type may only be one of ['preserve', 'system', 'non-system']")
-        return include_type
+        return T.cast('IncludeTypes', include_type)
 
     def __init__(self, type_name: DependencyTypeName, include_type: T.Optional[str] = None) -> None:
         self.name = f'dep{id(self)}'
@@ -199,7 +203,7 @@ class Dependency(HoldableObject):
     def get_include_dirs(self) -> T.List['IncludeDirs']:
         return []
 
-    def get_include_type(self) -> str:
+    def get_include_type(self) -> IncludeTypes:
         return self.include_type
 
     def get_exe_args(self, compiler: 'Compiler') -> T.List[str]:
@@ -247,7 +251,7 @@ class Dependency(HoldableObject):
             return default_value
         raise DependencyException(f'No default provided for dependency {self!r}, which is not pkg-config, cmake, or config-tool based.')
 
-    def generate_system_dependency(self, include_type: str) -> 'Dependency':
+    def generate_system_dependency(self, include_type: IncludeTypes) -> 'Dependency':
         new_dep = copy.deepcopy(self)
         new_dep.include_type = self._process_include_type_kw(include_type)
         return new_dep
