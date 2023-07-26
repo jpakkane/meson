@@ -137,7 +137,7 @@ class CMakeDependency(ExternalDependency):
         components = [(x, True) for x in stringlistify(extract_as_list(kwargs, 'components'))]  # type: ignore
         modules = [(x, True) for x in stringlistify(extract_as_list(kwargs, 'modules'))]  # type: ignore
         modules += [(x, False) for x in stringlistify(extract_as_list(kwargs, 'optional_modules'))]  # type: ignore
-        cm_path = stringlistify(extract_as_list(kwargs, 'cmake_module_path'))  # type: ignore
+        cm_path = kwargs.get('cmake_module_path', [])
         cm_path = [x if os.path.isabs(x) else os.path.join(environment.get_source_dir(), x) for x in cm_path]
         if cm_path:
             cm_args.append('-DCMAKE_MODULE_PATH=' + ';'.join(cm_path))

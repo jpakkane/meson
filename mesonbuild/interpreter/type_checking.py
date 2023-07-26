@@ -857,5 +857,6 @@ PKGCONFIG_DEFINE_KW: KwargInfo = KwargInfo(
 DEPENDENCY_KWS: T.List[KwargInfo] = [
     KwargInfo('allow_fallback', (bool, NoneType), since='0.56.0'),
     KwargInfo('cmake_args', ContainerTypeInfo(list, str), default=[], listify=True, since='0.50.0'),
+    KwargInfo('cmake_module_path', ContainerTypeInfo(list, str), default=[], listify=True, since='0.50.0'),
     DEFAULT_OPTIONS.evolve(since='0.38.0'),
 ]

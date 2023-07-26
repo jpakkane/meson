@@ -1760,7 +1760,7 @@ class Interpreter(InterpreterBase, HoldableObject):
     @FeatureNewKwargs('dependency', '0.57.0', ['cmake_package_version'])
     @FeatureNewKwargs('dependency', '0.54.0', ['components'])
     @FeatureNewKwargs('dependency', '0.52.0', ['include_type'])
-    @FeatureNewKwargs('dependency', '0.50.0', ['not_found_message', 'cmake_module_path'])
+    @FeatureNewKwargs('dependency', '0.50.0', ['not_found_message'])
     @FeatureNewKwargs('dependency', '0.49.0', ['disabler'])
     @FeatureNewKwargs('dependency', '0.40.0', ['method'])
     @disablerIfNotFound
