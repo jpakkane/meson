@@ -65,10 +65,8 @@ class DubDependency(ExternalDependency):
 
         # if an explicit version spec was stated, use this when querying Dub
         main_pack_spec = name
-        if 'version' in kwargs:
-            version_spec = kwargs['version']
-            if isinstance(version_spec, list):
-                version_spec = " ".join(version_spec)
+        if kwargs.get('version'):
+            version_spec = " ".join(kwargs['version'])
             main_pack_spec = f'{name}@{version_spec}'
 
         # we need to know the target architecture

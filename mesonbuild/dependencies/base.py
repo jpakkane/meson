@@ -352,10 +352,7 @@ class ExternalDependency(Dependency):
         self.name = type_name # default
         self.is_found = False
         self.language = kwargs.get('language')
-        version_reqs = kwargs.get('version', None)
-        if isinstance(version_reqs, str):
-            version_reqs = [version_reqs]
-        self.version_reqs: T.Optional[T.List[str]] = version_reqs  # type: ignore
+        self.version_reqs = kwargs.get('version', [])
         self.required = kwargs.get('required', True)
         self.silent = T.cast('bool', kwargs.get('silent', False))
         static: T.Any = kwargs.get('static')

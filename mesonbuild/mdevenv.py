@@ -85,7 +85,7 @@ def bash_completion_files(b: build.Build, install_data: 'InstallData') -> T.List
     from .dependencies.pkgconfig import PkgConfigDependency
     result = []
     dep = PkgConfigDependency('bash-completion', b.environment,
-                              {'required': False, 'silent': True, 'native': MachineChoice.HOST, 'version': '>=2.10'})  # type: ignore
+                              {'required': False, 'silent': True, 'native': MachineChoice.HOST, 'version': ['>=2.10']})  # type: ignore
     if dep.found():
         prefix = b.environment.coredata.get_option(OptionKey('prefix'))
         assert isinstance(prefix, str), 'for mypy'

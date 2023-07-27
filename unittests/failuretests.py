@@ -146,7 +146,7 @@ class FailureTests(BasePlatformTests):
             raise unittest.SkipTest('zlib not found with pkg-config')
         a = (("dependency('zlib', method : 'fail')", 'dependency keyword argument "method" must be one of .* not fail'),
              ("dependency('zlib', static : '1')", "dependency keyword argument 'static' was of type str but should have been one of: .*"),
-             ("dependency('zlib', version : 1)", "Item must be a list or one of <class 'str'>"),
+             ("dependency('zlib', version : 1)", r"dependency keyword argument 'version' was of type array\[int\] but should have been array\[str\]"),
              ("dependency('zlib', required : 1)", "dependency keyword argument 'required' was of type int but should have been one of: bool, UserFeatureOption"),
              ("dependency('zlib', method : 1)", "dependency keyword argument 'method' was of type int but should have been str"),
              ("dependency('zlibfail')", self.dnf),)

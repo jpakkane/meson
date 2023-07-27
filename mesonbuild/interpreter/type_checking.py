@@ -899,4 +899,5 @@ DEPENDENCY_KWS: T.List[KwargInfo] = [
     KwargInfo('private_headers', bool, default=False, since='0.47.0'),
     REQUIRED_KW,
     KwargInfo('static', (bool, NoneType)),
+    KwargInfo('version', ContainerTypeInfo(list, str), listify=True, default=[]),
 ]

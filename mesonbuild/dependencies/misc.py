@@ -357,7 +357,7 @@ class CursesSystemDependency(SystemDependency):
                         req = kwargs.get('version')
                         if req:
                             if self.version:
-                                self.is_found = mesonlib.version_compare(self.version, req)  # type: ignore
+                                self.is_found = mesonlib.version_compare_many(self.version, req)[0]
                             else:
                                 mlog.warning('Cannot determine version of curses to compare against.')
 
