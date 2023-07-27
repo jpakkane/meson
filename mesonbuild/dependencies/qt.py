@@ -133,7 +133,7 @@ class _QtBase:
         else:
             self.qtpkgname = self.qtname
 
-        self.private_headers = T.cast('bool', kwargs.get('private_headers', False))
+        self.private_headers = kwargs.get('private_headers', False)
 
         self.requested_modules = kwargs.get('modules', [])
         if not self.requested_modules:

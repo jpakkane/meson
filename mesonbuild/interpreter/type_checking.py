@@ -896,4 +896,5 @@ DEPENDENCY_KWS: T.List[KwargInfo] = [
     NATIVE_KW,
     KwargInfo('not_found_message', str, default='', since='0.50.0'),
     KwargInfo('optional_modules', ContainerTypeInfo(list, str), default=[], listify=True),
+    KwargInfo('private_headers', bool, default=False, since='0.47.0'),
 ]
