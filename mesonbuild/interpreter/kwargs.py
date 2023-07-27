@@ -497,3 +497,4 @@ class Dependency(ExtractRequired, total=False):
     private_headers: bool
     static: T.Optional[bool]
     version: T.List[str]
+    embed: bool

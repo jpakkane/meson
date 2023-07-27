@@ -166,7 +166,7 @@ class PythonPkgConfigDependency(PkgConfigDependency, _PythonDependencyBase):
             mlog.debug(f'Searching for {name!r} via fallback pkgconfig lookup in default paths')
 
         PkgConfigDependency.__init__(self, name, environment, kwargs)
-        _PythonDependencyBase.__init__(self, installation, kwargs.get('embed', False))  # type: ignore
+        _PythonDependencyBase.__init__(self, installation, kwargs.get('embed', False))
 
         if libpc and not self.is_found:
             mlog.debug(f'"python-{self.version}" could not be found in LIBPC, this is likely due to a relocated python installation')
@@ -181,7 +181,7 @@ class PythonFrameworkDependency(ExtraFrameworkDependency, _PythonDependencyBase)
     def __init__(self, name: str, environment: 'Environment',
                  kwargs: DependencyKw, installation: 'BasicPythonExternalProgram'):
         ExtraFrameworkDependency.__init__(self, name, environment, kwargs)
-        _PythonDependencyBase.__init__(self, installation, kwargs.get('embed', False))  # type: ignore
+        _PythonDependencyBase.__init__(self, installation, kwargs.get('embed', False))
 
 
 class PythonSystemDependency(SystemDependency, _PythonDependencyBase):
@@ -189,7 +189,7 @@ class PythonSystemDependency(SystemDependency, _PythonDependencyBase):
     def __init__(self, name: str, environment: 'Environment',
                  kwargs: DependencyKw, installation: 'BasicPythonExternalProgram'):
         SystemDependency.__init__(self, name, environment, kwargs)
-        _PythonDependencyBase.__init__(self, installation, kwargs.get('embed', False))  # type: ignore
+        _PythonDependencyBase.__init__(self, installation, kwargs.get('embed', False))
 
         # match pkg-config behavior
         if self.link_libpython:

@@ -21,7 +21,7 @@ from ..interpreter.type_checking import NoneType, PRESERVE_PATH_KW, DEPENDENCY_K
 from ..interpreterbase import (
     noPosargs, noKwargs, permittedKwargs, ContainerTypeInfo,
     InvalidArguments, typed_pos_args, typed_kwargs, KwargInfo,
-    FeatureNew, FeatureNewKwargs, disablerIfNotFound
+    FeatureNew, disablerIfNotFound
 )
 from ..mesonlib import MachineChoice, OptionKey
 from ..programs import ExternalProgram, NonExistingExternalProgram
@@ -262,9 +262,13 @@ class PythonInstallation(_ExternalProgramHolder['PythonExternalProgram']):
         return dep
 
     @permittedKwargs(permitted_dependency_kwargs | {'embed'})
-    @FeatureNewKwargs('python_installation.dependency', '0.53.0', ['embed'])
     @noPosargs
-    @typed_kwargs('python_installation.dependency', *DEPENDENCY_KWS, allow_unknown=True)
+    @typed_kwargs(
+        'python_installation.dependency',
+        *DEPENDENCY_KWS,
+        KwargInfo('embed', bool, default=False, since='0.53.0'),
+        allow_unknown=True
+    )
     @disablerIfNotFound
     def dependency_method(self, args: T.List['TYPE_var'], kwargs: DependencyKw) -> 'Dependency':
         disabled, required, feature = extract_required_kwarg(kwargs, self.subproject)
