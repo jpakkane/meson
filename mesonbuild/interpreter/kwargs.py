@@ -492,3 +492,4 @@ class Dependency(TypedDict, total=False):
     method: str
     modules: T.List[str]
     native: Required[MachineChoice]
+    not_found_message: str
