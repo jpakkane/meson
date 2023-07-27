@@ -498,3 +498,5 @@ class Dependency(ExtractRequired, total=False):
     static: T.Optional[bool]
     version: T.List[str]
     embed: bool
+    silent: bool
+    returncode_value: int

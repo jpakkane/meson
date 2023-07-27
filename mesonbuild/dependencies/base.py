@@ -354,7 +354,7 @@ class ExternalDependency(Dependency):
         self.language = kwargs.get('language')
         self.version_reqs = kwargs.get('version', [])
         self.required = kwargs.get('required', True)
-        self.silent = T.cast('bool', kwargs.get('silent', False))
+        self.silent = kwargs.get('silent', False)
         static: T.Any = kwargs.get('static')
         if static is None:
             static = self.env.coredata.get_option(OptionKey('prefer_static'))

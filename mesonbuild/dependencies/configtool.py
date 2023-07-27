@@ -56,7 +56,7 @@ class ConfigToolDependency(ExternalDependency):
             req_version = mesonlib.stringlistify(req_version_raw)
         else:
             req_version = []
-        tool, version = self.find_config(req_version, kwargs.get('returncode_value', 0))  # type: ignore
+        tool, version = self.find_config(req_version, kwargs.get('returncode_value', 0))
         self.config = tool
         self.is_found = self.report_config(version, req_version)
         if not self.is_found:

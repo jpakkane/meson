@@ -93,7 +93,7 @@ def get_dep_identifier(name: str, kwargs: DependencyKw) -> DependencyCacheKey:
         # 'include_type' is handled after the dependency lookup
         if k not in _DEPEDNENCY_CACHE_KEYS:
             continue
-        # Mypy doesn't (yet) understand iterating a TypedDict, and doesn't konw that k is valid
+        # Mypy doesn't (yet) understand iterating a TypedDict, and doesn't know that k is valid
         if isinstance(v, list):
             nkwargs[k] = tuple(v)  # type: ignore[literal-required]
         else:
