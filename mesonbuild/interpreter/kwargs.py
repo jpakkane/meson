@@ -73,7 +73,7 @@ class ExtractRequired(TypedDict):
     a boolean or a feature option should inherit it's arguments from this class.
     """
 
-    required: T.Union[bool, coredata.UserFeatureOption]
+    required: NotRequired[T.Union[bool, coredata.UserFeatureOption]]
 
 
 class ExtractSearchDirs(TypedDict):
@@ -477,7 +477,7 @@ class FuncDeclareDependency(TypedDict):
     version: T.Optional[str]
 
 
-class Dependency(TypedDict, total=False):
+class Dependency(ExtractRequired, total=False):
 
     allow_fallback: T.Optional[bool]
     cmake_args: T.List[str]

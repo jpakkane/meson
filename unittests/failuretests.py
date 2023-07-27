@@ -147,7 +147,7 @@ class FailureTests(BasePlatformTests):
         a = (("dependency('zlib', method : 'fail')", 'dependency keyword argument "method" must be one of .* not fail'),
              ("dependency('zlib', static : '1')", "[Ss]tatic.*boolean"),
              ("dependency('zlib', version : 1)", "Item must be a list or one of <class 'str'>"),
-             ("dependency('zlib', required : 1)", "[Rr]equired.*boolean"),
+             ("dependency('zlib', required : 1)", "dependency keyword argument 'required' was of type int but should have been one of: bool, UserFeatureOption"),
              ("dependency('zlib', method : 1)", "dependency keyword argument 'method' was of type int but should have been str"),
              ("dependency('zlibfail')", self.dnf),)
         for contents, match in a:

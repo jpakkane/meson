@@ -356,7 +356,7 @@ class ExternalDependency(Dependency):
         if isinstance(version_reqs, str):
             version_reqs = [version_reqs]
         self.version_reqs: T.Optional[T.List[str]] = version_reqs  # type: ignore
-        self.required = T.cast('bool', kwargs.get('required', True))
+        self.required = kwargs.get('required', True)
         self.silent = T.cast('bool', kwargs.get('silent', False))
         static = kwargs.get('static', self.env.coredata.get_option(OptionKey('prefer_static')))
         assert isinstance(static, bool), 'for mypy'
