@@ -353,7 +353,7 @@ class BoostDependency(SystemDependency):
         self.multithreading = kwargs.get('threading', 'multi') == 'multi'
 
         self.boost_root: T.Optional[Path] = None
-        self.explicit_static = 'static' in kwargs
+        self.explicit_static = kwargs.get('static') is not None
 
         # Extract and validate modules
         self.modules = kwargs.get('modules', [])

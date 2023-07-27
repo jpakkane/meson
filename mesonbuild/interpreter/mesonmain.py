@@ -380,9 +380,9 @@ class MesonMain(MesonInterpreterObject):
         # which FuncOverrideDependency is, but mypy can't figure that out
         nkwargs = T.cast('DependencyKw', kwargs.copy())
         if static is None:
-            del nkwargs['static']  # type: ignore
+            del nkwargs['static']
         else:
-            nkwargs['static'] = static  # type: ignore
+            nkwargs['static'] = static
         identifier = dependencies.get_dep_identifier(name, nkwargs)
         for_machine = kwargs['native']
         override = self.build.dependency_overrides[for_machine].get(identifier)

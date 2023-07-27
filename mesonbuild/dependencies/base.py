@@ -358,12 +358,12 @@ class ExternalDependency(Dependency):
         self.version_reqs: T.Optional[T.List[str]] = version_reqs  # type: ignore
         self.required = kwargs.get('required', True)
         self.silent = T.cast('bool', kwargs.get('silent', False))
-        static = kwargs.get('static', self.env.coredata.get_option(OptionKey('prefer_static')))
+        static: T.Any = kwargs.get('static')
+        if static is None:
+            static = self.env.coredata.get_option(OptionKey('prefer_static'))
         assert isinstance(static, bool), 'for mypy'
         self.static = static
         self.libtype = LibType.STATIC if self.static else LibType.PREFER_SHARED
-        if not isinstance(self.static, bool):
-            raise DependencyException('Static keyword must be boolean')
         # Is this dependency to be run on the build platform?
         self.clib_compiler = detect_compiler(self.name, environment, self.for_machine, self.language)
 
