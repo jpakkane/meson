@@ -15,7 +15,7 @@ from ..build import known_shmod_kwargs, CustomTarget, CustomTargetIndex, BuildTa
 from ..dependencies import NotFoundDependency
 from ..dependencies.detect import get_dep_identifier, find_external_dependency
 from ..dependencies.python import BasicPythonExternalProgram, python_factory, _PythonDependencyBase
-from ..interpreter import extract_required_kwarg, permitted_dependency_kwargs, primitives as P_OBJ
+from ..interpreter import extract_required_kwarg, primitives as P_OBJ
 from ..interpreter.interpreterobjects import _ExternalProgramHolder
 from ..interpreter.type_checking import NoneType, PRESERVE_PATH_KW, DEPENDENCY_KWS, SHARED_MOD_KWS
 from ..interpreterbase import (
@@ -261,7 +261,6 @@ class PythonInstallation(_ExternalProgramHolder['PythonExternalProgram']):
         self.interpreter.coredata.deps[for_machine].put(identifier, dep)
         return dep
 
-    @permittedKwargs(permitted_dependency_kwargs | {'embed'})
     @noPosargs
     @typed_kwargs(
         'python_installation.dependency',

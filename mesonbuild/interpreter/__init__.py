@@ -6,7 +6,6 @@
 
 __all__ = [
     'Interpreter',
-    'permitted_dependency_kwargs',
 
     'CompilerHolder',
 
@@ -30,7 +29,7 @@ __all__ = [
     'StringHolder',
 ]
 
-from .interpreter import Interpreter, permitted_dependency_kwargs
+from .interpreter import Interpreter
 from .compiler import CompilerHolder
 from .interpreterobjects import (ExecutableHolder, BuildTargetHolder, CustomTargetHolder,
                                  CustomTargetIndexHolder, MachineHolder, Test,

@@ -231,28 +231,6 @@ class InterpreterRuleRelaxation(Enum):
 
     ALLOW_BUILD_DIR_FILE_REFERENCES = 1
 
-permitted_dependency_kwargs = {
-    'allow_fallback',
-    'cmake_args',
-    'cmake_module_path',
-    'cmake_package_version',
-    'components',
-    'default_options',
-    'fallback',
-    'include_type',
-    'language',
-    'main',
-    'method',
-    'modules',
-    'native',
-    'not_found_message',
-    'optional_modules',
-    'private_headers',
-    'required',
-    'static',
-    'version',
-}
-
 implicit_check_false_warning = """You should add the boolean check kwarg to the run_command call.
          It currently defaults to false,
          but it will default to true in future releases of meson.
