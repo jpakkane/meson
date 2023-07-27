@@ -493,3 +493,4 @@ class Dependency(TypedDict, total=False):
     modules: T.List[str]
     native: Required[MachineChoice]
     not_found_message: str
+    optional_modules: T.List[str]

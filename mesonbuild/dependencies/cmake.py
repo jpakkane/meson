@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 from .base import ExternalDependency, DependencyException, DependencyTypeName
-from ..mesonlib import is_windows, MesonException, PerMachine, stringlistify, extract_as_list
+from ..mesonlib import is_windows, MesonException, PerMachine
 from ..cmake import CMakeExecutor, CMakeTraceParser, CMakeException, CMakeToolchain, CMakeExecScope, check_cmake_args, resolve_cmake_trace_targets, cmake_is_debug
 from .. import mlog
 import importlib.resources
@@ -129,7 +129,7 @@ class CMakeDependency(ExternalDependency):
         package_version = kwargs.get('cmake_package_version', '')
         components: T.List[T.Tuple[str, bool]] = [(x, True) for x in kwargs.get('components', [])]
         modules: T.List[T.Tuple[str, bool]] = [(x, True) for x in kwargs.get('modules', [])]
-        modules += [(x, False) for x in stringlistify(extract_as_list(kwargs, 'optional_modules'))]  # type: ignore
+        modules += [(x, False) for x in kwargs.get('optional_modules', [])]
         cm_path = kwargs.get('cmake_module_path', [])
         cm_path = [x if os.path.isabs(x) else os.path.join(environment.get_source_dir(), x) for x in cm_path]
         if cm_path:
