@@ -869,6 +869,7 @@ DEPENDENCY_KWS: T.List[KwargInfo] = [
     KwargInfo('cmake_package_version', str, default='', since='0.57.0'),
     KwargInfo('components', ContainerTypeInfo(list, str), default=[], listify=True, since='0.54.0'),
     DEFAULT_OPTIONS.evolve(since='0.38.0'),
+    DISABLER_KW.evolve(since='0.49.0'),
     KwargInfo(
         'fallback',
         (ContainerTypeInfo(list, str), NoneType),
