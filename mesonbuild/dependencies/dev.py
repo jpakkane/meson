@@ -57,7 +57,8 @@ def get_shared_library_suffix(environment: 'Environment', for_machine: MachineCh
 
 class GTestDependencySystem(SystemDependency):
     def __init__(self, name: str, environment: 'Environment', kwargs: DependencyKw) -> None:
-        super().__init__(name, environment, kwargs, language='cpp')
+        kwargs['language'] = 'cpp'
+        super().__init__(name, environment, kwargs)
         self.main = kwargs.get('main', False)
         self.src_dirs = ['/usr/src/gtest/src', '/usr/src/googletest/googletest/src']
         if not self._add_sub_dependency(threads_factory(environment, self.for_machine, {})):
@@ -120,7 +121,8 @@ class GTestDependencyPC(PkgConfigDependency):
 
 class GMockDependencySystem(SystemDependency):
     def __init__(self, name: str, environment: 'Environment', kwargs: DependencyKw) -> None:
-        super().__init__(name, environment, kwargs, language='cpp')
+        kwargs['language'] = 'cpp'
+        super().__init__(name, environment, kwargs)
         self.main = kwargs.get('main', False)
         if not self._add_sub_dependency(threads_factory(environment, self.for_machine, {})):
             self.is_found = False
@@ -208,7 +210,8 @@ class LLVMDependencyConfigTool(ConfigToolDependency):
 
         # It's necessary for LLVM <= 3.8 to use the C++ linker. For 3.9 and 4.0
         # the C linker works fine if only using the C API.
-        super().__init__(name, environment, kwargs, language='cpp')
+        kwargs['language'] = 'cpp'
+        super().__init__(name, environment, kwargs)
         self.provided_modules: T.List[str] = []
         self.required_modules: mesonlib.OrderedSet[str] = mesonlib.OrderedSet()
         self.module_details:   T.List[str] = []
@@ -410,7 +413,9 @@ class LLVMDependencyCMake(CMakeDependency):
             mlog.warning('The LLVM dependency was not found via CMake since both a C and C++ compiler are required.')
             return
 
-        super().__init__(name, env, kwargs, language='cpp', force_use_global_compilers=True)
+        kwargs['language'] = 'cpp'
+
+        super().__init__(name, env, kwargs, force_use_global_compilers=True)
 
         if self.traceparser is None:
             return

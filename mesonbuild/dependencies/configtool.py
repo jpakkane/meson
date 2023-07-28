@@ -41,8 +41,8 @@ class ConfigToolDependency(ExternalDependency):
     allow_default_for_cross = False
     __strip_version = re.compile(r'^[0-9][0-9.]+')
 
-    def __init__(self, name: str, environment: 'Environment', kwargs: DependencyKw, language: T.Optional[str] = None):
-        super().__init__(DependencyTypeName('config-tool'), environment, kwargs, language=language)
+    def __init__(self, name: str, environment: 'Environment', kwargs: DependencyKw):
+        super().__init__(DependencyTypeName('config-tool'), environment, kwargs)
         self.name = name
         # You may want to overwrite the class version in some cases
         self.tools = listify(kwargs.get('tools', self.tools))

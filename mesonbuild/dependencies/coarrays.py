@@ -32,17 +32,19 @@ def coarray_factory(env: 'Environment',
     candidates: T.List['DependencyGenerator'] = []
 
     if fcid == 'gcc':
+
+        nkwargs = kwargs.copy()
+        nkwargs['language'] = 'fortran'
+
         # OpenCoarrays is the most commonly used method for Fortran Coarray with GCC
         if DependencyMethods.PKGCONFIG in methods:
             for pkg in ['caf-openmpi', 'caf']:
-                candidates.append(functools.partial(
-                    PkgConfigDependency, pkg, env, kwargs, language='fortran'))
+                candidates.append(functools.partial(PkgConfigDependency, pkg, env, nkwargs))
 
         if DependencyMethods.CMAKE in methods:
             if 'modules' not in kwargs:
-                kwargs['modules'] = 'OpenCoarrays::caf_mpi'
-            candidates.append(functools.partial(
-                CMakeDependency, 'OpenCoarrays', env, kwargs, language='fortran'))
+                nkwargs['modules'] = 'OpenCoarrays::caf_mpi'
+            candidates.append(functools.partial(CMakeDependency, 'OpenCoarrays', env, nkwargs))
 
     if DependencyMethods.SYSTEM in methods:
         candidates.append(functools.partial(CoarrayDependency, env, kwargs))
@@ -61,7 +63,8 @@ class CoarrayDependency(SystemDependency):
     low-level MPI calls.
     """
     def __init__(self, environment: 'Environment', kwargs: DependencyKw) -> None:
-        super().__init__('coarray', environment, kwargs, language='fortran')
+        kwargs['language'] = 'fortran'
+        super().__init__('coarray', environment, kwargs)
         kwargs['required'] = False
         kwargs['silent'] = True
 

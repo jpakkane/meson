@@ -32,7 +32,7 @@ def netcdf_factory(env: 'Environment',
                    for_machine: 'mesonlib.MachineChoice',
                    kwargs: DependencyKw,
                    methods: T.List[DependencyMethods]) -> T.List['DependencyGenerator']:
-    language = kwargs.get('language', 'c')
+    language = kwargs.get('language') or 'c'
     if language not in ('c', 'cpp', 'fortran'):
         raise DependencyException(f'Language {language} is not supported with NetCDF.')
 
@@ -44,10 +44,10 @@ def netcdf_factory(env: 'Environment',
         else:
             pkg = 'netcdf'
 
-        candidates.append(functools.partial(PkgConfigDependency, pkg, env, kwargs, language=language))
+        candidates.append(functools.partial(PkgConfigDependency, pkg, env, kwargs))
 
     if DependencyMethods.CMAKE in methods:
-        candidates.append(functools.partial(CMakeDependency, 'NetCDF', env, kwargs, language=language))
+        candidates.append(functools.partial(CMakeDependency, 'NetCDF', env, kwargs))
 
     return candidates
 
@@ -92,8 +92,7 @@ class OpenMPDependency(SystemDependency):
     }
 
     def __init__(self, environment: 'Environment', kwargs: DependencyKw) -> None:
-        language = kwargs.get('language')
-        super().__init__('openmp', environment, kwargs, language=language)
+        super().__init__('openmp', environment, kwargs)
         self.is_found = False
         if self.clib_compiler.get_id() == 'nagfor':
             # No macro defined for OpenMP, but OpenMP 3.1 is supported.
@@ -307,8 +306,8 @@ class CursesConfigToolDependency(ConfigToolDependency):
     # ncurses5.4-config is for macOS Catalina
     tools = ['ncursesw6-config', 'ncursesw5-config', 'ncurses6-config', 'ncurses5-config', 'ncurses5.4-config']
 
-    def __init__(self, name: str, env: 'Environment', kwargs: DependencyKw, language: T.Optional[str] = None):
-        super().__init__(name, env, kwargs, language)
+    def __init__(self, name: str, env: 'Environment', kwargs: DependencyKw):
+        super().__init__(name, env, kwargs)
         if not self.is_found:
             return
         self.compile_args = self.get_config_value(['--cflags'], 'compile_args')

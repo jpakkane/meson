@@ -98,8 +98,8 @@ def _get_modules_lib_suffix(version: str, info: 'MachineInfo', is_debug: bool) -
 
 
 class QtExtraFrameworkDependency(ExtraFrameworkDependency):
-    def __init__(self, name: str, env: 'Environment', kwargs: DependencyKw, qvars: T.Dict[str, str], language: T.Optional[str] = None):
-        super().__init__(name, env, kwargs, language=language)
+    def __init__(self, name: str, env: 'Environment', kwargs: DependencyKw, qvars: T.Dict[str, str]):
+        super().__init__(name, env, kwargs)
         self.mod_name = name[2:]
         self.qt_extra_include_directory = qvars['QT_INSTALL_HEADERS']
 
@@ -185,7 +185,7 @@ class QtPkgConfigDependency(_QtBase, PkgConfigDependency, metaclass=abc.ABCMeta)
             self.link_args = []
 
         for m in self.requested_modules:
-            mod = PkgConfigDependency(self.qtpkgname + m, self.env, kwargs, language=self.language)
+            mod = PkgConfigDependency(self.qtpkgname + m, self.env, kwargs)
             if not mod.found():
                 self.is_found = False
                 return
@@ -356,11 +356,12 @@ class QmakeQtDependency(_QtBase, ConfigToolDependency, metaclass=abc.ABCMeta):
         fw_kwargs = kwargs.copy()
         fw_kwargs.pop('method', None)
         fw_kwargs['paths'] = [libdir]
+        fw_kwargs['language'] = self.language
 
         for m in modules:
             fname = 'Qt' + m
             mlog.debug('Looking for qt framework ' + fname)
-            fwdep = QtExtraFrameworkDependency(fname, self.env, fw_kwargs, qvars, language=self.language)
+            fwdep = QtExtraFrameworkDependency(fname, self.env, fw_kwargs, qvars)
             if fwdep.found():
                 self.compile_args.append('-F' + libdir)
                 self.compile_args += fwdep.get_compile_args(with_private_headers=self.private_headers,

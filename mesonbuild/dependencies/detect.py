@@ -124,7 +124,7 @@ def find_external_dependency(name: str, env: 'Environment', kwargs: DependencyKw
     if not isinstance(kwargs.get('method', ''), str):
         raise DependencyException('Keyword "method" must be a string.')
     lname = name.lower()
-    if lname not in _packages_accept_language and 'language' in kwargs:
+    if lname not in _packages_accept_language and kwargs.get('language') is not None:
         raise DependencyException(f'{name} dependency does not accept "language" keyword argument')
     if not isinstance(kwargs.get('version', ''), (str, list)):
         raise DependencyException('Keyword "Version" must be string or list.')
@@ -161,7 +161,7 @@ def find_external_dependency(name: str, env: 'Environment', kwargs: DependencyKw
             details = d.log_details()
             if details:
                 details = '(' + details + ') '
-            if 'language' in kwargs:
+            if kwargs.get('language'):
                 details += 'for ' + d.language + ' '
 
             # if the dependency was found

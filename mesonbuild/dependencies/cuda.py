@@ -35,8 +35,9 @@ class CudaDependency(SystemDependency):
         language = self._detect_language(compilers)
         if language not in self.supported_languages:
             raise DependencyException(f'Language \'{language}\' is not supported by the CUDA Toolkit. Supported languages are {self.supported_languages}.')
+        kwargs['language'] = language
 
-        super().__init__('cuda', environment, kwargs, language=language)
+        super().__init__('cuda', environment, kwargs)
         self.lib_modules: T.Dict[str, T.List[str]] = {}
         self.requested_modules = self.get_requested(kwargs)
         if not any(runtime in self.requested_modules for runtime in ['cudart', 'cudart_static']):

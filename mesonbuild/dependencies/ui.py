@@ -60,7 +60,8 @@ class GnuStepDependency(ConfigToolDependency):
     tool_name = 'gnustep-config'
 
     def __init__(self, environment: 'Environment', kwargs: DependencyKw) -> None:
-        super().__init__('gnustep', environment, kwargs, language='objc')
+        kwargs['language'] = 'objc'
+        super().__init__('gnustep', environment, kwargs)
         if not self.is_found:
             return
         self.modules = kwargs.get('modules', [])
@@ -152,7 +153,8 @@ class WxDependency(ConfigToolDependency):
     tool_name = 'wx-config'
 
     def __init__(self, environment: 'Environment', kwargs: DependencyKw):
-        super().__init__('WxWidgets', environment, kwargs, language='cpp')
+        kwargs['language'] = 'cpp'
+        super().__init__('WxWidgets', environment, kwargs)
         if not self.is_found:
             return
         self.requested_modules = self.get_requested(kwargs)
@@ -187,8 +189,8 @@ packages['wxwidgets'] = WxDependency
 
 class VulkanDependencySystem(SystemDependency):
 
-    def __init__(self, name: str, environment: 'Environment', kwargs: DependencyKw, language: T.Optional[None] = None) -> None:
-        super().__init__(name, environment, kwargs, language=language)
+    def __init__(self, name: str, environment: 'Environment', kwargs: DependencyKw) -> None:
+        super().__init__(name, environment, kwargs)
 
         try:
             self.vulkan_sdk = os.environ['VULKAN_SDK']

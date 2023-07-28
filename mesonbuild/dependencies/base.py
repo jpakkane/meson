@@ -351,12 +351,12 @@ class HasNativeKwarg:
         return MachineChoice.BUILD if kwargs.get('native', False) else MachineChoice.HOST
 
 class ExternalDependency(Dependency, HasNativeKwarg):
-    def __init__(self, type_name: DependencyTypeName, environment: 'Environment', kwargs: DependencyKw, language: T.Optional[str] = None):
+    def __init__(self, type_name: DependencyTypeName, environment: 'Environment', kwargs: DependencyKw):
         Dependency.__init__(self, type_name, kwargs.get('include_type'))
         self.env = environment
         self.name = type_name # default
         self.is_found = False
-        self.language = language
+        self.language = kwargs.get('language')
         version_reqs = kwargs.get('version', None)
         if isinstance(version_reqs, str):
             version_reqs = [version_reqs]
@@ -456,9 +456,8 @@ class NotFoundDependency(Dependency):
 class ExternalLibrary(ExternalDependency):
     def __init__(self, name: str, link_args: T.List[str], environment: 'Environment',
                  language: str, silent: bool = False) -> None:
-        super().__init__(DependencyTypeName('library'), environment, {}, language=language)
+        super().__init__(DependencyTypeName('library'), environment, {'language': language})
         self.name = name
-        self.language = language
         self.is_found = False
         if link_args:
             self.is_found = True
@@ -621,9 +620,8 @@ class SystemDependency(ExternalDependency):
 
     """Dependency base for System type dependencies."""
 
-    def __init__(self, name: str, env: 'Environment', kwargs: DependencyKw,
-                 language: T.Optional[str] = None) -> None:
-        super().__init__(DependencyTypeName('system'), env, kwargs, language=language)
+    def __init__(self, name: str, env: 'Environment', kwargs: DependencyKw) -> None:
+        super().__init__(DependencyTypeName('system'), env, kwargs)
         self.name = name
 
     @staticmethod
@@ -635,9 +633,8 @@ class BuiltinDependency(ExternalDependency):
 
     """Dependency base for Builtin type dependencies."""
 
-    def __init__(self, name: str, env: 'Environment', kwargs: DependencyKw,
-                 language: T.Optional[str] = None) -> None:
-        super().__init__(DependencyTypeName('builtin'), env, kwargs, language=language)
+    def __init__(self, name: str, env: 'Environment', kwargs: DependencyKw) -> None:
+        super().__init__(DependencyTypeName('builtin'), env, kwargs)
         self.name = name
 
     @staticmethod

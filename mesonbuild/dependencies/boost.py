@@ -343,7 +343,8 @@ class BoostLibraryFile():
 
 class BoostDependency(SystemDependency):
     def __init__(self, environment: Environment, kwargs: DependencyKw) -> None:
-        super().__init__('boost', environment, kwargs, language='cpp')
+        kwargs['language'] = 'cpp'
+        super().__init__('boost', environment, kwargs)
         buildtype = environment.coredata.get_option(mesonlib.OptionKey('buildtype'))
         assert isinstance(buildtype, str)
         self.debug = buildtype.startswith('debug')

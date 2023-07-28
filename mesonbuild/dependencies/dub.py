@@ -27,7 +27,8 @@ class DubDependency(ExternalDependency):
     class_dubbin_searched = False
 
     def __init__(self, name: str, environment: 'Environment', kwargs: DependencyKw):
-        super().__init__(DependencyTypeName('dub'), environment, kwargs, language='d')
+        kwargs['langauge'] = 'd'
+        super().__init__(DependencyTypeName('dub'), environment, kwargs)
         self.name = name
         from ..compilers.d import DCompiler, d_feature_args
 

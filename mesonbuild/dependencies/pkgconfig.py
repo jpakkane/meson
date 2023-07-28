@@ -275,8 +275,8 @@ class PkgConfigCLI(PkgConfigInterface):
 
 class PkgConfigDependency(ExternalDependency):
 
-    def __init__(self, name: str, environment: Environment, kwargs: DependencyKw, language: T.Optional[str] = None) -> None:
-        super().__init__(DependencyTypeName('pkgconfig'), environment, kwargs, language=language)
+    def __init__(self, name: str, environment: Environment, kwargs: DependencyKw) -> None:
+        super().__init__(DependencyTypeName('pkgconfig'), environment, kwargs)
         self.name = name
         self.is_libtool = False
         self.pkgconfig = PkgConfigInterface.instance(self.env, self.for_machine, self.silent)

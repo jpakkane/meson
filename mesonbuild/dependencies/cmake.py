@@ -71,10 +71,10 @@ class CMakeDependency(ExternalDependency):
         # one module
         return module
 
-    def __init__(self, name: str, environment: 'Environment', kwargs: DependencyKw, language: T.Optional[str] = None, force_use_global_compilers: bool = False) -> None:
+    def __init__(self, name: str, environment: 'Environment', kwargs: DependencyKw, force_use_global_compilers: bool = False) -> None:
         # Gather a list of all languages to support
         self.language_list: T.List[str] = []
-        if language is None or force_use_global_compilers:
+        if kwargs.get('language') is None or force_use_global_compilers:
             compilers = None
             if kwargs.get('native', False):
                 compilers = environment.coredata.compilers.build
@@ -84,7 +84,7 @@ class CMakeDependency(ExternalDependency):
             candidates = ['c', 'cpp', 'fortran', 'objc', 'objcxx']
             self.language_list += [x for x in candidates if x in compilers]
         else:
-            self.language_list += [language]
+            self.language_list += [kwargs['language']]
 
         # Add additional languages if required
         if 'fortran' in self.language_list:
@@ -93,7 +93,7 @@ class CMakeDependency(ExternalDependency):
         # Ensure that the list is unique
         self.language_list = list(set(self.language_list))
 
-        super().__init__(DependencyTypeName('cmake'), environment, kwargs, language=language)
+        super().__init__(DependencyTypeName('cmake'), environment, kwargs)
         self.name = name
         self.is_libtool = False
         # Store a copy of the CMake path on the object itself so it is
@@ -650,10 +650,10 @@ class CMakeDependencyFactory:
         self.name = name
         self.modules = modules
 
-    def __call__(self, name: str, env: Environment, kwargs: DependencyKw, language: T.Optional[str] = None, force_use_global_compilers: bool = False) -> CMakeDependency:
+    def __call__(self, name: str, env: Environment, kwargs: DependencyKw, force_use_global_compilers: bool = False) -> CMakeDependency:
         if self.modules:
             kwargs['modules'] = self.modules  # type: ignore
-        return CMakeDependency(self.name or name, env, kwargs, language, force_use_global_compilers)
+        return CMakeDependency(self.name or name, env, kwargs, force_use_global_compilers)
 
     @staticmethod
     def log_tried() -> str:
