@@ -39,6 +39,7 @@ if T.TYPE_CHECKING:
     from ._typing import ImmutableListProtocol
     from .backend.backends import Backend
     from .compilers import Compiler
+    from .dependencies.detect import DependencyCacheKey
     from .interpreter.interpreter import SourceOutputs, Interpreter
     from .interpreter.interpreterobjects import Test
     from .interpreterbase import SubProject
@@ -270,7 +271,7 @@ class Build:
 
         # If we are doing a cross build we need two caches, if we're doing a
         # build == host compilation the both caches should point to the same place.
-        self.dependency_overrides: PerMachine[T.Dict[T.Tuple, DependencyOverride]] = PerMachineDefaultable.default(
+        self.dependency_overrides: PerMachine[T.Dict[DependencyCacheKey, DependencyOverride]] = PerMachineDefaultable.default(
             environment.is_cross_build(), {}, {})
         self.devenv: T.List[EnvironmentVariables] = []
         self.modules: T.List[str] = []
