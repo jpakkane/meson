@@ -861,6 +861,8 @@ def _dep_fallback_feat_validator(val: T.List[str]) -> T.Iterable[FeatureCheckBas
     if len(val) == 1:
         yield FeatureNew('feature as a string or array of one element', '0.54.0', 'use the two element form')
 
+_USE_CONFIG_TOOL = "Use the 'config-tool' method instead"
+
 
 DEPENDENCY_KWS: T.List[KwargInfo] = [
     KwargInfo('allow_fallback', (bool, NoneType), since='0.56.0'),
@@ -892,6 +894,14 @@ DEPENDENCY_KWS: T.List[KwargInfo] = [
         default='auto',
         since='0.40.0',
         validator=in_set_validator({e.value for e in DependencyMethods}),
+        since_values={'config-tool': '0.44.0'},
+        deprecated_values={
+            'qmake': ('0.58.0', _USE_CONFIG_TOOL),
+            'sdlconfig': ('0.44.0', _USE_CONFIG_TOOL),
+            'cups-config': ('0.44.0', _USE_CONFIG_TOOL),
+            'pcap-config': ('0.44.0', _USE_CONFIG_TOOL),
+            'libwmf-config': ('0.44.0', _USE_CONFIG_TOOL),
+        },
     ),
     KwargInfo('modules', ContainerTypeInfo(list, str), default=[], listify=True, since='0.54.0'),
     NATIVE_KW,

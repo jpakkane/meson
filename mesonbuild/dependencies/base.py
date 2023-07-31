@@ -554,34 +554,20 @@ def process_method_kw(possible: T.Iterable[DependencyMethods], kwargs: Dependenc
         raise DependencyException(f'method {method!r} is invalid')
     method = DependencyMethods(method)
 
-    # Raise FeatureNew where appropriate
-    if method is DependencyMethods.CONFIG_TOOL:
-        # FIXME: needs to get a handle on the subproject
-        # FeatureNew.single_use('Configuration method "config-tool"', '0.44.0')
-        pass
     # This sets per-tool config methods which are deprecated to to the new
     # generic CONFIG_TOOL value.
-    if method in [DependencyMethods.SDLCONFIG, DependencyMethods.CUPSCONFIG,
-                  DependencyMethods.PCAPCONFIG, DependencyMethods.LIBWMFCONFIG]:
-        # FIXME: needs to get a handle on the subproject
-        #FeatureDeprecated.single_use(f'Configuration method {method.value}', '0.44', 'Use "config-tool" instead.')
-        method = DependencyMethods.CONFIG_TOOL
-    if method is DependencyMethods.QMAKE:
-        # FIXME: needs to get a handle on the subproject
-        # FeatureDeprecated.single_use('Configuration method "qmake"', '0.58', 'Use "config-tool" instead.')
+    if method in {DependencyMethods.SDLCONFIG, DependencyMethods.CUPSCONFIG,
+                  DependencyMethods.PCAPCONFIG, DependencyMethods.LIBWMFCONFIG,
+                  DependencyMethods.QMAKE}:
         method = DependencyMethods.CONFIG_TOOL
 
     # Set the detection method. If the method is set to auto, use any available method.
     # If method is set to a specific string, allow only that detection method.
     if method == DependencyMethods.AUTO:
         methods = list(possible)
-    elif method in possible:
-        methods = [method]
     else:
-        raise DependencyException(
-            'Unsupported detection method: {}, allowed methods are {}'.format(
-                method.value,
-                mlog.format_list([x.value for x in [DependencyMethods.AUTO] + list(possible)])))
+        assert method in possible, 'Somehow got an invalid method past the Interpreter?'
+        methods = [method]
 
     return methods
 
