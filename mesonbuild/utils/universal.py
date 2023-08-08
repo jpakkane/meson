@@ -112,6 +112,7 @@ __all__ = [
     'expand_arguments',
     'extract_as_list',
     'first',
+    'flatten_path',
     'generate_list',
     'get_compiler_for_source',
     'get_filenames_templates_dict',
@@ -1101,6 +1102,11 @@ def has_path_sep(name: str, sep: str = '/\\') -> bool:
         if each in name:
             return True
     return False
+
+
+def flatten_path(name: str, sep: str = '/\\', replace: str = '_') -> str:
+    '''Replaces any specified @sep path separators in @name with @replace'''
+    return name.translate(name.maketrans(sep, replace * len(sep)))
 
 
 if is_windows():

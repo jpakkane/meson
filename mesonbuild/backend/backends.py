@@ -150,6 +150,7 @@ class TargetInstallData:
     optional: bool = False
     tag: T.Optional[str] = None
     can_strip: bool = False
+    install_fname: T.Optional[str] = None
 
     def __post_init__(self, outdir_name: T.Optional[str]) -> None:
         if outdir_name is None:
@@ -1724,7 +1725,7 @@ class Backend:
                                           first_outdir_name,
                                           should_strip, mappings, t.rpath_dirs_to_remove,
                                           t.install_rpath, install_mode, t.subproject,
-                                          tag=tag, can_strip=can_strip)
+                                          tag=tag, can_strip=can_strip, install_fname=t.get_install_fname())
                     d.targets.append(i)
 
                     for alias, to, tag in t.get_aliases():

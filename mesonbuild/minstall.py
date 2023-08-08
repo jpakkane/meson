@@ -409,7 +409,10 @@ class Installer:
             dirmaker, outdir = makedirs
             # Create dirs if needed
             dirmaker.makedirs(outdir, exist_ok=True)
-        self.log(f'Installing {from_file} to {outdir}')
+        if os.path.basename(from_file) != os.path.basename(to_file):
+            self.log(f'Installing {from_file} to {to_file}')
+        else:
+            self.log(f'Installing {from_file} to {outdir}')
         if os.path.islink(from_file):
             if not os.path.exists(from_file):
                 # Dangling symlink. Replicate as is.
@@ -728,8 +731,11 @@ class Installer:
             file_copied = False # not set when a directory is copied
             fname = check_for_stampfile(t.fname)
             outdir = get_destdir_path(destdir, fullprefix, t.outdir)
-            outname = os.path.join(outdir, os.path.basename(fname))
-            final_path = os.path.join(d.prefix, t.outdir, os.path.basename(fname))
+            install_fname = t.install_fname
+            if install_fname is None:
+                install_fname = os.path.basename(fname)
+            outname = os.path.join(outdir, install_fname)
+            final_path = os.path.join(d.prefix, t.outdir, install_fname)
             should_strip = t.strip or (t.can_strip and self.options.strip)
             install_rpath = t.install_rpath
             install_name_mappings = t.install_name_mappings
@@ -752,7 +758,7 @@ class Installer:
                         file_copied = self.do_copyfile(wasm_source, wasm_output)
             elif os.path.isdir(fname):
                 fname = os.path.join(d.build_dir, fname.rstrip('/'))
-                outname = os.path.join(outdir, os.path.basename(fname))
+                outname = os.path.join(outdir, install_fname)
                 dm.makedirs(outdir, exist_ok=True)
                 self.do_copydir(d, fname, outname, None, install_mode, dm)
             else:

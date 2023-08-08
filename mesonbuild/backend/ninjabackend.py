@@ -3257,10 +3257,13 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
                 commands += linker.get_std_shared_lib_link_args()
             # All shared libraries are PIC
             commands += linker.get_pic_args()
-            if not isinstance(target, build.SharedModule) or target.force_soname:
+            soname = target.get_install_name()
+            if not isinstance(target, build.SharedModule) or target.force_soname or soname:
+                if not soname:
+                    soname = target.name
                 # Add -Wl,-soname arguments on Linux, -install_name on OS X
                 commands += linker.get_soname_args(
-                    self.environment, target.prefix, target.name, target.suffix,
+                    self.environment, target.prefix, soname, target.suffix,
                     target.soversion, target.darwin_versions)
             # This is only visited when building for Windows using either GCC or Visual Studio
             if target.vs_module_defs and hasattr(linker, 'gen_vs_module_defs_args'):

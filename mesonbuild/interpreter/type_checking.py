@@ -175,6 +175,13 @@ INSTALL_MODE_KW: KwargInfo[T.List[T.Union[str, bool, int]]] = KwargInfo(
     convertor=_install_mode_convertor,
 )
 
+INSTALL_NAME_KW: KwargInfo[T.Optional[str]] = KwargInfo(
+    'install_name',
+    (str, NoneType),
+    default=None,
+    since='1.3.0',
+)
+
 REQUIRED_KW: KwargInfo[T.Union[bool, UserFeatureOption]] = KwargInfo(
     'required',
     (bool, UserFeatureOption),

@@ -77,6 +77,7 @@ from .type_checking import (
     INSTALL_KW,
     INSTALL_DIR_KW,
     INSTALL_MODE_KW,
+    INSTALL_NAME_KW,
     LINK_WITH_KW,
     LINK_WHOLE_KW,
     CT_INSTALL_TAG_KW,
@@ -1991,6 +1992,7 @@ class Interpreter(InterpreterBase, HoldableObject):
         ENV_KW.evolve(since='0.57.0'),
         INSTALL_KW,
         INSTALL_MODE_KW.evolve(since='0.47.0'),
+        INSTALL_NAME_KW,
         KwargInfo('feed', bool, default=False, since='0.59.0'),
         KwargInfo('capture', bool, default=False),
         KwargInfo('console', bool, default=False, since='0.48.0'),
@@ -2083,6 +2085,7 @@ class Interpreter(InterpreterBase, HoldableObject):
             install=kwargs['install'],
             install_dir=kwargs['install_dir'],
             install_mode=install_mode,
+            install_name=kwargs['install_name'],
             install_tag=kwargs['install_tag'],
             backend=self.backend)
         self.add_target(tg.name, tg)
@@ -2450,6 +2453,7 @@ class Interpreter(InterpreterBase, HoldableObject):
         INSTALL_MODE_KW.evolve(since='0.38.0'),
         INSTALL_TAG_KW.evolve(since='0.60.0'),
         INSTALL_DIR_KW,
+        INSTALL_NAME_KW,
         PRESERVE_PATH_KW.evolve(since='0.64.0'),
     )
     def func_install_data(self, node: mparser.BaseNode,
@@ -2551,6 +2555,7 @@ class Interpreter(InterpreterBase, HoldableObject):
         'configure_file',
         DEPFILE_KW.evolve(since='0.52.0'),
         INSTALL_MODE_KW.evolve(since='0.47.0,'),
+        INSTALL_NAME_KW,
         INSTALL_TAG_KW.evolve(since='0.60.0'),
         KwargInfo('capture', bool, default=False, since='0.41.0'),
         KwargInfo(
