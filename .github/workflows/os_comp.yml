@@ -78,7 +78,8 @@ jobs:
       run: |
         source /ci/env_vars.sh
         export MESON_CI_JOBNAME=$MESON_CI_JOBNAME_UPDATE
-        pypy3 run_tests.py
+        echo -e "[binaries]\npython = '/usr/bin/pypy3'" > /tmp/native.ini
+        pypy3 run_tests.py -- --native-file /tmp/native.ini
 
   ubuntu-rolling:
     name: 'Ubuntu Rolling'

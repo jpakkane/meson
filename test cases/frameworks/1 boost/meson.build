@@ -25,6 +25,11 @@ require_bp = host_machine.system() in ['linux', 'darwin']
 pymod = import('python')
 python2 = pymod.find_installation('python2', required: false                           , disabler: true)
 python3 = pymod.find_installation('python3', required: require_bp , disabler: true)
+
+if python3.has_variable('implementation') and python3.get_variable('implementation') == 'PyPy'
+  error('MESON_SKIP_TEST boost does not support PyPy.')
+endif
+
 python2dep = python2.dependency(required: false                           , embed: true, disabler: true)
 python3dep = python3.dependency(required: require_bp, embed: true, disabler: true)
 

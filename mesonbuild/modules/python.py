@@ -448,7 +448,9 @@ class PythonModule(ExtensionModule):
 
     def _find_installation_impl(self, state: 'ModuleState', display_name: str, name_or_path: str, required: bool) -> MaybePythonProg:
         if not name_or_path:
-            python = PythonExternalProgram('python3', mesonlib.python_command)
+            python = PythonExternalProgram('python3')
+            if not python.found():
+                python = PythonExternalProgram('python3', mesonlib.python_command)
         else:
             tmp_python = ExternalProgram.from_entry(display_name, name_or_path)
             python = PythonExternalProgram(display_name, ext_prog=tmp_python)
