@@ -372,7 +372,7 @@ class PythonModule(ExtensionModule):
 
     def __init__(self, interpreter: 'Interpreter') -> None:
         super().__init__(interpreter)
-        self.installations: T.Dict[str, MaybePythonProg] = {}
+        self.installations: T.Dict[(str, str), MaybePythonProg] = {}
         self.methods.update({
             'find_installation': self.find_installation,
         })
@@ -510,10 +510,10 @@ class PythonModule(ExtensionModule):
             mlog.log('Program', name_or_path or 'python', 'found:', mlog.red('NO'), '(disabled by:', mlog.bold(feature), ')')
             return NonExistingExternalProgram()
 
-        python = self.installations.get(name_or_path)
+        python = self.installations.get((display_name, name_or_path))
         if not python:
             python = self._find_installation_impl(state, display_name, name_or_path, required)
-            self.installations[name_or_path] = python
+            self.installations[(display_name, name_or_path)] = python
 
         want_modules = kwargs['modules']
         found_modules: T.List[str] = []
