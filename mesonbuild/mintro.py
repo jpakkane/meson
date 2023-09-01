@@ -125,7 +125,7 @@ def list_installed(installdata: backends.InstallData) -> T.Dict[str, str]:
 def list_install_plan(installdata: backends.InstallData) -> T.Dict[str, T.Dict[str, T.Dict[str, T.Optional[str]]]]:
     plan: T.Dict[str, T.Dict[str, T.Dict[str, T.Optional[str]]]] = {
         'targets': {
-            os.path.join(installdata.build_dir, target.fname): {
+            Path(installdata.build_dir, target.fname).as_posix(): {
                 'destination': target.out_name,
                 'tag': target.tag or None,
                 'subproject': target.subproject or None,
@@ -141,13 +141,14 @@ def list_install_plan(installdata: backends.InstallData) -> T.Dict[str, T.Dict[s
     }.items():
         # Mypy doesn't recognize SubdirInstallData as a subclass of InstallDataBase
         for data in data_list: # type: ignore[attr-defined]
+            data_path = Path(data.path).as_posix()
             data_type = data.data_type or key
-            install_path_name = data.install_path_name
+            install_path_name = Path(data.install_path_name)
             if key == 'headers':  # in the headers, install_path_name is the directory
-                install_path_name = os.path.join(install_path_name, os.path.basename(data.path))
+                install_path_name = install_path_name / os.path.basename(data.path)
 
             entry = {
-                'destination': install_path_name,
+                'destination': install_path_name.as_posix(),
                 'tag': data.tag or None,
                 'subproject': data.subproject or None,
             }
@@ -158,7 +159,7 @@ def list_install_plan(installdata: backends.InstallData) -> T.Dict[str, T.Dict[s
                 entry['exclude_files'] = list(exclude_files)
 
             plan[data_type] = plan.get(data_type, {})
-            plan[data_type][data.path] = entry
+            plan[data_type][data_path] = entry
 
     return plan
 

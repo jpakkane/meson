@@ -3182,7 +3182,7 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
     def get_target_shsym_filename(self, target):
         # Always name the .symbols file after the primary build output because it always exists
         targetdir = self.get_target_private_dir(target)
-        return os.path.join(targetdir, target.get_filename() + '.symbols')
+        return (Path(targetdir) / (target.get_filename() + '.symbols')).as_posix()
 
     def generate_shsym(self, target):
         target_file = self.get_target_filename(target)
@@ -3195,7 +3195,7 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
         self.add_build(elem)
 
     def get_import_filename(self, target):
-        return os.path.join(self.get_target_dir(target), target.import_filename)
+        return (Path(self.get_target_dir(target)) / target.import_filename).as_posix()
 
     def get_target_type_link_args(self, target, linker):
         commands = []

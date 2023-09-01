@@ -144,7 +144,7 @@ class TargetInstallData:
     def __post_init__(self, outdir_name: T.Optional[str]) -> None:
         if outdir_name is None:
             outdir_name = os.path.join('{prefix}', self.outdir)
-        self.out_name = os.path.join(outdir_name, os.path.basename(self.fname))
+        self.out_name = Path(outdir_name, os.path.basename(self.fname)).as_posix()
 
 @dataclass(eq=False)
 class InstallEmptyDir:
@@ -301,16 +301,16 @@ class Backend:
         else:
             assert isinstance(t, build.BuildTarget), t
             filename = t.get_filename()
-        return os.path.join(self.get_target_dir(t), filename)
+        return (Path(self.get_target_dir(t)) / filename).as_posix()
 
     def get_target_filename_abs(self, target: T.Union[build.Target, build.CustomTargetIndex]) -> str:
-        return os.path.join(self.environment.get_build_dir(), self.get_target_filename(target))
+        return (Path(self.environment.get_build_dir()) / self.get_target_filename(target)).as_posix()
 
     def get_target_debug_filename(self, target: build.BuildTarget) -> T.Optional[str]:
         assert isinstance(target, build.BuildTarget), target
         if target.get_debug_filename():
             debug_filename = target.get_debug_filename()
-            return os.path.join(self.get_target_dir(target), debug_filename)
+            return Path(self.get_target_dir(target), debug_filename).as_posix()
         else:
             return None
 
@@ -318,7 +318,7 @@ class Backend:
         assert isinstance(target, build.BuildTarget), target
         if not target.get_debug_filename():
             return None
-        return os.path.join(self.environment.get_build_dir(), self.get_target_debug_filename(target))
+        return Path(self.environment.get_build_dir(), self.get_target_debug_filename(target)).as_posix()
 
     def get_source_dir_include_args(self, target: build.BuildTarget, compiler: 'Compiler', *, absolute_path: bool = False) -> T.List[str]:
         curdir = target.get_subdir()
