@@ -1,0 +1,3 @@
+name: rsp_file
+long_name: Response file
+description: Opaque object returned by [[response_file]].

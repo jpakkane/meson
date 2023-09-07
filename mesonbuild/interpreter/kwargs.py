@@ -293,7 +293,7 @@ class ConfigureFile(TypedDict):
     install_mode: FileMode
     install_tag: T.Optional[str]
     encoding: str
-    command: T.Optional[T.List[T.Union[build.Executable, ExternalProgram, Compiler, File, str]]]
+    command: T.Optional[T.List[T.Union[build.Executable, ExternalProgram, Compiler, File, str, ResponseFile]]]
     input: T.List[FileOrString]
     configuration: T.Optional[T.Union[T.Dict[str, T.Union[str, int, bool]], build.ConfigurationData]]
 
@@ -385,3 +385,12 @@ class FuncDeclareDependency(TypedDict):
     sources: T.List[T.Union[FileOrString, build.GeneratedTypes]]
     variables: T.Dict[str, str]
     version: T.Optional[str]
+
+
+class ResponseFile(TypedDict):
+
+    prefix: str
+    quote: T.Union[str, bool]
+    max_args_length: T.Union[int, bool]
+    separator: str
+    relative_paths: bool

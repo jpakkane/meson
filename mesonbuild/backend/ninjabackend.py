@@ -24,7 +24,6 @@ import json
 import os
 import pickle
 import re
-import shlex
 import subprocess
 import typing as T
 
@@ -39,7 +38,7 @@ from ..compilers import Compiler
 from ..linkers import ArLikeLinker, RSPFileSyntax
 from ..mesonlib import (
     File, LibType, MachineChoice, MesonBugException, MesonException, OrderedSet, PerMachine,
-    ProgressBar, quote_arg
+    ProgressBar, quote_arg, cmd_quote, gcc_rsp_quote, get_rsp_threshold
 )
 from ..mesonlib import get_compiler_for_source, has_path_sep, OptionKey
 from .backends import CleanTrees
@@ -64,58 +63,14 @@ FORTRAN_MODULE_PAT = r"^\s*\bmodule\b\s+(\w+)\s*(?:!+.*)*$"
 FORTRAN_SUBMOD_PAT = r"^\s*\bsubmodule\b\s*\((\w+:?\w+)\)\s*(\w+)"
 FORTRAN_USE_PAT = r"^\s*use,?\s*(?:non_intrinsic)?\s*(?:::)?\s*(\w+)"
 
-def cmd_quote(arg: str) -> str:
-    # see: https://docs.microsoft.com/en-us/windows/desktop/api/shellapi/nf-shellapi-commandlinetoargvw#remarks
-
-    # backslash escape any existing double quotes
-    # any existing backslashes preceding a quote are doubled
-    arg = re.sub(r'(\\*)"', lambda m: '\\' * (len(m.group(1)) * 2 + 1) + '"', arg)
-    # any terminal backslashes likewise need doubling
-    arg = re.sub(r'(\\*)$', lambda m: '\\' * (len(m.group(1)) * 2), arg)
-    # and double quote
-    arg = f'"{arg}"'
-
-    return arg
-
-def gcc_rsp_quote(s: str) -> str:
-    # see: the function buildargv() in libiberty
-    #
-    # this differs from sh-quoting in that a backslash *always* escapes the
-    # following character, even inside single quotes.
-
-    s = s.replace('\\', '\\\\')
-
-    return shlex.quote(s)
-
 # How ninja executes command lines differs between Unix and Windows
 # (see https://ninja-build.org/manual.html#ref_rule_command)
 if mesonlib.is_windows():
-    quote_func = cmd_quote
     execute_wrapper = ['cmd', '/c']  # unused
     rmfile_prefix = ['del', '/f', '/s', '/q', '{}', '&&']
 else:
-    quote_func = quote_arg
     execute_wrapper = []
     rmfile_prefix = ['rm', '-f', '{}', '&&']
-
-
-def get_rsp_threshold() -> int:
-    '''Return a conservative estimate of the commandline size in bytes
-    above which a response file should be used.  May be overridden for
-    debugging by setting environment variable MESON_RSP_THRESHOLD.'''
-
-    if mesonlib.is_windows():
-        # Usually 32k, but some projects might use cmd.exe,
-        # and that has a limit of 8k.
-        limit = 8192
-    else:
-        # On Linux, ninja always passes the commandline as a single
-        # big string to /bin/sh, and the kernel limits the size of a
-        # single argument; see MAX_ARG_STRLEN
-        limit = 131072
-    # Be conservative
-    limit = limit // 2
-    return int(os.environ.get('MESON_RSP_THRESHOLD', limit))
 
 # a conservative estimate of the command-line length limit
 rsp_threshold = get_rsp_threshold()
@@ -225,7 +180,7 @@ class NinjaRule:
             self.depfile += '_UNQUOTED'
 
     @staticmethod
-    def _quoter(x, qf = quote_func):
+    def _quoter(x, qf = quote_arg):
         if isinstance(x, NinjaCommandArg):
             if x.quoting == Quoting.none:
                 return x.s
@@ -405,7 +360,7 @@ class NinjaBuildElement:
             else:
                 qf = gcc_rsp_quote
         else:
-            qf = quote_func
+            qf = quote_arg
 
         for e in self.elems:
             (name, elems) = e

@@ -1062,3 +1062,7 @@ class StructuredSourcesHolder(ObjectHolder[build.StructuredSources]):
 
     def __init__(self, sources: build.StructuredSources, interp: 'Interpreter'):
         super().__init__(sources, interp)
+
+
+class ResponseFileHolder(ObjectHolder[build.ResponseFile]):
+    pass

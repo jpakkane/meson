@@ -1,0 +1,71 @@
+name: response_file
+returns: rsp_file
+description: |
+  Write argument list to a response file, if the resulting length of the command
+  line is longer than a maximum value. A response file is a mechanism allowing a
+  program to receive more arguments than what would be allowed by the command
+  line. See [msvc compiler
+  documentation](https://learn.microsoft.com/en-us/cpp/build/reference/at-specify-a-compiler-response-file?view=msvc-170)
+  as an example.
+
+  The function returns either the unmodified argument list, if resulting length
+  is shorted that maximum allowed length, or an argument pointing to the
+  generated response file containing the argument list.
+
+  This function is designed to be used with [[custom_target]], [[run_target]],
+  [[run_command]] or [[configure_file]].
+
+varargs:
+  name: arguments
+  type: str | file | custom_tgt | custom_idx
+  description: The argument list.
+
+kwargs:
+  prefix:
+    type: str
+    default: "'@'"
+    description: |
+      The prefix to prepend to the response file path. Use an empty string if
+      you don't need a prefix.
+  
+  quote:
+    type: str | bool
+    default: true
+    description: |
+      Can be `'sh'` to use sh-like quoting, `'cmd'` for Windows cmd-like
+      quoting, or `'gcc'` for gcc-like quoting.
+
+      If `true`, uses `cmd` on Windows, or `sh` on other systems.
+
+      If `false`, does not quote the arguments.
+
+  max_args_length:
+    type: int
+    default: none
+    description: |
+      Maximum allowed command line length, after joining and quoting the
+      arguments. It doesn't take into account the length of the command itself,
+      or the length of other arguments that could be provided to the command.
+
+      If unspecified, it uses a default value based on the operating system
+      (approximatively 4000 on Windows, and 65000 on other systems), or the
+      value of the `MESON_RSP_THRESHOLD` environment variable.
+
+      If `0`, a response file is always created, no matter the length of the
+      command line.
+  
+  separator:
+    type: str
+    default: "' '"
+    description: |
+      The separator used to join the arguments. Usually a space character, but
+      could also be a `'\n'` to put one argument per line in the response file.
+
+  relative_paths:
+    type: bool
+    default: false
+    description: |
+      Whether to use relative (to top build dir) or absolute paths for files in
+      the response file. This only applies to `file` objects passed as
+      arguments.
+      

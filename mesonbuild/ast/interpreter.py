@@ -160,6 +160,7 @@ class AstInterpreter(InterpreterBase):
                            'alias_target': self.func_do_nothing,
                            'summary': self.func_do_nothing,
                            'range': self.func_do_nothing,
+                           'response_file': self.func_do_nothing,
                            'structured_sources': self.func_do_nothing,
                            'debug': self.func_do_nothing,
                            })

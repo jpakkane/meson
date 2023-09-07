@@ -111,6 +111,7 @@ syn keyword mesonBuiltin
   \ message
   \ option
   \ project
+  \ response_file
   \ run_command
   \ run_target
   \ set_variable

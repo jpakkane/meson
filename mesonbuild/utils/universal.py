@@ -90,6 +90,7 @@ __all__ = [
     'Version',
     'check_direntry_issues',
     'classify_unity_sources',
+    'cmd_quote',
     'current_vs_supports_modules',
     'darwin_get_object_archs',
     'default_libdir',
@@ -112,8 +113,10 @@ __all__ = [
     'extract_as_list',
     'first',
     'generate_list',
+    'gcc_rsp_quote',
     'get_compiler_for_source',
     'get_filenames_templates_dict',
+    'get_rsp_threshold',
     'get_variable_regex',
     'get_wine_shortpath',
     'git',
@@ -1102,6 +1105,32 @@ def has_path_sep(name: str, sep: str = '/\\') -> bool:
     return False
 
 
+def cmd_quote(arg: str) -> str:
+    # see: https://docs.microsoft.com/en-us/windows/desktop/api/shellapi/nf-shellapi-commandlinetoargvw#remarks
+
+    if arg and not re.search('[ \t\n\r"]', arg):
+        return arg  # do not quote if not needed
+
+    # backslash escape any existing double quotes
+    # any existing backslashes preceding a quote are doubled
+    arg = re.sub(r'(\\*)"', lambda m: '\\' * (len(m.group(1)) * 2 + 1) + '"', arg)
+    # any terminal backslashes likewise need doubling
+    arg = re.sub(r'(\\*)$', lambda m: '\\' * (len(m.group(1)) * 2), arg)
+    # and double quote
+    arg = f'"{arg}"'
+
+    return arg
+
+def gcc_rsp_quote(s: str) -> str:
+    # see: the function buildargv() in libiberty
+    #
+    # this differs from sh-quoting in that a backslash *always* escapes the
+    # following character, even inside single quotes.
+
+    s = s.replace('\\', '\\\\')
+
+    return shlex.quote(s)
+
 if is_windows():
     # shlex.split is not suitable for splitting command line on Window (https://bugs.python.org/issue1724822);
     # shlex.quote is similarly problematic. Below are "proper" implementations of these functions according to
@@ -1109,29 +1138,7 @@ if is_windows():
     # https://blogs.msdn.microsoft.com/twistylittlepassagesallalike/2011/04/23/everyone-quotes-command-line-arguments-the-wrong-way/
 
     _whitespace = ' \t\n\r'
-    _find_unsafe_char = re.compile(fr'[{_whitespace}"]').search
-
-    def quote_arg(arg: str) -> str:
-        if arg and not _find_unsafe_char(arg):
-            return arg
-
-        result = '"'
-        num_backslashes = 0
-        for c in arg:
-            if c == '\\':
-                num_backslashes += 1
-            else:
-                if c == '"':
-                    # Escape all backslashes and the following double quotation mark
-                    num_backslashes = num_backslashes * 2 + 1
-
-                result += num_backslashes * '\\' + c
-                num_backslashes = 0
-
-        # Escape all backslashes, but let the terminating double quotation
-        # mark we add below be interpreted as a metacharacter
-        result += (num_backslashes * 2) * '\\' + '"'
-        return result
+    quote_arg = cmd_quote
 
     def split_args(cmd: str) -> T.List[str]:
         result: T.List[str] = []
@@ -2418,3 +2425,22 @@ def first(iter: T.Iterable[_T], predicate: T.Callable[[_T], bool]) -> T.Optional
         if predicate(i):
             return i
     return None
+
+
+def get_rsp_threshold() -> int:
+    '''Return a conservative estimate of the commandline size in bytes
+    above which a response file should be used.  May be overridden for
+    debugging by setting environment variable MESON_RSP_THRESHOLD.'''
+
+    if is_windows():
+        # Usually 32k, but some projects might use cmd.exe,
+        # and that has a limit of 8k.
+        limit = 8192
+    else:
+        # On Linux, ninja always passes the commandline as a single
+        # big string to /bin/sh, and the kernel limits the size of a
+        # single argument; see MAX_ARG_STRLEN
+        limit = 131072
+    # Be conservative
+    limit = limit // 2
+    return int(os.environ.get('MESON_RSP_THRESHOLD', limit))

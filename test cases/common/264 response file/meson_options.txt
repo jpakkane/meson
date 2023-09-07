@@ -1,0 +1,1 @@
+option('max_args', type: 'integer', value: 0)

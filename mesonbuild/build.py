@@ -16,12 +16,14 @@ from __future__ import annotations
 from collections import defaultdict, OrderedDict
 from dataclasses import dataclass, field, InitVar
 from functools import lru_cache
+from pathlib import Path
 import abc
 import hashlib
 import itertools, pathlib
 import os
 import pickle
 import re
+import shlex
 import textwrap
 import typing as T
 
@@ -36,6 +38,7 @@ from .mesonlib import (
     get_filenames_templates_dict, substitute_values, has_path_sep,
     OptionKey, PerMachineDefaultable,
     MesonBugException, EnvironmentVariables, pickle_load,
+    quote_arg, cmd_quote, gcc_rsp_quote, get_rsp_threshold
 )
 from .compilers import (
     is_header, is_object, is_source, clink_langs, sort_clink, all_languages,
@@ -63,6 +66,7 @@ if T.TYPE_CHECKING:
     LibTypes = T.Union['SharedLibrary', 'StaticLibrary', 'CustomTarget', 'CustomTargetIndex']
     BuildTargetTypes = T.Union['BuildTarget', 'CustomTarget', 'CustomTargetIndex']
     ObjectTypes = T.Union[str, 'File', 'ExtractedObjects', 'GeneratedTypes']
+    CommandArg = T.Union[str, 'BuildTarget', 'CustomTarget', 'CustomTargetIndex', File]
 
 pch_kwargs = {'c_pch', 'cpp_pch'}
 
@@ -2454,7 +2458,8 @@ class CommandBase:
     dependencies: T.List[T.Union[BuildTarget, 'CustomTarget']]
     subproject: str
 
-    def flatten_command(self, cmd: T.Sequence[T.Union[str, File, programs.ExternalProgram, BuildTargetTypes]]) -> \
+    def flatten_command(self, cmd: T.Sequence[T.Union[str, File, programs.ExternalProgram, BuildTargetTypes, ResponseFile]],
+                        target_name: str, response_file_count: int = 0) -> \
             T.List[T.Union[str, File, BuildTarget, 'CustomTarget']]:
         cmd = listify(cmd)
         final_cmd: T.List[T.Union[str, File, BuildTarget, 'CustomTarget']] = []
@@ -2479,9 +2484,15 @@ class CommandBase:
             elif isinstance(c, CustomTargetIndex):
                 FeatureNew.single_use('CustomTargetIndex for command argument', '0.60', self.subproject)
                 self.dependencies.append(c.target)
-                final_cmd += self.flatten_command(File.from_built_file(c.get_subdir(), c.get_filename()))
+                final_cmd += self.flatten_command(File.from_built_file(c.get_subdir(), c.get_filename()), target_name, response_file_count)
             elif isinstance(c, list):
-                final_cmd += self.flatten_command(c)
+                final_cmd += self.flatten_command(c, target_name, response_file_count)
+            elif isinstance(c, ResponseFile):
+                c.configure(f'{target_name}{response_file_count}.rsp')
+                response_file_count += 1
+                self.dependencies.extend(c.get_dependencies())
+                self.depend_files.extend(c.get_depend_files())
+                final_cmd += self.flatten_command(c.get_outputs(), target_name, response_file_count)
             else:
                 raise InvalidArguments(f'Argument {c!r} in "command" is invalid')
         return final_cmd
@@ -2497,7 +2508,7 @@ class CustomTarget(Target, CommandBase):
                  environment: environment.Environment,
                  command: T.Sequence[T.Union[
                      str, BuildTargetTypes, GeneratedList,
-                     programs.ExternalProgram, File]],
+                     programs.ExternalProgram, File, ResponseFile]],
                  sources: T.Sequence[T.Union[
                      str, File, BuildTargetTypes, ExtractedObjects,
                      GeneratedList, programs.ExternalProgram]],
@@ -2534,7 +2545,7 @@ class CustomTarget(Target, CommandBase):
         self.depend_files = list(depend_files or [])
         self.dependencies: T.List[T.Union[CustomTarget, BuildTarget]] = []
         # must be after depend_files and dependencies
-        self.command = self.flatten_command(command)
+        self.command = self.flatten_command(command, name or outputs[0])
         self.depfile = depfile
         self.env = env or EnvironmentVariables()
         self.extra_depends = list(extra_depends or [])
@@ -2750,7 +2761,7 @@ class RunTarget(Target, CommandBase):
     typename = 'run'
 
     def __init__(self, name: str,
-                 command: T.Sequence[T.Union[str, File, BuildTargetTypes, programs.ExternalProgram]],
+                 command: T.Sequence[T.Union[str, File, BuildTargetTypes, programs.ExternalProgram, ResponseFile]],
                  dependencies: T.Sequence[Target],
                  subdir: str,
                  subproject: str,
@@ -2761,7 +2772,7 @@ class RunTarget(Target, CommandBase):
         super().__init__(name, subdir, subproject, False, MachineChoice.BUILD, environment)
         self.dependencies = dependencies
         self.depend_files = []
-        self.command = self.flatten_command(command)
+        self.command = self.flatten_command(command, name)
         self.absolute_paths = False
         self.env = env
         self.default_env = default_env
@@ -3038,3 +3049,97 @@ def save(obj: Build, filename: str) -> None:
             pickle.dump(obj, f)
     finally:
         obj.environment.coredata = cdata
+
+
+@dataclass(eq=False)
+class ResponseFile(HoldableObject):
+
+    args: T.List[CommandArg]
+    subdir: str
+    environment: environment.Environment
+
+    prefix: str = '@'
+    quote: T.Union[bool, str] = True
+    max_args_length: T.Optional[int] = None
+    separator: str = ' '
+    relative_paths: bool = False
+
+    def __post_init__(self):
+        self._response_file: T.Optional[Path] = None
+
+        if self.max_args_length is None:
+            self.max_args_length = get_rsp_threshold()
+
+        self.args = [self.process_string_arg(a) for a in self.args]
+
+    def has_response_file(self) -> bool:
+        return self._response_file is not None
+
+    def configure(self, filename: str) -> None:
+        if not self.args:
+            return
+
+        quoted_args = self.separator.join(self.format_argument(a) for a in self.generate_arg_list(self.args))
+        if len(quoted_args) <= self.max_args_length:
+            mlog.debug(f'Estimated arg length {len(quoted_args)} <= {self.max_args_length}')
+            return
+
+        self._response_file = Path(self.subdir, filename).with_suffix('.rsp')
+
+        mlog.debug(f'Writing rsp file: {self._response_file}')
+
+        response_file_fullpath = Path(self.environment.build_dir, self._response_file)
+        response_file_fullpath.parent.mkdir(exist_ok=True)
+        response_file_fullpath.write_text(quoted_args, encoding='utf-8')
+
+    def generate_arg_list(self, args: T.List[CommandArg]) -> Generator[FileOrString, None, None]:
+        for arg in args:
+            if isinstance(arg, (BuildTarget, CustomTarget, CustomTargetIndex)):
+                yield File(True, arg.subdir, arg.get_filename())
+            else:
+                yield arg
+
+    def process_string_arg(self, arg: CommandArg) -> CommandArg:
+        """ Convert string to File if it is an existing source file """
+        if isinstance(arg, str):
+            if Path(self.environment.source_dir, self.subdir, arg).exists():
+                return File(False, self.subdir, arg)
+        return arg
+
+    def get_outputs(self) -> T.List[CommandArg]:
+        if self._response_file:
+            return [self.prefix + str(self._response_file)]
+
+        return self.args
+
+    def get_dependencies(self) -> Generator[T.Union[BuildTarget, CustomTarget], None, None]:
+        if self._response_file:
+            for arg in self.args:
+                if isinstance(arg, (BuildTarget, CustomTarget)):
+                    yield arg
+                elif isinstance(arg, CustomTargetIndex):
+                    yield arg.target
+
+    def get_depend_files(self) -> Generator[File, None, None]:
+        if self._response_file:
+            for arg in self.args:
+                if isinstance(arg, File):
+                    yield arg
+
+    def format_argument(self, value: FileOrString) -> str:
+        quote_fcts = {
+            'sh': shlex.quote,
+            'gcc': gcc_rsp_quote,
+            'cmd': cmd_quote,
+            True: quote_arg,
+        }
+
+        if isinstance(value, File):
+            if self.relative_paths:
+                value = value.relative_name()
+            else:
+                value = value.absolute_path(self.environment.source_dir, self.environment.build_dir)
+
+        if self.quote:
+            value = quote_fcts[self.quote](value)
+        return value

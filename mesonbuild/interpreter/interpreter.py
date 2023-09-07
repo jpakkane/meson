@@ -132,6 +132,7 @@ if T.TYPE_CHECKING:
     BuildTargetSource = T.Union[mesonlib.FileOrString, build.GeneratedTypes, build.StructuredSources]
 
     ProgramVersionFunc = T.Callable[[T.Union[ExternalProgram, build.Executable, OverrideProgram]], str]
+    RunCommandArg = T.Union[build.Executable, ExternalProgram, compilers.Compiler, mesonlib.File, str]
 
 
 def _project_version_validator(value: T.Union[T.List, str, mesonlib.File, None]) -> T.Optional[str]:
@@ -395,6 +396,7 @@ class Interpreter(InterpreterBase, HoldableObject):
                            'option': self.func_option,
                            'project': self.func_project,
                            'range': self.func_range,
+                           'response_file': self.func_response_file,
                            'run_command': self.func_run_command,
                            'run_target': self.func_run_target,
                            'set_variable': self.func_set_variable,
@@ -462,6 +464,7 @@ class Interpreter(InterpreterBase, HoldableObject):
             coredata.UserFeatureOption: OBJ.FeatureOptionHolder,
             envconfig.MachineInfo: OBJ.MachineHolder,
             build.ConfigurationData: OBJ.ConfigurationDataHolder,
+            build.ResponseFile: OBJ.ResponseFileHolder,
         })
 
         '''
@@ -759,7 +762,7 @@ class Interpreter(InterpreterBase, HoldableObject):
     @typed_pos_args(
         'run_command',
         (build.Executable, ExternalProgram, compilers.Compiler, mesonlib.File, str),
-        varargs=(build.Executable, ExternalProgram, compilers.Compiler, mesonlib.File, str))
+        varargs=(build.Executable, ExternalProgram, compilers.Compiler, mesonlib.File, str, build.ResponseFile))
     @typed_kwargs(
         'run_command',
         KwargInfo('check', (bool, NoneType), since='0.47.0'),
@@ -767,14 +770,12 @@ class Interpreter(InterpreterBase, HoldableObject):
         ENV_KW.evolve(since='0.50.0'),
     )
     def func_run_command(self, node: mparser.BaseNode,
-                         args: T.Tuple[T.Union[build.Executable, ExternalProgram, compilers.Compiler, mesonlib.File, str],
-                                       T.List[T.Union[build.Executable, ExternalProgram, compilers.Compiler, mesonlib.File, str]]],
+                         args: T.Tuple[RunCommandArg, T.List[T.Union[RunCommandArg, build.ResponseFile]]],
                          kwargs: 'kwtypes.RunCommand') -> RunProcess:
         return self.run_command_impl(args, kwargs)
 
     def run_command_impl(self,
-                         args: T.Tuple[T.Union[build.Executable, ExternalProgram, compilers.Compiler, mesonlib.File, str],
-                                       T.List[T.Union[build.Executable, ExternalProgram, compilers.Compiler, mesonlib.File, str]]],
+                         args: T.Tuple[RunCommandArg, T.List[T.Union[RunCommandArg, build.ResponseFile]]],
                          kwargs: 'kwtypes.RunCommand',
                          in_builddir: bool = False) -> RunProcess:
         cmd, cargs = args
@@ -833,6 +834,13 @@ class Interpreter(InterpreterBase, HoldableObject):
                 if not prog.found():
                     raise InterpreterException(f'Program {cmd!r} not found or not executable')
                 expanded_args.append(prog.get_path())
+            elif isinstance(a, build.ResponseFile):
+                a.configure(cmd.name)
+                expanded_args.extend(a.get_outputs())
+                if a.has_response_file:
+                    for arg in a.get_depend_files():
+                        self.add_build_def_file(arg)
+
             else:
                 raise InterpreterException(overridden_msg.format(a.name, cmd.description()))
 
@@ -2569,7 +2577,7 @@ class Interpreter(InterpreterBase, HoldableObject):
         KwargInfo('capture', bool, default=False, since='0.41.0'),
         KwargInfo(
             'command',
-            (ContainerTypeInfo(list, (build.Executable, ExternalProgram, compilers.Compiler, mesonlib.File, str), allow_empty=False), NoneType),
+            (ContainerTypeInfo(list, (build.Executable, ExternalProgram, compilers.Compiler, mesonlib.File, str, build.ResponseFile), allow_empty=False), NoneType),
             listify=True,
         ),
         KwargInfo(
@@ -3430,3 +3438,16 @@ This will become a hard error in the future.''', location=self.current_node)
         if step < 1:
             raise InterpreterException('step must be >=1')
         return P_OBJ.RangeHolder(start, stop, step, subproject=self.subproject)
+
+    @FeatureNew('response_file', '1.3.0')
+    @typed_pos_args('response_file', varargs=(str, build.BuildTarget, build.CustomTarget, build.CustomTargetIndex, mesonlib.File))
+    @typed_kwargs(
+        'response_file',
+        KwargInfo('prefix', str, default='@'),
+        KwargInfo('quote', (bool, str), default=True, validator=in_set_validator({'sh', 'gcc', 'cmd', True, False})),
+        KwargInfo('max_args_length', (NoneType, int)),
+        KwargInfo('separator', str, default=' '),
+        KwargInfo('relative_paths', bool, default=False),
+    )
+    def func_response_file(self, node: mparser.BaseNode, args: T.Tuple[T.List[build.CommandArg]], kwargs: kwtypes.ResponseFile) -> build.ResponseFile:
+        return build.ResponseFile(args[0], self.subdir, self.environment, **kwargs)
