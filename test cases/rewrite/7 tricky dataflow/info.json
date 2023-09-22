@@ -1,0 +1,32 @@
+[
+    {
+        "type": "target",
+        "target": "tgt1",
+        "operation": "info"
+    },
+    {
+        "type": "target",
+        "target": "tgt2",
+        "operation": "info"
+    },
+    {
+        "type": "target",
+        "target": "tgt3",
+        "operation": "info"
+    },
+    {
+        "type": "target",
+        "target": "tgt4",
+        "operation": "info"
+    },
+    {
+        "type": "target",
+        "target": "tgt5",
+        "operation": "info"
+    },
+    {
+        "type": "target",
+        "target": "tgt6",
+        "operation": "info"
+    }
+]

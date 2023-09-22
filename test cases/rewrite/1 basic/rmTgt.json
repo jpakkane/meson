@@ -13,5 +13,10 @@
     "type": "target",
     "target": "trivialprog9",
     "operation": "target_rm"
+  },
+  {
+    "type": "target",
+    "target": "rightName",
+    "operation": "target_rm"
   }
 ]

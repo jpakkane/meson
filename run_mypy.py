@@ -11,7 +11,6 @@ from mesonbuild.mesonlib import version_compare
 
 modules = [
     # fully typed submodules
-    # 'mesonbuild/ast/',
     'mesonbuild/cargo/',
     'mesonbuild/cmake/',
     'mesonbuild/compilers/',
@@ -25,6 +24,11 @@ modules = [
 
     # specific files
     'mesonbuild/arglist.py',
+    'mesonbuild/ast/__init__.py',
+    'mesonbuild/ast/interpreter.py',
+    'mesonbuild/ast/introspection.py',
+    'mesonbuild/ast/postprocess.py',
+    'mesonbuild/ast/visitor.py',
     'mesonbuild/backend/backends.py',
     # 'mesonbuild/coredata.py',
     'mesonbuild/depfile.py',
@@ -69,6 +73,7 @@ modules = [
     'mesonbuild/mtest.py',
     'mesonbuild/optinterpreter.py',
     'mesonbuild/programs.py',
+    'mesonbuild/rewriter.py',
 
     'run_mypy.py',
     'run_project_tests.py',

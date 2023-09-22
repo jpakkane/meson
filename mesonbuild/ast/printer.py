@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 from .. import mparser
+from ..mesonlib import MesonBugException
 from .visitor import AstVisitor
 
 from itertools import zip_longest
@@ -32,35 +33,35 @@ arithmic_map = {
 }
 
 # Also known as "order of operations" or "binding_power"
-# This is the counterpart to Parser.e1, Parser.e2, Parser.e3, Parser.e4, Parser.e5, Parser.e6, Parser.e7, Parser.e8, Parser.e9
-def precedence_level(node: mparser.BaseNode) -> float:
+# This is the counterpart to Parser.e1, Parser.e2, Parser.e3, Parser.e4, Parser.e5, Parser.e6, Parser.e7, Parser.e8, Parser.e9, Parser.e10
+def precedence_level(node: mparser.BaseNode) -> int:
     if isinstance(node, (mparser.PlusAssignmentNode, mparser.AssignmentNode, mparser.TernaryNode)):
-        return 1.0
+        return 1
     elif isinstance(node, mparser.OrNode):
-        return 2.0
+        return 2
     elif isinstance(node, mparser.AndNode):
-        return 3.0
+        return 3
     elif isinstance(node, mparser.ComparisonNode):
-        return 4.0
+        return 4
     elif isinstance(node, mparser.ArithmeticNode):
         if node.operation in set(['add', 'sub']):
-            return 5.1
+            return 5
         elif node.operation in set(['mod', 'mul', 'div']):
-            return 5.2
+            return 6
     elif isinstance(node, (mparser.NotNode, mparser.UMinusNode)):
-        return 6.0
+        return 7
     elif isinstance(node, mparser.FunctionNode):
-        return 7.0
+        return 8
     elif isinstance(node, (mparser.ArrayNode, mparser.DictNode)):
-        return 8.0
+        return 9
     elif isinstance(node, (mparser.BooleanNode, mparser.IdNode, mparser.NumberNode, mparser.BaseStringNode, mparser.FormatStringNode, mparser.MultilineFormatStringNode, mparser.EmptyNode)):
-        return 9.0
+        return 10
     elif isinstance(node, mparser.ParenthesizedNode):
         # Parenthesize have the highest binding power, but since the AstPrinter
         # ignores ParanthesizedNode, the binding power of the inner node is
         # relevant.
         return precedence_level(node.inner)
-    raise TypeError
+    raise MesonBugException('Unhandled node type')
 
 class AstPrinter(AstVisitor):
     escape_trans: T.Dict[int, str] = str.maketrans({'\'': '\\\'', '\\': '\\\\'})
@@ -186,7 +187,7 @@ class AstPrinter(AstVisitor):
         self.maybe_parentheses(node, node.left, prec > prec_left)
         self.append_padded(arithmic_map[node.operation], node)
         node.lineno = self.curr_line or node.lineno
-        self.maybe_parentheses(node, node.right, prec > prec_right or (prec == prec_right and node.operation in set(['sub', 'div', 'mod'])))
+        self.maybe_parentheses(node, node.right, prec > prec_right or (prec == prec_right and node.operation in {'sub', 'div', 'mod'}))
 
     def visit_NotNode(self, node: mparser.NotNode) -> None:
         node.lineno = self.curr_line or node.lineno

@@ -131,6 +131,12 @@ class MesonInterpreterObject(InterpreterObject):
 class MutableInterpreterObject:
     ''' Dummy class to mark the object type as mutable '''
 
+class UnknownValue(MesonInterpreterObject):
+    '''This class is only used for the rewriter/static introspection tool and
+    indicates that a value cannot be determined statically, either because of
+    limitations in our code or because the value differs from machine to
+    machine.'''
+
 HoldableTypes = (HoldableObject, int, bool, str, list, dict)
 TYPE_HoldableTypes = T.Union[TYPE_elementary, HoldableObject]
 InterpreterObjectTypeVar = T.TypeVar('InterpreterObjectTypeVar', bound=TYPE_HoldableTypes)
