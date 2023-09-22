@@ -82,7 +82,10 @@ class AstPrinter(AstVisitor):
 
     def visit_StringNode(self, node: mparser.StringNode) -> None:
         assert isinstance(node.value, str)
-        self.append("'" + self.escape(node.value) + "'", node)
+        if '\n' in node.value:
+            self.append("'''" + self.escape(node.value) + "'''", node)
+        else:
+            self.append("'" + self.escape(node.value) + "'", node)
         node.lineno = self.curr_line or node.lineno
 
     def visit_FormatStringNode(self, node: mparser.FormatStringNode) -> None:
