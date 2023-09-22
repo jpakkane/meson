@@ -204,7 +204,7 @@ class Lexer:
                         lines = value.split('\n')
                         if len(lines) > 1:
                             lineno += len(lines) - 1
-                            line_start = mo.end() - len(lines[-1])
+                            line_start = mo.end() - len(lines[-1]) - 3
                     elif tid == 'eol_cont':
                         lineno += 1
                         line_start = loc
