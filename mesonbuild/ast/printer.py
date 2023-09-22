@@ -32,6 +32,8 @@ arithmic_map = {
 }
 
 class AstPrinter(AstVisitor):
+    escape_trans: T.Dict[int, str] = str.maketrans({'\'': '\\\'', '\\': '\\\\'})
+
     def __init__(self, indent: int = 2, arg_newline_cutoff: int = 5, update_ast_line_nos: bool = False):
         self.result = ''
         self.indent = indent
@@ -76,8 +78,7 @@ class AstPrinter(AstVisitor):
         node.lineno = self.curr_line or node.lineno
 
     def escape(self, val: str) -> str:
-        return val.translate(str.maketrans({'\'': '\\\'',
-                                            '\\': '\\\\'}))
+        return val.translate(self.escape_trans)
 
     def visit_StringNode(self, node: mparser.StringNode) -> None:
         assert isinstance(node.value, str)
@@ -252,21 +253,21 @@ class AstPrinter(AstVisitor):
 
 class RawPrinter(AstVisitor):
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.result = ''
 
-    def visit_default_func(self, node: mparser.BaseNode):
+    def visit_default_func(self, node: mparser.BaseNode) -> None:
         self.result += node.value
         if node.whitespaces:
             node.whitespaces.accept(self)
 
-    def visit_unary_operator(self, node: mparser.UnaryOperatorNode):
+    def visit_unary_operator(self, node: mparser.UnaryOperatorNode) -> None:
         node.operator.accept(self)
         node.value.accept(self)
         if node.whitespaces:
             node.whitespaces.accept(self)
 
-    def visit_binary_operator(self, node: mparser.BinaryOperatorNode):
+    def visit_binary_operator(self, node: mparser.BinaryOperatorNode) -> None:
         node.left.accept(self)
         node.operator.accept(self)
         node.right.accept(self)
