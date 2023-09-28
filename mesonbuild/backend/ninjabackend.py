@@ -2050,7 +2050,7 @@ class NinjaBackend(backends.Backend):
 
         for d in target.link_whole_targets:
             linkdirs.add(d.subdir)
-            if d.uses_rust():
+            if d.uses_rust() and d.rust_crate_type not in ['staticlib', 'cdylib']:
                 # specify `extern CRATE_NAME=OUTPUT_FILE` for each Rust
                 # dependency, so that collisions with libraries in rustc's
                 # sysroot don't cause ambiguity
