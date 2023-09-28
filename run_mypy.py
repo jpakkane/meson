@@ -60,6 +60,7 @@ modules = [
     'mesonbuild/modules/qt5.py',
     'mesonbuild/modules/qt6.py',
     'mesonbuild/modules/rust.py',
+    'mesonbuild/modules/snippets.py',
     'mesonbuild/modules/sourceset.py',
     'mesonbuild/modules/wayland.py',
     'mesonbuild/modules/windows.py',

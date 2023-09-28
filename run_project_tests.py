@@ -87,7 +87,8 @@ if T.TYPE_CHECKING:
 ALL_TESTS = ['cmake', 'common', 'native', 'warning-meson', 'failing-meson', 'failing-build', 'failing-test',
              'keyval', 'platform-osx', 'platform-windows', 'platform-linux',
              'java', 'C#', 'vala', 'cython', 'rust', 'd', 'objective c', 'objective c++',
-             'fortran', 'swift', 'cuda', 'python3', 'python', 'fpga', 'frameworks', 'nasm', 'wasm', 'wayland'
+             'fortran', 'swift', 'cuda', 'python3', 'python', 'fpga', 'frameworks', 'nasm', 'wasm', 'wayland',
+             'snippets',
              ]
 
 
@@ -362,15 +363,15 @@ def setup_commands(optbackend: str) -> None:
 def platform_fix_name(fname: str, canonical_compiler: str, env: environment.Environment) -> str:
     if '?lib' in fname:
         if env.machines.host.is_windows() and canonical_compiler == 'msvc':
-            fname = re.sub(r'lib/\?lib(.*)\.', r'bin/\1.', fname)
+            fname = re.sub(r'lib/\?lib(.*)$', r'bin/\1', fname)
             fname = re.sub(r'/\?lib/', r'/bin/', fname)
         elif env.machines.host.is_windows():
-            fname = re.sub(r'lib/\?lib(.*)\.', r'bin/lib\1.', fname)
+            fname = re.sub(r'lib/\?lib(.*)$', r'bin/lib\1', fname)
             fname = re.sub(r'\?lib(.*)\.dll$', r'lib\1.dll', fname)
             fname = re.sub(r'/\?lib/', r'/bin/', fname)
         elif env.machines.host.is_cygwin():
             fname = re.sub(r'lib/\?lib(.*)\.so$', r'bin/cyg\1.dll', fname)
-            fname = re.sub(r'lib/\?lib(.*)\.', r'bin/cyg\1.', fname)
+            fname = re.sub(r'lib/\?lib(.*)$', r'bin/cyg\1', fname)
             fname = re.sub(r'\?lib(.*)\.dll$', r'cyg\1.dll', fname)
             fname = re.sub(r'/\?lib/', r'/bin/', fname)
         else:
@@ -1143,6 +1144,7 @@ def detect_tests_to_run(only: T.Dict[str, T.List[str]], use_tmp: bool) -> T.List
         TestCategory('nasm', 'nasm'),
         TestCategory('wasm', 'wasm', shutil.which('emcc') is None or backend is not Backend.ninja),
         TestCategory('wayland', 'wayland', should_skip_wayland()),
+        TestCategory('snippets', 'snippets'),
     ]
 
     categories = [t.category for t in all_tests]

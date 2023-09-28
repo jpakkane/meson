@@ -52,8 +52,8 @@ class ModuleState:
         self.root_subdir = interpreter.root_subdir
         self.current_lineno = interpreter.current_lineno
         self.environment = interpreter.environment
-        self.project_name = interpreter.build.project_name
-        self.project_version = interpreter.build.dep_manifest[interpreter.active_projectname].version
+        self.project_name = interpreter.active_projectname
+        self.project_version = interpreter.project_version
         # The backend object is under-used right now, but we will need it:
         # https://github.com/mesonbuild/meson/issues/1419
         self.backend = interpreter.backend

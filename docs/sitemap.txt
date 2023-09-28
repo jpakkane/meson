@@ -55,6 +55,7 @@ index.md
 			Qt6-module.md
 			Rust-module.md
 			Simd-module.md
+			Snippets-module.md
 			SourceSet-module.md
 			Windows-module.md
 			i18n-module.md

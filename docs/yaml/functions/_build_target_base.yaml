@@ -248,7 +248,9 @@ kwargs:
       `default`, `internal`, `hidden`, `protected` or `inlineshidden`, which
       is the same as `hidden` but also includes things like C++ implicit
       constructors as specified in the GCC manual. Ignored on compilers that
-      do not support GNU visibility arguments.
+      do not support GNU visibility arguments. See also
+      [`snippets.symbol_visibility_header()`](Snippets-module.md#symbol_visibility_header)
+      method to help with defining public API.
 
   d_import_dirs:
     type: list[str]

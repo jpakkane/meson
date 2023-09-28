@@ -1,0 +1,15 @@
+{
+  "installed": [
+    {"type": "file", "file": "usr/include/mylib/apiconfig-static-only.h"},
+    {"type": "file", "file": "usr/include/mylib/apiconfig.h"},
+    {"type": "file", "file": "usr/include/mylib/lib-static-only.h"},
+    {"type": "file", "file": "usr/include/mylib/lib.h"},
+    {"type": "file", "file": "usr/lib/libmylib.a"},
+    {"type": "expr", "file": "usr/lib/?libmylib?so"},
+    {"type": "implib", "file": "usr/lib/libmylib"},
+    {"type": "pdb", "file": "usr/bin/mylib"},
+    {"type": "file", "file": "usr/lib/libstatic-only.a"},
+    {"type": "file", "file": "usr/lib/pkgconfig/mylib.pc"},
+    {"type": "file", "file": "usr/lib/pkgconfig/static-only.pc"}
+  ]
+}

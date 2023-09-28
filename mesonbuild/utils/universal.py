@@ -154,6 +154,7 @@ __all__ = [
     'set_meson_command',
     'split_args',
     'stringlistify',
+    'underscorify',
     'substitute_values',
     'substring_is_in_list',
     'typeslistify',
@@ -1476,6 +1477,8 @@ def typeslistify(item: 'T.Union[_T, T.Sequence[_T]]',
 def stringlistify(item: T.Union[T.Any, T.Sequence[T.Any]]) -> T.List[str]:
     return typeslistify(item, str)
 
+def underscorify(item: str) -> str:
+    return re.sub(r'[^a-zA-Z0-9]', '_', item)
 
 def expand_arguments(args: T.Iterable[str]) -> T.Optional[T.List[str]]:
     expended_args: T.List[str] = []

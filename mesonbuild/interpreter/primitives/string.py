@@ -7,7 +7,7 @@ import os
 
 import typing as T
 
-from ...mesonlib import version_compare
+from ...mesonlib import version_compare, underscorify
 from ...interpreterbase import (
     ObjectHolder,
     MesonOperator,
@@ -166,7 +166,7 @@ class StringHolder(ObjectHolder[str]):
     @noKwargs
     @noPosargs
     def underscorify_method(self, args: T.List[TYPE_var], kwargs: TYPE_kwargs) -> str:
-        return re.sub(r'[^a-zA-Z0-9]', '_', self.held_object)
+        return underscorify(self.held_object)
 
     @noKwargs
     @typed_pos_args('str.version_compare', str)
