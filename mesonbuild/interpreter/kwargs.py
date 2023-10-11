@@ -44,6 +44,7 @@ class BaseTest(TypedDict):
     depends: T.List[T.Union[build.CustomTarget, build.BuildTarget]]
     priority: int
     env: EnvironmentVariables
+    skip: bool
     suite: T.List[str]
 
 
