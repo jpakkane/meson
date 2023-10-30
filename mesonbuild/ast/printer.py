@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 from .. import mparser
+from ..mesonlib import MesonBugException
 from .visitor import AstVisitor
 
 from itertools import zip_longest
@@ -31,7 +32,40 @@ arithmic_map = {
     'div': '/'
 }
 
+# Also known as "order of operations" or "binding_power"
+# This is the counterpart to Parser.e1, Parser.e2, Parser.e3, Parser.e4, Parser.e5, Parser.e6, Parser.e7, Parser.e8, Parser.e9, Parser.e10
+def precedence_level(node: mparser.BaseNode) -> int:
+    if isinstance(node, (mparser.PlusAssignmentNode, mparser.AssignmentNode, mparser.TernaryNode)):
+        return 1
+    elif isinstance(node, mparser.OrNode):
+        return 2
+    elif isinstance(node, mparser.AndNode):
+        return 3
+    elif isinstance(node, mparser.ComparisonNode):
+        return 4
+    elif isinstance(node, mparser.ArithmeticNode):
+        if node.operation in set(['add', 'sub']):
+            return 5
+        elif node.operation in set(['mod', 'mul', 'div']):
+            return 6
+    elif isinstance(node, (mparser.NotNode, mparser.UMinusNode)):
+        return 7
+    elif isinstance(node, mparser.FunctionNode):
+        return 8
+    elif isinstance(node, (mparser.ArrayNode, mparser.DictNode)):
+        return 9
+    elif isinstance(node, (mparser.BooleanNode, mparser.IdNode, mparser.NumberNode, mparser.BaseStringNode, mparser.FormatStringNode, mparser.MultilineFormatStringNode, mparser.EmptyNode)):
+        return 10
+    elif isinstance(node, mparser.ParenthesizedNode):
+        # Parenthesize have the highest binding power, but since the AstPrinter
+        # ignores ParanthesizedNode, the binding power of the inner node is
+        # relevant.
+        return precedence_level(node.inner)
+    raise MesonBugException('Unhandled node type')
+
 class AstPrinter(AstVisitor):
+    escape_trans: T.Dict[int, str] = str.maketrans({'\'': '\\\'', '\\': '\\\\'})
+
     def __init__(self, indent: int = 2, arg_newline_cutoff: int = 5, update_ast_line_nos: bool = False):
         self.result = ''
         self.indent = indent
@@ -76,12 +110,14 @@ class AstPrinter(AstVisitor):
         node.lineno = self.curr_line or node.lineno
 
     def escape(self, val: str) -> str:
-        return val.translate(str.maketrans({'\'': '\\\'',
-                                            '\\': '\\\\'}))
+        return val.translate(self.escape_trans)
 
     def visit_StringNode(self, node: mparser.StringNode) -> None:
         assert isinstance(node.value, str)
-        self.append("'" + self.escape(node.value) + "'", node)
+        if '\n' in node.value:
+            self.append("'''" + self.escape(node.value) + "'''", node)
+        else:
+            self.append("'" + self.escape(node.value) + "'", node)
         node.lineno = self.curr_line or node.lineno
 
     def visit_FormatStringNode(self, node: mparser.FormatStringNode) -> None:
@@ -137,11 +173,21 @@ class AstPrinter(AstVisitor):
         node.lineno = self.curr_line or node.lineno
         node.right.accept(self)
 
+    def maybe_parentheses(self, outer: mparser.BaseNode, inner: mparser.BaseNode, parens: bool) -> None:
+        if parens:
+            self.append('(', inner)
+        inner.accept(self)
+        if parens:
+            self.append(')', inner)
+
     def visit_ArithmeticNode(self, node: mparser.ArithmeticNode) -> None:
-        node.left.accept(self)
+        prec = precedence_level(node)
+        prec_left = precedence_level(node.left)
+        prec_right = precedence_level(node.right)
+        self.maybe_parentheses(node, node.left, prec > prec_left)
         self.append_padded(arithmic_map[node.operation], node)
         node.lineno = self.curr_line or node.lineno
-        node.right.accept(self)
+        self.maybe_parentheses(node, node.right, prec > prec_right or (prec == prec_right and node.operation in {'sub', 'div', 'mod'}))
 
     def visit_NotNode(self, node: mparser.NotNode) -> None:
         node.lineno = self.curr_line or node.lineno
@@ -252,21 +298,21 @@ class AstPrinter(AstVisitor):
 
 class RawPrinter(AstVisitor):
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.result = ''
 
-    def visit_default_func(self, node: mparser.BaseNode):
+    def visit_default_func(self, node: mparser.BaseNode) -> None:
         self.result += node.value
         if node.whitespaces:
             node.whitespaces.accept(self)
 
-    def visit_unary_operator(self, node: mparser.UnaryOperatorNode):
+    def visit_unary_operator(self, node: mparser.UnaryOperatorNode) -> None:
         node.operator.accept(self)
         node.value.accept(self)
         if node.whitespaces:
             node.whitespaces.accept(self)
 
-    def visit_binary_operator(self, node: mparser.BinaryOperatorNode):
+    def visit_binary_operator(self, node: mparser.BinaryOperatorNode) -> None:
         node.left.accept(self)
         node.operator.accept(self)
         node.right.accept(self)

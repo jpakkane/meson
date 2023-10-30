@@ -62,6 +62,7 @@ cppcoro = declare_dependency(
 )
 
 
+cpp_compiler = meson.get_compiler('cpp')
 if get_option('unicode')  #if comment
 #if comment 2
   mfc=cpp_compiler.find_library(get_option('debug')?'mfc140ud':'mfc140u')
@@ -79,6 +80,10 @@ assert(not (3 in [1, 2]), '''3 shouldn't be in [1, 2]''')
 
 assert('b' in ['a', 'b'], ''''b' should be in ['a', 'b']''')
 assert('c' not in ['a', 'b'], ''''c' shouldn't be in ['a', 'b']''')
+
+exe1 = 'exe1'
+exe2 = 'exe2'
+exe3 = 'exe3'
 
 assert(exe1 in [exe1, exe2], ''''exe1 should be in [exe1, exe2]''')
 assert(exe3 not in [exe1, exe2], ''''exe3 shouldn't be in [exe1, exe2]''')

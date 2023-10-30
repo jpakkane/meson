@@ -1,12 +1,6 @@
 [
   {
     "type": "target",
-    "target": "trivialprog1",
-    "operation": "src_rm",
-    "sources": ["fileA.cpp"]
-  },
-  {
-    "type": "target",
     "target": "trivialprog3",
     "operation": "src_rm",
     "sources": ["fileA.cpp"]
@@ -21,7 +15,7 @@
     "type": "target",
     "target": "trivialprog5",
     "operation": "src_rm",
-    "sources": ["fileB.cpp"]
+    "sources": ["main.cpp"]
   },
   {
     "type": "target",
@@ -34,6 +28,18 @@
     "target": "trivialprog7",
     "operation": "src_rm",
     "sources": ["fileB.cpp"]
+  },
+  {
+    "type": "target",
+    "target": "trivialprog10",
+    "operation": "src_rm",
+    "sources": ["fileA.cpp", "fileB.cpp"]
+  },
+  {
+    "type": "target",
+    "target": "trivialprog11",
+    "operation": "src_rm",
+    "sources": ["fileA.cpp"]
   },
   {
     "type": "target",
@@ -83,6 +89,26 @@
   {
     "type": "target",
     "target": "trivialprog9",
+    "operation": "info"
+  },
+  {
+    "type": "target",
+    "target": "trivialprog10",
+    "operation": "info"
+  },
+  {
+    "type": "target",
+    "target": "trivialprog11",
+    "operation": "info"
+  },
+  {
+    "type": "target",
+    "target": "trivialprog12",
+    "operation": "info"
+  },
+  {
+    "type": "target",
+    "target": "rightName",
     "operation": "info"
   }
 ]

@@ -53,5 +53,25 @@
     "type": "target",
     "target": "trivialprog10",
     "operation": "info"
+  },
+  {
+    "type": "target",
+    "target": "trivialprog11",
+    "operation": "info"
+  },
+  {
+    "type": "target",
+    "target": "trivialprog12",
+    "operation": "info"
+  },
+  {
+    "type": "target",
+    "target": "trivialprog13",
+    "operation": "info"
+  },
+  {
+    "type": "target",
+    "target": "rightName",
+    "operation": "info"
   }
 ]

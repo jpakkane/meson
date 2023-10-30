@@ -1,7 +1,7 @@
 [
   {
     "type": "target",
-    "target": "trivialprog10",
+    "target": "trivialprog13",
     "operation": "target_add",
     "sources": ["new1.cpp", "new2.cpp"],
     "target_type": "shared_library"
