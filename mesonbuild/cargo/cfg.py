@@ -23,12 +23,9 @@ so you could have examples like:
 from __future__ import annotations
 import dataclasses
 import enum
-import functools
 import typing as T
 
 
-from . import builder
-from .. import mparser
 from ..mesonlib import MesonBugException
 
 if T.TYPE_CHECKING:
@@ -144,8 +141,8 @@ class Identifier(IR):
 @dataclasses.dataclass
 class Equal(IR):
 
-    lhs: IR
-    rhs: IR
+    lhs: Identifier
+    rhs: String
 
 
 @dataclasses.dataclass
@@ -219,57 +216,20 @@ def parse(ast: _LEX_STREAM) -> IR:
     return _parse(ast_i)
 
 
-@functools.singledispatch
-def ir_to_meson(ir: T.Any, build: builder.Builder) -> mparser.BaseNode:
-    raise NotImplementedError
+def _eval_cfg(ir: IR, cfgs: T.Dict[str, str]) -> bool:
+    if isinstance(ir, Identifier):
+        return ir.value in cfgs
+    elif isinstance(ir, Equal):
+        return cfgs.get(ir.lhs.value) == ir.rhs.value
+    elif isinstance(ir, Not):
+        return not _eval_cfg(ir.value, cfgs)
+    elif isinstance(ir, Any):
+        return any(_eval_cfg(i, cfgs) for i in ir.args)
+    elif isinstance(ir, All):
+        return all(_eval_cfg(i, cfgs) for i in ir.args)
+    else:
+        raise MesonBugException(f'Unhandled Cargo cfg IR: {ir}')
 
 
-@ir_to_meson.register
-def _(ir: String, build: builder.Builder) -> mparser.BaseNode:
-    return build.string(ir.value)
-
-
-@ir_to_meson.register
-def _(ir: Identifier, build: builder.Builder) -> mparser.BaseNode:
-    host_machine = build.identifier('host_machine')
-    if ir.value == "target_arch":
-        return build.method('cpu_family', host_machine)
-    elif ir.value in {"target_os", "target_family"}:
-        return build.method('system', host_machine)
-    elif ir.value == "target_endian":
-        return build.method('endian', host_machine)
-    raise MesonBugException(f"Unhandled Cargo identifier: {ir.value}")
-
-
-@ir_to_meson.register
-def _(ir: Equal, build: builder.Builder) -> mparser.BaseNode:
-    return build.equal(ir_to_meson(ir.lhs, build), ir_to_meson(ir.rhs, build))
-
-
-@ir_to_meson.register
-def _(ir: Not, build: builder.Builder) -> mparser.BaseNode:
-    return build.not_(ir_to_meson(ir.value, build))
-
-
-@ir_to_meson.register
-def _(ir: Any, build: builder.Builder) -> mparser.BaseNode:
-    if not ir.args:
-        return build.bool(False)
-    args = iter(reversed(ir.args))
-    last = next(args)
-    cur = build.or_(ir_to_meson(next(args), build), ir_to_meson(last, build))
-    for a in args:
-        cur = build.or_(ir_to_meson(a, build), cur)
-    return cur
-
-
-@ir_to_meson.register
-def _(ir: All, build: builder.Builder) -> mparser.BaseNode:
-    if not ir.args:
-        return build.bool(True)
-    args = iter(reversed(ir.args))
-    last = next(args)
-    cur = build.and_(ir_to_meson(next(args), build), ir_to_meson(last, build))
-    for a in args:
-        cur = build.and_(ir_to_meson(a, build), cur)
-    return cur
+def eval_cfg(raw: str, cfgs: T.Dict[str, str]) -> bool:
+    return _eval_cfg(parse(lexer(raw)), cfgs)
