@@ -101,6 +101,12 @@ class CargoCfgTest(unittest.TestCase):
                 (TokenType.IDENTIFIER, 'unix'),
                 (TokenType.RPAREN, None),
             ]),
+            ('cfg(windows)', [
+                (TokenType.CFG, None),
+                (TokenType.LPAREN, None),
+                (TokenType.IDENTIFIER, 'windows'),
+                (TokenType.RPAREN, None),
+            ]),
         ]
         for data, expected in cases:
             with self.subTest():
@@ -130,6 +136,16 @@ class CargoCfgTest(unittest.TestCase):
                             cfg.Equal(cfg.Identifier("target_arch"), cfg.String("x86")),
                             cfg.Equal(cfg.Identifier("target_os"), cfg.String("linux")),
                         ]))),
+            ('cfg(all(any(target_os = "android", target_os = "linux"), any(custom_cfg)))',
+                cfg.All([
+                    cfg.Any([
+                        cfg.Equal(cfg.Identifier("target_os"), cfg.String("android")),
+                        cfg.Equal(cfg.Identifier("target_os"), cfg.String("linux")),
+                    ]),
+                    cfg.Any([
+                        cfg.Identifier("custom_cfg"),
+                    ]),
+                ])),
         ]
         for data, expected in cases:
             with self.subTest():
@@ -183,6 +199,8 @@ class CargoCfgTest(unittest.TestCase):
                                 build.string('x86_64')),
                     build.equal(build.method('cpu_family', HOST_MACHINE),
                                 build.string('aarch64'))))),
+            ('all()', build.bool(True)),
+            ('any()', build.bool(False)),
         ]
         for data, expected in cases:
             with self.subTest():
