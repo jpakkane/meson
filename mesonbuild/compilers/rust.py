@@ -153,6 +153,22 @@ class RustCompiler(Compiler):
         p, stdo, stde = Popen_safe_logged(cmd)
         return bool(re.search('^target_feature="crt-static"$', stdo, re.MULTILINE))
 
+    @functools.lru_cache(maxsize=None)
+    def get_target_triplet(self) -> str:
+        # See if we have --target in the command line
+        cmd = self.get_exelist(ccache=False)
+        it = iter(cmd)
+        for i in it:
+            if i == '--target':
+                return next(it)
+        # Fallback to default target
+        p, stdo, stde = Popen_safe_logged(cmd + ['--version', '--verbose'])
+        if p.returncode == 0:
+            match = re.search('host: (.*)$', stdo, re.MULTILINE)
+            if match:
+                return match.group(1)
+        raise MesonException('Failed to determine rustc target triplet')
+
     def get_debug_args(self, is_debug: bool) -> T.List[str]:
         return clike_debug_args[is_debug]
 
