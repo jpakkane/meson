@@ -2175,6 +2175,8 @@ class StaticLibrary(BuildTarget):
                     self.suffix = 'rlib'
                 elif self.rust_crate_type == 'staticlib':
                     self.suffix = 'a'
+            elif self.environment.machines[self.for_machine].is_os2() and self.get_option(OptionKey('emxomf')):
+                self.suffix = 'lib'
             else:
                 if 'c' in self.compilers and self.compilers['c'].get_id() == 'tasking':
                     self.suffix = 'ma' if self.options.get_value('b_lto') and not self.prelink else 'a'
@@ -2375,7 +2377,9 @@ class SharedLibrary(BuildTarget):
             self.filename_tpl = '{0.prefix}{0.name}.{0.suffix}'
         elif self.environment.machines[self.for_machine].is_os2():
             suffix = 'dll'
-            import_filename_tpl = '{0.name}_dll.a'
+            # Import library is called foo_dll.a or foo_dll.lib
+            import_filename_tpl = '{0.name}_dll'
+            import_filename_tpl += '.lib' if self.environment.coredata.get_option(OptionKey('emxomf')) else '.a'
             self.filename_tpl = '{0.shortname}' if self.shortname else '{0.name}'
             if self.soversion:
                 self.filename_tpl += '{0.soversion}'
