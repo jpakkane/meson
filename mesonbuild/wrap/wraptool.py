@@ -38,7 +38,7 @@ def add_arguments(parser: 'argparse.ArgumentParser') -> None:
     p = subparsers.add_parser('install', help='install the specified project')
     p.add_argument('--allow-insecure', default=False, action='store_true',
                    help='Allow insecure server connections.')
-    p.add_argument('name')
+    p.add_argument('name', nargs='+')
     p.set_defaults(wrap_func=install)
 
     p = msubprojects.add_wrap_update_parser(subparsers)
@@ -89,20 +89,33 @@ def get_latest_version(name: str, allow_insecure: bool) -> T.Tuple[str, str]:
     version, revision = latest_version.rsplit('-', 1)
     return version, revision
 
-def install(options: 'argparse.Namespace') -> None:
-    name = options.name
-    if not os.path.isdir('subprojects'):
-        raise SystemExit('Subprojects dir not found. Run this script in your source root directory.')
+def install_one(name: str, allow_insecure: bool) -> None:
     if os.path.isdir(os.path.join('subprojects', name)):
-        raise SystemExit('Subproject directory for this project already exists.')
+        raise WrapException(f'Subproject directory for {name} already exists.')
     wrapfile = os.path.join('subprojects', name + '.wrap')
     if os.path.exists(wrapfile):
-        raise SystemExit('Wrap file already exists.')
-    (version, revision) = get_latest_version(name, options.allow_insecure)
-    url = open_wrapdburl(f'https://wrapdb.mesonbuild.com/v2/{name}_{version}-{revision}/{name}.wrap', options.allow_insecure, True)
+        raise WrapException(f'Wrap file for {name} already exists.')
+    (version, revision) = get_latest_version(name, allow_insecure)
+    url = open_wrapdburl(f'https://wrapdb.mesonbuild.com/v2/{name}_{version}-{revision}/{name}.wrap', allow_insecure, True)
     with open(wrapfile, 'wb') as f:
         f.write(url.read())
     print(f'Installed {name} version {version} revision {revision}')
+
+def install(options: 'argparse.Namespace') -> None:
+    if not os.path.isdir('subprojects'):
+        raise SystemExit('Subprojects dir not found. Run this script in your source root directory.')
+
+    failed = 0
+
+    for name in options.name:
+        try:
+            install_one(name, options.allow_insecure)
+        except WrapException as e:
+            print(str(e))
+            failed += 1
+
+    if failed > 0:
+        raise SystemExit(1)
 
 def get_current_version(wrapfile: str) -> T.Tuple[str, str, str, str, T.Optional[str]]:
     cp = configparser.ConfigParser(interpolation=None)
