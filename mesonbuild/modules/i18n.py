@@ -209,6 +209,7 @@ class I18nModule(ExtensionModule):
             command,
             kwargs['input'],
             [kwargs['output']],
+            state.is_build_only_subproject,
             build_by_default=build_by_default,
             install=kwargs['install'],
             install_dir=[kwargs['install_dir']] if kwargs['install_dir'] is not None else None,
@@ -299,6 +300,7 @@ class I18nModule(ExtensionModule):
                 [self.tools['msgfmt'], '-o', '@OUTPUT@', '@INPUT@'],
                 [po_file],
                 [f'{packagename}.mo'],
+                state.is_build_only_subproject,
                 install=install,
                 # We have multiple files all installed as packagename+'.mo' in different install subdirs.
                 # What we really wanted to do, probably, is have a rename: kwarg, but that's not available
@@ -356,7 +358,7 @@ class I18nModule(ExtensionModule):
 
         mo_fnames = []
         for target in mo_targets:
-            mo_fnames.append(path.join(target.get_subdir(), target.get_outputs()[0]))
+            mo_fnames.append(path.join(target.get_source_subdir(), target.get_outputs()[0]))
 
         command: T.List[T.Union[str, build.BuildTarget, build.CustomTarget,
                                 build.CustomTargetIndex, 'ExternalProgram', mesonlib.File]] = []
@@ -391,6 +393,7 @@ class I18nModule(ExtensionModule):
             command,
             kwargs['input'],
             [kwargs['output']],
+            state.is_build_only_subproject,
             build_by_default=build_by_default,
             extra_depends=mo_targets,
             install=kwargs['install'],

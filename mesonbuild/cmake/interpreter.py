@@ -765,14 +765,14 @@ class ConverterCustomTarget:
         mlog.log('  -- depends:      ', mlog.bold(str(self.depends)))
 
 class CMakeInterpreter:
-    def __init__(self, subdir: Path, install_prefix: Path, env: 'Environment', backend: 'Backend'):
+    def __init__(self, subdir: Path, install_prefix: Path, env: 'Environment', backend: 'Backend', for_machine: MachineChoice):
         self.subdir = subdir
         self.src_dir = Path(env.get_source_dir(), subdir)
         self.build_dir_rel = subdir / '__CMake_build'
         self.build_dir = Path(env.get_build_dir()) / self.build_dir_rel
         self.install_prefix = install_prefix
         self.env = env
-        self.for_machine = MachineChoice.HOST # TODO make parameter
+        self.for_machine = for_machine
         self.backend_name = backend.name
         self.linkers: T.Set[str] = set()
         self.fileapi = CMakeFileAPI(self.build_dir)
@@ -804,8 +804,7 @@ class CMakeInterpreter:
 
     def configure(self, extra_cmake_options: T.List[str]) -> CMakeExecutor:
         # Find CMake
-        # TODO: Using MachineChoice.BUILD should always be correct here, but also evaluate the use of self.for_machine
-        cmake_exe = CMakeExecutor(self.env, '>=3.14', MachineChoice.BUILD)
+        cmake_exe = CMakeExecutor(self.env, '>=3.14', self.for_machine)
         if not cmake_exe.found():
             raise CMakeException('Unable to find CMake')
         self.trace = CMakeTraceParser(cmake_exe.version(), self.build_dir, self.env, permissive=True)

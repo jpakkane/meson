@@ -40,6 +40,7 @@ from .scripts.meson_exe import run_exe
 
 if T.TYPE_CHECKING:
     from ._typing import ImmutableListProtocol
+    from .interpreterbase.baseobjects import SubProject
     from .mesonlib import ExecutableSerialisation
 
 archive_choices = ['gztar', 'xztar', 'zip']
@@ -99,7 +100,7 @@ class Dist(metaclass=abc.ABCMeta):
     src_root: str
     bld_root: str
     dist_scripts: T.List[ExecutableSerialisation]
-    subprojects: T.Dict[str, str]
+    subprojects: T.Dict[SubProject, str]
     options: argparse.Namespace
 
     def __post_init__(self) -> None:
@@ -352,7 +353,7 @@ def run(options: argparse.Namespace) -> int:
     extra_meson_args = []
     if options.include_subprojects:
         subproject_dir = os.path.join(src_root, b.subproject_dir)
-        for sub in b.subprojects:
+        for sub in b.subprojects.host:
             directory = wrap.get_directory(subproject_dir, sub)
             subprojects[sub] = os.path.join(b.subproject_dir, directory)
         extra_meson_args.append('-Dwrap_mode=nodownload')

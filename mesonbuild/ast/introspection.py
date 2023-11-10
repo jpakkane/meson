@@ -281,8 +281,9 @@ class IntrospectionInterpreter(AstInterpreter):
         empty_sources: T.List[T.Any] = []
         # Passing the unresolved sources list causes errors
         kwargs_reduced['_allow_no_sources'] = True
+        # XXX: is setting build_only_subproject to False correct?
         target = targetclass(name, self.subdir, self.subproject, for_machine, empty_sources, [], objects,
-                             self.environment, self.coredata.compilers[for_machine], kwargs_reduced)
+                             self.environment, self.coredata.compilers[for_machine], False, kwargs_reduced)
         target.process_compilers_late()
 
         new_target = {

@@ -15,14 +15,17 @@ if T.TYPE_CHECKING:
     from .interpreter import Interpreter
     from ..interpreterbase import TYPE_nkwargs, TYPE_nvar
     from .interpreterobjects import SubprojectHolder
+    from ..utils.universal import MachineChoice
 
 
 class DependencyFallbacksHolder(MesonInterpreterObject):
-    def __init__(self, interpreter: 'Interpreter', names: T.List[str], allow_fallback: T.Optional[bool] = None,
+    def __init__(self, interpreter: 'Interpreter', names: T.List[str], for_machine: MachineChoice,
+                 allow_fallback: T.Optional[bool] = None,
                  default_options: T.Optional[T.Dict[OptionKey, str]] = None) -> None:
         super().__init__(subproject=interpreter.subproject)
         self.interpreter = interpreter
         self.subproject = interpreter.subproject
+        self.for_machine = for_machine
         self.coredata = interpreter.coredata
         self.build = interpreter.build
         self.environment = interpreter.environment
@@ -86,9 +89,8 @@ class DependencyFallbacksHolder(MesonInterpreterObject):
         self._handle_featurenew_dependencies(name)
         dep = dependencies.find_external_dependency(name, self.environment, kwargs)
         if dep.found():
-            for_machine = self.interpreter.machine_from_native_kwarg(kwargs)
             identifier = dependencies.get_dep_identifier(name, kwargs)
-            self.coredata.deps[for_machine].put(identifier, dep)
+            self.coredata.deps[self.for_machine].put(identifier, dep)
             return dep
         return None
 
@@ -131,7 +133,7 @@ class DependencyFallbacksHolder(MesonInterpreterObject):
         return self._get_subproject_dep(subp_name, varname, kwargs)
 
     def _get_subproject(self, subp_name: str) -> T.Optional[SubprojectHolder]:
-        sub = self.interpreter.subprojects.get(subp_name)
+        sub = self.interpreter.subprojects[self.for_machine].get(subp_name)
         if sub and sub.found():
             return sub
         return None
@@ -140,9 +142,7 @@ class DependencyFallbacksHolder(MesonInterpreterObject):
         # Verify the subproject is found
         subproject = self._get_subproject(subp_name)
         if not subproject:
-            mlog.log('Dependency', mlog.bold(self._display_name), 'from subproject',
-                     mlog.bold(subp_name), 'found:', mlog.red('NO'),
-                     mlog.blue('(subproject failed to configure)'))
+            self._log_found(False, subproject=subp_name, extra_args=[mlog.blue('(subproject failed to configure)')])
             return None
 
         # The subproject has been configured. If for any reason the dependency
@@ -175,40 +175,48 @@ class DependencyFallbacksHolder(MesonInterpreterObject):
                     break
         if not varname:
             mlog.warning(f'Subproject {subp_name!r} did not override {self._display_name!r} dependency and no variable name specified')
-            mlog.log('Dependency', mlog.bold(self._display_name), 'from subproject',
-                     mlog.bold(subproject.subdir), 'found:', mlog.red('NO'))
+            self._log_found(False, subproject=subproject.subdir)
             return self._notfound_dependency()
 
         var_dep = self._get_subproject_variable(subproject, varname) or self._notfound_dependency()
         if not var_dep.found():
-            mlog.log('Dependency', mlog.bold(self._display_name), 'from subproject',
-                     mlog.bold(subproject.subdir), 'found:', mlog.red('NO'))
+            self._log_found(False, subproject=subproject.subdir)
             return var_dep
 
         wanted = stringlistify(kwargs.get('version', []))
         found = var_dep.get_version()
         if not self._check_version(wanted, found):
-            mlog.log('Dependency', mlog.bold(self._display_name), 'from subproject',
-                     mlog.bold(subproject.subdir), 'found:', mlog.red('NO'),
-                     'found', mlog.normal_cyan(found), 'but need:',
-                     mlog.bold(', '.join([f"'{e}'" for e in wanted])))
+            self._log_found(False, subproject=subproject.subdir,
+                            extra_args=['found', mlog.normal_cyan(found), 'but need:',
+                                        mlog.bold(', '.join([f"'{e}'" for e in wanted]))])
             return self._notfound_dependency()
 
-        mlog.log('Dependency', mlog.bold(self._display_name), 'from subproject',
-                 mlog.bold(subproject.subdir), 'found:', mlog.green('YES'),
-                 mlog.normal_cyan(found) if found else None)
+        self._log_found(True, subproject=subproject.subdir,
+                        extra_args=[mlog.normal_cyan(found) if found else None])
         return var_dep
+
+    def _log_found(self, found: bool, extra_args: T.Optional[mlog.TV_LoggableList] = None,
+                   subproject: T.Optional[str] = None) -> None:
+        msg: mlog.TV_LoggableList = [
+            'Dependency', mlog.bold(self._display_name),
+            'for', mlog.bold(self.for_machine.get_lower_case_name()), 'machine']
+        if subproject:
+            msg.extend(['from subproject:', subproject])
+        msg.extend(['found:', mlog.red('NO') if not found else mlog.green('YES')])
+        if extra_args:
+            msg.extend(extra_args)
+
+        mlog.log(*msg)
 
     def _get_cached_dep(self, name: str, kwargs: TYPE_nkwargs) -> T.Optional[Dependency]:
         # Unlike other methods, this one returns not-found dependency instead
         # of None in the case the dependency is cached as not-found, or if cached
         # version does not match. In that case we don't want to continue with
         # other candidates.
-        for_machine = self.interpreter.machine_from_native_kwarg(kwargs)
         identifier = dependencies.get_dep_identifier(name, kwargs)
         wanted_vers = stringlistify(kwargs.get('version', []))
 
-        override = self.build.dependency_overrides[for_machine].get(identifier)
+        override = self.build.dependency_overrides[self.for_machine].get(identifier)
         if override:
             info = [mlog.blue('(overridden)' if override.explicit else '(cached)')]
             cached_dep = override.dep
@@ -216,14 +224,13 @@ class DependencyFallbacksHolder(MesonInterpreterObject):
             # have explicitly called meson.override_dependency() with a not-found
             # dep.
             if not cached_dep.found():
-                mlog.log('Dependency', mlog.bold(self._display_name),
-                         'found:', mlog.red('NO'), *info)
+                self._log_found(False, extra_args=info)
                 return cached_dep
         elif self.forcefallback and self.subproject_name:
             cached_dep = None
         else:
             info = [mlog.blue('(cached)')]
-            cached_dep = self.coredata.deps[for_machine].get(identifier)
+            cached_dep = self.coredata.deps[self.for_machine].get(identifier)
 
         if cached_dep:
             found_vers = cached_dep.get_version()
@@ -232,16 +239,15 @@ class DependencyFallbacksHolder(MesonInterpreterObject):
                     # We cached this dependency on disk from a previous run,
                     # but it could got updated on the system in the meantime.
                     return None
-                mlog.log('Dependency', mlog.bold(name),
-                         'found:', mlog.red('NO'),
-                         'found', mlog.normal_cyan(found_vers), 'but need:',
+                self._log_found(
+                    False, extra_args=[
+                        'found', mlog.normal_cyan(found_vers), 'but need:',
                          mlog.bold(', '.join([f"'{e}'" for e in wanted_vers])),
-                         *info)
+                         *info])
                 return self._notfound_dependency()
             if found_vers:
                 info = [mlog.normal_cyan(found_vers), *info]
-            mlog.log('Dependency', mlog.bold(self._display_name),
-                     'found:', mlog.green('YES'), *info)
+            self._log_found(True, extra_args=info)
             return cached_dep
         return None
 
@@ -311,7 +317,9 @@ class DependencyFallbacksHolder(MesonInterpreterObject):
 
         disabled, required, feature = extract_required_kwarg(kwargs, self.subproject)
         if disabled:
-            mlog.log('Dependency', mlog.bold(self._display_name), 'skipped: feature', mlog.bold(feature), 'disabled')
+            mlog.log('Dependency', mlog.bold(self._display_name),
+                     'for', mlog.bold(self.for_machine.get_lower_case_name()), 'machine',
+                     'skipped: feature', mlog.bold(feature), 'disabled')
             return self._notfound_dependency()
 
         # Check if usage of the subproject fallback is forced
@@ -351,16 +359,16 @@ class DependencyFallbacksHolder(MesonInterpreterObject):
         for i, item in enumerate(candidates):
             func, func_args, func_kwargs = item
             func_kwargs['required'] = required and (i == last)
+            func_kwargs['for_machine'] = self.for_machine
             kwargs['required'] = required and (i == last)
             dep = func(kwargs, func_args, func_kwargs)
             if dep and dep.found():
                 # Override this dependency to have consistent results in subsequent
                 # dependency lookups.
                 for name in self.names:
-                    for_machine = self.interpreter.machine_from_native_kwarg(kwargs)
                     identifier = dependencies.get_dep_identifier(name, kwargs)
-                    if identifier not in self.build.dependency_overrides[for_machine]:
-                        self.build.dependency_overrides[for_machine][identifier] = \
+                    if identifier not in self.build.dependency_overrides[self.for_machine]:
+                        self.build.dependency_overrides[self.for_machine][identifier] = \
                             build.DependencyOverride(dep, self.interpreter.current_node, explicit=False)
                 return dep
             elif required and (dep or i == last):

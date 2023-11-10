@@ -177,7 +177,7 @@ class RustModule(ExtensionModule):
             name, base_target.subdir, state.subproject, base_target.for_machine,
             sources, base_target.structured_sources,
             base_target.objects, base_target.environment, base_target.compilers,
-            new_target_kwargs
+            state.is_build_only_subproject, new_target_kwargs
         )
 
         test = self.interpreter.make_test(
@@ -274,6 +274,7 @@ class RustModule(ExtensionModule):
             cmd,
             [header],
             [kwargs['output']],
+            state.is_build_only_subproject,
             depfile='@PLAINNAME@.d',
             extra_depends=depends,
             depend_files=depend_files,

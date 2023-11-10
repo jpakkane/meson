@@ -357,6 +357,7 @@ class HotdocTargetBuilder:
                               extra_extension_paths=self._extra_extension_paths,
                               extra_assets=self._extra_assets,
                               subprojects=self._subprojects,
+                              is_build_only_subproject=self.interpreter.build.is_build_only,
                               command=target_cmd,
                               extra_depends=self.extra_depends,
                               outputs=[fullname],
@@ -407,8 +408,9 @@ class HotdocTargetHolder(_CustomTargetHolder['HotdocTarget']):
 class HotdocTarget(CustomTarget):
     def __init__(self, name: str, subdir: str, subproject: str, hotdoc_conf: File,
                  extra_extension_paths: T.Set[str], extra_assets: T.List[str],
-                 subprojects: T.List['HotdocTarget'], environment: Environment, **kwargs: T.Any):
-        super().__init__(name, subdir, subproject, environment, **kwargs, absolute_paths=True)
+                 subprojects: T.List['HotdocTarget'], environment: Environment,
+                 is_build_only_subproject: bool, **kwargs: T.Any):
+        super().__init__(name, subdir, subproject, environment, **kwargs, build_only_subproject=is_build_only_subproject, absolute_paths=True)
         self.hotdoc_conf = hotdoc_conf
         self.extra_extension_paths = extra_extension_paths
         self.extra_assets = extra_assets

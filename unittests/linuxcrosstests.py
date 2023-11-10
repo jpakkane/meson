@@ -34,7 +34,7 @@ class BaseLinuxCrossTests(BasePlatformTests):
 
 
 def should_run_cross_arm_tests():
-    return shutil.which('arm-linux-gnueabihf-gcc') and not platform.machine().lower().startswith('arm')
+    return shutil.which('armv7l-unknown-linux-gnueabihf-gcc') and not platform.machine().lower().startswith('arm')
 
 @unittest.skipUnless(not is_windows() and should_run_cross_arm_tests(), "requires ability to cross compile to ARM")
 class LinuxCrossArmTests(BaseLinuxCrossTests):
@@ -44,7 +44,43 @@ class LinuxCrossArmTests(BaseLinuxCrossTests):
 
     def setUp(self):
         super().setUp()
-        self.meson_cross_files = [os.path.join(self.src_root, 'cross', 'ubuntu-armhf.txt')]
+        self.meson_cross_files = [os.path.join(self.src_root, 'cross', 'nixos-armhf.ini')]
+
+    def test_nested_for_build_subprojects(self) -> None:
+        """Test that when cross compiled nested native subprojects report
+        themselves as for the build machine.
+
+        This cannot be done without a unit test because in a host == build
+        configuration this wont be reported at all
+        """
+        testdir = os.path.join(self.src_root, 'test cases', 'native', '10 native subproject')
+
+        with self.subTest('configuring'):
+            out = self.init(testdir)
+
+        with self.subTest('nested build-only subproject reports correct machine'):
+            self.assertIn('Executing subproject buildtool:hostp for machine: build', out)
+
+        with self.subTest('summary reports correct host subprojects'):
+            expected = '\n'.join([
+                'Subprojects (for host machine)',
+                '    both                : YES',
+                '    recursive-both      : YES',
+                '    recursive-host-only : YES',
+            ])
+            self.assertIn(expected, out)
+
+        with self.subTest('summary reports correct build subprojects'):
+            expected = '\n'.join([
+                'Subprojects (for build machine)',
+                '    both                : YES',
+                '    buildtool           : YES',
+                '    hostp               : YES',
+                '    recursive-both      : YES',
+                '    recursive-build-only: YES',
+                '    test installs       : YES',
+            ])
+            self.assertIn(expected, out)
 
     def test_cflags_cross_environment_pollution(self):
         '''

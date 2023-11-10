@@ -99,12 +99,17 @@ class JavaModule(NewExtensionModule):
 
         prefix = classes[0] if not package else package
 
-        target = CustomTarget(f'{prefix}-native-headers',
-                              state.subdir,
-                              state.subproject,
-                              state.environment,
-                              command,
-                              sources=args[0], outputs=headers, backend=state.backend)
+        target = CustomTarget(
+            f'{prefix}-native-headers',
+            state.subdir,
+            state.subproject,
+            state.environment,
+            command,
+            args[0],
+            headers,
+            state.is_build_only_subproject,
+            backend=state.backend
+        )
 
         # It is only known that 1.8.0 won't pre-create the directory. 11 and 16
         # do not exhibit this behavior.

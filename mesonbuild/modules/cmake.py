@@ -23,7 +23,7 @@ from . import ExtensionModule, ModuleReturnValue, ModuleObject, ModuleInfo
 from .. import build, mesonlib, mlog, dependencies
 from ..cmake import TargetOptions, cmake_defines_to_args
 from ..interpreter import SubprojectHolder
-from ..interpreter.type_checking import REQUIRED_KW, INSTALL_DIR_KW, NoneType, in_set_validator
+from ..interpreter.type_checking import NATIVE_KW, REQUIRED_KW, INSTALL_DIR_KW, NoneType, in_set_validator
 from ..interpreterbase import (
     FeatureNew,
     FeatureNewKwargs,
@@ -70,6 +70,7 @@ if T.TYPE_CHECKING:
 
         options: T.Optional[CMakeSubprojectOptions]
         cmake_options: T.List[str]
+        native: mesonlib.MachineChoice
 
 
 COMPATIBILITIES = ['AnyNewerVersion', 'SameMajorVersion', 'SameMinorVersion', 'ExactVersion']
@@ -414,6 +415,7 @@ class CmakeModule(ExtensionModule):
     @typed_kwargs(
         'cmake.subproject',
         REQUIRED_KW,
+        NATIVE_KW.evolve(since='1.3.0'),
         KwargInfo('options', (CMakeSubprojectOptions, NoneType), since='0.55.0'),
         KwargInfo(
             'cmake_options',
@@ -434,6 +436,7 @@ class CmakeModule(ExtensionModule):
             'cmake_options': kwargs_['cmake_options'],
             'default_options': {},
             'version': [],
+            'for_machine': kwargs_['native'],
         }
         subp = self.interpreter.do_subproject(dirname, kw, force_method='cmake')
         if not subp.found():

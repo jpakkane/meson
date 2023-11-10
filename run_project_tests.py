@@ -1463,7 +1463,7 @@ def check_meson_commands_work(use_tmpdir: bool, extra_args: T.List[str]) -> None
                 raise RuntimeError(f'Failed to install {testdir!r}:\n{e}\n{o}')
 
 
-def detect_system_compiler(options: 'CompilerArgumentType') -> None:
+def detect_system_compiler(options: 'CompilerArgumentType', quick: bool = False) -> None:
     global host_c_compiler, compiler_id_map
 
     fake_opts = get_fake_options('/')
@@ -1474,11 +1474,15 @@ def detect_system_compiler(options: 'CompilerArgumentType') -> None:
 
     env = environment.Environment('', '', fake_opts)
 
-    print_compilers(env, MachineChoice.HOST)
-    if options.cross_file:
-        print_compilers(env, MachineChoice.BUILD)
+    if not quick:
+        print_compilers(env, MachineChoice.HOST)
+        if options.cross_file:
+            print_compilers(env, MachineChoice.BUILD)
+        langs = sorted(compilers.all_languages)
+    else:
+        langs = ['c']
 
-    for lang in sorted(compilers.all_languages):
+    for lang in langs:
         try:
             comp = compiler_from_language(env, lang, MachineChoice.HOST)
             # note compiler id for later use with test.json matrix

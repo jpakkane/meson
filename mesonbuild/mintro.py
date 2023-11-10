@@ -255,12 +255,12 @@ def list_targets(builddata: build.Build, installdata: backends.InstallData, back
         if not isinstance(target, build.Target):
             raise RuntimeError('The target object in `builddata.get_targets()` is not of type `build.Target`. Please file a bug with this error message.')
 
-        outdir = get_target_dir(builddata.environment.coredata, target.subdir)
+        outdir = get_target_dir(builddata.environment.coredata, target.get_output_subdir())
         t = {
             'name': target.get_basename(),
             'id': idname,
             'type': target.get_typename(),
-            'defined_in': os.path.normpath(os.path.join(src_dir, target.subdir, environment.build_filename)),
+            'defined_in': os.path.normpath(os.path.join(src_dir, target.get_source_subdir(), environment.build_filename)),
             'filename': [os.path.join(build_dir, outdir, x) for x in target.get_outputs()],
             'build_by_default': target.build_by_default,
             'target_sources': backend.get_introspection_data(idname, target),
@@ -484,11 +484,11 @@ def list_projinfo(builddata: build.Build) -> T.Dict[str, T.Union[str, T.List[T.D
         'subproject_dir': builddata.subproject_dir,
     }
     subprojects = []
-    for k, v in builddata.subprojects.items():
+    for k, v in builddata.subprojects.host.items():
         c: T.Dict[str, str] = {
             'name': k,
             'version': v,
-            'descriptive_name': builddata.projects.get(k),
+            'descriptive_name': builddata.projects.host.get(k),
         }
         subprojects.append(c)
     result['subprojects'] = subprojects

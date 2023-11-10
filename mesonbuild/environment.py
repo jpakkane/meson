@@ -13,6 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
+import copy
 import itertools
 import os, platform, re, sys, shutil
 import typing as T
@@ -797,6 +798,30 @@ class Environment:
         # meson_command is used by the regenchecker script, which runs meson
         self.coredata = coredata.CoreData(options, self.scratch_dir, mesonlib.get_meson_command())
         self.first_invocation = True
+
+    def copy_for_build(self) -> Environment:
+        if not self.is_cross_build():
+            return self
+        new = copy.copy(self)
+
+        new.coredata = self.coredata.copy_as_build()
+
+        # When copying for build we won't need an exe wrapper
+        new.exe_wrapper = None
+
+        # replace any host specific options with their build specific equivalent
+        new.options = dict(self.options)
+        for opt, val in self.options.items():
+            if opt.machine is MachineChoice.BUILD:
+                del new.options[opt]
+                new.options[opt.as_host()] = val
+
+        new.machines = PerThreeMachineDefaultable(self.machines.build).default_missing()
+        new.binaries = PerMachineDefaultable(self.binaries.build).default_missing()
+        new.properties = PerMachineDefaultable(self.properties.build).default_missing()
+        new.cmakevars = PerMachineDefaultable(self.cmakevars.build).default_missing()
+
+        return new
 
     def is_cross_build(self, when_building_for: MachineChoice = MachineChoice.HOST) -> bool:
         return self.coredata.is_cross_build(when_building_for)

@@ -44,6 +44,8 @@ def main() -> None:
     parser.add_argument('--quick', action='store_true', help='Skip some compiler and tool checking')
     args = T.cast('ArgumentType', parser.parse_args())
 
+    detect_system_compiler(args, args.quick)
+
     setup_commands(args.backend)
     if not args.quick:
         detect_system_compiler(args)

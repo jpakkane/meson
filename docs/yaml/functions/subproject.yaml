@@ -65,3 +65,10 @@ kwargs:
     default: true
     description: |
       Works just the same as in [[dependency]].
+
+  native:
+    type: bool
+    since: 1.3.0
+    default: false
+    description : |
+      Whether to build this subproject for the host or build machine.

@@ -300,6 +300,7 @@ class FSModule(ExtensionModule):
             state.environment.get_build_command() + ['--internal', 'copy', '@INPUT@', '@OUTPUT@'],
             [src],
             [dest],
+            state.is_build_only_subproject,
             build_by_default=True,
             install=kwargs['install'],
             install_dir=[kwargs['install_dir']],

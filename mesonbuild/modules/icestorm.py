@@ -81,6 +81,7 @@ class IceStormModule(ExtensionModule):
             [self.tools['yosys'], '-q', '-p', 'synth_ice40 -blif @OUTPUT@', '@INPUT@'],
             all_sources,
             [f'{proj_name}.blif'],
+            state.is_build_only_subproject,
         )
 
         asc_target = build.CustomTarget(
@@ -91,6 +92,7 @@ class IceStormModule(ExtensionModule):
             [self.tools['arachne'], '-q', '-d', '1k', '-p', '@INPUT@', '-o', '@OUTPUT@'],
             [kwargs['constraint_file'], blif_target],
             [f'{proj_name}.asc'],
+            state.is_build_only_subproject,
         )
 
         bin_target = build.CustomTarget(
@@ -101,6 +103,7 @@ class IceStormModule(ExtensionModule):
             [self.tools['icepack'], '@INPUT@', '@OUTPUT@'],
             [asc_target],
             [f'{proj_name}.bin'],
+            state.is_build_only_subproject,
             build_by_default=True,
         )
 

@@ -605,8 +605,8 @@ class PerMachineDefaultable(PerMachine[T.Optional[_T]]):
 class PerThreeMachineDefaultable(PerMachineDefaultable[T.Optional[_T]], PerThreeMachine[T.Optional[_T]]):
     """Extends `PerThreeMachine` with the ability to default from `None`s.
     """
-    def __init__(self) -> None:
-        PerThreeMachine.__init__(self, None, None, None)
+    def __init__(self, build: T.Optional[_T] = None, host: T.Optional[_T] = None, target: T.Optional[_T] = None) -> None:
+        PerThreeMachine.__init__(self, build, host, target)
 
     def default_missing(self) -> "PerThreeMachine[T.Optional[_T]]":
         """Default host to build and target to host.

@@ -221,10 +221,10 @@ class DependenciesHelper:
                 # than needed build deps.
                 # See https://bugs.freedesktop.org/show_bug.cgi?id=105572
                 processed_libs.append(obj)
-                self._add_uninstalled_incdirs(obj.get_include_dirs(), obj.get_subdir())
+                self._add_uninstalled_incdirs(obj.get_include_dirs(), obj.get_source_subdir())
             elif isinstance(obj, (build.SharedLibrary, build.StaticLibrary)):
                 processed_libs.append(obj)
-                self._add_uninstalled_incdirs(obj.get_include_dirs(), obj.get_subdir())
+                self._add_uninstalled_incdirs(obj.get_include_dirs(), obj.get_source_subdir())
                 # If there is a static library in `Libs:` all its deps must be
                 # public too, otherwise the generated pc file will never be
                 # usable without --static.

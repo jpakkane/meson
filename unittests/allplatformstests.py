@@ -3652,7 +3652,7 @@ class AllPlatformTests(BasePlatformTests):
                 long comma list: alpha, alphacolor, apetag, audiofx, audioparsers, auparse,
                                  autodetect, avi
 
-              Subprojects
+              Subprojects (for host machine)
                 sub            : YES
                 sub2           : NO Problem encountered: This subproject failed
                 subsub         : YES (from sub2)
@@ -4553,7 +4553,7 @@ class AllPlatformTests(BasePlatformTests):
                            for_machine=MachineChoice.HOST, sources=[],
                            structured_sources=None,
                            objects=[], environment=env, compilers=env.coredata.compilers[MachineChoice.HOST],
-                           kwargs={})
+                           build_only_subproject=False, kwargs={})
             target.process_compilers_late()
             return target.filename
 

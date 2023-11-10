@@ -877,7 +877,8 @@ class CompilerHolder(ObjectHolder['Compiler']):
             self.interpreter.backend,
             kwargs['compile_args'],
             kwargs['include_directories'],
-            kwargs['dependencies'])
+            kwargs['dependencies'],
+            self.interpreter.build.is_build_only)
         self.interpreter.add_target(tg.name, tg)
         # Expose this target as list of its outputs, so user can pass them to
         # other targets, list outputs, etc.
