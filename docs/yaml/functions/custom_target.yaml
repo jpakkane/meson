@@ -232,3 +232,11 @@ kwargs:
       their input from a file and instead read it from standard input. When this
       argument is set to `true`, Meson feeds the input file to `stdin`. Note that
       your argument list may not contain `@INPUT@` when feed mode is active.
+
+  description:
+    type: str
+    since: 1.4.0
+    default: 'Generating @TARGET@ with a custom command'
+    description: |
+      The message displayed in the log and on console when that target is built.
+      Use `@TARGET@` placeholder to include the name of the generated target.

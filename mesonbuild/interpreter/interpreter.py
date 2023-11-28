@@ -2010,9 +2010,10 @@ class Interpreter(InterpreterBase, HoldableObject):
         KwargInfo('feed', bool, default=False, since='0.59.0'),
         KwargInfo('capture', bool, default=False),
         KwargInfo('console', bool, default=False, since='0.48.0'),
+        KwargInfo('description', str, default='Generating @TARGET@ with a custom command', since='1.4.0'),
     )
     def func_custom_target(self, node: mparser.FunctionNode, args: T.Tuple[str],
-                           kwargs: 'kwtypes.CustomTarget') -> build.CustomTarget:
+                           kwargs: kwtypes.CustomTarget) -> build.CustomTarget:
         if kwargs['depfile'] and ('@BASENAME@' in kwargs['depfile'] or '@PLAINNAME@' in kwargs['depfile']):
             FeatureNew.single_use('substitutions in custom_target depfile', '0.47.0', self.subproject, location=node)
         install_mode = self._warn_kwarg_install_mode_sticky(kwargs['install_mode'])
@@ -2079,6 +2080,8 @@ class Interpreter(InterpreterBase, HoldableObject):
             self.validate_forbidden_targets(t)
         self._validate_custom_target_outputs(len(inputs) > 1, kwargs['output'], "custom_target")
 
+        description = kwargs['description'].replace('@TARGET@', '{target}')
+
         tg = build.CustomTarget(
             name,
             self.subdir,
@@ -2100,7 +2103,9 @@ class Interpreter(InterpreterBase, HoldableObject):
             install_dir=kwargs['install_dir'],
             install_mode=install_mode,
             install_tag=kwargs['install_tag'],
-            backend=self.backend)
+            backend=self.backend,
+            description=description,
+        )
         self.add_target(tg.name, tg)
         return tg
 
