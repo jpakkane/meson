@@ -1258,7 +1258,7 @@ class GnomeModule(ExtensionModule):
             ['gschemas.compiled'],
             build_by_default=kwargs['build_by_default'],
             depend_files=kwargs['depend_files'],
-            description='Compiling gschemas {}',
+            description='Compiling gschemas {target}',
         )
         self._devenv_prepend('GSETTINGS_SCHEMA_DIR', os.path.join(state.environment.get_build_dir(), state.subdir))
         return ModuleReturnValue(target_g, [target_g])
@@ -1372,7 +1372,7 @@ class GnomeModule(ExtensionModule):
                 [po_file],
                 [gmo_file],
                 install_tag=['doc'],
-                description='Generating yelp doc {}',
+                description='Generating yelp doc {target}',
             )
             targets.append(gmotarget)
 
@@ -1388,7 +1388,7 @@ class GnomeModule(ExtensionModule):
                 install=True,
                 install_dir=[l_install_dir],
                 install_tag=['doc'],
-                description='Generating yelp doc {}',
+                description='Generating yelp doc {target}',
             )
             targets.append(mergetarget)
 
@@ -1535,7 +1535,7 @@ class GnomeModule(ExtensionModule):
             [f'{modulename}-decl.txt'],
             build_always_stale=True,
             extra_depends=new_depends,
-            description='Generating gtkdoc {}',
+            description='Generating gtkdoc {target}',
         )
         alias_target = build.AliasTarget(targetname, [custom_target], state.subdir, state.subproject, state.environment)
         if kwargs['check']:
@@ -1679,7 +1679,7 @@ class GnomeModule(ExtensionModule):
             xml_files,
             [output],
             build_by_default=build_by_default,
-            description='Generating gdbus source {}',
+            description='Generating gdbus source {target}',
         )
         targets.append(cfile_custom_target)
 
@@ -1704,7 +1704,7 @@ class GnomeModule(ExtensionModule):
             install=install_header,
             install_dir=[install_dir],
             install_tag=['devel'],
-            description='Generating gdbus header {}',
+            description='Generating gdbus header {target}',
         )
         targets.append(hfile_custom_target)
 
@@ -1733,7 +1733,7 @@ class GnomeModule(ExtensionModule):
                 outputs,
                 build_by_default=build_by_default,
                 extra_depends=depends,
-                description='Generating gdbus docbook {}',
+                description='Generating gdbus docbook {target}',
             )
             targets.append(docbook_custom_target)
 
@@ -1970,7 +1970,7 @@ class GnomeModule(ExtensionModule):
             extra_depends=depends,
             # https://github.com/mesonbuild/meson/issues/973
             absolute_paths=True,
-            description='Generating GObject enum file {}',
+            description='Generating GObject enum file {target}',
         )
 
     @typed_pos_args('gnome.genmarshal', str)
@@ -2037,7 +2037,7 @@ class GnomeModule(ExtensionModule):
             install_tag=['devel'],
             capture=capture,
             depend_files=kwargs['depend_files'],
-            description='Generating glib marshaller header {}',
+            description='Generating glib marshaller header {target}',
         )
 
         c_cmd = cmd + ['--body', '@INPUT@']
@@ -2057,7 +2057,7 @@ class GnomeModule(ExtensionModule):
             capture=capture,
             depend_files=kwargs['depend_files'],
             extra_depends=extra_deps,
-            description='Generating glib marshaller source {}',
+            description='Generating glib marshaller source {target}',
         )
 
         rv = [body, header]
