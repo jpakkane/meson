@@ -133,7 +133,7 @@ class CMakeDependency(ExternalDependency):
 
         package_version = kwargs.get('cmake_package_version', '')
         components: T.List[T.Tuple[str, bool]] = [(x, True) for x in kwargs.get('components', [])]
-        modules = [(x, True) for x in stringlistify(extract_as_list(kwargs, 'modules'))]  # type: ignore
+        modules: T.List[T.Tuple[str, bool]] = [(x, True) for x in kwargs.get('modules', [])]
         modules += [(x, False) for x in stringlistify(extract_as_list(kwargs, 'optional_modules'))]  # type: ignore
         cm_path = kwargs.get('cmake_module_path', [])
         cm_path = [x if os.path.isabs(x) else os.path.join(environment.get_source_dir(), x) for x in cm_path]
@@ -652,7 +652,7 @@ class CMakeDependencyFactory:
 
     def __call__(self, name: str, env: Environment, kwargs: DependencyKw, force_use_global_compilers: bool = False) -> CMakeDependency:
         if self.modules:
-            kwargs['modules'] = self.modules  # type: ignore
+            kwargs['modules'] = self.modules
         return CMakeDependency(self.name or name, env, kwargs, force_use_global_compilers)
 
     @staticmethod

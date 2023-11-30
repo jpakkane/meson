@@ -15,7 +15,7 @@ from .. import mlog
 from .. import mesonlib
 from ..compilers.compilers import CrossNoRunException
 from ..mesonlib import (
-    Popen_safe, extract_as_list, version_compare_many
+    Popen_safe, version_compare_many
 )
 from ..environment import detect_cpu_family
 
@@ -68,7 +68,7 @@ class GnuStepDependency(ConfigToolDependency):
         self.compile_args = self.filter_args(
             self.get_config_value(['--objc-flags'], 'compile_args'))
         self.link_args = self.weird_filter(self.get_config_value(
-            ['--gui-libs' if 'gui' in self.modules else '--base-libs'],  # type: ignore
+            ['--gui-libs' if 'gui' in self.modules else '--base-libs'],
             'link_args'))
 
     def find_config(self, versions: T.Optional[T.List[str]] = None, returncode: int = 0) -> T.Tuple[T.Optional[T.List[str]], T.Optional[str]]:
@@ -157,7 +157,7 @@ class WxDependency(ConfigToolDependency):
         super().__init__('WxWidgets', environment, kwargs)
         if not self.is_found:
             return
-        self.requested_modules = self.get_requested(kwargs)
+        self.requested_modules = kwargs.get('modules', [])
 
         extra_args = []
         if self.static:
@@ -174,16 +174,6 @@ class WxDependency(ConfigToolDependency):
         # this should be good, at least for now.
         self.compile_args = self.get_config_value(['--cxxflags'] + extra_args + self.requested_modules, 'compile_args')
         self.link_args = self.get_config_value(['--libs'] + extra_args + self.requested_modules, 'link_args')
-
-    @staticmethod
-    def get_requested(kwargs: DependencyKw) -> T.List[str]:
-        if 'modules' not in kwargs:
-            return []
-        candidates: T.List[str] = extract_as_list(kwargs, 'modules')  # type: ignore
-        for c in candidates:
-            if not isinstance(c, str):
-                raise DependencyException('wxwidgets module argument is not a string')
-        return candidates
 
 packages['wxwidgets'] = WxDependency
 

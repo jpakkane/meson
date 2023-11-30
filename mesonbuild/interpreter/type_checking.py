@@ -892,4 +892,5 @@ DEPENDENCY_KWS: T.List[KwargInfo] = [
         since='0.40.0',
         validator=in_set_validator({e.value for e in DependencyMethods}),
     ),
+    KwargInfo('modules', ContainerTypeInfo(list, str), default=[], listify=True, since='0.54.0'),
 ]

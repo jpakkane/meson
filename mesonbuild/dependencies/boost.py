@@ -354,12 +354,9 @@ class BoostDependency(SystemDependency):
         self.explicit_static = 'static' in kwargs
 
         # Extract and validate modules
-        self.modules: T.List[str] = mesonlib.extract_as_list(kwargs, 'modules')  # type: ignore
-        for i in self.modules:
-            if not isinstance(i, str):
-                raise DependencyException('Boost module argument is not a string.')
-            if i.startswith('boost_'):
-                raise DependencyException('Boost modules must be passed without the boost_ prefix')
+        self.modules = kwargs.get('modules', [])
+        if any(i.startswith('boost_') for i in self.modules):
+            raise DependencyException('Boost modules must be passed without the boost_ prefix')
 
         self.modules_found: T.List[str] = []
         self.modules_missing: T.List[str] = []

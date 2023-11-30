@@ -27,7 +27,7 @@ class AppleFrameworks(ExternalDependency):
         if not self.clib_compiler:
             raise DependencyException('No C-like compilers are available, cannot find the framework')
         self.is_found = True
-        for f in self.frameworks:  # type: ignore
+        for f in self.frameworks:
             try:
                 args = self.clib_compiler.find_framework(f, env, [])
             except MesonException as e:
@@ -45,7 +45,7 @@ class AppleFrameworks(ExternalDependency):
                 self.is_found = False
 
     def log_info(self) -> str:
-        return ', '.join(self.frameworks)  # type: ignore
+        return ', '.join(self.frameworks)
 
     @staticmethod
     def log_tried() -> str:

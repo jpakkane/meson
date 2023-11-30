@@ -9,7 +9,7 @@ from .. import mlog
 from .. import dependencies
 from .. import build
 from ..wrap import WrapMode
-from ..mesonlib import OptionKey, extract_as_list, stringlistify, version_compare_many, listify
+from ..mesonlib import OptionKey, stringlistify, version_compare_many, listify
 from ..dependencies import Dependency, DependencyException, NotFoundDependency
 from ..interpreterbase import (MesonInterpreterObject, FeatureNew,
                                InterpreterException, InvalidArguments)
@@ -304,7 +304,7 @@ class DependencyFallbacksHolder(MesonInterpreterObject):
         return candidates
 
     def lookup(self, kwargs: DependencyKw, force_fallback: bool = False) -> Dependency:
-        mods = extract_as_list(kwargs, 'modules')
+        mods = kwargs.get('modules', [])
         if mods:
             self._display_name += ' (modules: {})'.format(', '.join(str(i) for i in mods))
 

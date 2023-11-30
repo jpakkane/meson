@@ -42,8 +42,8 @@ def coarray_factory(env: 'Environment',
                 candidates.append(functools.partial(PkgConfigDependency, pkg, env, nkwargs))
 
         if DependencyMethods.CMAKE in methods:
-            if 'modules' not in kwargs:
-                nkwargs['modules'] = 'OpenCoarrays::caf_mpi'
+            if not nkwargs.get('modules'):
+                nkwargs['modules'] = ['OpenCoarrays::caf_mpi']
             candidates.append(functools.partial(CMakeDependency, 'OpenCoarrays', env, nkwargs))
 
     if DependencyMethods.SYSTEM in methods:

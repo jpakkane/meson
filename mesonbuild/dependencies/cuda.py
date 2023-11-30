@@ -39,7 +39,7 @@ class CudaDependency(SystemDependency):
 
         super().__init__('cuda', environment, kwargs)
         self.lib_modules: T.Dict[str, T.List[str]] = {}
-        self.requested_modules = self.get_requested(kwargs)
+        self.requested_modules = kwargs.get('modules', [])
         if not any(runtime in self.requested_modules for runtime in ['cudart', 'cudart_static']):
             # By default, we prefer to link the static CUDA runtime, since this is what nvcc also does by default:
             # https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html#cudart-none-shared-static-cudart
@@ -281,13 +281,6 @@ class CudaDependency(SystemDependency):
 
     def log_info(self) -> str:
         return self.cuda_path if self.cuda_path else ''
-
-    def get_requested(self, kwargs: DependencyKw) -> T.List[str]:
-        candidates: T.List[str] = mesonlib.extract_as_list(kwargs, 'modules')  # type: ignore
-        for c in candidates:
-            if not isinstance(c, str):
-                raise DependencyException('CUDA module argument is not a string.')
-        return candidates
 
     def get_link_args(self, language: T.Optional[str] = None, raw: bool = False) -> T.List[str]:
         args: T.List[str] = []

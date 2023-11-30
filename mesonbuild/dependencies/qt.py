@@ -135,7 +135,7 @@ class _QtBase:
 
         self.private_headers = T.cast('bool', kwargs.get('private_headers', False))
 
-        self.requested_modules = mesonlib.stringlistify(mesonlib.extract_as_list(kwargs, 'modules'))  # type: ignore
+        self.requested_modules = kwargs.get('modules', [])
         if not self.requested_modules:
             raise DependencyException('No ' + self.qtname + '  modules specified.')
 

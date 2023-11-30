@@ -219,7 +219,7 @@ class LLVMDependencyConfigTool(ConfigToolDependency):
             return
 
         self.provided_modules = self.get_config_value(['--components'], 'modules')
-        modules = stringlistify(extract_as_list(kwargs, 'modules'))  # type: ignore
+        modules = kwargs.get('modules', [])
         self.check_components(modules)
         opt_modules = stringlistify(extract_as_list(kwargs, 'optional_modules'))  # type: ignore
         self.check_components(opt_modules, required=False)
@@ -393,7 +393,7 @@ class LLVMDependencyConfigTool(ConfigToolDependency):
 
 class LLVMDependencyCMake(CMakeDependency):
     def __init__(self, name: str, env: 'Environment', kwargs: DependencyKw) -> None:
-        self.llvm_modules = stringlistify(extract_as_list(kwargs, 'modules'))  # type: ignore
+        self.llvm_modules = kwargs.get('modules', [])
         self.llvm_opt_modules = stringlistify(extract_as_list(kwargs, 'optional_modules'))  # type: ignore
 
         compilers = None

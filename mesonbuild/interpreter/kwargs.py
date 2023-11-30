@@ -490,3 +490,4 @@ class Dependency(TypedDict, total=False):
     language: T.Optional[str]
     main: bool
     method: str
+    modules: T.List[str]

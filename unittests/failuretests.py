@@ -199,20 +199,12 @@ class FailureTests(BasePlatformTests):
         self.assertMesonOutputs("dependency('wxwidgets', required : false)",
                                 "Run-time dependency .*WxWidgets.* found: .*NO.*")
 
-    def test_wx_dependency(self):
-        if not shutil.which('wx-config-3.0') and not shutil.which('wx-config') and not shutil.which('wx-config-gtk3'):
-            raise unittest.SkipTest('Neither wx-config, wx-config-3.0 nor wx-config-gtk3 found')
-        self.assertMesonRaises("dependency('wxwidgets', modules : 1)",
-                               "module argument is not a string")
-
     def test_llvm_dependency(self):
         self.assertMesonRaises("dependency('llvm', modules : 'fail')",
                                f"(required.*fail|{self.dnf})")
 
     def test_boost_notfound_dependency(self):
         # Can be run even if Boost is found or not
-        self.assertMesonRaises("dependency('boost', modules : 1)",
-                               "module.*not a string")
         self.assertMesonRaises("dependency('boost', modules : 'fail')",
                                f"(fail.*not found|{self.dnf})")
 
