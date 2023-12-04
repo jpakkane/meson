@@ -151,7 +151,8 @@ class FailureTests(BasePlatformTests):
              ("dependency('zlib', method : 1)", "dependency keyword argument 'method' was of type int but should have been str"),
              ("dependency('zlibfail')", self.dnf),)
         for contents, match in a:
-            self.assertMesonRaises(contents, match)
+            with self.subTest(contents):
+                self.assertMesonRaises(contents, match)
 
     def test_apple_frameworks_dependency(self):
         if not is_osx():
