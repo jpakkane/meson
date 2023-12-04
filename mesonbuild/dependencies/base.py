@@ -364,7 +364,7 @@ class ExternalDependency(Dependency):
         # Is this dependency to be run on the build platform?
         self.clib_compiler = detect_compiler(self.name, environment, self.for_machine, self.language)
 
-    def get_compiler(self) -> T.Union['MissingCompiler', 'Compiler']:
+    def get_compiler(self) -> Compiler:
         return self.clib_compiler
 
     def get_partial_dependency(self, *, compile_args: bool = False,
@@ -572,7 +572,7 @@ def process_method_kw(possible: T.Iterable[DependencyMethods], kwargs: Dependenc
     return methods
 
 def detect_compiler(name: str, env: 'Environment', for_machine: MachineChoice,
-                    language: T.Optional[str]) -> T.Union['MissingCompiler', 'Compiler']:
+                    language: T.Optional[str]) -> Compiler:
     """Given a language and environment find the compiler used."""
     compilers = env.coredata.compilers[for_machine]
 

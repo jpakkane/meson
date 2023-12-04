@@ -26,7 +26,6 @@ if T.TYPE_CHECKING:
     from ..compilers import Compiler
     from ..envconfig import MachineInfo
     from ..environment import Environment
-    from ..dependencies import MissingCompiler
     from ..interpreter.kwargs import Dependency as DependencyKw
 
 
@@ -120,7 +119,7 @@ class _QtBase:
     """Mixin class for shared components between PkgConfig and Qmake."""
 
     link_args: T.List[str]
-    clib_compiler: T.Union['MissingCompiler', 'Compiler']
+    clib_compiler: Compiler
     env: 'Environment'
     libexecdir: T.Optional[str] = None
 

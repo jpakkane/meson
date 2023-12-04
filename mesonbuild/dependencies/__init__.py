@@ -2,7 +2,7 @@
 # Copyright 2017 The Meson development team
 
 
-from .base import Dependency, InternalDependency, ExternalDependency, NotFoundDependency, MissingCompiler
+from .base import Dependency, InternalDependency, ExternalDependency, NotFoundDependency
 from .base import (
         ExternalLibrary, DependencyException, DependencyMethods,
         BuiltinDependency, SystemDependency, get_leaf_external_dependencies)
@@ -18,7 +18,6 @@ __all__ = [
     'ExternalLibrary',
     'DependencyException',
     'DependencyMethods',
-    'MissingCompiler',
 
     'find_external_dependency',
     'get_dep_identifier',
