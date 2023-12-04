@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2013-2021 The Meson development team
+# Copyright © 2023 Intel Corporation
 
 from __future__ import annotations
 
@@ -28,7 +29,10 @@ class DubDependency(ExternalDependency):
         from ..compilers.d import DCompiler, d_feature_args
 
         _temp_comp = super().get_compiler()
-        assert isinstance(_temp_comp, DCompiler)
+        if _temp_comp.language == 'missing':
+            self.is_found = False
+            return
+        assert isinstance(_temp_comp, DCompiler), 'Compiler must be a D language compiler'
         self.compiler = _temp_comp
 
         if 'required' in kwargs:
