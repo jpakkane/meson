@@ -12,7 +12,7 @@ import platform
 import pickle
 import zipfile, tarfile
 import sys
-from unittest import mock, SkipTest, skipIf, skipUnless
+from unittest import mock, SkipTest, skipIf, skipUnless, expectedFailure
 from contextlib import contextmanager
 from glob import glob
 from pathlib import (PurePath, Path)
@@ -5042,3 +5042,19 @@ class AllPlatformTests(BasePlatformTests):
             'link', 'lld-link', 'mwldarm', 'mwldeppc', 'optlink', 'xilink',
         }
         self.assertEqual(cc.linker.get_accepts_rsp(), has_rsp)
+
+    @expectedFailure
+    @skip_if_not_language('fortran')
+    def test_fortran_cross_target_module_dep(self) -> None:
+        if self.backend is not Backend.ninja:
+            raise SkipTest('Test is only relavent on the ninja backend')
+        testdir = os.path.join(self.fortran_test_dir, '8 module names')
+        self.init(testdir, extra_args=['-Dunittest=true'])
+
+        # Find the correct output to compile, regardless of what compiler is being used
+        comp = self.get_compdb()
+        entry = first(comp, lambda e: e['file'].endswith('lib.f90'))
+        assert entry is not None, 'for mypy'
+        output = entry['output']
+
+        self.build(output, extra_args=['-j1'])
