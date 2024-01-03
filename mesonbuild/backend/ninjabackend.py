@@ -3069,8 +3069,8 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
                 d = os.path.join(self.get_target_private_dir(target), d)
             element.add_orderdep(d)
         element.add_dep(pch_dep)
-        for i in self.get_fortran_orderdeps(target, compiler):
-            element.add_orderdep(i)
+        for i in self.get_fortran_module_deps(target, compiler):
+            element.add_dep(i)
         if dep_file:
             element.add_item('DEPFILE', dep_file)
         if compiler.get_language() == 'cuda':
@@ -3137,10 +3137,12 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
     # Fortran is a bit weird (again). When you link against a library, just compiling a source file
     # requires the mod files that are output when single files are built. To do this right we would need to
     # scan all inputs and write out explicit deps for each file. That is too slow and too much effort so
-    # instead just have an ordered dependency on the library. This ensures all required mod files are created.
+    # instead just have a full dependency on the library. This ensures all required mod files are created.
     # The real deps are then detected via dep file generation from the compiler. This breaks on compilers that
-    # produce incorrect dep files but such is life.
-    def get_fortran_orderdeps(self, target, compiler):
+    # produce incorrect dep files but such is life. A full dependency is
+    # required to ensure that if a new module is added to an existing file that
+    # we correctly rebuild.
+    def get_fortran_module_deps(self, target, compiler) -> T.List[str]:
         if compiler.language != 'fortran':
             return []
         return [
