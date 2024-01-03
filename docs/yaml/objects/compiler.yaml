@@ -698,3 +698,13 @@ methods:
         target(s). These targets should be built before starting
         to preprocess an input.
       since: 1.4.0
+
+- name: get_crt
+  returns: str
+  since: 1.5.0
+  description: |
+    Returns the C runtime (CRT) used by msvc compiler.
+    This can be the value from `b_vscrt` option, or the value deduced from the
+    `buildtype` option when `b_vscrt` is `from_buildtype` or
+    `static_from_buildtype`. The function will fail with an error
+    if the compiler does not support crt.
