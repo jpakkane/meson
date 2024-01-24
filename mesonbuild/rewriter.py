@@ -610,7 +610,7 @@ class Rewriter:
                 kwargs[key] = None
             modifier = kwargs_def[key](kwargs[key])
             if not modifier.can_modify():
-                mlog.log('  -- Skipping', mlog.bold(key), 'because it is to complex to modify')
+                mlog.log('  -- Skipping', mlog.bold(key), 'because it is too complex to modify')
 
             # Apply the operation
             val_str = str(val)
