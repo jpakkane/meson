@@ -217,7 +217,7 @@ def run_script_command(script_name, script_args):
         return 1
 
 def ensure_stdout_accepts_unicode():
-    if sys.stdout.encoding and not sys.stdout.encoding.upper().startswith('UTF-'):
+    if sys.stdout is not None and sys.stdout.encoding and not sys.stdout.encoding.upper().startswith('UTF-'):
         sys.stdout.reconfigure(errors='surrogateescape')
 
 def set_meson_command(mainfile):

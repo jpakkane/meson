@@ -1512,7 +1512,7 @@ def Popen_safe(args: T.List[str], write: T.Optional[str] = None,
         stdin = subprocess.PIPE
 
     try:
-        if not sys.stdout.encoding or encoding.upper() != 'UTF-8':
+        if (sys.stdout is not None and not sys.stdout.encoding) or encoding.upper() != 'UTF-8':
             p, o, e = Popen_safe_legacy(args, write=write, stdin=stdin, stdout=stdout, stderr=stderr, **kwargs)
         else:
             p = subprocess.Popen(args, universal_newlines=True, encoding=encoding, close_fds=False,
@@ -1542,7 +1542,7 @@ def Popen_safe_legacy(args: T.List[str], write: T.Optional[str] = None,
         input_ = write.encode('utf-8')
     o, e = p.communicate(input_)
     if o is not None:
-        if sys.stdout.encoding is not None:
+        if sys.stdout is not None and sys.stdout.encoding is not None:
             o = o.decode(encoding=sys.stdout.encoding, errors='replace').replace('\r\n', '\n')
         else:
             o = o.decode(errors='replace').replace('\r\n', '\n')
