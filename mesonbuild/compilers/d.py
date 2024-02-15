@@ -550,12 +550,6 @@ class DCompiler(Compiler):
             return ['-m32']
         return []
 
-    def get_crt_compile_args(self, crt_val: str, buildtype: str) -> T.List[str]:
-        return []
-
-    def get_crt_link_args(self, crt_val: str, buildtype: str) -> T.List[str]:
-        return []
-
     def _get_compile_extra_args(self, extra_args: T.Union[T.List[str], T.Callable[[CompileCheckMode], T.List[str]], None] = None) -> T.List[str]:
         args = self._get_target_arch_args()
         if extra_args:
