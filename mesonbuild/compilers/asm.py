@@ -151,6 +151,14 @@ class MasmCompiler(Compiler):
     language = 'masm'
     id = 'ml'
 
+    crt_args: T.Dict[str, T.List[str]] = {
+        'none': [],
+        'md': ['/MD'],
+        'mdd': ['/MDd'],
+        'mt': ['/MT'],
+        'mtd': ['/MTd'],
+    }
+
     def get_compile_only_args(self) -> T.List[str]:
         return ['/c']
 
@@ -197,7 +205,8 @@ class MasmCompiler(Compiler):
         return parameter_list
 
     def get_crt_compile_args(self, crt_val: str, buildtype: str) -> T.List[str]:
-        return []
+        crt_val = self.get_crt_val(crt_val, buildtype)
+        return self.crt_args[crt_val]
 
     def depfile_for_object(self, objfile: str) -> T.Optional[str]:
         return None
