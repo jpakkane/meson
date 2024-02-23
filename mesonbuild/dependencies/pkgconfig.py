@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2013-2021 The Meson development team
+# Copyright © 2023 Intel Corporation
 
 from __future__ import annotations
 
@@ -19,6 +20,7 @@ import typing as T
 if T.TYPE_CHECKING:
     from typing_extensions import Literal
     from .._typing import ImmutableListProtocol
+    from ..interpreter.kwargs import Dependency as DependencyKw
 
     from ..environment import Environment
     from ..utils.core import EnvironOrDict
@@ -273,8 +275,8 @@ class PkgConfigCLI(PkgConfigInterface):
 
 class PkgConfigDependency(ExternalDependency):
 
-    def __init__(self, name: str, environment: Environment, kwargs: T.Dict[str, T.Any], language: T.Optional[str] = None) -> None:
-        super().__init__(DependencyTypeName('pkgconfig'), environment, kwargs, language=language)
+    def __init__(self, name: str, environment: Environment, kwargs: DependencyKw) -> None:
+        super().__init__(DependencyTypeName('pkgconfig'), environment, kwargs)
         self.name = name
         self.is_libtool = False
         pkgconfig = PkgConfigInterface.instance(self.env, self.for_machine, self.silent)

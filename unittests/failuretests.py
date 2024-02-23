@@ -144,14 +144,15 @@ class FailureTests(BasePlatformTests):
     def test_dependency(self):
         if subprocess.call(['pkg-config', '--exists', 'zlib']) != 0:
             raise unittest.SkipTest('zlib not found with pkg-config')
-        a = (("dependency('zlib', method : 'fail')", "'fail' is invalid"),
-             ("dependency('zlib', static : '1')", "[Ss]tatic.*boolean"),
-             ("dependency('zlib', version : 1)", "Item must be a list or one of <class 'str'>"),
-             ("dependency('zlib', required : 1)", "[Rr]equired.*boolean"),
-             ("dependency('zlib', method : 1)", "[Mm]ethod.*string"),
+        a = (("dependency('zlib', method : 'fail')", 'dependency keyword argument "method" must be one of .* not fail'),
+             ("dependency('zlib', static : '1')", "dependency keyword argument 'static' was of type str but should have been one of: .*"),
+             ("dependency('zlib', version : 1)", r"dependency keyword argument 'version' was of type array\[int\] but should have been array\[str\]"),
+             ("dependency('zlib', required : 1)", "dependency keyword argument 'required' was of type int but should have been one of: bool, UserFeatureOption"),
+             ("dependency('zlib', method : 1)", "dependency keyword argument 'method' was of type int but should have been str"),
              ("dependency('zlibfail')", self.dnf),)
         for contents, match in a:
-            self.assertMesonRaises(contents, match)
+            with self.subTest(contents):
+                self.assertMesonRaises(contents, match)
 
     def test_apple_frameworks_dependency(self):
         if not is_osx():
@@ -199,20 +200,12 @@ class FailureTests(BasePlatformTests):
         self.assertMesonOutputs("dependency('wxwidgets', required : false)",
                                 "Run-time dependency .*WxWidgets.* found: .*NO.*")
 
-    def test_wx_dependency(self):
-        if not shutil.which('wx-config-3.0') and not shutil.which('wx-config') and not shutil.which('wx-config-gtk3'):
-            raise unittest.SkipTest('Neither wx-config, wx-config-3.0 nor wx-config-gtk3 found')
-        self.assertMesonRaises("dependency('wxwidgets', modules : 1)",
-                               "module argument is not a string")
-
     def test_llvm_dependency(self):
         self.assertMesonRaises("dependency('llvm', modules : 'fail')",
                                f"(required.*fail|{self.dnf})")
 
     def test_boost_notfound_dependency(self):
         # Can be run even if Boost is found or not
-        self.assertMesonRaises("dependency('boost', modules : 1)",
-                               "module.*not a string")
         self.assertMesonRaises("dependency('boost', modules : 'fail')",
                                f"(fail.*not found|{self.dnf})")
 

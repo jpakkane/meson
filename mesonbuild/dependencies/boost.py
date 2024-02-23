@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2013-2020 The Meson development team
+# Copyright © 2023 Intel Corporation
+
+# mypy: disable-error-code="typeddict-item, typeddict-unknown-key"
 
 from __future__ import annotations
 
@@ -8,6 +11,8 @@ import dataclasses
 import functools
 import typing as T
 from pathlib import Path
+
+from mesonbuild.utils.universal import MachineChoice
 
 from .. import mlog
 from .. import mesonlib
@@ -20,6 +25,7 @@ from .misc import threads_factory
 if T.TYPE_CHECKING:
     from ..envconfig import Properties
     from ..environment import Environment
+    from ..interpreter.kwargs import Dependency as DependencyKw
 
 # On windows 3 directory layouts are supported:
 # * The default layout (versioned) installed:
@@ -338,23 +344,21 @@ class BoostLibraryFile():
         return [self.path.as_posix()]
 
 class BoostDependency(SystemDependency):
-    def __init__(self, environment: Environment, kwargs: T.Dict[str, T.Any]) -> None:
-        super().__init__('boost', environment, kwargs, language='cpp')
+    def __init__(self, environment: Environment, kwargs: DependencyKw) -> None:
+        kwargs['language'] = 'cpp'
+        super().__init__('boost', environment, kwargs)
         buildtype = environment.coredata.get_option(mesonlib.OptionKey('buildtype'))
         assert isinstance(buildtype, str)
         self.debug = buildtype.startswith('debug')
         self.multithreading = kwargs.get('threading', 'multi') == 'multi'
 
         self.boost_root: T.Optional[Path] = None
-        self.explicit_static = 'static' in kwargs
+        self.explicit_static = kwargs.get('static') is not None
 
         # Extract and validate modules
-        self.modules: T.List[str] = mesonlib.extract_as_list(kwargs, 'modules')
-        for i in self.modules:
-            if not isinstance(i, str):
-                raise DependencyException('Boost module argument is not a string.')
-            if i.startswith('boost_'):
-                raise DependencyException('Boost modules must be passed without the boost_ prefix')
+        self.modules = kwargs.get('modules', [])
+        if any(i.startswith('boost_') for i in self.modules):
+            raise DependencyException('Boost modules must be passed without the boost_ prefix')
 
         self.modules_found: T.List[str] = []
         self.modules_missing: T.List[str] = []
@@ -650,7 +654,7 @@ class BoostDependency(SystemDependency):
         # Try getting the BOOST_ROOT from a boost.pc if it exists. This primarily
         # allows BoostDependency to find boost from Conan. See #5438
         try:
-            boost_pc = PkgConfigDependency('boost', self.env, {'required': False})
+            boost_pc = PkgConfigDependency('boost', self.env, {'required': False, 'native': MachineChoice.BUILD})
             if boost_pc.found():
                 boost_root = boost_pc.get_variable(pkgconfig='prefix')
                 if boost_root:

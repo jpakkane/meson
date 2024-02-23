@@ -1,5 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2013-2019 The Meson development team
+# Copyright © 2023 Intel Corporation
+
+# mypy: disable-error-code="typeddict-item"
+# mypy: disable-error-code="typeddict-unknown-key"
 
 from __future__ import annotations
 
@@ -16,28 +20,31 @@ if T.TYPE_CHECKING:
     from . factory import DependencyGenerator
     from ..environment import Environment
     from ..mesonlib import MachineChoice
+    from ..interpreter.kwargs import Dependency as DependencyKw
 
 
 @factory_methods({DependencyMethods.PKGCONFIG, DependencyMethods.CMAKE, DependencyMethods.SYSTEM})
 def coarray_factory(env: 'Environment',
                     for_machine: 'MachineChoice',
-                    kwargs: T.Dict[str, T.Any],
+                    kwargs: DependencyKw,
                     methods: T.List[DependencyMethods]) -> T.List['DependencyGenerator']:
     fcid = detect_compiler('coarray', env, for_machine, 'fortran').get_id()
     candidates: T.List['DependencyGenerator'] = []
 
     if fcid == 'gcc':
+
+        nkwargs = kwargs.copy()
+        nkwargs['language'] = 'fortran'
+
         # OpenCoarrays is the most commonly used method for Fortran Coarray with GCC
         if DependencyMethods.PKGCONFIG in methods:
             for pkg in ['caf-openmpi', 'caf']:
-                candidates.append(functools.partial(
-                    PkgConfigDependency, pkg, env, kwargs, language='fortran'))
+                candidates.append(functools.partial(PkgConfigDependency, pkg, env, nkwargs))
 
         if DependencyMethods.CMAKE in methods:
-            if 'modules' not in kwargs:
-                kwargs['modules'] = 'OpenCoarrays::caf_mpi'
-            candidates.append(functools.partial(
-                CMakeDependency, 'OpenCoarrays', env, kwargs, language='fortran'))
+            if not nkwargs.get('modules'):
+                nkwargs['modules'] = ['OpenCoarrays::caf_mpi']
+            candidates.append(functools.partial(CMakeDependency, 'OpenCoarrays', env, nkwargs))
 
     if DependencyMethods.SYSTEM in methods:
         candidates.append(functools.partial(CoarrayDependency, env, kwargs))
@@ -55,8 +62,9 @@ class CoarrayDependency(SystemDependency):
     Coarrays may be thought of as a high-level language abstraction of
     low-level MPI calls.
     """
-    def __init__(self, environment: 'Environment', kwargs: T.Dict[str, T.Any]) -> None:
-        super().__init__('coarray', environment, kwargs, language='fortran')
+    def __init__(self, environment: 'Environment', kwargs: DependencyKw) -> None:
+        kwargs['language'] = 'fortran'
+        super().__init__('coarray', environment, kwargs)
         kwargs['required'] = False
         kwargs['silent'] = True
 

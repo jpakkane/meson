@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2013-2019 The Meson development team
+# Copyright © 2023 Intel Corporation
+
+# mypy: disable-error-code="typeddict-item, typeddict-unknown-key"
 
 from __future__ import annotations
 
@@ -19,14 +22,15 @@ if T.TYPE_CHECKING:
     from .factory import DependencyGenerator
     from ..environment import Environment
     from ..mesonlib import MachineChoice
+    from ..interpreter.kwargs import Dependency as DependencyKw
 
 
 @factory_methods({DependencyMethods.PKGCONFIG, DependencyMethods.CONFIG_TOOL, DependencyMethods.SYSTEM})
 def mpi_factory(env: 'Environment',
                 for_machine: 'MachineChoice',
-                kwargs: T.Dict[str, T.Any],
+                kwargs: DependencyKw,
                 methods: T.List[DependencyMethods]) -> T.List['DependencyGenerator']:
-    language = kwargs.get('language', 'c')
+    language = kwargs.get('language') or 'c'
     if language not in {'c', 'cpp', 'fortran'}:
         # OpenMPI doesn't work without any other languages
         return []
@@ -47,7 +51,7 @@ def mpi_factory(env: 'Environment',
         elif language == 'fortran':
             pkg_name = 'ompi-fort'
         candidates.append(functools.partial(
-            PkgConfigDependency, pkg_name, env, kwargs, language=language))
+            PkgConfigDependency, pkg_name, env, kwargs))
 
     if DependencyMethods.CONFIG_TOOL in methods:
         nwargs = kwargs.copy()
@@ -84,11 +88,11 @@ def mpi_factory(env: 'Environment',
 
         nwargs['tools'] = tool_names
         candidates.append(functools.partial(
-            cls, tool_names[0], env, nwargs, language=language))
+            cls, tool_names[0], env, nwargs))
 
     if DependencyMethods.SYSTEM in methods:
         candidates.append(functools.partial(
-            MSMPIDependency, 'msmpi', env, kwargs, language=language))
+            MSMPIDependency, 'msmpi', env, kwargs))
 
     return candidates
 
@@ -153,9 +157,8 @@ class IntelMPIConfigToolDependency(_MPIConfigToolDependency):
 
     version_arg = '-v'  # --version is not the same as -v
 
-    def __init__(self, name: str, env: 'Environment', kwargs: T.Dict[str, T.Any],
-                 language: T.Optional[str] = None):
-        super().__init__(name, env, kwargs, language=language)
+    def __init__(self, name: str, env: 'Environment', kwargs: DependencyKw):
+        super().__init__(name, env, kwargs)
         if not self.is_found:
             return
 
@@ -176,9 +179,8 @@ class OpenMPIConfigToolDependency(_MPIConfigToolDependency):
 
     version_arg = '--showme:version'
 
-    def __init__(self, name: str, env: 'Environment', kwargs: T.Dict[str, T.Any],
-                 language: T.Optional[str] = None):
-        super().__init__(name, env, kwargs, language=language)
+    def __init__(self, name: str, env: 'Environment', kwargs: DependencyKw):
+        super().__init__(name, env, kwargs)
         if not self.is_found:
             return
 
@@ -199,11 +201,10 @@ class MSMPIDependency(SystemDependency):
 
     """The Microsoft MPI."""
 
-    def __init__(self, name: str, env: 'Environment', kwargs: T.Dict[str, T.Any],
-                 language: T.Optional[str] = None):
-        super().__init__(name, env, kwargs, language=language)
+    def __init__(self, name: str, env: 'Environment', kwargs: DependencyKw):
+        super().__init__(name, env, kwargs)
         # MSMPI only supports the C API
-        if language not in {'c', 'fortran', None}:
+        if kwargs.get('language') not in {'c', 'fortran', None}:
             self.is_found = False
             return
         # MSMPI is only for windows, obviously

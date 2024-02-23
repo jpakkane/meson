@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2013-2021 The Meson development team
+# Copyright © 2023 Intel Corporation
 
 from __future__ import annotations
 
@@ -11,13 +12,14 @@ import typing as T
 
 if T.TYPE_CHECKING:
     from ..environment import Environment
+    from ..interpreter.kwargs import Dependency as DependencyKw
 
 class ExtraFrameworkDependency(ExternalDependency):
     system_framework_paths: T.Optional[T.List[str]] = None
 
-    def __init__(self, name: str, env: 'Environment', kwargs: T.Dict[str, T.Any], language: T.Optional[str] = None) -> None:
+    def __init__(self, name: str, env: 'Environment', kwargs: DependencyKw) -> None:
         paths = stringlistify(kwargs.get('paths', []))
-        super().__init__(DependencyTypeName('extraframeworks'), env, kwargs, language=language)
+        super().__init__(DependencyTypeName('extraframeworks'), env, kwargs)
         self.name = name
         # Full path to framework directory
         self.framework_path: T.Optional[str] = None

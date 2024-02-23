@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2013-2021 The Meson development team
+# Copyright © 2023 Intel Corporation
+
+# mypy: disable-error-code="typeddict-item, typeddict-unknown-key"
 
 from __future__ import annotations
 
@@ -15,6 +18,7 @@ import typing as T
 
 if T.TYPE_CHECKING:
     from ..environment import Environment
+    from ..interpreter.kwargs import Dependency as DependencyKw
 
 
 class DubDependency(ExternalDependency):
@@ -22,17 +26,18 @@ class DubDependency(ExternalDependency):
     class_dubbin: T.Optional[T.Tuple[ExternalProgram, str]] = None
     class_dubbin_searched = False
 
-    def __init__(self, name: str, environment: 'Environment', kwargs: T.Dict[str, T.Any]):
-        super().__init__(DependencyTypeName('dub'), environment, kwargs, language='d')
+    def __init__(self, name: str, environment: 'Environment', kwargs: DependencyKw):
+        kwargs['langauge'] = 'd'
+        super().__init__(DependencyTypeName('dub'), environment, kwargs)
         self.name = name
         from ..compilers.d import DCompiler, d_feature_args
 
         _temp_comp = super().get_compiler()
-        assert isinstance(_temp_comp, DCompiler)
+        if _temp_comp.language == 'missing':
+            self.is_found = False
+            return
+        assert isinstance(_temp_comp, DCompiler), 'Compiler must be a D language compiler'
         self.compiler = _temp_comp
-
-        if 'required' in kwargs:
-            self.required = kwargs.get('required')
 
         if DubDependency.class_dubbin is None and not DubDependency.class_dubbin_searched:
             DubDependency.class_dubbin = self._check_dub()
@@ -60,10 +65,8 @@ class DubDependency(ExternalDependency):
 
         # if an explicit version spec was stated, use this when querying Dub
         main_pack_spec = name
-        if 'version' in kwargs:
-            version_spec = kwargs['version']
-            if isinstance(version_spec, list):
-                version_spec = " ".join(version_spec)
+        if kwargs.get('version'):
+            version_spec = " ".join(kwargs['version'])
             main_pack_spec = f'{name}@{version_spec}'
 
         # we need to know the target architecture

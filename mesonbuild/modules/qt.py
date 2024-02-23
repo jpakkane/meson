@@ -9,6 +9,8 @@ import shutil
 import typing as T
 import xml.etree.ElementTree as ET
 
+from mesonbuild.utils.universal import MachineChoice
+
 from . import ModuleReturnValue, ExtensionModule
 from .. import build
 from .. import coredata
@@ -24,7 +26,7 @@ if T.TYPE_CHECKING:
     from . import ModuleState
     from ..dependencies.qt import QtPkgConfigDependency, QmakeQtDependency
     from ..interpreter import Interpreter
-    from ..interpreter import kwargs
+    from ..interpreter import kwargs as kwtypes
     from ..mesonlib import FileOrString
     from ..programs import ExternalProgram
 
@@ -77,7 +79,7 @@ if T.TYPE_CHECKING:
         method: str
         preserve_paths: bool
 
-    class HasToolKwArgs(kwargs.ExtractRequired):
+    class HasToolKwArgs(kwtypes.ExtractRequired):
 
         method: str
 
@@ -164,7 +166,7 @@ class QtBaseModule(ExtensionModule):
             return
         self._tools_detected = True
         mlog.log(f'Detecting Qt{self.qt_version} tools')
-        kwargs = {'required': required, 'modules': 'Core', 'method': method}
+        kwargs: kwtypes.Dependency = {'modules': ['Core'], 'method': method, 'native': MachineChoice.HOST}
         # Just pick one to make mypy happy
         qt = T.cast('QtPkgConfigDependency', find_external_dependency(f'qt{self.qt_version}', state.environment, kwargs))
         if qt.found():

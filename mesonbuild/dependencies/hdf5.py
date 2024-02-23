@@ -1,7 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2013-2019 The Meson development team
+# Copyright © 2023 Intel Corporation
 
 # This file contains the detection logic for miscellaneous external dependencies.
+
+# mypy: disable-error-code="typeddict-item, typeddict-unknown-key"
+
 from __future__ import annotations
 
 import functools
@@ -20,19 +24,20 @@ import typing as T
 if T.TYPE_CHECKING:
     from .factory import DependencyGenerator
     from ..environment import Environment
-    from ..mesonlib import MachineChoice
+    from ..interpreter.kwargs import Dependency as DependencyKw
+    from ..utils.universal import MachineChoice
 
 
 class HDF5PkgConfigDependency(PkgConfigDependency):
 
     """Handle brokenness in the HDF5 pkg-config files."""
 
-    def __init__(self, name: str, environment: 'Environment', kwargs: T.Dict[str, T.Any], language: T.Optional[str] = None) -> None:
-        language = language or 'c'
+    def __init__(self, name: str, environment: 'Environment', kwargs: DependencyKw) -> None:
+        language = kwargs.get('language') or 'c'
         if language not in {'c', 'cpp', 'fortran'}:
             raise DependencyException(f'Language {language} is not supported with HDF5.')
 
-        super().__init__(name, environment, kwargs, language)
+        super().__init__(name, environment, kwargs)
         if not self.is_found:
             return
 
@@ -78,8 +83,8 @@ class HDF5ConfigToolDependency(ConfigToolDependency):
 
     version_arg = '-showconfig'
 
-    def __init__(self, name: str, environment: 'Environment', kwargs: T.Dict[str, T.Any], language: T.Optional[str] = None) -> None:
-        language = language or 'c'
+    def __init__(self, name: str, environment: 'Environment', kwargs: DependencyKw) -> None:
+        language = kwargs.get('language') or 'c'
         if language not in {'c', 'cpp', 'fortran'}:
             raise DependencyException(f'Language {language} is not supported with HDF5.')
 
@@ -99,7 +104,7 @@ class HDF5ConfigToolDependency(ConfigToolDependency):
             raise DependencyException('How did you get here?')
 
         # We need this before we call super()
-        for_machine = self.get_for_machine_from_kwargs(kwargs)
+        for_machine = kwargs['native']
 
         nkwargs = kwargs.copy()
         nkwargs['tools'] = tools
@@ -111,7 +116,7 @@ class HDF5ConfigToolDependency(ConfigToolDependency):
         try:
             os.environ[f'HDF5_{cenv}'] = join_args(compiler.get_exelist())
             os.environ[f'HDF5_{lenv}LINKER'] = join_args(compiler.get_linker_exelist())
-            super().__init__(name, environment, nkwargs, language)
+            super().__init__(name, environment, nkwargs)
         finally:
             del os.environ[f'HDF5_{cenv}']
             del os.environ[f'HDF5_{lenv}LINKER']
@@ -144,8 +149,7 @@ class HDF5ConfigToolDependency(ConfigToolDependency):
 
 @factory_methods({DependencyMethods.PKGCONFIG, DependencyMethods.CONFIG_TOOL})
 def hdf5_factory(env: 'Environment', for_machine: 'MachineChoice',
-                 kwargs: T.Dict[str, T.Any], methods: T.List[DependencyMethods]) -> T.List['DependencyGenerator']:
-    language = kwargs.get('language')
+                 kwargs: DependencyKw, methods: T.List[DependencyMethods]) -> T.List['DependencyGenerator']:
     candidates: T.List['DependencyGenerator'] = []
 
     if DependencyMethods.PKGCONFIG in methods:
@@ -158,10 +162,10 @@ def hdf5_factory(env: 'Environment', for_machine: 'MachineChoice',
                 if mod.startswith('hdf5'):
                     pkgconfig_files.add(mod)
         for mod in pkgconfig_files:
-            candidates.append(functools.partial(HDF5PkgConfigDependency, mod, env, kwargs, language))
+            candidates.append(functools.partial(HDF5PkgConfigDependency, mod, env, kwargs))
 
     if DependencyMethods.CONFIG_TOOL in methods:
-        candidates.append(functools.partial(HDF5ConfigToolDependency, 'hdf5', env, kwargs, language))
+        candidates.append(functools.partial(HDF5ConfigToolDependency, 'hdf5', env, kwargs))
 
     return candidates
 

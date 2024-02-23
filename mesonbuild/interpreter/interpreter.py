@@ -51,6 +51,7 @@ from .type_checking import (
     CT_BUILD_BY_DEFAULT,
     CT_INPUT_KW,
     CT_INSTALL_DIR_KW,
+    DEPENDENCY_KWS,
     EXECUTABLE_KWS,
     JAR_KWS,
     LIBRARY_KWS,
@@ -88,7 +89,7 @@ from .type_checking import (
     TEST_KWS,
     NoneType,
     in_set_validator,
-    env_convertor_with_method
+    env_convertor_with_method,
 )
 from . import primitives as P_OBJ
 
@@ -229,28 +230,6 @@ class InterpreterRuleRelaxation(Enum):
     '''
 
     ALLOW_BUILD_DIR_FILE_REFERENCES = 1
-
-permitted_dependency_kwargs = {
-    'allow_fallback',
-    'cmake_args',
-    'cmake_module_path',
-    'cmake_package_version',
-    'components',
-    'default_options',
-    'fallback',
-    'include_type',
-    'language',
-    'main',
-    'method',
-    'modules',
-    'native',
-    'not_found_message',
-    'optional_modules',
-    'private_headers',
-    'required',
-    'static',
-    'version',
-}
 
 implicit_check_false_warning = """You should add the boolean check kwarg to the run_command call.
          It currently defaults to false,
@@ -586,8 +565,7 @@ class Interpreter(InterpreterBase, HoldableObject):
                     continue
                 if len(di) == 1:
                     FeatureNew.single_use('stdlib without variable name', '0.56.0', self.subproject, location=self.current_node)
-                kwargs = {'native': for_machine is MachineChoice.BUILD,
-                          }
+                kwargs = {'native': for_machine}
                 name = l + '_stdlib'
                 df = DependencyFallbacksHolder(self, [name])
                 df.set_fallback(di)
@@ -1753,32 +1731,21 @@ class Interpreter(InterpreterBase, HoldableObject):
                                       search_dirs=search_dirs)
 
     # When adding kwargs, please check if they make sense in dependencies.get_dep_identifier()
-    @FeatureNewKwargs('dependency', '0.57.0', ['cmake_package_version'])
-    @FeatureNewKwargs('dependency', '0.56.0', ['allow_fallback'])
-    @FeatureNewKwargs('dependency', '0.54.0', ['components'])
-    @FeatureNewKwargs('dependency', '0.52.0', ['include_type'])
-    @FeatureNewKwargs('dependency', '0.50.0', ['not_found_message', 'cmake_module_path', 'cmake_args'])
-    @FeatureNewKwargs('dependency', '0.49.0', ['disabler'])
-    @FeatureNewKwargs('dependency', '0.40.0', ['method'])
-    @disablerIfNotFound
-    @permittedKwargs(permitted_dependency_kwargs)
     @typed_pos_args('dependency', varargs=str, min_varargs=1)
-    @typed_kwargs('dependency', DEFAULT_OPTIONS.evolve(since='0.38.0'), allow_unknown=True)
-    def func_dependency(self, node: mparser.BaseNode, args: T.Tuple[T.List[str]], kwargs) -> Dependency:
+    @typed_kwargs('dependency', *DEPENDENCY_KWS)
+    @disablerIfNotFound
+    def func_dependency(self, node: mparser.BaseNode, args: T.Tuple[T.List[str]], kwargs: kwtypes.Dependency) -> Dependency:
         # Replace '' by empty list of names
         names = [n for n in args[0] if n]
         if len(names) > 1:
             FeatureNew('dependency with more than one name', '0.60.0').use(self.subproject)
-        allow_fallback = kwargs.get('allow_fallback')
-        if allow_fallback is not None and not isinstance(allow_fallback, bool):
-            raise InvalidArguments('"allow_fallback" argument must be boolean')
+        allow_fallback = kwargs['allow_fallback']
         fallback = kwargs.get('fallback')
         default_options = kwargs.get('default_options')
         df = DependencyFallbacksHolder(self, names, allow_fallback, default_options)
-        df.set_fallback(fallback)
+        if fallback is not None:
+            df.set_fallback(fallback)
         not_found_message = kwargs.get('not_found_message', '')
-        if not isinstance(not_found_message, str):
-            raise InvalidArguments('The not_found_message must be a string.')
         try:
             d = df.lookup(kwargs)
         except Exception:
@@ -1789,14 +1756,11 @@ class Interpreter(InterpreterBase, HoldableObject):
         if not d.found() and not_found_message:
             self.message_impl([not_found_message])
         # Ensure the correct include type
-        if 'include_type' in kwargs:
-            wanted = kwargs['include_type']
-            if not isinstance(wanted, str):
-                raise InvalidArguments('The `include_type` kwarg must be a string')
-            actual = d.get_include_type()
-            if wanted != actual:
-                mlog.debug(f'Current include type of {args[0]} is {actual}. Converting to requested {wanted}')
-                d = d.generate_system_dependency(wanted)
+        wanted = kwargs['include_type']
+        actual = d.get_include_type()
+        if wanted != actual:
+            mlog.debug(f'Current include type of {args[0]} is {actual}. Converting to requested {wanted}')
+            d = d.generate_system_dependency(wanted)
         if d.feature_since is not None:
             version, extra_msg = d.feature_since
             FeatureNew.single_use(f'dep {d.name!r} custom lookup', version, self.subproject, extra_msg, node)
@@ -1878,7 +1842,7 @@ class Interpreter(InterpreterBase, HoldableObject):
                           kwargs: kwtypes.BuildTarget
                           ) -> T.Union[build.Executable, build.StaticLibrary, build.SharedLibrary,
                                        build.SharedModule, build.BothLibraries, build.Jar]:
-        target_type = kwargs['target_type']
+        target_type = kwargs.pop('target_type')
         if target_type == 'executable':
             return self.build_target(node, args, kwargs, build.Executable)
         elif target_type == 'shared_library':

@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2013-2021 The Meson development team
+# Copyright © 2023 Intel Corporation
+
+# mypy: disable-error-code="typeddict-item, typeddict-unknown-key"
 
 from __future__ import annotations
 
@@ -14,6 +17,7 @@ from mesonbuild import mesonlib
 
 if T.TYPE_CHECKING:
     from ..environment import Environment
+    from ..interpreter.kwargs import Dependency as DependencyKw
     from ..interpreter.type_checking import PkgConfigDefineType
 
 class ConfigToolDependency(ExternalDependency):
@@ -37,8 +41,8 @@ class ConfigToolDependency(ExternalDependency):
     allow_default_for_cross = False
     __strip_version = re.compile(r'^[0-9][0-9.]+')
 
-    def __init__(self, name: str, environment: 'Environment', kwargs: T.Dict[str, T.Any], language: T.Optional[str] = None):
-        super().__init__(DependencyTypeName('config-tool'), environment, kwargs, language=language)
+    def __init__(self, name: str, environment: 'Environment', kwargs: DependencyKw):
+        super().__init__(DependencyTypeName('config-tool'), environment, kwargs)
         self.name = name
         # You may want to overwrite the class version in some cases
         self.tools = listify(kwargs.get('tools', self.tools))

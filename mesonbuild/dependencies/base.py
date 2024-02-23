@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2013-2018 The Meson development team
+# Copyright © 2023 Intel Corporation
 
 # This file contains the detection logic for external dependencies.
 # Custom logic for several other packages are in separate files.
@@ -19,14 +20,19 @@ from ..mesonlib import version_compare_many
 #from ..interpreterbase import FeatureDeprecated, FeatureNew
 
 if T.TYPE_CHECKING:
+    from typing_extensions import Literal
+
     from ..compilers.compilers import Compiler
     from ..environment import Environment
     from ..interpreterbase import FeatureCheckBase
+    from ..interpreter.kwargs import Dependency as DependencyKw
     from ..build import (
         CustomTarget, IncludeDirs, CustomTargetIndex, LibTypes,
         StaticLibrary, StructuredSources, ExtractedObjects, GeneratedTypes
     )
     from ..interpreter.type_checking import PkgConfigDefineType
+
+    IncludeTypes = Literal['system', 'non-system', 'preserve']
 
     _MissingCompilerBase = Compiler
 else:
@@ -40,6 +46,8 @@ class DependencyException(MesonException):
 class MissingCompiler(_MissingCompilerBase):
     """Represent a None Compiler - when no tool chain is found.
     replacing AttributeError with DependencyException"""
+
+    language = 'missing'
 
     # These are needed in type checking mode to avoid errors, but we don't want
     # the extra overhead at runtime
@@ -95,17 +103,7 @@ DependencyTypeName = T.NewType('DependencyTypeName', str)
 
 class Dependency(HoldableObject):
 
-    @classmethod
-    def _process_include_type_kw(cls, kwargs: T.Dict[str, T.Any]) -> str:
-        if 'include_type' not in kwargs:
-            return 'preserve'
-        if not isinstance(kwargs['include_type'], str):
-            raise DependencyException('The include_type kwarg must be a string type')
-        if kwargs['include_type'] not in ['preserve', 'system', 'non-system']:
-            raise DependencyException("include_type may only be one of ['preserve', 'system', 'non-system']")
-        return kwargs['include_type']
-
-    def __init__(self, type_name: DependencyTypeName, kwargs: T.Dict[str, T.Any]) -> None:
+    def __init__(self, type_name: DependencyTypeName, include_type: T.Optional[IncludeTypes] = None) -> None:
         self.name = f'dep{id(self)}'
         self.version:  T.Optional[str] = None
         self.language: T.Optional[str] = None # None means C-like
@@ -118,7 +116,7 @@ class Dependency(HoldableObject):
         self.raw_link_args: T.Optional[T.List[str]] = None
         self.sources: T.List[T.Union[mesonlib.File, GeneratedTypes, 'StructuredSources']] = []
         self.extra_files: T.List[mesonlib.File] = []
-        self.include_type = self._process_include_type_kw(kwargs)
+        self.include_type = include_type or 'preserve'
         self.ext_deps: T.List[Dependency] = []
         self.d_features: T.DefaultDict[str, T.List[T.Any]] = collections.defaultdict(list)
         self.featurechecks: T.List['FeatureCheckBase'] = []
@@ -195,7 +193,7 @@ class Dependency(HoldableObject):
     def get_include_dirs(self) -> T.List['IncludeDirs']:
         return []
 
-    def get_include_type(self) -> str:
+    def get_include_type(self) -> IncludeTypes:
         return self.include_type
 
     def get_exe_args(self, compiler: 'Compiler') -> T.List[str]:
@@ -243,9 +241,9 @@ class Dependency(HoldableObject):
             return default_value
         raise DependencyException(f'No default provided for dependency {self!r}, which is not pkg-config, cmake, or config-tool based.')
 
-    def generate_system_dependency(self, include_type: str) -> 'Dependency':
+    def generate_system_dependency(self, include_type: IncludeTypes) -> 'Dependency':
         new_dep = copy.deepcopy(self)
-        new_dep.include_type = self._process_include_type_kw({'include_type': include_type})
+        new_dep.include_type = include_type
         return new_dep
 
 class InternalDependency(Dependency):
@@ -258,7 +256,7 @@ class InternalDependency(Dependency):
                  ext_deps: T.List[Dependency], variables: T.Dict[str, str],
                  d_module_versions: T.List[T.Union[str, int]], d_import_dirs: T.List['IncludeDirs'],
                  objects: T.List['ExtractedObjects']):
-        super().__init__(DependencyTypeName('internal'), {})
+        super().__init__(DependencyTypeName('internal'))
         self.version = version
         self.is_found = True
         self.include_directories = incdirs
@@ -345,35 +343,28 @@ class InternalDependency(Dependency):
         new_dep.libraries = []
         return new_dep
 
-class HasNativeKwarg:
-    def __init__(self, kwargs: T.Dict[str, T.Any]):
-        self.for_machine = self.get_for_machine_from_kwargs(kwargs)
 
-    def get_for_machine_from_kwargs(self, kwargs: T.Dict[str, T.Any]) -> MachineChoice:
-        return MachineChoice.BUILD if kwargs.get('native', False) else MachineChoice.HOST
-
-class ExternalDependency(Dependency, HasNativeKwarg):
-    def __init__(self, type_name: DependencyTypeName, environment: 'Environment', kwargs: T.Dict[str, T.Any], language: T.Optional[str] = None):
-        Dependency.__init__(self, type_name, kwargs)
+class ExternalDependency(Dependency):
+    def __init__(self, type_name: DependencyTypeName, environment: 'Environment', kwargs: DependencyKw):
+        Dependency.__init__(self, type_name, kwargs.get('include_type'))
+        self.for_machine = kwargs['native']
         self.env = environment
         self.name = type_name # default
         self.is_found = False
-        self.language = language
-        version_reqs = kwargs.get('version', None)
-        if isinstance(version_reqs, str):
-            version_reqs = [version_reqs]
-        self.version_reqs: T.Optional[T.List[str]] = version_reqs
+        self.language = kwargs.get('language')
+        self.version_reqs = kwargs.get('version', [])
         self.required = kwargs.get('required', True)
         self.silent = kwargs.get('silent', False)
-        self.static = kwargs.get('static', self.env.coredata.get_option(OptionKey('prefer_static')))
+        static: T.Any = kwargs.get('static')
+        if static is None:
+            static = self.env.coredata.get_option(OptionKey('prefer_static'))
+        assert isinstance(static, bool), 'for mypy'
+        self.static = static
         self.libtype = LibType.STATIC if self.static else LibType.PREFER_SHARED
-        if not isinstance(self.static, bool):
-            raise DependencyException('Static keyword must be boolean')
         # Is this dependency to be run on the build platform?
-        HasNativeKwarg.__init__(self, kwargs)
         self.clib_compiler = detect_compiler(self.name, environment, self.for_machine, self.language)
 
-    def get_compiler(self) -> T.Union['MissingCompiler', 'Compiler']:
+    def get_compiler(self) -> Compiler:
         return self.clib_compiler
 
     def get_partial_dependency(self, *, compile_args: bool = False,
@@ -442,7 +433,7 @@ class ExternalDependency(Dependency, HasNativeKwarg):
 
 class NotFoundDependency(Dependency):
     def __init__(self, name: str, environment: 'Environment') -> None:
-        super().__init__(DependencyTypeName('not-found'), {})
+        super().__init__(DependencyTypeName('not-found'))
         self.env = environment
         self.name = name
         self.is_found = False
@@ -455,10 +446,9 @@ class NotFoundDependency(Dependency):
 
 class ExternalLibrary(ExternalDependency):
     def __init__(self, name: str, link_args: T.List[str], environment: 'Environment',
-                 language: str, silent: bool = False) -> None:
-        super().__init__(DependencyTypeName('library'), environment, {}, language=language)
+                 language: str, for_machine: MachineChoice, silent: bool = False) -> None:
+        super().__init__(DependencyTypeName('library'), environment, {'language': language, 'native': for_machine})
         self.name = name
-        self.language = language
         self.is_found = False
         if link_args:
             self.is_found = True
@@ -555,7 +545,7 @@ def strip_system_includedirs(environment: 'Environment', for_machine: MachineCho
     exclude = {f'-I{p}' for p in environment.get_compiler_system_include_dirs(for_machine)}
     return [i for i in include_args if i not in exclude]
 
-def process_method_kw(possible: T.Iterable[DependencyMethods], kwargs: T.Dict[str, T.Any]) -> T.List[DependencyMethods]:
+def process_method_kw(possible: T.Iterable[DependencyMethods], kwargs: DependencyKw) -> T.List[DependencyMethods]:
     method: T.Union[DependencyMethods, str] = kwargs.get('method', 'auto')
     if isinstance(method, DependencyMethods):
         return [method]
@@ -564,39 +554,25 @@ def process_method_kw(possible: T.Iterable[DependencyMethods], kwargs: T.Dict[st
         raise DependencyException(f'method {method!r} is invalid')
     method = DependencyMethods(method)
 
-    # Raise FeatureNew where appropriate
-    if method is DependencyMethods.CONFIG_TOOL:
-        # FIXME: needs to get a handle on the subproject
-        # FeatureNew.single_use('Configuration method "config-tool"', '0.44.0')
-        pass
     # This sets per-tool config methods which are deprecated to to the new
     # generic CONFIG_TOOL value.
-    if method in [DependencyMethods.SDLCONFIG, DependencyMethods.CUPSCONFIG,
-                  DependencyMethods.PCAPCONFIG, DependencyMethods.LIBWMFCONFIG]:
-        # FIXME: needs to get a handle on the subproject
-        #FeatureDeprecated.single_use(f'Configuration method {method.value}', '0.44', 'Use "config-tool" instead.')
-        method = DependencyMethods.CONFIG_TOOL
-    if method is DependencyMethods.QMAKE:
-        # FIXME: needs to get a handle on the subproject
-        # FeatureDeprecated.single_use('Configuration method "qmake"', '0.58', 'Use "config-tool" instead.')
+    if method in {DependencyMethods.SDLCONFIG, DependencyMethods.CUPSCONFIG,
+                  DependencyMethods.PCAPCONFIG, DependencyMethods.LIBWMFCONFIG,
+                  DependencyMethods.QMAKE}:
         method = DependencyMethods.CONFIG_TOOL
 
     # Set the detection method. If the method is set to auto, use any available method.
     # If method is set to a specific string, allow only that detection method.
     if method == DependencyMethods.AUTO:
         methods = list(possible)
-    elif method in possible:
-        methods = [method]
     else:
-        raise DependencyException(
-            'Unsupported detection method: {}, allowed methods are {}'.format(
-                method.value,
-                mlog.format_list([x.value for x in [DependencyMethods.AUTO] + list(possible)])))
+        assert method in possible, 'Somehow got an invalid method past the Interpreter?'
+        methods = [method]
 
     return methods
 
 def detect_compiler(name: str, env: 'Environment', for_machine: MachineChoice,
-                    language: T.Optional[str]) -> T.Union['MissingCompiler', 'Compiler']:
+                    language: T.Optional[str]) -> Compiler:
     """Given a language and environment find the compiler used."""
     compilers = env.coredata.compilers[for_machine]
 
@@ -621,9 +597,8 @@ class SystemDependency(ExternalDependency):
 
     """Dependency base for System type dependencies."""
 
-    def __init__(self, name: str, env: 'Environment', kwargs: T.Dict[str, T.Any],
-                 language: T.Optional[str] = None) -> None:
-        super().__init__(DependencyTypeName('system'), env, kwargs, language=language)
+    def __init__(self, name: str, env: 'Environment', kwargs: DependencyKw) -> None:
+        super().__init__(DependencyTypeName('system'), env, kwargs)
         self.name = name
 
     @staticmethod
@@ -635,9 +610,8 @@ class BuiltinDependency(ExternalDependency):
 
     """Dependency base for Builtin type dependencies."""
 
-    def __init__(self, name: str, env: 'Environment', kwargs: T.Dict[str, T.Any],
-                 language: T.Optional[str] = None) -> None:
-        super().__init__(DependencyTypeName('builtin'), env, kwargs, language=language)
+    def __init__(self, name: str, env: 'Environment', kwargs: DependencyKw) -> None:
+        super().__init__(DependencyTypeName('builtin'), env, kwargs)
         self.name = name
 
     @staticmethod

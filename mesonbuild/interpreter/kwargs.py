@@ -1,18 +1,18 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright © 2021 The Meson Developers
-# Copyright © 2021 Intel Corporation
+# Copyright 2021 The Meson Developers
+# Copyright © 2021-2023 Intel Corporation
 from __future__ import annotations
 
 """Keyword Argument type annotations."""
 
 import typing as T
 
-from typing_extensions import TypedDict, Literal, Protocol, NotRequired
+from typing_extensions import TypedDict, Literal, Protocol, NotRequired, Required
 
 from .. import build
 from .. import coredata
 from ..compilers import Compiler
-from ..dependencies.base import Dependency
+from ..dependencies.base import Dependency as DependencyType, IncludeTypes
 from ..mesonlib import EnvironmentVariables, MachineChoice, File, FileMode, FileOrString, OptionKey
 from ..modules.cmake import CMakeSubprojectOptions
 from ..programs import ExternalProgram
@@ -73,7 +73,7 @@ class ExtractRequired(TypedDict):
     a boolean or a feature option should inherit it's arguments from this class.
     """
 
-    required: T.Union[bool, coredata.UserFeatureOption]
+    required: NotRequired[T.Union[bool, coredata.UserFeatureOption]]
 
 
 class ExtractSearchDirs(TypedDict):
@@ -465,7 +465,7 @@ class FuncDeclareDependency(TypedDict):
     compile_args: T.List[str]
     d_import_dirs: T.List[T.Union[build.IncludeDirs, str]]
     d_module_versions: T.List[T.Union[str, int]]
-    dependencies: T.List[Dependency]
+    dependencies: T.List[DependencyType]
     extra_files: T.List[FileOrString]
     include_directories: T.List[T.Union[build.IncludeDirs, str]]
     link_args: T.List[str]
@@ -475,3 +475,28 @@ class FuncDeclareDependency(TypedDict):
     sources: T.List[T.Union[FileOrString, build.GeneratedTypes]]
     variables: T.Dict[str, str]
     version: T.Optional[str]
+
+
+class Dependency(ExtractRequired, total=False):
+
+    allow_fallback: T.Optional[bool]
+    cmake_args: T.List[str]
+    cmake_module_path: T.List[str]
+    cmake_package_version: str
+    components: T.List[str]
+    default_options: T.Dict[OptionKey, T.Union[str, int, bool, T.List[str]]]
+    fallback: T.Optional[T.List[str]]
+    include_type: IncludeTypes
+    language: T.Optional[str]
+    main: bool
+    method: str
+    modules: T.List[str]
+    native: Required[MachineChoice]
+    not_found_message: str
+    optional_modules: T.List[str]
+    private_headers: bool
+    static: T.Optional[bool]
+    version: T.List[str]
+    embed: bool
+    silent: bool
+    returncode_value: int

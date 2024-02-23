@@ -12,8 +12,8 @@ from ..build import (CustomTarget, BuildTarget,
                      CustomTargetIndex, ExtractedObjects, GeneratedList, IncludeDirs,
                      BothLibraries, SharedLibrary, StaticLibrary, Jar, Executable, StructuredSources)
 from ..coredata import UserFeatureOption
-from ..dependencies import Dependency, InternalDependency
-from ..interpreterbase.decorators import KwargInfo, ContainerTypeInfo
+from ..dependencies import Dependency, InternalDependency, DependencyMethods
+from ..interpreterbase.decorators import KwargInfo, ContainerTypeInfo, FeatureNew
 from ..mesonlib import (File, FileMode, MachineChoice, listify, has_path_sep,
                         OptionKey, EnvironmentVariables)
 from ..programs import ExternalProgram
@@ -26,6 +26,7 @@ if T.TYPE_CHECKING:
 
     from ..build import ObjectTypes
     from ..interpreterbase import TYPE_var
+    from ..interpreterbase import FeatureCheckBase
     from ..mesonlib import EnvInitValueType
 
     _FullEnvInitValueType = T.Union[EnvironmentVariables, T.List[str], T.List[T.List[str]], EnvInitValueType, str, None]
@@ -44,11 +45,13 @@ def in_set_validator(choices: T.Set[str]) -> T.Callable[[str], T.Optional[str]]:
     return inner
 
 
-def _language_validator(l: T.List[str]) -> T.Optional[str]:
+def _language_validator(l: T.Sequence[str]) -> T.Optional[str]:
     """Validate language keyword argument.
 
     Particularly for functions like `add_compiler()`, and `add_*_args()`
     """
+    if isinstance(l, str):
+        l = [l]
     diff = {a.lower() for a in l}.difference(compilers.all_languages)
     if diff:
         return f'unknown languages: {", ".join(diff)}'
@@ -853,3 +856,59 @@ PKGCONFIG_DEFINE_KW: KwargInfo = KwargInfo(
     default=[],
     convertor=_pkgconfig_define_convertor,
 )
+
+def _dep_fallback_feat_validator(val: T.List[str]) -> T.Iterable[FeatureCheckBase]:
+    if len(val) == 1:
+        yield FeatureNew('feature as a string or array of one element', '0.54.0', 'use the two element form')
+
+_USE_CONFIG_TOOL = "Use the 'config-tool' method instead"
+
+
+DEPENDENCY_KWS: T.List[KwargInfo] = [
+    KwargInfo('allow_fallback', (bool, NoneType), since='0.56.0'),
+    KwargInfo('cmake_args', ContainerTypeInfo(list, str), default=[], listify=True, since='0.50.0'),
+    KwargInfo('cmake_module_path', ContainerTypeInfo(list, str), default=[], listify=True, since='0.50.0'),
+    KwargInfo('cmake_package_version', str, default='', since='0.57.0'),
+    KwargInfo('components', ContainerTypeInfo(list, str), default=[], listify=True, since='0.54.0'),
+    DEFAULT_OPTIONS.evolve(since='0.38.0'),
+    DISABLER_KW.evolve(since='0.49.0'),
+    KwargInfo(
+        'fallback',
+        (ContainerTypeInfo(list, str), NoneType),
+        listify=True,
+        validator=lambda x: 'Must be a string, or an array of 0, 1, or 2 elements' if len(x) > 2 else None,
+        feature_validator=_dep_fallback_feat_validator,
+    ),
+    KwargInfo(
+        'include_type',
+        str,
+        default='preserve',
+        validator=in_set_validator({'preserve', 'system', 'non-system'}),
+        since='0.52.0',
+    ),
+    KwargInfo('language', (str, NoneType), validator=_language_validator),
+    KwargInfo('main', bool, default=False),
+    KwargInfo(
+        'method',
+        str,
+        default='auto',
+        since='0.40.0',
+        validator=in_set_validator({e.value for e in DependencyMethods}),
+        since_values={'config-tool': '0.44.0'},
+        deprecated_values={
+            'qmake': ('0.58.0', _USE_CONFIG_TOOL),
+            'sdlconfig': ('0.44.0', _USE_CONFIG_TOOL),
+            'cups-config': ('0.44.0', _USE_CONFIG_TOOL),
+            'pcap-config': ('0.44.0', _USE_CONFIG_TOOL),
+            'libwmf-config': ('0.44.0', _USE_CONFIG_TOOL),
+        },
+    ),
+    KwargInfo('modules', ContainerTypeInfo(list, str), default=[], listify=True, since='0.54.0'),
+    NATIVE_KW,
+    KwargInfo('not_found_message', str, default='', since='0.50.0'),
+    KwargInfo('optional_modules', ContainerTypeInfo(list, str), default=[], listify=True),
+    KwargInfo('private_headers', bool, default=False, since='0.47.0'),
+    REQUIRED_KW,
+    KwargInfo('static', (bool, NoneType)),
+    KwargInfo('version', ContainerTypeInfo(list, str), listify=True, default=[]),
+]

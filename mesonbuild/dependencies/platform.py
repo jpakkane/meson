@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2013-2017 The Meson development team
+# Copyright © 2023 Intel Corporation
 
 # This file contains the detection logic for external dependencies that are
 # platform-specific (generally speaking).
@@ -12,9 +13,10 @@ import typing as T
 
 if T.TYPE_CHECKING:
     from ..environment import Environment
+    from ..interpreter.kwargs import Dependency as DependencyKw
 
 class AppleFrameworks(ExternalDependency):
-    def __init__(self, env: 'Environment', kwargs: T.Dict[str, T.Any]) -> None:
+    def __init__(self, env: 'Environment', kwargs: DependencyKw) -> None:
         super().__init__(DependencyTypeName('appleframeworks'), env, kwargs)
         modules = kwargs.get('modules', [])
         if isinstance(modules, str):

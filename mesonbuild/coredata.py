@@ -33,7 +33,7 @@ import typing as T
 if T.TYPE_CHECKING:
     from . import dependencies
     from .compilers.compilers import Compiler, CompileResult, RunResult, CompileCheckMode
-    from .dependencies.detect import TV_DepID
+    from .dependencies.detect import DependencyCacheKey
     from .environment import Environment
     from .mesonlib import FileOrString
     from .cmake.traceparser import CMakeCacheEntry
@@ -448,7 +448,7 @@ class DependencyCache:
     """
 
     def __init__(self, builtins: 'KeyedOptionDictType', for_machine: MachineChoice):
-        self.__cache: T.MutableMapping[TV_DepID, DependencySubCache] = OrderedDict()
+        self.__cache: T.MutableMapping[DependencyCacheKey, DependencySubCache] = OrderedDict()
         self.__builtins = builtins
         self.__pkg_conf_key = OptionKey('pkg_config_path', machine=for_machine)
         self.__cmake_key = OptionKey('cmake_prefix_path', machine=for_machine)
@@ -462,17 +462,17 @@ class DependencyCache:
         assert type_ in data, 'Someone forgot to update subkey calculations for a new type'
         return tuple(data[type_])
 
-    def __iter__(self) -> T.Iterator['TV_DepID']:
+    def __iter__(self) -> T.Iterator[DependencyCacheKey]:
         return self.keys()
 
-    def put(self, key: 'TV_DepID', dep: 'dependencies.Dependency') -> None:
+    def put(self, key: DependencyCacheKey, dep: 'dependencies.Dependency') -> None:
         t = DependencyCacheType.from_type(dep)
         if key not in self.__cache:
             self.__cache[key] = DependencySubCache(t)
         subkey = self.__calculate_subkey(t)
         self.__cache[key][subkey] = dep
 
-    def get(self, key: 'TV_DepID') -> T.Optional['dependencies.Dependency']:
+    def get(self, key: DependencyCacheKey) -> T.Optional['dependencies.Dependency']:
         """Get a value from the cache.
 
         If there is no cache entry then None will be returned.
@@ -494,10 +494,10 @@ class DependencyCache:
         for c in self.__cache.values():
             yield from c.values()
 
-    def keys(self) -> T.Iterator['TV_DepID']:
+    def keys(self) -> T.Iterator[DependencyCacheKey]:
         return iter(self.__cache.keys())
 
-    def items(self) -> T.Iterator[T.Tuple['TV_DepID', T.List['dependencies.Dependency']]]:
+    def items(self) -> T.Iterator[T.Tuple[DependencyCacheKey, T.List['dependencies.Dependency']]]:
         for k, v in self.__cache.items():
             vs: T.List[dependencies.Dependency] = []
             for t in v.types:

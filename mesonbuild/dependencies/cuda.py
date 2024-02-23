@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2013-2019 The Meson development team
+# Copyright © 2023 Intel Corporation
+
+# mypy: disable-error-code="typeddict-item, typeddict-unknown-key"
 
 from __future__ import annotations
 
@@ -19,6 +22,7 @@ from .detect import packages
 if T.TYPE_CHECKING:
     from ..environment import Environment
     from ..compilers import Compiler
+    from ..interpreter.kwargs import Dependency as DependencyKw
 
     TV_ResultTuple = T.Tuple[T.Optional[str], T.Optional[str], bool]
 
@@ -26,15 +30,16 @@ class CudaDependency(SystemDependency):
 
     supported_languages = ['cuda', 'cpp', 'c'] # see also _default_language
 
-    def __init__(self, environment: 'Environment', kwargs: T.Dict[str, T.Any]) -> None:
-        compilers = environment.coredata.compilers[self.get_for_machine_from_kwargs(kwargs)]
+    def __init__(self, environment: 'Environment', kwargs: DependencyKw) -> None:
+        compilers = environment.coredata.compilers[kwargs['native']]
         language = self._detect_language(compilers)
         if language not in self.supported_languages:
             raise DependencyException(f'Language \'{language}\' is not supported by the CUDA Toolkit. Supported languages are {self.supported_languages}.')
+        kwargs['language'] = language
 
-        super().__init__('cuda', environment, kwargs, language=language)
+        super().__init__('cuda', environment, kwargs)
         self.lib_modules: T.Dict[str, T.List[str]] = {}
-        self.requested_modules = self.get_requested(kwargs)
+        self.requested_modules = kwargs.get('modules', [])
         if not any(runtime in self.requested_modules for runtime in ['cudart', 'cudart_static']):
             # By default, we prefer to link the static CUDA runtime, since this is what nvcc also does by default:
             # https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html#cudart-none-shared-static-cudart
@@ -276,13 +281,6 @@ class CudaDependency(SystemDependency):
 
     def log_info(self) -> str:
         return self.cuda_path if self.cuda_path else ''
-
-    def get_requested(self, kwargs: T.Dict[str, T.Any]) -> T.List[str]:
-        candidates = mesonlib.extract_as_list(kwargs, 'modules')
-        for c in candidates:
-            if not isinstance(c, str):
-                raise DependencyException('CUDA module argument is not a string.')
-        return candidates
 
     def get_link_args(self, language: T.Optional[str] = None, raw: bool = False) -> T.List[str]:
         args: T.List[str] = []

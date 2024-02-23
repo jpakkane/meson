@@ -1,23 +1,41 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2013-2021 The Meson development team
+# Copyright © 2023 Intel Corporation
+
+# mypy: disable-error-code="typeddict-item, typeddict-unknown-key"
 
 from __future__ import annotations
 
 import collections, functools, importlib
+from dataclasses import dataclass, field, fields
 import typing as T
 
-from .base import ExternalDependency, DependencyException, DependencyMethods, NotFoundDependency
-
-from ..mesonlib import listify, MachineChoice, PerMachine
+from .base import ExternalDependency, DependencyException, NotFoundDependency
+from ..mesonlib import MachineChoice, PerMachine
 from .. import mlog
 
 if T.TYPE_CHECKING:
+    from typing_extensions import TypedDict
+
     from ..environment import Environment
+    from ..interpreter.kwargs import Dependency as DependencyKw
     from .factory import DependencyFactory, WrappedFactoryFunc, DependencyGenerator
 
-    TV_DepIDEntry = T.Union[str, bool, int, T.Tuple[str, ...]]
-    TV_DepID = T.Tuple[T.Tuple[str, TV_DepIDEntry], ...]
     PackageTypes = T.Union[T.Type[ExternalDependency], DependencyFactory, WrappedFactoryFunc]
+
+    class DependencyCacheKeyInit(TypedDict, total=False):
+        cmake_args: T.Tuple[str, ...]
+        cmake_module_path: T.Tuple[str, ...]
+        cmake_package_version: str
+        components: T.Tuple[str, ...]
+        language: T.Optional[str]
+        main: bool
+        method: str
+        modules: T.Tuple[str, ...]
+        optional_modules: T.Tuple[str, ...]
+        private_headers: bool
+        static: T.Optional[bool]
+        embed: bool
 
 class DependencyPackages(collections.UserDict):
     data: T.Dict[str, PackageTypes]
@@ -38,12 +56,32 @@ class DependencyPackages(collections.UserDict):
 packages = DependencyPackages()
 _packages_accept_language: T.Set[str] = set()
 
-def get_dep_identifier(name: str, kwargs: T.Dict[str, T.Any]) -> 'TV_DepID':
-    identifier: 'TV_DepID' = (('name', name), )
-    from ..interpreter import permitted_dependency_kwargs
-    assert len(permitted_dependency_kwargs) == 19, \
-           'Extra kwargs have been added to dependency(), please review if it makes sense to handle it here'
-    for key, value in kwargs.items():
+
+@dataclass(eq=True, order=True, frozen=True)
+class DependencyCacheKey:
+
+    """Key used for dependency cache lookup."""
+
+    name: str
+    cmake_args: T.Tuple[str, ...] = field(default_factory=tuple)
+    cmake_module_path: T.Tuple[str, ...] = field(default_factory=tuple)
+    cmake_package_version: str = ''
+    components: T.Tuple[str, ...] = field(default_factory=tuple)
+    language: T.Optional[str] = None
+    main: bool = False
+    method: str = 'auto'
+    modules: T.Tuple[str, ...] = field(default_factory=tuple)
+    optional_modules: T.Tuple[str, ...] = field(default_factory=tuple)
+    private_headers: bool = False
+    static: T.Optional[bool] = None
+    embed: bool = False
+
+_DEPEDNENCY_CACHE_KEYS = frozenset({k.name for k in fields(DependencyCacheKey)})
+
+
+def get_dep_identifier(name: str, kwargs: DependencyKw) -> DependencyCacheKey:
+    nkwargs: DependencyCacheKeyInit = {}
+    for k, v in kwargs.items():
         # 'version' is irrelevant for caching; the caller must check version matches
         # 'native' is handled above with `for_machine`
         # 'required' is irrelevant for caching; the caller handles it separately
@@ -53,18 +91,16 @@ def get_dep_identifier(name: str, kwargs: T.Dict[str, T.Any]) -> 'TV_DepID':
         # 'default_options' is only used in fallback case
         # 'not_found_message' has no impact on the dependency lookup
         # 'include_type' is handled after the dependency lookup
-        if key in {'version', 'native', 'required', 'fallback', 'allow_fallback', 'default_options',
-                   'not_found_message', 'include_type'}:
+        if k not in _DEPEDNENCY_CACHE_KEYS:
             continue
-        # All keyword arguments are strings, ints, or lists (or lists of lists)
-        if isinstance(value, list):
-            for i in value:
-                assert isinstance(i, str)
-            value = tuple(frozenset(listify(value)))
+        # Mypy doesn't (yet) understand iterating a TypedDict, and doesn't know that k is valid
+        if isinstance(v, list):
+            nkwargs[k] = tuple(v)  # type: ignore[literal-required]
         else:
-            assert isinstance(value, (str, bool, int))
-        identifier = (*identifier, (key, value),)
-    return identifier
+            nkwargs[k] = v  # type: ignore[literal-required]
+
+    return DependencyCacheKey(name, **nkwargs)
+
 
 display_name_map = {
     'boost': 'Boost',
@@ -80,7 +116,7 @@ display_name_map = {
     'wxwidgets': 'WxWidgets',
 }
 
-def find_external_dependency(name: str, env: 'Environment', kwargs: T.Dict[str, object], candidates: T.Optional[T.List['DependencyGenerator']] = None) -> T.Union['ExternalDependency', NotFoundDependency]:
+def find_external_dependency(name: str, env: 'Environment', kwargs: DependencyKw, candidates: T.Optional[T.List['DependencyGenerator']] = None) -> T.Union['ExternalDependency', NotFoundDependency]:
     assert name
     required = kwargs.get('required', True)
     if not isinstance(required, bool):
@@ -88,7 +124,7 @@ def find_external_dependency(name: str, env: 'Environment', kwargs: T.Dict[str, 
     if not isinstance(kwargs.get('method', ''), str):
         raise DependencyException('Keyword "method" must be a string.')
     lname = name.lower()
-    if lname not in _packages_accept_language and 'language' in kwargs:
+    if lname not in _packages_accept_language and kwargs.get('language') is not None:
         raise DependencyException(f'{name} dependency does not accept "language" keyword argument')
     if not isinstance(kwargs.get('version', ''), (str, list)):
         raise DependencyException('Keyword "Version" must be string or list.')
@@ -96,7 +132,7 @@ def find_external_dependency(name: str, env: 'Environment', kwargs: T.Dict[str, 
     # display the dependency name with correct casing
     display_name = display_name_map.get(lname, lname)
 
-    for_machine = MachineChoice.BUILD if kwargs.get('native', False) else MachineChoice.HOST
+    for_machine = kwargs['native']
 
     type_text = PerMachine('Build-time', 'Run-time')[for_machine] + ' dependency'
 
@@ -125,7 +161,7 @@ def find_external_dependency(name: str, env: 'Environment', kwargs: T.Dict[str, 
             details = d.log_details()
             if details:
                 details = '(' + details + ') '
-            if 'language' in kwargs:
+            if kwargs.get('language'):
                 details += 'for ' + d.language + ' '
 
             # if the dependency was found
@@ -169,11 +205,7 @@ def find_external_dependency(name: str, env: 'Environment', kwargs: T.Dict[str, 
 
 
 def _build_external_dependency_list(name: str, env: 'Environment', for_machine: MachineChoice,
-                                    kwargs: T.Dict[str, T.Any]) -> T.List['DependencyGenerator']:
-    # First check if the method is valid
-    if 'method' in kwargs and kwargs['method'] not in [e.value for e in DependencyMethods]:
-        raise DependencyException('method {!r} is invalid'.format(kwargs['method']))
-
+                                    kwargs: DependencyKw) -> T.List['DependencyGenerator']:
     # Is there a specific dependency detector for this dependency?
     lname = name.lower()
     if lname in packages:
