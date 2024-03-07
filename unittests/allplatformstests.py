@@ -5043,7 +5043,6 @@ class AllPlatformTests(BasePlatformTests):
         }
         self.assertEqual(cc.linker.get_accepts_rsp(), has_rsp)
 
-    @expectedFailure
     @skip_if_not_language('fortran')
     def test_fortran_cross_target_module_dep(self) -> None:
         if self.backend is not Backend.ninja:
