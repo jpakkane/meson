@@ -1086,7 +1086,7 @@ class BuildTarget(Target):
     @lru_cache(maxsize=None)
     def get_transitive_link_deps(self) -> ImmutableListProtocol[BuildTargetTypes]:
         result: T.List[BuildTargetTypes] = []
-        for i in self.link_targets:
+        for i in itertools.chain(self.link_targets, self.link_whole_targets):
             result.append(i)
             result.extend(i.get_all_link_deps())
         return result
