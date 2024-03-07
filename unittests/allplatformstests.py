@@ -32,7 +32,7 @@ from mesonbuild.mesonlib import (
     is_sunos, windows_proof_rmtree, python_command, version_compare, split_args, quote_arg,
     relpath, is_linux, git, search_version, do_conf_file, do_conf_str, default_prefix,
     MesonException, EnvironmentException,
-    windows_proof_rm
+    windows_proof_rm, first
 )
 from mesonbuild.options import OptionKey
 from mesonbuild.programs import ExternalProgram
@@ -5050,6 +5050,46 @@ class AllPlatformTests(BasePlatformTests):
             raise SkipTest('Test is only relavent on the ninja backend')
         testdir = os.path.join(self.fortran_test_dir, '8 module names')
         self.init(testdir, extra_args=['-Dunittest=true'])
+
+        # Find the correct output to compile, regardless of what compiler is being used
+        comp = self.get_compdb()
+        entry = first(comp, lambda e: e['file'].endswith('lib.f90'))
+        assert entry is not None, 'for mypy'
+        output = entry['output']
+
+        self.build(output, extra_args=['-j1'])
+
+    @expectedFailure
+    @skip_if_not_language('fortran')
+    def test_fortran_new_module_in_dep(self) -> None:
+        if self.backend is not Backend.ninja:
+            raise SkipTest('Test is only relavent on the ninja backend')
+        testdir = self.copy_srcdir(os.path.join(self.fortran_test_dir, '8 module names'))
+        self.init(testdir, extra_args=['-Dunittest=true'])
+        self.build()
+
+        with open(os.path.join(testdir, 'mod1.f90'), 'a', encoding='utf-8') as f:
+            f.write(textwrap.dedent("""\
+                module MyMod3
+                implicit none
+
+                integer, parameter :: myModVal3 =1
+
+                end module MyMod3
+                """))
+
+        with open(os.path.join(testdir, 'test.f90'), 'w', encoding='utf-8') as f:
+            f.write(textwrap.dedent("""\
+                program main
+                use MyMod2
+                use MyMod3
+                implicit none
+
+                call showvalues()
+                print*, "MyModValu3 = ", myModVal3
+
+                end program
+                """))
 
         # Find the correct output to compile, regardless of what compiler is being used
         comp = self.get_compdb()
