@@ -1087,7 +1087,8 @@ class BuildTarget(Target):
     def get_transitive_link_deps(self) -> ImmutableListProtocol[BuildTargetTypes]:
         result: T.List[BuildTargetTypes] = []
         for i in self.link_targets:
-            result += i.get_all_link_deps()
+            result.append(i)
+            result.extend(i.get_all_link_deps())
         return result
 
     def get_link_deps_mapping(self, prefix: str) -> T.Mapping[str, str]:
