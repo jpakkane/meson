@@ -1147,6 +1147,13 @@ class NinjaBackend(backends.Backend):
         # they use or export.
         for s in scan_sources:
             elem.deps.add(s[0])
+        # We need a full dependency on the output depfiles of other targets. If
+        # they change we need to completely
+        for t in target.get_transitive_link_deps():
+            if self.should_use_dyndeps_for_target(t):
+                elem.deps.add(os.path.join(self.get_target_dir(t), t.get_filename()))
+        elem.deps.update({os.path.join(self.get_target_dir(t), t.get_filename())
+                          for t in self.flatten_object_list(target)[1]})
         elem.orderdeps.update(object_deps)
         self.add_build(elem)
 

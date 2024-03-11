@@ -5058,7 +5058,6 @@ class AllPlatformTests(BasePlatformTests):
 
         self.build(output, extra_args=['-j1'])
 
-    @expectedFailure
     @skip_if_not_language('fortran')
     def test_fortran_new_module_in_dep(self) -> None:
         if self.backend is not Backend.ninja:
