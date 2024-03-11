@@ -1013,7 +1013,12 @@ class NinjaBackend(backends.Backend):
         obj_targets = [t for t in od if t.uses_fortran()]
         obj_list.extend(o)
 
-        fortran_order_deps = [File(True, *os.path.split(self.get_target_filename(t))) for t in obj_targets]
+        # We don't need this order dep if we're using dyndeps, as the
+        # depscanner will handle this for us, which produces a better dependency
+        # graph
+        fortran_order_deps: T.List[File] = []
+        if not self.use_dyndeps_for_fortran():
+            fortran_order_deps = [File(True, *os.path.split(self.get_target_filename(t))) for t in obj_targets]
         fortran_inc_args: T.List[str] = []
         if target.uses_fortran():
             fortran_inc_args = mesonlib.listify([target.compilers['fortran'].get_include_args(
@@ -1121,7 +1126,7 @@ class NinjaBackend(backends.Backend):
         if not self.should_use_dyndeps_for_target(target):
             return
         self._uses_dyndeps = True
-        depscan_file = self.get_dep_scan_file_for(target)
+        json_file, depscan_file = self.get_dep_scan_file_for(target)
         pickle_base = target.name + '.dat'
         pickle_file = os.path.join(self.get_target_private_dir(target), pickle_base).replace('\\', '/')
         pickle_abs = os.path.join(self.get_target_private_dir_abs(target), pickle_base).replace('\\', '/')
@@ -1141,20 +1146,25 @@ class NinjaBackend(backends.Backend):
             with open(pickle_abs, 'wb') as p:
                 pickle.dump(scaninfo, p)
 
-        elem = NinjaBuildElement(self.all_outputs, depscan_file, rule_name, pickle_file)
+        elem = NinjaBuildElement(self.all_outputs, json_file, rule_name, pickle_file)
         # A full dependency is required on all scanned sources, if any of them
         # are updated we need to rescan, as they may have changed the modules
         # they use or export.
         for s in scan_sources:
             elem.deps.add(s[0])
-        # We need a full dependency on the output depfiles of other targets. If
-        # they change we need to completely
+        elem.orderdeps.update(object_deps)
+        elem.add_item('name', target.name)
+        self.add_build(elem)
+
+        infiles: T.Set[str] = set()
         for t in target.get_transitive_link_deps():
             if self.should_use_dyndeps_for_target(t):
-                elem.deps.add(os.path.join(self.get_target_dir(t), t.get_filename()))
-        elem.deps.update({os.path.join(self.get_target_dir(t), t.get_filename())
-                          for t in self.flatten_object_list(target)[1]})
-        elem.orderdeps.update(object_deps)
+                infiles.add(self.get_dep_scan_file_for(t)[0])
+        _, od = self.flatten_object_list(target)
+        infiles.update({self.get_dep_scan_file_for(t)[0] for t in od if t.uses_fortran()})
+
+        elem = NinjaBuildElement(self.all_outputs, depscan_file, 'depaccumulate', [json_file] + sorted(infiles))
+        elem.add_item('name', target.name)
         self.add_build(elem)
 
     def select_sources_to_scan(self, compiled_sources: T.List[str],
@@ -2569,10 +2579,19 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
         if rulename in self.ruledict:
             # Scanning command is the same for native and cross compilation.
             return
+
         command = self.environment.get_build_command() + \
             ['--internal', 'depscan']
         args = ['$picklefile', '$out', '$in']
-        description = 'Module scanner.'
+        description = 'Scanning target $name for modules'
+        rule = NinjaRule(rulename, command, args, description)
+        self.add_rule(rule)
+
+        rulename = 'depaccumulate'
+        command = self.environment.get_build_command() + \
+            ['--internal', 'depaccumulate']
+        args = ['$out', '$in']
+        description = 'Generating dynamic dependency information for target $name'
         rule = NinjaRule(rulename, command, args, description)
         self.add_rule(rule)
 
@@ -3084,8 +3103,9 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
                 d = os.path.join(self.get_target_private_dir(target), d)
             element.add_orderdep(d)
         element.add_dep(pch_dep)
-        for i in self.get_fortran_module_deps(target, compiler):
-            element.add_dep(i)
+        if not self.use_dyndeps_for_fortran():
+            for i in self.get_fortran_module_deps(target, compiler):
+                element.add_dep(i)
         if dep_file:
             element.add_item('DEPFILE', dep_file)
         if compiler.get_language() == 'cuda':
@@ -3128,12 +3148,13 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
             extension = extension.lower()
         if not (extension in compilers.lang_suffixes['fortran'] or extension in compilers.lang_suffixes['cpp']):
             return
-        dep_scan_file = self.get_dep_scan_file_for(target)
+        dep_scan_file = self.get_dep_scan_file_for(target)[1]
         element.add_item('dyndep', dep_scan_file)
         element.add_orderdep(dep_scan_file)
 
-    def get_dep_scan_file_for(self, target: build.BuildTarget) -> str:
-        return os.path.join(self.get_target_private_dir(target), 'depscan.dd')
+    def get_dep_scan_file_for(self, target: build.BuildTarget) -> T.Tuple[str, str]:
+        priv = self.get_target_private_dir(target)
+        return os.path.join(priv, 'depscan.json'), os.path.join(priv, 'depscan.dd')
 
     def add_header_deps(self, target, ninja_element, header_deps):
         for d in header_deps:
@@ -3156,9 +3177,11 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
     # The real deps are then detected via dep file generation from the compiler. This breaks on compilers that
     # produce incorrect dep files but such is life. A full dependency is
     # required to ensure that if a new module is added to an existing file that
-    # we correctly rebuild.
-    def get_fortran_module_deps(self, target, compiler) -> T.List[str]:
-        if compiler.language != 'fortran':
+    # we correctly rebuild
+    def get_fortran_module_deps(self, target: build.BuildTarget, compiler: Compiler) -> T.List[str]:
+        # If we have dyndeps then we don't need this, since the depscanner will
+        # do all of things described above.
+        if compiler.language != 'fortran' or self.use_dyndeps_for_fortran():
             return []
         return [
             os.path.join(self.get_target_dir(lt), lt.get_filename())
