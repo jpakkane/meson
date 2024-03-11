@@ -1083,7 +1083,7 @@ class NinjaBackend(backends.Backend):
         else:
             final_obj_list = obj_list
         elem = self.generate_link(target, outname, final_obj_list, linker, pch_objects, stdlib_args=stdlib_args)
-        self.generate_dependency_scan_target(target, compiled_sources, source2object, generated_source_files, fortran_order_deps)
+        self.generate_dependency_scan_target(target, compiled_sources, source2object, fortran_order_deps)
         self.add_build(elem)
         #In AIX, we archive shared libraries. If the instance is a shared library, we add a command to archive the shared library
         #object and create the build element.
@@ -1117,7 +1117,6 @@ class NinjaBackend(backends.Backend):
     def generate_dependency_scan_target(self, target: build.BuildTarget,
                                         compiled_sources: T.List[str],
                                         source2object: T.Dict[str, str],
-                                        generated_source_files: T.List[mesonlib.File],
                                         object_deps: T.List[FileOrString]) -> None:
         if not self.should_use_dyndeps_for_target(target):
             return
@@ -1143,19 +1142,22 @@ class NinjaBackend(backends.Backend):
                 pickle.dump(scaninfo, p)
 
         elem = NinjaBuildElement(self.all_outputs, depscan_file, rule_name, pickle_file)
-        # Add any generated outputs to the order deps of the scan target, so
-        # that those sources are present
-        for g in generated_source_files:
-            elem.orderdeps.add(g.relative_name())
+        # A full dependency is required on all scanned sources, if any of them
+        # are updated we need to rescan, as they may have changed the modules
+        # they use or export.
+        for s in scan_sources:
+            elem.deps.add(s[0])
         elem.orderdeps.update(object_deps)
         self.add_build(elem)
 
-    def select_sources_to_scan(self, compiled_sources: T.List[str]
+    def select_sources_to_scan(self, compiled_sources: T.List[str],
                                ) -> T.Iterable[T.Tuple[str, Literal['cpp', 'fortran']]]:
         # in practice pick up C++ and Fortran files. If some other language
         # requires scanning (possibly Java to deal with inner class files)
         # then add them here.
         for source in compiled_sources:
+            if isinstance(source, mesonlib.File):
+                source = source.rel_to_builddir(self.build_to_src)
             ext = os.path.splitext(source)[1][1:]
             if ext.lower() in compilers.lang_suffixes['cpp'] or ext == 'C':
                 yield source, 'cpp'
