@@ -9,6 +9,8 @@ from mesonbuild.cargo import builder, cfg
 from mesonbuild.cargo.cfg import TokenType
 from mesonbuild.cargo.version import convert
 
+if T.TYPE_CHECKING:
+    from mesonbuild import mparser
 
 class CargoVersionTest(unittest.TestCase):
 
@@ -98,6 +100,12 @@ class CargoCfgTest(unittest.TestCase):
                 (TokenType.IDENTIFIER, 'unix'),
                 (TokenType.RPAREN, None),
             ]),
+            ('cfg(windows)', [
+                (TokenType.CFG, None),
+                (TokenType.LPAREN, None),
+                (TokenType.IDENTIFIER, 'windows'),
+                (TokenType.RPAREN, None),
+            ]),
         ]
         for data, expected in cases:
             with self.subTest():
@@ -127,6 +135,16 @@ class CargoCfgTest(unittest.TestCase):
                             cfg.Equal(cfg.Identifier("target_arch"), cfg.String("x86")),
                             cfg.Equal(cfg.Identifier("target_os"), cfg.String("linux")),
                         ]))),
+            ('cfg(all(any(target_os = "android", target_os = "linux"), any(custom_cfg)))',
+                cfg.All([
+                    cfg.Any([
+                        cfg.Equal(cfg.Identifier("target_os"), cfg.String("android")),
+                        cfg.Equal(cfg.Identifier("target_os"), cfg.String("linux")),
+                    ]),
+                    cfg.Any([
+                        cfg.Identifier("custom_cfg"),
+                    ]),
+                ])),
         ]
         for data, expected in cases:
             with self.subTest():
@@ -134,54 +152,43 @@ class CargoCfgTest(unittest.TestCase):
 
     def test_ir_to_meson(self) -> None:
         build = builder.Builder('')
-        HOST_MACHINE = build.identifier('host_machine')
+
+        def conf(name: str, equal: T.Optional[mparser.BaseNode] = None) -> mparser.BaseNode:
+            if equal:
+                return build.equal(build.method('get', build.identifier('cfg'), [build.string(name), build.string('')]), equal)
+            return build.method('has_key', build.identifier('cfg'), [build.string(name)])
 
         cases = [
-            ('target_os = "windows"',
-             build.equal(build.method('system', HOST_MACHINE),
-                         build.string('windows'))),
-            ('target_arch = "x86"',
-             build.equal(build.method('cpu_family', HOST_MACHINE),
-                         build.string('x86'))),
-            ('target_family = "unix"',
-             build.equal(build.method('system', HOST_MACHINE),
-                         build.string('unix'))),
+            ('target_os = "windows"', conf('target_os', build.string('windows'))),
+            ('target_arch = "x86"', conf('target_arch', build.string('x86'))),
+            ('target_family = "unix"', conf('target_family', build.string('unix'))),
             ('not(target_arch = "x86")',
-             build.not_(build.equal(
-                build.method('cpu_family', HOST_MACHINE),
-                build.string('x86')))),
+             build.not_(conf('target_arch', build.string('x86')))),
             ('any(target_arch = "x86", target_arch = "x86_64")',
              build.or_(
-                build.equal(build.method('cpu_family', HOST_MACHINE),
-                            build.string('x86')),
-                build.equal(build.method('cpu_family', HOST_MACHINE),
-                            build.string('x86_64')))),
+                conf('target_arch', build.string('x86')),
+                conf('target_arch', build.string('x86_64')))),
             ('any(target_arch = "x86", target_arch = "x86_64", target_arch = "aarch64")',
              build.or_(
-                build.equal(build.method('cpu_family', HOST_MACHINE),
-                            build.string('x86')),
+                conf('target_arch', build.string('x86')),
                 build.or_(
-                    build.equal(build.method('cpu_family', HOST_MACHINE),
-                                build.string('x86_64')),
-                    build.equal(build.method('cpu_family', HOST_MACHINE),
-                                build.string('aarch64'))))),
+                    conf('target_arch', build.string('x86_64')),
+                    conf('target_arch', build.string('aarch64'))))),
             ('all(target_arch = "x86", target_arch = "x86_64")',
              build.and_(
-                build.equal(build.method('cpu_family', HOST_MACHINE),
-                            build.string('x86')),
-                build.equal(build.method('cpu_family', HOST_MACHINE),
-                            build.string('x86_64')))),
+                conf('target_arch', build.string('x86')),
+                conf('target_arch', build.string('x86_64')))),
             ('all(target_arch = "x86", target_arch = "x86_64", target_arch = "aarch64")',
              build.and_(
-                build.equal(build.method('cpu_family', HOST_MACHINE),
-                            build.string('x86')),
+                conf('target_arch', build.string('x86')),
                 build.and_(
-                    build.equal(build.method('cpu_family', HOST_MACHINE),
-                                build.string('x86_64')),
-                    build.equal(build.method('cpu_family', HOST_MACHINE),
-                                build.string('aarch64'))))),
+                    conf('target_arch', build.string('x86_64')),
+                    conf('target_arch', build.string('aarch64'))))),
+            ('any(unix, windows)', build.or_(conf('unix'), conf('windows'))),
+            ('all()', build.bool(True)),
+            ('any()', build.bool(False)),
         ]
         for data, expected in cases:
             with self.subTest():
-                value = cfg.ir_to_meson(cfg.parse(iter(cfg.lexer(data))), build)
+                value = cfg.cfg_to_meson(data, build)
                 self.assertEqual(value, expected)

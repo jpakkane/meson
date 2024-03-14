@@ -114,16 +114,36 @@ class RustCompiler(Compiler):
     def get_dependency_gen_args(self, outtarget: str, outfile: str) -> T.List[str]:
         return ['--dep-info', outfile]
 
+    @functools.lru_cache(maxsize=None)
     def get_sysroot(self) -> str:
         cmd = self.get_exelist(ccache=False) + ['--print', 'sysroot']
         p, stdo, stde = Popen_safe_logged(cmd)
         return stdo.split('\n', maxsplit=1)[0]
 
     @functools.lru_cache(maxsize=None)
-    def get_crt_static(self) -> bool:
+    def get_cfgs(self) -> T.List[str]:
         cmd = self.get_exelist(ccache=False) + ['--print', 'cfg']
         p, stdo, stde = Popen_safe_logged(cmd)
-        return bool(re.search('^target_feature="crt-static"$', stdo, re.MULTILINE))
+        return stdo.splitlines()
+
+    def get_crt_static(self) -> bool:
+        return 'target_feature="crt-static"' in self.get_cfgs()
+
+    @functools.lru_cache(maxsize=None)
+    def get_target_triplet(self) -> str:
+        # See if we have --target in the command line
+        cmd = self.get_exelist(ccache=False)
+        it = iter(cmd)
+        for i in it:
+            if i == '--target':
+                return next(it)
+        # Fallback to default target
+        p, stdo, stde = Popen_safe_logged(cmd + ['--version', '--verbose'])
+        if p.returncode == 0:
+            match = re.search('host: (.*)$', stdo, re.MULTILINE)
+            if match:
+                return match.group(1)
+        raise MesonException('Failed to determine rustc target triplet')
 
     def get_debug_args(self, is_debug: bool) -> T.List[str]:
         return clike_debug_args[is_debug]

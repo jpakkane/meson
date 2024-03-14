@@ -139,3 +139,19 @@ Only a subset of [[shared_library]] keyword arguments are allowed:
 - link_depends
 - link_with
 - override_options
+
+### cfg()
+
+```meson
+rustmod.cfg(name)
+```
+
+*Since 1.4.0*
+
+Returns the value of a Rust compiler config. Configs can either be predefined by
+the Rust compiler (see `rustc --print cfg`) or set by the user with
+`--cfg name="value"` in `RUSTFLAGS` environment or `rust_args` option.
+
+If the config is set in the form `name="value"` then `value` string is returned.
+If it is set with no value, `true` is returned. If it is not set, `false` is
+returned.

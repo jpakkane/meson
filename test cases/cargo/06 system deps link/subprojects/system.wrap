@@ -1,0 +1,5 @@
+[wrap-file]
+path = 'system'
+
+[provide]
+system = system_dep

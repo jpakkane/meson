@@ -1,5 +1,6 @@
 __all__ = [
-    'interpret'
+    'interpret',
+    'dependencies',
 ]
 
-from .interpreter import interpret
+from .interpreter import interpret, dependencies

@@ -18,7 +18,7 @@ from ..interpreter.type_checking import (
     INCLUDE_DIRECTORIES, SOURCES_VARARGS, NoneType, in_set_validator
 )
 from ..interpreterbase import ContainerTypeInfo, InterpreterException, KwargInfo, typed_kwargs, typed_pos_args, noPosargs, permittedKwargs
-from ..mesonlib import File
+from ..mesonlib import File, MachineChoice
 from ..programs import ExternalProgram
 
 if T.TYPE_CHECKING:
@@ -30,6 +30,7 @@ if T.TYPE_CHECKING:
     from ..interpreter.interpreter import SourceInputs, SourceOutputs
     from ..programs import OverrideProgram
     from ..interpreter.type_checking import SourcesVarargsType
+    from ..compilers.rust import RustCompiler
 
     from typing_extensions import TypedDict, Literal
 
@@ -52,6 +53,10 @@ if T.TYPE_CHECKING:
         language: T.Optional[Literal['c', 'cpp']]
         bindgen_version: T.List[str]
 
+    class FuncCargoCfg(TypedDict):
+        skip_build_rs: bool
+        info: T.Dict[str, str]
+
 
 class RustModule(ExtensionModule):
 
@@ -66,6 +71,7 @@ class RustModule(ExtensionModule):
             'test': self.test,
             'bindgen': self.bindgen,
             'proc_macro': self.proc_macro,
+            'cargo_cfg': self.cargo_cfg,
         })
 
     @typed_pos_args('rust.test', str, BuildTarget)
@@ -348,6 +354,93 @@ class RustModule(ExtensionModule):
         kwargs['rust_args'] = kwargs['rust_args'] + ['--extern', 'proc_macro']
         target = state._interpreter.build_target(state.current_node, args, kwargs, SharedLibrary)
         return target
+
+    @staticmethod
+    def _get_cfgs(state: ModuleState, for_machine: MachineChoice) -> T.List[str]:
+        rustc = T.cast('T.Optional[RustCompiler]', state.get_compiler('rust', for_machine))
+        if not rustc:
+            raise InterpreterException(f'Rust language has not been added for {for_machine}')
+        cfgs = rustc.get_cfgs()
+        rustflags = state.environment.coredata.get_external_args(for_machine, 'rust')
+        rustflags_i = iter(rustflags)
+        for i in rustflags_i:
+            if i == '--cfg':
+                cfgs.append(next(rustflags_i))
+        return cfgs
+
+    @staticmethod
+    def _split_cfg(cfg: str) -> T.Tuple[str, str]:
+        pair = cfg.split('=', maxsplit=1)
+        value = pair[1] if len(pair) > 1 else ''
+        if value and value[0] == '"':
+            value = value[1:-1]
+        return pair[0], value
+
+    @staticmethod
+    def _get_build_rs_env(state: ModuleState, cfgs: T.Dict[str, str], features: T.List[str], info: T.Dict[str, str]) -> T.Dict[str, str]:
+        # https://doc.rust-lang.org/cargo/reference/environment-variables.html#environment-variables-cargo-sets-for-build-scripts
+        out_dir = os.path.join(state.environment.build_dir, state.subdir, 'build.rs.p')
+        rustc = T.cast('T.Optional[RustCompiler]', state.get_compiler('rust', MachineChoice.HOST))
+        assert rustc is not None
+        rustc_cmd = rustc.get_exelist(ccache=False)
+        env = os.environ.copy()
+        env['OUT_DIR'] = out_dir
+        env['RUSTC'] = rustc_cmd[0]
+        env['TARGET'] = rustc.get_target_triplet()
+        def conv(k: str) -> str:
+            return k.upper().replace('-', '_')
+        for k, v in cfgs.items():
+            env[f'CARGO_CFG_{conv(k)}'] = v
+        for f in features:
+            env[f'CARGO_FEATURE_{conv(f)}'] = ''
+        env.update(info)
+        return env
+
+    CARGO_CFG_PREFIX = 'cargo:rustc-cfg='
+
+    @FeatureNew('rust.cargo_cfg', '1.4.0')
+    @typed_pos_args('rust.cargo_cfg', varargs=str)
+    @typed_kwargs(
+        'rust.cargo_cfg',
+        KwargInfo('skip_build_rs', bool, default=False),
+        KwargInfo('info', ContainerTypeInfo(dict, str), default={}),
+    )
+    def cargo_cfg(self, state: ModuleState, args: T.Tuple[T.List[str]], kwargs: FuncCargoCfg) -> T.Dict[str, str]:
+        cfgs = dict(self._split_cfg(i) for i in self._get_cfgs(state, MachineChoice.HOST))
+        build_rs = os.path.join(state.environment.source_dir, state.subdir, 'build.rs')
+        if not kwargs['skip_build_rs'] and os.path.exists(build_rs):
+            self.interpreter.add_build_def_file(build_rs)
+            build_rs_file = File.from_absolute_file(build_rs)
+            rustc = state.get_compiler('rust', MachineChoice.BUILD)
+            if not rustc:
+                raise InterpreterException(f'build.rs file requires rust language for build machine')
+            env = self._get_build_rs_env(state, cfgs, args[0], kwargs['info'])
+            cwd = os.path.join(state.environment.source_dir, state.subdir)
+            res = rustc.run(build_rs_file, state.environment, run_env=env, run_cwd=cwd)
+            if res.returncode == 0:
+                compiler_args: T.List[str] = []
+                for line in res.stdout.splitlines():
+                    if line.startswith(self.CARGO_CFG_PREFIX):
+                        cfg = line[len(self.CARGO_CFG_PREFIX):]
+                        compiler_args += ['--cfg', cfg]
+                        k, v = self._split_cfg(cfg)
+                        cfgs[k] = v
+                # Add rust config from build.rs to all targets
+                state.add_arguments(compiler_args, 'rust', MachineChoice.HOST)
+            else:
+                m = ('Failed to run build.rs, manual porting is probably required.\n',
+                     '...  See', mlog.bold('meson-logs/meson-log.txt'), 'for details.')
+                if state.subproject:
+                    patch_buildfile = f'subprojects/packagefiles/{state.subproject}/meson/meson.build'
+                    buildfile = f'{state.root_subdir}/meson/meson.build'
+                    m += ('\n',
+                    '...  If this is a cargo subproject it can be done as a patch directory:\n',
+                    '... ', mlog.bold(patch_buildfile), '\n',
+                    '...  Note: Meson applies patches only after downloading the subproject. \n',
+                    '...  For testing, you might have to copy it manually to: \n',
+                    '... ', mlog.bold(buildfile))
+                mlog.warning(*m)
+        return cfgs
 
 
 def initialize(interp: Interpreter) -> RustModule:

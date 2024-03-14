@@ -213,7 +213,7 @@ class Builder:
         """
         return mparser.PlusAssignmentNode(self.identifier(varname), self._symbol('+='), value)
 
-    def if_(self, condition: mparser.BaseNode, block: mparser.CodeBlockNode) -> mparser.IfClauseNode:
+    def if_(self, condition: mparser.BaseNode, block: mparser.CodeBlockNode, elseblock: T.Optional[mparser.CodeBlockNode] = None) -> mparser.IfClauseNode:
         """Create a "if" block
 
         :param condition: The condition
@@ -222,7 +222,7 @@ class Builder:
         """
         clause = mparser.IfClauseNode(condition)
         clause.ifs.append(mparser.IfNode(clause, self._symbol('if'), condition, block))
-        clause.elseblock = mparser.EmptyNode(-1, -1, self.filename)
+        clause.elseblock = mparser.ElseNode(self._symbol('else'), elseblock) if elseblock else mparser.EmptyNode(-1, -1, self.filename)
         return clause
 
     def foreach(self, varnames: T.List[str], items: mparser.BaseNode, block: mparser.CodeBlockNode) -> mparser.ForeachClauseNode:

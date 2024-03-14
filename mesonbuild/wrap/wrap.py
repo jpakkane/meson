@@ -29,7 +29,7 @@ from functools import lru_cache
 
 from . import WrapMode
 from .. import coredata
-from ..mesonlib import quiet_git, GIT, ProgressBar, MesonException, windows_proof_rmtree, Popen_safe
+from ..mesonlib import quiet_git, GIT, ProgressBar, MesonException, windows_proof_rmtree, Popen_safe, version_compare_many
 from ..interpreterbase import FeatureNew
 from ..interpreterbase import SubProject
 from .. import mesonlib
@@ -37,6 +37,7 @@ from .. import mesonlib
 if T.TYPE_CHECKING:
     import http.client
     from typing_extensions import Literal
+    from ..cargo.interpreter import CargoPackageDefinition
 
     Method = Literal['meson', 'cmake', 'cargo']
 
@@ -136,6 +137,7 @@ class WrapException(MesonException):
 class WrapNotFoundException(WrapException):
     pass
 
+@dataclass(eq=False)
 class PackageDefinition:
     def __init__(self, fname: str, subproject: str = ''):
         self.filename = fname
@@ -292,9 +294,11 @@ class Resolver:
         self.wrapdb: T.Dict[str, T.Any] = {}
         self.wrapdb_provided_deps: T.Dict[str, str] = {}
         self.wrapdb_provided_programs: T.Dict[str, str] = {}
+        self.cargo_provided_deps: T.Dict[str, CargoPackageDefinition] = {}
         self.load_wraps()
         self.load_netrc()
         self.load_wrapdb()
+        self.load_cargo()
 
     def load_netrc(self) -> None:
         try:
@@ -368,6 +372,82 @@ class Resolver:
         self.add_wrap(wrap)
         return wrap
 
+    def load_cargo(self) -> None:
+        source_dir = os.path.dirname(self.subdir_root)
+        if os.path.exists(os.path.join(source_dir, 'Cargo.toml')):
+            from .. import cargo
+            self.cargo_provided_deps = cargo.dependencies(source_dir)
+
+    def wrap_from_crates_io(self, subp_name: str, dep: CargoPackageDefinition) -> T.Optional[str]:
+        self.check_can_download()
+        url = urllib.request.urlopen(f'https://crates.io/api/v1/crates/{dep.package}')
+        crate = json.loads(url.read().decode())
+        # Lookup the most recent version that matches our version requirement
+        for version_info in crate['versions']:
+            version = version_info['num']
+            if version_compare_many(version, dep.version)[0]:
+                dl_path = version_info['dl_path']
+                checksum = version_info['checksum']
+                directory = f'{dep.package}-{version}'
+                filename = f'{directory}.tar.gz'
+                wrap_fname = os.path.join(self.subdir_root, f'{subp_name}.wrap')
+                patch_directory = os.path.join(self.subdir_root, 'packagefiles', subp_name)
+                os.makedirs(self.subdir_root, exist_ok=True)
+                with open(wrap_fname, 'w', encoding='utf-8') as f:
+                    f.write(textwrap.dedent(f'''\
+                        [wrap-file]
+                        directory = {directory}
+                        source_url = https://crates.io{dl_path}
+                        source_filename = {filename}
+                        source_hash = {checksum}
+                        method = cargo
+                        '''))
+                    if os.path.exists(patch_directory):
+                        f.write(f'patch_directory = {patch_directory}\n')
+                return wrap_fname
+        return None
+
+    def wrap_from_cargo_git(self, subp_name: str, dep: CargoPackageDefinition) -> T.Optional[str]:
+        directory = f'{dep.package}'
+        wrap_fname = os.path.join(self.subdir_root, f'{subp_name}.wrap')
+        patch_directory = os.path.join(self.subdir_root, 'packagefiles', subp_name)
+        os.makedirs(self.subdir_root, exist_ok=True)
+        with open(wrap_fname, 'w', encoding='utf-8') as f:
+            f.write(textwrap.dedent(f'''\
+                [wrap-git]
+                directory = {directory}
+                url = {dep.git}
+                revision = {dep.revision}
+                method = cargo
+                '''))
+            if os.path.exists(patch_directory):
+                f.write(f'patch_directory = {patch_directory}\n')
+        return wrap_fname
+
+    def get_from_cargo(self, subp_name: str) -> T.Optional[PackageDefinition]:
+        dep = self.cargo_provided_deps.get(subp_name)
+        if not dep:
+            return None
+        wrap: T.Optional[PackageDefinition] = None
+        if dep.path is not None:
+            # This is a local Cargo.toml
+            fname = os.path.join(self.subdir_root, dep.path)
+            wrap = PackageDefinition(fname, self.subproject)
+            wrap.values['method'] = 'cargo'
+        elif dep.git is not None:
+            # Generate a wrap-git
+            fname = self.wrap_from_cargo_git(subp_name, dep)
+            wrap = PackageDefinition(fname)
+        else:
+            # Lookup in crates.io
+            fname = self.wrap_from_crates_io(subp_name, dep)
+            if fname:
+                wrap = PackageDefinition(fname)
+        if wrap:
+            self.wraps[wrap.name] = wrap
+            self.add_wrap(wrap)
+        return wrap
+
     def merge_wraps(self, other_resolver: 'Resolver') -> None:
         for k, v in other_resolver.wraps.items():
             self.wraps.setdefault(k, v)
@@ -375,6 +455,8 @@ class Resolver:
             self.provided_deps.setdefault(k, v)
         for k, v in other_resolver.provided_programs.items():
             self.provided_programs.setdefault(k, v)
+        for k, d in other_resolver.cargo_provided_deps.items():
+            self.cargo_provided_deps[k] = d
 
     def find_dep_provider(self, packagename: str) -> T.Tuple[T.Optional[str], T.Optional[str]]:
         # Python's ini parser converts all key values to lowercase.
@@ -385,7 +467,11 @@ class Resolver:
             dep_var = wrap.provided_deps.get(packagename)
             return wrap.name, dep_var
         wrap_name = self.wrapdb_provided_deps.get(packagename)
-        return wrap_name, None
+        if wrap_name:
+            return wrap_name, None
+        if packagename in self.cargo_provided_deps:
+            return packagename, None
+        return None, None
 
     def get_varname(self, subp_name: str, depname: str) -> T.Optional[str]:
         wrap = self.wraps.get(subp_name)
@@ -405,8 +491,10 @@ class Resolver:
         wrap = self.wraps.get(packagename)
         if wrap is None:
             wrap = self.get_from_wrapdb(packagename)
-            if wrap is None:
-                raise WrapNotFoundException(f'Neither a subproject directory nor a {packagename}.wrap file was found.')
+        if wrap is None:
+            wrap = self.get_from_cargo(packagename)
+        if wrap is None:
+            raise WrapNotFoundException(f'Neither a subproject directory nor a {packagename}.wrap file was found.')
         self.wrap = wrap
         self.directory = self.wrap.directory
 

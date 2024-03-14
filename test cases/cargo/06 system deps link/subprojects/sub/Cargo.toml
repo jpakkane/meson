@@ -1,0 +1,14 @@
+[package]
+name = 'sub'
+version = '0.1.1'
+edition = '2021'
+description = 'a project with a system dependency'
+
+[build-dependencies]
+system-deps = "6"
+
+[lib]
+name = "sub"
+
+[package.metadata.system-deps.system]
+version = "0.1"

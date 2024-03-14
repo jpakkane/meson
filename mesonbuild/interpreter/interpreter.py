@@ -2875,29 +2875,30 @@ class Interpreter(InterpreterBase, HoldableObject):
     @typed_pos_args('add_global_arguments', varargs=str)
     @typed_kwargs('add_global_arguments', NATIVE_KW, LANGUAGE_KW)
     def func_add_global_arguments(self, node: mparser.FunctionNode, args: T.Tuple[T.List[str]], kwargs: 'kwtypes.FuncAddProjectArgs') -> None:
-        self._add_global_arguments(node, self.build.global_args[kwargs['native']], args[0], kwargs)
+        self._add_arguments(args[0], kwargs['language'], kwargs['native'], is_global=True, is_link=False)
 
     @typed_pos_args('add_global_link_arguments', varargs=str)
     @typed_kwargs('add_global_arguments', NATIVE_KW, LANGUAGE_KW)
     def func_add_global_link_arguments(self, node: mparser.FunctionNode, args: T.Tuple[T.List[str]], kwargs: 'kwtypes.FuncAddProjectArgs') -> None:
-        self._add_global_arguments(node, self.build.global_link_args[kwargs['native']], args[0], kwargs)
+        self._add_arguments(args[0], kwargs['language'], kwargs['native'], is_global=True, is_link=True)
 
     @typed_pos_args('add_project_arguments', varargs=str)
     @typed_kwargs('add_project_arguments', NATIVE_KW, LANGUAGE_KW)
     def func_add_project_arguments(self, node: mparser.FunctionNode, args: T.Tuple[T.List[str]], kwargs: 'kwtypes.FuncAddProjectArgs') -> None:
-        self._add_project_arguments(node, self.build.projects_args[kwargs['native']], args[0], kwargs)
+        self._add_arguments(args[0], kwargs['language'], kwargs['native'], is_global=False, is_link=False)
 
     @typed_pos_args('add_project_link_arguments', varargs=str)
     @typed_kwargs('add_global_arguments', NATIVE_KW, LANGUAGE_KW)
     def func_add_project_link_arguments(self, node: mparser.FunctionNode, args: T.Tuple[T.List[str]], kwargs: 'kwtypes.FuncAddProjectArgs') -> None:
-        self._add_project_arguments(node, self.build.projects_link_args[kwargs['native']], args[0], kwargs)
+        self._add_arguments(args[0], kwargs['language'], kwargs['native'], is_global=False, is_link=True)
 
     @FeatureNew('add_project_dependencies', '0.63.0')
     @typed_pos_args('add_project_dependencies', varargs=dependencies.Dependency)
     @typed_kwargs('add_project_dependencies', NATIVE_KW, LANGUAGE_KW)
     def func_add_project_dependencies(self, node: mparser.FunctionNode, args: T.Tuple[T.List[dependencies.Dependency]], kwargs: 'kwtypes.FuncAddProjectArgs') -> None:
         for_machine = kwargs['native']
-        for lang in kwargs['language']:
+        languages = kwargs['language']
+        for lang in languages:
             if lang not in self.compilers[for_machine]:
                 raise InvalidCode(f'add_project_dependencies() called before add_language() for language "{lang}"')
 
@@ -2905,13 +2906,13 @@ class Interpreter(InterpreterBase, HoldableObject):
             compile_args = list(d.get_compile_args())
             system_incdir = d.get_include_type() == 'system'
             for i in d.get_include_dirs():
-                for lang in kwargs['language']:
+                for lang in languages:
                     comp = self.coredata.compilers[for_machine][lang]
                     for idir in i.to_string_list(self.environment.get_source_dir(), self.environment.get_build_dir()):
                         compile_args.extend(comp.get_include_args(idir, system_incdir))
 
-            self._add_project_arguments(node, self.build.projects_args[for_machine], compile_args, kwargs)
-            self._add_project_arguments(node, self.build.projects_link_args[for_machine], d.get_link_args(), kwargs)
+            self._add_arguments(compile_args, languages, for_machine, is_link=False)
+            self._add_arguments(d.get_link_args(), languages, for_machine, is_link=True)
 
     def _warn_about_builtin_args(self, args: T.List[str]) -> None:
         # -Wpedantic is deliberately not included, since some people want to use it but not use -Wextra
@@ -2941,36 +2942,45 @@ class Interpreter(InterpreterBase, HoldableObject):
                 mlog.warning(f'Consider using the built-in option for language standard version instead of using "{arg}".',
                              location=self.current_node)
 
-    def _add_global_arguments(self, node: mparser.FunctionNode, argsdict: T.Dict[str, T.List[str]],
-                              args: T.List[str], kwargs: 'kwtypes.FuncAddProjectArgs') -> None:
-        if self.is_subproject():
-            msg = f'Function \'{node.func_name.value}\' cannot be used in subprojects because ' \
+    def _caller_func_name(self) -> str:
+        if isinstance(self.current_node, mparser.FunctionNode):
+            return self.current_node.func_name.value
+        elif isinstance(self.current_node, mparser.MethodNode) and isinstance(self.current_node.source_object, mparser.IdNode):
+            return f'{self.current_node.source_object.value}.{self.current_node.name.value}'
+        return '<unknown>'
+
+    def _add_arguments(self, args: T.List[str], languages: T.List[str], for_machine: MachineChoice,
+                       is_global: bool = False, is_link: bool = False) -> None:
+        func_name = self._caller_func_name()
+        if self.is_subproject() and is_global:
+            msg = f'Function \'{func_name}\' cannot be used in subprojects because ' \
                   'there is no way to make that reliable.\nPlease only call ' \
                   'this if is_subproject() returns false. Alternatively, ' \
                   'define a variable that\ncontains your language-specific ' \
                   'arguments and add it to the appropriate *_args kwarg ' \
                   'in each target.'
             raise InvalidCode(msg)
-        frozen = self.project_args_frozen or self.global_args_frozen
-        self._add_arguments(node, argsdict, frozen, args, kwargs)
 
-    def _add_project_arguments(self, node: mparser.FunctionNode, argsdict: T.Dict[str, T.Dict[str, T.List[str]]],
-                               args: T.List[str], kwargs: 'kwtypes.FuncAddProjectArgs') -> None:
-        if self.subproject not in argsdict:
-            argsdict[self.subproject] = {}
-        self._add_arguments(node, argsdict[self.subproject],
-                            self.project_args_frozen, args, kwargs)
-
-    def _add_arguments(self, node: mparser.FunctionNode, argsdict: T.Dict[str, T.List[str]],
-                       args_frozen: bool, args: T.List[str], kwargs: 'kwtypes.FuncAddProjectArgs') -> None:
-        if args_frozen:
-            msg = f'Tried to use \'{node.func_name.value}\' after a build target has been declared.\n' \
+        frozen = self.project_args_frozen or (is_global and self.global_args_frozen)
+        if frozen:
+            msg = f'Tried to use \'{func_name}\' after a build target has been declared.\n' \
                   'This is not permitted. Please declare all arguments before your targets.'
             raise InvalidCode(msg)
 
         self._warn_about_builtin_args(args)
 
-        for lang in kwargs['language']:
+        if is_global:
+            if is_link:
+                argsdict = self.build.global_link_args[for_machine]
+            else:
+                argsdict = self.build.global_args[for_machine]
+        else:
+            if is_link:
+                argsdict = self.build.projects_link_args[for_machine].setdefault(self.subproject, {})
+            else:
+                argsdict = self.build.projects_args[for_machine].setdefault(self.subproject, {})
+
+        for lang in languages:
             argsdict[lang] = argsdict.get(lang, []) + args
 
     @noArgsFlattening

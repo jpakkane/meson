@@ -188,6 +188,8 @@ class Workspace(TypedDict):
 
     members: T.List[str]
     exclude: T.List[str]
+    package: Package
+    dependencies: T.Dict[str, DependencyV],
 
 
 Manifest = TypedDict(
@@ -199,10 +201,10 @@ Manifest = TypedDict(
         'dev-dependencies': T.Dict[str, DependencyV],
         'build-dependencies': T.Dict[str, DependencyV],
         'lib': LibTarget,
-        'bin': T.List[BuildTarget],
-        'test': T.List[BuildTarget],
-        'bench': T.List[BuildTarget],
-        'example': T.List[BuildTarget],
+        'bin': BuildTarget,
+        'test': BuildTarget,
+        'bench': BuildTarget,
+        'example': BuildTarget,
         'features': T.Dict[str, T.List[str]],
         'target': T.Dict[str, Target],
         'workspace': Workspace,
