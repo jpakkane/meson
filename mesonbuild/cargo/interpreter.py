@@ -19,9 +19,8 @@ import collections
 import urllib.parse
 import typing as T
 
-from . import builder
-from . import version
-from ..mesonlib import MesonException, Popen_safe
+from . import builder, version, cfg
+from ..mesonlib import MesonException, Popen_safe, MachineChoice
 from .. import coredata, mlog
 from ..wrap.wrap import PackageDefinition
 
@@ -34,6 +33,7 @@ if T.TYPE_CHECKING:
     from .. import mparser
     from ..environment import Environment
     from ..interpreterbase import SubProject
+    from ..compilers.rust import RustCompiler
 
     # Copied from typeshed. Blarg that they don't expose this
     class DataclassInstance(Protocol):
@@ -474,10 +474,13 @@ class PackageKey:
 class Interpreter:
     def __init__(self, env: Environment) -> None:
         self.environment = env
+        self.host_rustc = T.cast('RustCompiler', self.environment.coredata.compilers[MachineChoice.HOST]['rust'])
         # Map Cargo.toml's subdir to loaded manifest.
         self.manifests: T.Dict[str, Manifest] = {}
         # Map of cargo package (name + api) to its state
         self.packages: T.Dict[PackageKey, PackageState] = {}
+        # Rustc's config
+        self.cfgs = self._get_cfgs()
 
     def interpret(self, subdir: str) -> mparser.CodeBlockNode:
         manifest = self._load_manifest(subdir)
@@ -521,6 +524,10 @@ class Interpreter:
         manifest = self._load_manifest(subdir)
         pkg = PackageState(manifest)
         self.packages[key] = pkg
+        # Merge target specific dependencies that are enabled
+        for condition, dependencies in manifest.target.items():
+            if cfg.eval_cfg(condition, self.cfgs):
+                manifest.dependencies.update(dependencies)
         # Fetch required dependencies recursively.
         for depname, dep in manifest.dependencies.items():
             if not dep.optional:
@@ -587,6 +594,23 @@ class Interpreter:
                 self._add_dependency(pkg, f[4:])
             else:
                 self._enable_feature(pkg, f)
+
+    def _get_cfgs(self) -> T.Dict[str, str]:
+        cfgs = self.host_rustc.get_cfgs().copy()
+        rustflags = self.environment.coredata.get_external_args(MachineChoice.HOST, 'rust')
+        rustflags_i = iter(rustflags)
+        for i in rustflags_i:
+            if i == '--cfg':
+                cfgs.append(next(rustflags_i))
+        return dict(self._split_cfg(i) for i in cfgs)
+
+    @staticmethod
+    def _split_cfg(cfg: str) -> T.Tuple[str, str]:
+        pair = cfg.split('=', maxsplit=1)
+        value = pair[1] if len(pair) > 1 else ''
+        if value and value[0] == '"':
+            value = value[1:-1]
+        return pair[0], value
 
     def _create_project(self, pkg: PackageState, build: builder.Builder) -> T.List[mparser.BaseNode]:
         """Create the project() function call
