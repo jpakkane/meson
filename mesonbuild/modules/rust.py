@@ -330,7 +330,7 @@ class RustModule(ExtensionModule):
             extra_depends=depends,
             depend_files=depend_files,
             backend=state.backend,
-            description='Generating bindings for Rust {}',
+            description='Generating bindings for Rust {target}',
         )
 
         return ModuleReturnValue(target, [target])

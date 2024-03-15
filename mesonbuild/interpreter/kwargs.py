@@ -193,6 +193,8 @@ class CustomTarget(TypedDict):
     install_mode: FileMode
     install_tag: T.List[T.Optional[str]]
     output: T.List[str]
+    description: str
+
 
 class AddTestSetup(TypedDict):
 

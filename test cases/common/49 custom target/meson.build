@@ -12,12 +12,13 @@ comp = '@0@/@1@'.format(meson.current_source_dir(), 'my_compiler.py')
 useless = files('test.json')
 
 mytarget = custom_target('bindat',
-output : 'data.dat',
-input : 'data_source.txt',
-command : [python, comp, '--input=@INPUT@', '--output=@OUTPUT@', useless],
-env: {'MY_COMPILER_ENV': 'value'},
-install : true,
-install_dir : 'subdir'
+  output : 'data.dat',
+  input : 'data_source.txt',
+  command : [python, comp, '--input=@INPUT@', '--output=@OUTPUT@', useless],
+  env: {'MY_COMPILER_ENV': 'value'},
+  install : true,
+  install_dir : 'subdir',
+  description : 'Generating custom target @TARGET@',  # ensure the description kw is recognized
 )
 
 has_not_changed = false
@@ -31,11 +32,12 @@ assert(has_not_changed, 'Custom target has changed.')
 assert(not is_disabler(mytarget), 'Custom target is a disabler.')
 
 mytarget_disabler = custom_target('bindat',
-output : 'data.dat',
-input : 'data_source.txt',
-command : [disabler(), comp, '--input=@INPUT@', '--output=@OUTPUT@', useless],
-install : true,
-install_dir : 'subdir'
+  output : 'data.dat',
+  input : 'data_source.txt',
+  command : [disabler(), comp, '--input=@INPUT@', '--output=@OUTPUT@', useless],
+  install : true,
+  install_dir : 'subdir',
+  description : 'Generating another custom target',  # ensure it works without placeholder as well
 )
 
 if mytarget_disabler.found()
