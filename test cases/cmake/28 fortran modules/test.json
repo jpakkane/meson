@@ -1,0 +1,8 @@
+{
+    "installed": [
+        {"type": "file", "file": "usr/lib/libstalib.a"},
+        {"type": "implib", "file": "usr/lib/dynlib"},
+        {"type": "expr", "file": "usr/lib/dynlib?so"},
+        {"type": "pdb", "file": "usr/bin/dynlib"}
+    ]
+}

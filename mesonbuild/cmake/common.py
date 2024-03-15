@@ -198,6 +198,8 @@ class CMakeTarget:
         self.type: str = data.get('type', 'EXECUTABLE')
         # self.is_generator_provided: bool = data.get('isGeneratorProvided', False)
         self.files: T.List[CMakeFileGroup] = []
+        self.id: str = data.get('id')
+        self.dependencies: T.List[str] = data.get('dependencies', [])
 
         for i in data.get('fileGroups', []):
             self.files += [CMakeFileGroup(i)]

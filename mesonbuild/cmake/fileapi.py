@@ -152,10 +152,9 @@ class CMakeFileAPI:
                 if i['role'] == 'flags':
                     link_flags += [i['fragment']]
 
-            # TODO The `dependencies` entry is new in the file API.
-            #      maybe we can make use of that in addition to the
-            #      implicit dependency detection
             tgt_data = {
+                'id': tgt.get('id'),
+                'dependencies': [dep['id'] for dep in tgt.get('dependencies', [])],
                 'artifacts': [Path(x.get('path', '')) for x in tgt.get('artifacts', [])],
                 'sourceDirectory': src_dir,
                 'buildDirectory': bld_dir,

@@ -85,6 +85,7 @@ blacklist_compiler_flags = [
     '/RTC1', '/RTCc', '/RTCs', '/RTCu',
     '/Z7', '/Zi', '/ZI',
 ]
+blacklist_fortran_opts_startswith = ['-J']
 
 blacklist_link_flags = [
     '/machine:x64', '/machine:x86', '/machine:arm', '/machine:ebc',
@@ -122,6 +123,7 @@ class OutputTargetMap:
     def __init__(self, build_dir: Path):
         self.tgt_map: T.Dict[str, T.Union['ConverterTarget', 'ConverterCustomTarget']] = {}
         self.build_dir = build_dir
+        self._tgt_by_cmake_id: T.Dict[str, ConverterTarget] = {}
 
     def add(self, tgt: T.Union['ConverterTarget', 'ConverterCustomTarget']) -> None:
         def assign_keys(keys: T.List[str]) -> None:
@@ -132,6 +134,7 @@ class OutputTargetMap:
             keys += [tgt.full_name]
             keys += [self._rel_artifact_key(x) for x in tgt.artifacts]
             keys += [self._base_artifact_key(x) for x in tgt.artifacts]
+            self._tgt_by_cmake_id[tgt.cmake_id] = tgt
         if isinstance(tgt, ConverterCustomTarget):
             keys += [self._rel_generated_file_key(x) for x in tgt.original_outputs]
             keys += [self._base_generated_file_key(x) for x in tgt.original_outputs]
@@ -145,6 +148,9 @@ class OutputTargetMap:
 
     def target(self, name: str) -> T.Optional[T.Union['ConverterTarget', 'ConverterCustomTarget']]:
         return self._return_first_valid_key([self._target_key(name)])
+
+    def target_from_cmake_id(self, cmake_id: str) -> 'ConverterTarget':
+        return self._tgt_by_cmake_id[cmake_id]
 
     def executable(self, name: str) -> T.Optional['ConverterTarget']:
         tgt = self.target(name)
@@ -209,6 +215,9 @@ class ConverterTarget:
         self.full_name = target.full_name
         self.type = target.type
         self.install = target.install
+        self.cmake_id = target.id
+        self.cmake_depends_id = target.dependencies
+
         self.install_dir: T.Optional[Path] = None
         self.link_libraries = target.link_libraries
         self.link_flags = target.link_flags + target.link_lang_flags
@@ -443,8 +452,13 @@ class ConverterTarget:
                 return False
             return True
 
+        def check_fortran_opt(flag: str) -> bool:
+            return not any(flag.startswith(black) for black in blacklist_fortran_opts_startswith)
+
         self.link_libraries = [x for x in self.link_libraries if x.lower() not in blacklist_link_libs]
         self.link_flags = [x for x in self.link_flags if check_flag(x)]
+        if 'fortran' in self.compile_opts:
+            self.compile_opts['fortran'] = [opt for opt in self.compile_opts['fortran'] if check_fortran_opt(opt)]
 
         # Handle OSX frameworks
         def handle_frameworks(flags: T.List[str]) -> T.List[str]:
@@ -460,11 +474,19 @@ class ConverterTarget:
         self.link_libraries = handle_frameworks(self.link_libraries)
         self.link_flags = handle_frameworks(self.link_flags)
 
+        # Handle dependencies from file api
+        for i in self.cmake_depends_id:
+            try:
+                dep_tgt = output_target_map.target_from_cmake_id(i)
+            except KeyError:
+                continue
+            self.depends.append(dep_tgt)
+
         # Handle explicit CMake add_dependency() calls
         for i in self.depends_raw:
-            dep_tgt = output_target_map.target(i)
-            if dep_tgt:
-                self.depends.append(dep_tgt)
+            dep_obj = output_target_map.target(i)
+            if dep_obj:
+                self.depends.append(dep_obj)
 
     def process_object_libs(self, obj_target_list: T.List['ConverterTarget'], linker_workaround: bool) -> None:
         # Try to detect the object library(s) from the generated input sources
@@ -1060,7 +1082,7 @@ class CMakeInterpreter:
             # First handle inter target dependencies
             link_with: T.List[IdNode] = []
             objec_libs: T.List[IdNode] = []
-            sources: T.List[Path] = []
+            sources: T.List[T.Union[Path, IdNode]] = []
             generated: T.List[T.Union[IdNode, IndexNode]] = []
             generated_filenames: T.List[str] = []
             custom_targets: T.List[ConverterCustomTarget] = []
@@ -1076,11 +1098,16 @@ class CMakeInterpreter:
                     process_target(i)
                 objec_libs += [extract_tgt(i)]
             for i in tgt.depends:
-                if not isinstance(i, ConverterCustomTarget):
-                    continue
-                if i.name not in processed:
-                    process_custom_target(i)
-                dependencies += [extract_tgt(i)]
+                if isinstance(i, ConverterCustomTarget):
+                    if i.name not in processed:
+                        process_custom_target(i)
+                    generated += [extract_tgt(i)]
+                elif isinstance(i, ConverterTarget):
+                    if i.name not in processed:
+                        process_target(i)
+                    dep = processed[i.name]["dep"]
+                    if dep:
+                        dependencies += [id_node(dep)]
 
             # Generate the source list and handle generated sources
             sources += tgt.sources
@@ -1127,6 +1154,7 @@ class CMakeInterpreter:
             # Generate target kwargs
             tgt_kwargs: TYPE_mixed_kwargs = {
                 'build_by_default': install_tgt,
+                'dependencies': dependencies,
                 'link_args': options.get_link_args(tgt.cmake_name, tgt.link_flags + tgt.link_libraries),
                 'link_with': link_with,
                 'include_directories': id_node(inc_var),
@@ -1156,9 +1184,6 @@ class CMakeInterpreter:
                 'compile_args': tgt.public_compile_opts,
                 'include_directories': id_node(inc_var),
             }
-
-            if dependencies:
-                generated += dependencies
 
             # Generate the function nodes
             dir_node = assign(dir_var, function('include_directories', tgt.includes))

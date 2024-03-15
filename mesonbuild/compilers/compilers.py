@@ -45,6 +45,13 @@ header_suffixes = {'h', 'hh', 'hpp', 'hxx', 'H', 'ipp', 'moc', 'vapi', 'di'}
 obj_suffixes = {'o', 'obj', 'res'}
 # To the emscripten compiler, .js files are libraries
 lib_suffixes = {'a', 'lib', 'dll', 'dll.a', 'dylib', 'so', 'js'}
+# Fortran suffixes
+# f90, f95, f03, f08 are for free-form fortran ('f90' recommended)
+# f, for, ftn, fpp are for fixed-form fortran ('f' or 'for' recommended)
+fortran_suffixes: T.Tuple[str, ...] = ('f90', 'f95', 'f03', 'f08', 'f', 'for', 'ftn', 'fpp')
+# Fortran suffixes are generally case-insensitive. Upper- and lowercased suffixes
+# commonly exist mixed up together in the same projects.
+fortran_suffixes = fortran_suffixes + tuple(suffix.upper() for suffix in fortran_suffixes)
 # Mapping of language to suffixes of files that should always be in that language
 # This means we can't include .h headers here since they could be C, C++, ObjC, etc.
 # First suffix is the language's default.
@@ -52,9 +59,7 @@ lang_suffixes = {
     'c': ('c',),
     'cpp': ('cpp', 'cc', 'cxx', 'c++', 'hh', 'hpp', 'ipp', 'hxx', 'ino', 'ixx', 'C', 'H'),
     'cuda': ('cu',),
-    # f90, f95, f03, f08 are for free-form fortran ('f90' recommended)
-    # f, for, ftn, fpp are for fixed-form fortran ('f' or 'for' recommended)
-    'fortran': ('f90', 'f95', 'f03', 'f08', 'f', 'for', 'ftn', 'fpp'),
+    'fortran': fortran_suffixes,
     'd': ('d', 'di'),
     'objc': ('m',),
     'objcpp': ('mm',),

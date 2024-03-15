@@ -1,0 +1,1 @@
+int c_lib_function(int input);
