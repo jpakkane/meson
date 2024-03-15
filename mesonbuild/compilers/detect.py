@@ -1160,6 +1160,7 @@ def detect_d_compiler(env: 'Environment', for_machine: MachineChoice) -> Compile
 
             return cls(
                 exelist, version, for_machine, info, arch,
+                exe_wrapper=exe_wrap, is_cross=is_cross,
                 full_version=full_version, linker=linker, version_output=out)
         elif 'gdc' in out:
             cls = d.GnuDCompiler
