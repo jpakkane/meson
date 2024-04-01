@@ -8,20 +8,7 @@ conf_data = configuration_data()
 conf_data.set('ONE', 1)
 conf_data.set('TWO', 2)
 
-mod3_f = custom_target(
-  'mod3.f',
-  input : 'mod3.f90',
-  output : 'mod3.f90',
-  # We need a platform agnostic way to do a copy a file, using a custom_target
-  # and we need to use the @OUTDIR@, not @OUTPUT@ in order to exercise
-  # https://github.com/mesonbuild/meson/issues/9258
-  command : [
-    find_program('python', 'python3'), '-c',
-    'import sys, shutil; shutil.copy(sys.argv[1], sys.argv[2])',
-    '@INPUT@', '@OUTDIR@',
-  ],
-)
-
+mod3_f = import('fs').copyfile('mod3.f90', 'mod3.f90')
 three = library('mod3', mod3_f)
 
 templates_basenames = ['mod2', 'mod1']
