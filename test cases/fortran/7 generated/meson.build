@@ -35,5 +35,22 @@ foreach template_basename : templates_basenames
 endforeach
 
 sources = ['prog.f90'] + generated_sources
-exe = executable('generated', sources, link_with: three)
-test('generated', exe)
+exe = executable('configure_file', sources, link_with: three)
+test('configure_file', exe)
+
+gen = generator(
+  find_program('gen.py'),
+  arguments : [
+    '@INPUT@', '@OUTPUT@',
+    '--replace', '@ONE@=1',
+    '--replace', '@TWO@=2',
+  ],
+  output : ['@BASENAME@.f90'],
+)
+
+exe = executable(
+  'generator',
+  'prog.f90', gen.process('mod1.fpp', 'mod2.fpp'),
+  link_with: three,
+)
+test('generator', exe)
