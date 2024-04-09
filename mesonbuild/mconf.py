@@ -48,6 +48,10 @@ def add_arguments(parser: 'argparse.ArgumentParser') -> None:
                         help='Clear cached state (e.g. found dependencies)')
     parser.add_argument('--no-pager', action='store_false', dest='pager',
                         help='Do not redirect output to a pager')
+    parser.add_argument('-A', action='append', dest='A',
+                        help='Add a subproject option.')
+    parser.add_argument('-U', action='append', dest='U',
+                        help='Remove a subproject option.')
 
 def stringify(val: T.Any) -> str:
     if isinstance(val, bool):
@@ -335,8 +339,22 @@ class Conf:
         for m in mismatching:
             mlog.log(f'{m[0]:21}{m[1]:10}{m[2]:10}')
 
+def has_option_flags(options):
+    if options.cmd_line_options:
+        return True
+    if options.U:
+        return True
+    return False
+
+def is_print_only(options):
+    if has_option_flags(options):
+        return False
+    if options.clearcache:
+        return False
+    return True
+
 def run_impl(options: CMDOptions, builddir: str) -> int:
-    print_only = not options.cmd_line_options and not options.clearcache
+    print_only = is_print_only(options)
     c = None
     try:
         c = Conf(builddir)
@@ -347,8 +365,10 @@ def run_impl(options: CMDOptions, builddir: str) -> int:
             return 0
 
         save = False
-        if options.cmd_line_options:
-            save = c.set_options(options.cmd_line_options)
+        if has_option_flags(options):
+            save |= c.set_options(options.cmd_line_options)
+            save |= c.coredata.create_sp_options(options.A)
+            save |= c.coredata.remove_sp_options(options.U)
             coredata.update_cmd_line_file(builddir, options)
         if options.clearcache:
             c.clear_cache()

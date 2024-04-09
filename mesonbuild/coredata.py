@@ -260,6 +260,7 @@ class CoreData:
         self.target_guids = {}
         self.version = version
         self.optstore = options.OptionStore()
+        self.sp_option_overrides: 'MutableKeyedOptionDictType' = {}
         self.cross_files = self.__load_config_files(cmd_options, scratch_dir, 'cross')
         self.compilers: PerMachine[T.Dict[str, Compiler]] = PerMachine(OrderedDict(), OrderedDict())
 
@@ -441,17 +442,20 @@ class CoreData:
                 'Default project to execute in Visual Studio',
                 ''))
 
+    def get_and_clean(self, key, store):
+        v = store[key].value
+        if key.name == 'wrap_mode':
+            return WrapMode[v]
+        return v
+
     def get_option(self, key: OptionKey) -> T.Union[T.List[str], str, int, bool]:
         try:
-            v = self.optstore.get_value(key)
-            return v
+            return self.get_and_clean(key, self.sp_option_overrides)
         except KeyError:
             pass
 
         try:
-            v = self.optstore.get_value_object(key.as_root())
-            if v.yielding:
-                return v.value
+            return self.get_and_clean(key.as_root(), self.options)
         except KeyError:
             pass
 
@@ -695,6 +699,45 @@ class CoreData:
         if not self.is_cross_build():
             dirty |= self.copy_build_options_from_regular_ones()
 
+        return dirty
+
+    def can_set_per_sb(self, keystr):
+        return True
+
+    def create_sp_options(self, A) -> bool:
+        if A is None:
+            return False
+        import copy
+        dirty = False
+        for entry in A:
+            keystr, valstr = entry.split('=', 1)
+            if ':' not in keystr:
+                raise MesonException(f'Option to add override has no subproject: {entry}')
+            if not self.can_set_per_sb(keystr):
+                raise MesonException(f'Option {keystr} can not be set per subproject.')
+            key = OptionKey.from_string(keystr)
+            if key in self.sp_option_overrides:
+                raise MesonException(f'Override {keystr} already exists.')
+            original_key = key.evolve(subproject='')
+            if original_key not in self.options:
+                raise MesonException('Tried to override a nonexisting key.')
+            new_opt = copy.deepcopy(self.options[original_key])
+            new_opt.set_value(valstr)
+            self.sp_option_overrides[key] = new_opt
+            dirty = True
+        return dirty
+
+    def remove_sp_options(self, U) -> bool:
+        dirty = False
+        if U is None:
+            return False
+        for entry in U:
+            key = OptionKey.from_string(entry)
+            if key in self.options:
+                del self.options[key]
+                dirty = True
+            else:
+                pass # Deleting a non-existing key ok, I guess?
         return dirty
 
     def set_default_options(self, default_options: T.MutableMapping[OptionKey, str], subproject: str, env: 'Environment') -> None:
