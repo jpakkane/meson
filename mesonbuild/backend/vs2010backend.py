@@ -1012,7 +1012,7 @@ class Vs2010Backend(backends.Backend):
         # Compile args added from the env or cross file: CFLAGS/CXXFLAGS, etc. We want these
         # to override all the defaults, but not the per-target compile args.
         for lang in file_args.keys():
-            file_args[lang] += target.get_option(OptionKey(f'{lang}_args', machine=target.for_machine))
+            file_args[lang] += self.get_target_option(OptionKey(f'{lang}_args', machine=target.for_machine))
         for args in file_args.values():
             # This is where Visual Studio will insert target_args, target_defines,
             # etc, which are added later from external deps (see below).
@@ -1302,7 +1302,7 @@ class Vs2010Backend(backends.Backend):
         if True in ((dep.name == 'openmp') for dep in target.get_external_deps()):
             ET.SubElement(clconf, 'OpenMPSupport').text = 'true'
         # CRT type; debug or release
-        vscrt_type = target.get_option(OptionKey('b_vscrt'))
+        vscrt_type = self.get_target_option(target, 'b_vscrt')
         vscrt_val = compiler.get_crt_val(vscrt_type, self.buildtype)
         if vscrt_val == 'mdd':
             ET.SubElement(type_config, 'UseDebugLibraries').text = 'true'
@@ -1340,7 +1340,7 @@ class Vs2010Backend(backends.Backend):
         # Exception handling has to be set in the xml in addition to the "AdditionalOptions" because otherwise
         # cl will give warning D9025: overriding '/Ehs' with cpp_eh value
         if 'cpp' in target.compilers:
-            eh = target.get_option(OptionKey('cpp_eh', machine=target.for_machine))
+            eh = self.get_target_option(OptionKey('cpp_eh', machine=target.for_machine))
             if eh == 'a':
                 ET.SubElement(clconf, 'ExceptionHandling').text = 'Async'
             elif eh == 's':
@@ -1358,10 +1358,10 @@ class Vs2010Backend(backends.Backend):
         ET.SubElement(clconf, 'PreprocessorDefinitions').text = ';'.join(target_defines)
         ET.SubElement(clconf, 'FunctionLevelLinking').text = 'true'
         # Warning level
-        warning_level = T.cast('str', target.get_option(OptionKey('warning_level')))
+        warning_level = T.cast('str', self.get_target_option(target, 'warning_level'))
         warning_level = 'EnableAllWarnings' if warning_level == 'everything' else 'Level' + str(1 + int(warning_level))
         ET.SubElement(clconf, 'WarningLevel').text = warning_level
-        if target.get_option(OptionKey('werror')):
+        if self.get_target_option(target, 'werror'):
             ET.SubElement(clconf, 'TreatWarningAsError').text = 'true'
         # Optimization flags
         o_flags = split_o_flags_args(build_args)
@@ -1534,7 +1534,7 @@ class Vs2010Backend(backends.Backend):
         # /nologo
         ET.SubElement(link, 'SuppressStartupBanner').text = 'true'
         # /release
-        if not target.get_option(OptionKey('debug')):
+        if not self.get_target_option(target, 'debug'):
             ET.SubElement(link, 'SetChecksum').text = 'true'
 
     # Visual studio doesn't simply allow the src files of a project to be added with the 'Condition=...' attribute,
@@ -1596,7 +1596,7 @@ class Vs2010Backend(backends.Backend):
             raise MesonException(f'Unknown target type for {target.get_basename()}')
 
         (sources, headers, objects, _languages) = self.split_sources(target.sources)
-        if target.is_unity:
+        if self.is_unity(target):
             sources = self.generate_unity_files(target, sources)
         if target.for_machine is MachineChoice.BUILD:
             platform = self.build_platform

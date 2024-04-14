@@ -945,7 +945,7 @@ class NinjaBackend(backends.Backend):
         # Generate rules for building the remaining source files in this target
         outname = self.get_target_filename(target)
         obj_list = []
-        is_unity = target.is_unity
+        is_unity = self.is_unity(target)
         header_deps = []
         unity_src = []
         unity_deps = [] # Generated sources that must be built before compiling a Unity target.
@@ -1102,7 +1102,7 @@ class NinjaBackend(backends.Backend):
         cpp = target.compilers['cpp']
         if cpp.get_id() != 'msvc':
             return False
-        cppversion = target.get_option(OptionKey('cpp_std', machine=target.for_machine))
+        cppversion = self.get_target_option(OptionKey('cpp_std', machine=target.for_machine))
         if cppversion not in ('latest', 'c++latest', 'vc++latest'):
             return False
         if not mesonlib.current_vs_supports_modules():
@@ -1710,7 +1710,7 @@ class NinjaBackend(backends.Backend):
             valac_outputs.append(vala_c_file)
 
         args = self.generate_basic_compiler_args(target, valac)
-        args += valac.get_colorout_args(target.get_option(OptionKey('b_colorout')))
+        args += valac.get_colorout_args(self.get_target_option(target, 'b_colorout'))
         # Tell Valac to output everything in our private directory. Sadly this
         # means it will also preserve the directory components of Vala sources
         # found inside the build tree (generated sources).
@@ -1722,7 +1722,7 @@ class NinjaBackend(backends.Backend):
             # Outputted header
             hname = os.path.join(self.get_target_dir(target), target.vala_header)
             args += ['--header', hname]
-            if target.is_unity:
+            if self.is_unity(target):
                 # Without this the declarations will get duplicated in the .c
                 # files and cause a build failure when all of them are
                 # #include-d in one .c file.
@@ -1788,14 +1788,14 @@ class NinjaBackend(backends.Backend):
 
         args: T.List[str] = []
         args += cython.get_always_args()
-        args += cython.get_debug_args(target.get_option(OptionKey('debug')))
-        args += cython.get_optimization_args(target.get_option(OptionKey('optimization')))
+        args += cython.get_debug_args(self.get_target_option(target, 'debug'))
+        args += cython.get_optimization_args(self.get_target_option(target, 'optimization'))
         args += cython.get_option_compile_args(target.get_options())
         args += self.build.get_global_args(cython, target.for_machine)
         args += self.build.get_project_args(cython, target.subproject, target.for_machine)
         args += target.get_extra_args('cython')
 
-        ext = target.get_option(OptionKey('cython_language', machine=target.for_machine))
+        ext = self.get_target_option(target, OptionKey('cython_language', machine=target.for_machine))
 
         pyx_sources = []  # Keep track of sources we're adding to build
 
@@ -1998,8 +1998,8 @@ class NinjaBackend(backends.Backend):
         # https://github.com/rust-lang/rust/issues/39016
         if not isinstance(target, build.StaticLibrary):
             try:
-                buildtype = target.get_option(OptionKey('buildtype'))
-                crt = target.get_option(OptionKey('b_vscrt'))
+                buildtype = self.get_target_option(target, 'buildtype')
+                crt = self.get_target_option(target, 'b_vscrt')
                 args += rustc.get_crt_link_args(crt, buildtype)
             except (KeyError, AttributeError):
                 pass
@@ -3452,9 +3452,9 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
         # Add things like /NOLOGO; usually can't be overridden
         commands += linker.get_linker_always_args()
         # Add buildtype linker args: optimization level, etc.
-        commands += linker.get_optimization_link_args(target.get_option(OptionKey('optimization')))
+        commands += linker.get_optimization_link_args(self.get_target_option(target, 'optimization'))
         # Add /DEBUG and the pdb filename when using MSVC
-        if target.get_option(OptionKey('debug')):
+        if self.get_target_option(target, 'debug'):
             commands += self.get_link_debugfile_args(linker, target)
             debugfile = self.get_link_debugfile_name(linker, target)
             if debugfile is not None:

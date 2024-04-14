@@ -679,6 +679,8 @@ class Target(HoldableObject, metaclass=abc.ABCMeta):
         return self.options
 
     def get_option(self, key: 'OptionKey') -> T.Union[str, int, bool]:
+        # We don't actually have wrapmode here to do an assert, so just do a
+        # cast, we know what's in coredata anyway.
         # TODO: if it's possible to annotate get_option or validate_option_value
         # in the future we might be able to remove the cast here
         return T.cast('T.Union[str, int, bool]', self.options.get_value(key))
@@ -832,6 +834,7 @@ class BuildTarget(Target):
     def __str__(self):
         return f"{self.name}"
 
+    # FIXME: this entire method needs to be removed.
     @property
     def is_unity(self) -> bool:
         unity_opt = self.get_option(OptionKey('unity'))

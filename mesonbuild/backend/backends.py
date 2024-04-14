@@ -26,7 +26,7 @@ from .. import mesonlib
 from .. import mlog
 from ..compilers import LANGUAGES_USING_LDFLAGS, detect
 from ..mesonlib import (
-    File, MachineChoice, MesonException, OrderedSet,
+    File, MachineChoice, MesonException, MesonBugException, OrderedSet,
     ExecutableSerialisation, classify_unity_sources,
 )
 from ..options import OptionKey
@@ -40,6 +40,7 @@ if T.TYPE_CHECKING:
     from ..interpreter import Interpreter, Test
     from ..linkers.linkers import StaticLinker
     from ..mesonlib import FileMode, FileOrString
+    from ..wrap import WrapMode
 
     from typing_extensions import TypedDict
 
@@ -422,7 +423,7 @@ class Backend:
         abs_files: T.List[str] = []
         result: T.List[mesonlib.File] = []
         compsrcs = classify_unity_sources(target.compilers.values(), unity_src)
-        unity_size = target.get_option(OptionKey('unity_size'))
+        unity_size = self.get_target_option(target, 'unity_size')
         assert isinstance(unity_size, int), 'for mypy'
 
         def init_language_file(suffix: str, unity_file_number: int) -> T.TextIO:
@@ -908,10 +909,10 @@ class Backend:
         # With unity builds, sources don't map directly to objects,
         # we only support extracting all the objects in this mode,
         # so just return all object files.
-        if extobj.target.is_unity:
+        if self.is_unity(extobj.target):
             compsrcs = classify_unity_sources(extobj.target.compilers.values(), sources)
             sources = []
-            unity_size = extobj.target.get_option(OptionKey('unity_size'))
+            unity_size = self.get_target_option(extobj.target, 'unity_size')
             assert isinstance(unity_size, int), 'for mypy'
 
             for comp, srcs in compsrcs.items():
@@ -964,7 +965,7 @@ class Backend:
 
     def target_uses_pch(self, target: build.BuildTarget) -> bool:
         try:
-            return T.cast('bool', target.get_option(OptionKey('b_pch')))
+            return T.cast('bool', self.get_target_option(target, 'b_pch'))
         except (KeyError, AttributeError):
             return False
 
@@ -998,22 +999,22 @@ class Backend:
         # Add things like /NOLOGO or -pipe; usually can't be overridden
         commands += compiler.get_always_args()
         # warning_level is a string, but mypy can't determine that
-        commands += compiler.get_warn_args(T.cast('str', target.get_option(OptionKey('warning_level'))))
+        commands += compiler.get_warn_args(T.cast('str', self.get_target_option(target, 'warning_level')))
         # Add -Werror if werror=true is set in the build options set on the
         # command-line or default_options inside project(). This only sets the
         # action to be done for warnings if/when they are emitted, so it's ok
         # to set it after or get_warn_args().
-        if target.get_option(OptionKey('werror')):
+        if self.get_target_option(target, 'werror'):
             commands += compiler.get_werror_args()
         # Add compile args for c_* or cpp_* build options set on the
         # command-line or default_options inside project().
         commands += compiler.get_option_compile_args(copt_proxy)
 
-        optimization = target.get_option(OptionKey('optimization'))
+        optimization = self.get_target_option(target, 'optimization')
         assert isinstance(optimization, str), 'for mypy'
         commands += compiler.get_optimization_args(optimization)
 
-        debug = target.get_option(OptionKey('debug'))
+        debug = self.get_target_option(target, 'debug')
         assert isinstance(debug, bool), 'for mypy'
         commands += compiler.get_debug_args(debug)
 
@@ -1738,7 +1739,7 @@ class Backend:
                 # TODO: Create GNUStrip/AppleStrip/etc. hierarchy for more
                 #       fine-grained stripping of static archives.
                 can_strip = not isinstance(t, build.StaticLibrary)
-                should_strip = can_strip and t.get_option(OptionKey('strip'))
+                should_strip = can_strip and self.get_target_option(t, 'strip')
                 assert isinstance(should_strip, bool), 'for mypy'
                 # Install primary build output (library/executable/jar, etc)
                 # Done separately because of strip/aliases/rpath
@@ -2062,3 +2063,15 @@ class Backend:
         all_sources = T.cast('_ALL_SOURCES_TYPE', target.sources) + T.cast('_ALL_SOURCES_TYPE', target.generated)
         return self.compiler_to_generator(target, target.compiler, all_sources,
                                           target.output_templ, target.depends)
+
+    def is_unity(self, target: build.BuildTarget) -> bool:
+        return target.is_unity
+
+    def get_target_option(self, target: build.Target, name: T.Union[str, OptionKey]) -> T.Union[str, int, bool, 'WrapMode']:
+        if isinstance(name, str):
+            key = OptionKey(name)
+        elif isinstance(name, OptionKey):
+            key = name
+        else:
+            raise MesonBugException('Internal error: invalid option type.')
+        return target.get_option(key)
