@@ -13,6 +13,7 @@ import pathlib
 import re
 import subprocess
 import typing as T
+import warnings
 
 from ... import mesonlib
 from ... import mlog
@@ -469,8 +470,13 @@ class GnuLikeCompiler(Compiler, metaclass=abc.ABCMeta):
             # paths under /lib would be considered not a "system path",
             # which is wrong and breaks things. Store everything, just to be sure.
             pobj = pathlib.Path(p)
-            unresolved = pobj.as_posix()
-            if pobj.exists():
+            unresolved = pobj.as_posix()           
+            try:
+                p_exists = pobj.exists()
+            except OSError as e:
+                warnings.warn("Error processing directory " + str(e))
+                p_exists = False
+            if p_exists:
                 if unresolved not in result:
                     result.append(unresolved)
                 try:
