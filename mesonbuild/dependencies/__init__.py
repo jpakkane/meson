@@ -188,6 +188,7 @@ this approach, and no new dependencies should do this.
 # - a string naming the submodule that should be imported from `mesonbuild.dependencies` to populate the dependency
 packages.defaults.update({
     # From dev:
+    'clang': 'dev',
     'gtest': 'dev',
     'gmock': 'dev',
     'llvm': 'dev',
@@ -248,6 +249,7 @@ packages.defaults.update({
     'qt6': 'qt',
 })
 _packages_accept_language.update({
+    'clang',
     'hdf5',
     'mpi',
     'netcdf',
