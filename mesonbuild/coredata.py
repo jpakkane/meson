@@ -457,7 +457,9 @@ class CoreData:
 
         raise MesonException(f'Tried to get unknown builtin option {str(key)}')
 
-    def get_option_for_target(self, target: BuildTarget, key: OptionKey) -> T.Union[T.List[str], str, int, bool, WrapMode]:
+    def get_option_for_target(self, target: BuildTarget, key: T.Union[str, OptionKey]) -> T.Union[T.List[str], str, int, bool, WrapMode]:
+        if isinstance(key, str):
+            key = OptionKey(key)
         override = target.get_raw_override(key.name)
         if override is not None:
             # FIXME validate that the value is good.

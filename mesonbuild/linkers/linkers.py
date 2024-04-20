@@ -38,7 +38,10 @@ class StaticLinker:
         """
         return mesonlib.is_windows()
 
-    def get_base_link_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
+    def get_base_link_args(self,
+                           target: 'BuildTarget',
+                           linker: 'Compiler',
+                           env: 'Environment') -> T.List[str]:
         """Like compilers.get_base_link_args, but for the static linker."""
         return []
 

@@ -276,10 +276,10 @@ class ClangCPPCompiler(_StdCPPLibMixin, ClangCompiler, CPPCompiler):
             )
         return opts
 
-    def get_option_compile_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
+    def get_option_compile_args(self, target: 'BuildTarget', env: 'Environment') -> T.List[str]:
         args: T.List[str] = []
         key = self.form_compileropt_key('std')
-        std = options.get_value(key)
+        std = env.get_option_for_target(target, key)
         if std != 'none':
             args.append(self._find_best_cpp_std(std))
 
@@ -287,7 +287,8 @@ class ClangCPPCompiler(_StdCPPLibMixin, ClangCompiler, CPPCompiler):
         non_msvc_eh_options(options.get_value(key), args)
 
         key = self.form_compileropt_key('debugstl')
-        if options.get_value(key):
+
+        if env.get_option_for_target(target, key):
             args.append('-D_GLIBCXX_DEBUG=1')
 
             # We can't do _LIBCPP_DEBUG because it's unreliable unless libc++ was built with it too:
@@ -302,11 +303,11 @@ class ClangCPPCompiler(_StdCPPLibMixin, ClangCompiler, CPPCompiler):
 
         return args
 
-    def get_option_link_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
+    def get_option_link_args(self, target: 'BuildTarget', env: 'Environment') -> T.List[str]:
         if self.info.is_windows() or self.info.is_cygwin():
             # without a typedict mypy can't understand this.
             key = self.form_compileropt_key('winlibs')
-            libs = options.get_value(key).copy()
+            libs = env.get_option_for_target(target, key).copy()
             assert isinstance(libs, list)
             for l in libs:
                 assert isinstance(l, str)
@@ -490,31 +491,31 @@ class GnuCPPCompiler(_StdCPPLibMixin, GnuCompiler, CPPCompiler):
             )
         return opts
 
-    def get_option_compile_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
+    def get_option_compile_args(self, target: 'BuildTarget', env: 'Environment') -> T.List[str]:
         args: T.List[str] = []
         stdkey = self.form_compileropt_key('std')
         ehkey = self.form_compileropt_key('eh')
         rttikey = self.form_compileropt_key('rtti')
         debugstlkey = self.form_compileropt_key('debugstl')
 
-        std = options.get_value(stdkey)
+        std = env.coredata.get_option_for_target(target, stdkey)
         if std != 'none':
             args.append(self._find_best_cpp_std(std))
 
         non_msvc_eh_options(options.get_value(ehkey), args)
 
-        if not options.get_value(rttikey):
+        if not env.coredata.get_option_for_target(target, rttikey):
             args.append('-fno-rtti')
 
-        if options.get_value(debugstlkey):
+        if env.coredata.get_option_for_target(target, debugstlkey):
             args.append('-D_GLIBCXX_DEBUG=1')
         return args
 
-    def get_option_link_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
+    def get_option_link_args(self, target: 'BuildTarget', env: 'Environment') -> T.List[str]:
         if self.info.is_windows() or self.info.is_cygwin():
             # without a typedict mypy can't understand this.
             key = self.form_compileropt_key('winlibs')
-            libs = options.get_value(key).copy()
+            libs = env.coredata.get_option_for_target(target, key).copy()
             assert isinstance(libs, list)
             for l in libs:
                 assert isinstance(l, str)

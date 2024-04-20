@@ -316,19 +316,19 @@ class GnuCCompiler(GnuCompiler, CCompiler):
             )
         return opts
 
-    def get_option_compile_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
+    def get_option_compile_args(self, target: 'BuildTarget', env: 'Environment') -> T.List[str]:
         args = []
         key = self.form_compileropt_key('std')
-        std = options.get_value(key)
+        std = env.coredata.get_option_for_target(target, key)
         if std != 'none':
             args.append('-std=' + std)
         return args
 
-    def get_option_link_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
+    def get_option_link_args(self, target: 'BuildTarget', env: 'Environment') -> T.List[str]:
         if self.info.is_windows() or self.info.is_cygwin():
             # without a typeddict mypy can't figure this out
             key = self.form_compileropt_key('winlibs')
-            libs: T.List[str] = options.get_value(key).copy()
+            libs: T.List[str] = env.get_option_for_target(target, key).copy()
             assert isinstance(libs, list)
             for l in libs:
                 assert isinstance(l, str)

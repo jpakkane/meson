@@ -251,12 +251,16 @@ BASE_OPTIONS: T.Mapping[OptionKey, BaseOption] = {
 
 base_options = {key: base_opt.init_option(key) for key, base_opt in BASE_OPTIONS.items()}
 
-def option_enabled(boptions: T.Set[OptionKey], options: 'KeyedOptionDictType',
-                   option: OptionKey) -> bool:
+def option_enabled(boptions: T.Set[OptionKey],
+                   target: 'BuildTarget',
+                   env: 'Environment',
+                   option: T.Union[str, OptionKey]) -> bool:
+    if isinstance(option, str):
+        option = OptionKey(option)
     try:
         if option not in boptions:
             return False
-        ret = options.get_value(option)
+        ret = env.coredata.get_option_for_target(target, option)
         assert isinstance(ret, bool), 'must return bool'  # could also be str
         return ret
     except KeyError:
@@ -274,37 +278,51 @@ def get_option_value(options: 'KeyedOptionDictType', opt: OptionKey, fallback: '
     # Mypy doesn't understand that the above assert ensures that v is type _T
     return v
 
+def get_target_option_value(target: 'BuildTarget',
+                            env: 'Environment',
+                            opt: T.Union[OptionKey, str],
+                            fallback: '_T') -> '_T':
+    """Get the value of an option, or the fallback value."""
+    try:
+        v: '_T' = env.coredata.get_option_for_target(target, opt)
+    except KeyError:
+        return fallback
 
-def are_asserts_disabled(options: KeyedOptionDictType) -> bool:
+    assert isinstance(v, type(fallback)), f'Should have {type(fallback)!r} but was {type(v)!r}'
+    # Mypy doesn't understand that the above assert ensures that v is type _T
+    return v
+
+
+def are_asserts_disabled(target: 'BuildTarget', env: 'Environment') -> bool:
     """Should debug assertions be disabled
 
-    :param options: OptionDictionary
+    :param target: a target to check for
+    :param env: the environment
     :return: whether to disable assertions or not
     """
-    return (options.get_value('b_ndebug') == 'true' or
-            (options.get_value('b_ndebug') == 'if-release' and
-             options.get_value('buildtype') in {'release', 'plain'}))
+    return env.coredata.get_option_for_target(target,'b_ndebug') == 'true' or \
+           env.coredata.get_option_for_target(target,'b_ndebug') == 'if-release' and \
+           env.coredata.get_option_for_target(target,'buildtype') in {'release', 'plain'}
 
-
-def get_base_compile_args(options: 'KeyedOptionDictType', compiler: 'Compiler', env: 'Environment') -> T.List[str]:
+def get_base_compile_args(target: 'BuildTarget', compiler: 'Compiler', env: 'Environment') -> T.List[str]:
     args: T.List[str] = []
     try:
-        if options.get_value(OptionKey('b_lto')):
+        if env.coredata.get_option_for_target(target, 'b_lto'):
             args.extend(compiler.get_lto_compile_args(
                 threads=get_option_value(options, OptionKey('b_lto_threads'), 0),
                 mode=get_option_value(options, OptionKey('b_lto_mode'), 'default')))
     except (KeyError, AttributeError):
         pass
     try:
-        args += compiler.get_colorout_args(options.get_value(OptionKey('b_colorout')))
-    except (KeyError, AttributeError):
+        args += compiler.get_colorout_args(env.coredata.get_option_for_target(target,'b_colorout'))
+    except KeyError:
         pass
     try:
-        args += compiler.sanitizer_compile_args(options.get_value(OptionKey('b_sanitize')))
-    except (KeyError, AttributeError):
+        args += compiler.sanitizer_compile_args(env.coredata.get_option_for_target(target, 'b_sanitize'))
+    except KeyError:
         pass
     try:
-        pgo_val = options.get_value(OptionKey('b_pgo'))
+        pgo_val = env.coredata.get_option_for_target(target,'b_pgo')
         if pgo_val == 'generate':
             args.extend(compiler.get_profile_generate_args())
         elif pgo_val == 'use':
@@ -312,21 +330,21 @@ def get_base_compile_args(options: 'KeyedOptionDictType', compiler: 'Compiler', 
     except (KeyError, AttributeError):
         pass
     try:
-        if options.get_value(OptionKey('b_coverage')):
+        if env.coredata.get_option_for_target(target,'b_coverage'):
             args += compiler.get_coverage_args()
     except (KeyError, AttributeError):
         pass
     try:
-        args += compiler.get_assert_args(are_asserts_disabled(options), env)
-    except (KeyError, AttributeError):
+        args += compiler.get_assert_args(are_asserts_disabled(target, env), env)
+    except KeyError:
         pass
     # This does not need a try...except
-    if option_enabled(compiler.base_options, options, OptionKey('b_bitcode')):
+    if option_enabled(compiler.base_options, target, env, 'b_bitcode'):
         args.append('-fembed-bitcode')
     try:
+        crt_val = env.coredata.get_option_for_target(target,'b_vscrt')
+        buildtype = env.coredata.get_option_for_target(target, 'buildtype')
         try:
-            crt_val = options.get_value(OptionKey('b_vscrt'))
-            buildtype = options.get_value(OptionKey('buildtype'))
             args += compiler.get_crt_compile_args(crt_val, buildtype)
         except AttributeError:
             pass
@@ -334,12 +352,14 @@ def get_base_compile_args(options: 'KeyedOptionDictType', compiler: 'Compiler', 
         pass
     return args
 
-def get_base_link_args(options: 'KeyedOptionDictType', linker: 'Compiler',
-                       is_shared_module: bool, build_dir: str) -> T.List[str]:
+def get_base_link_args(target: 'BuildTarget',
+                       linker: 'Compiler',
+                       env: 'Environment') -> T.List[str]:
     args: T.List[str] = []
+    build_dir = env.get_build_dir()
     try:
-        if options.get_value('b_lto'):
-            if options.get_value('werror'):
+        if env.coredata.get_option_for_target(target, 'b_lto'):
+            if env.coredata.get_option_for_target(target, 'werror'):
                 args.extend(linker.get_werror_args())
 
             thinlto_cache_dir = None
@@ -354,11 +374,11 @@ def get_base_link_args(options: 'KeyedOptionDictType', linker: 'Compiler',
     except (KeyError, AttributeError):
         pass
     try:
-        args += linker.sanitizer_link_args(options.get_value('b_sanitize'))
-    except (KeyError, AttributeError):
+        args += linker.sanitizer_link_args(env.coredata.get_option_for_target(target, 'b_sanitize'))
+    except KeyError:
         pass
     try:
-        pgo_val = options.get_value('b_pgo')
+        pgo_val = env.coredata.get_option_for_target(target,'b_pgo')
         if pgo_val == 'generate':
             args.extend(linker.get_profile_generate_args())
         elif pgo_val == 'use':
@@ -366,13 +386,13 @@ def get_base_link_args(options: 'KeyedOptionDictType', linker: 'Compiler',
     except (KeyError, AttributeError):
         pass
     try:
-        if options.get_value('b_coverage'):
+        if env.coredata.get_option_for_target(target, 'b_coverage'):
             args += linker.get_coverage_link_args()
     except (KeyError, AttributeError):
         pass
 
-    as_needed = option_enabled(linker.base_options, options, OptionKey('b_asneeded'))
-    bitcode = option_enabled(linker.base_options, options, OptionKey('b_bitcode'))
+    as_needed = option_enabled(linker.base_options, target, env, 'b_asneeded')
+    bitcode = option_enabled(linker.base_options, target, env, 'b_bitcode')
     # Shared modules cannot be built with bitcode_bundle because
     # -bitcode_bundle is incompatible with -undefined and -bundle
     if bitcode and not is_shared_module:
@@ -384,17 +404,18 @@ def get_base_link_args(options: 'KeyedOptionDictType', linker: 'Compiler',
     # Apple's ld (the only one that supports bitcode) does not like -undefined
     # arguments or -headerpad_max_install_names when bitcode is enabled
     if not bitcode:
+        from ..build import SharedModule
         args.extend(linker.headerpad_args())
-        if (not is_shared_module and
-                option_enabled(linker.base_options, options, OptionKey('b_lundef'))):
+        if (not isinstance(target, SharedModule) and
+                option_enabled(linker.base_options, target, env, 'b_lundef')):
             args.extend(linker.no_undefined_link_args())
         else:
             args.extend(linker.get_allow_undefined_link_args())
 
     try:
+        crt_val = env.coredata.get_option_for_target(target, 'b_vscrt')
+        buildtype =env.coredata.get_option_for_target('buildtype')
         try:
-            crt_val = options.get_value(OptionKey('b_vscrt'))
-            buildtype = options.get_value(OptionKey('buildtype'))
             args += linker.get_crt_link_args(crt_val, buildtype)
         except AttributeError:
             pass
@@ -593,11 +614,11 @@ class Compiler(HoldableObject, metaclass=abc.ABCMeta):
     def get_options(self) -> 'MutableKeyedOptionDictType':
         return {}
 
-    def get_option_compile_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
+    def get_option_compile_args(self, target: 'BuildTarget', env: 'Environment') -> T.List[str]:
         return []
 
-    def get_option_link_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
-        return self.linker.get_option_args(options)
+    def get_option_link_args(self, target: 'BuildTarget', env: 'Environment') -> T.List[str]:
+        return self.linker.get_option_args(*args, **kwargs)
 
     def check_header(self, hname: str, prefix: str, env: 'Environment', *,
                      extra_args: T.Union[None, T.List[str], T.Callable[[CompileCheckMode], T.List[str]]] = None,
