@@ -316,10 +316,13 @@ class GnuCCompiler(GnuCompiler, CCompiler):
             )
         return opts
 
-    def get_option_compile_args(self, target: 'BuildTarget', env: 'Environment') -> T.List[str]:
+    def get_option_compile_args(self, target: 'BuildTarget', env: 'Environment', subproject=None) -> T.List[str]:
         args = []
         key = self.form_compileropt_key('std')
-        std = env.coredata.get_option_for_target(target, key)
+        if target:
+            std = env.coredata.get_option_for_target(target, key)
+        else:
+            std = env.coredata.get_option_for_subproject(key, subproject)
         if std != 'none':
             args.append('-std=' + std)
         return args

@@ -464,9 +464,13 @@ class CoreData:
         if override is not None:
             # FIXME validate that the value is good.
             return override
+        return self.get_option_for_subproject(key, target.subproject)
+
+    def get_option_for_subproject(self, key: T.Union[str, OptionKey], subproject) -> T.Union[T.List[str], str, int, bool, WrapMode]:
         # FIXME: This is fundamentally the same algorithm than interpreter.get_option_internal().
         # We should try to share the code somehow.
-        key = key.evolve(subproject=key.subproject)
+        if isinstance(key, str):
+            key = OptionKey(key, subproject=subproject)
         if not key.is_project():
             opt = self.options.get(key)
             if opt is None or opt.yielding:
