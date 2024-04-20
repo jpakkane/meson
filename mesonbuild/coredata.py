@@ -457,6 +457,24 @@ class CoreData:
 
         raise MesonException(f'Tried to get unknown builtin option {str(key)}')
 
+    def get_option_for_target(self, target: BuildTarget, key: OptionKey) -> T.Union[T.List[str], str, int, bool, WrapMode]:
+        override = target.get_raw_override(key.name)
+        if override is not None:
+            # FIXME validate that the value is good.
+            return override
+        # FIXME: This is fundamentally the same algorithm than interpreter.get_option_internal().
+        # We should try to share the code somehow.
+        key = key.evolve(subproject=key.subproject)
+        if not key.is_project():
+            opt = self.options.get(key)
+            if opt is None or opt.yielding:
+                opt = self.options[key.as_root()]
+        else:
+            opt = self.options[key]
+            if opt.yielding:
+                opt = self.options.get(key.as_root(), opt)
+        return opt.value
+
     def set_option(self, key: OptionKey, value, first_invocation: bool = False) -> bool:
         dirty = False
         if self.optstore.is_builtin_option(key):

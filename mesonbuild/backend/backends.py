@@ -2065,7 +2065,14 @@ class Backend:
                                           target.output_templ, target.depends)
 
     def is_unity(self, target: build.BuildTarget) -> bool:
-        return target.is_unity
+        val = self.get_target_option(target, 'unity')
+        if val == 'on':
+            return True
+        if val == 'off':
+            return False
+        if val == 'subprojects':
+            return target.subproject != ''
+        sys.exit('Internal error: invalid option type for "unity".')
 
     def get_target_option(self, target: build.Target, name: T.Union[str, OptionKey]) -> T.Union[str, int, bool, 'WrapMode']:
         if isinstance(name, str):
@@ -2074,4 +2081,4 @@ class Backend:
             key = name
         else:
             raise MesonBugException('Internal error: invalid option type.')
-        return target.get_option(key)
+        return self.environment.coredata.get_option_for_target(target, key)
