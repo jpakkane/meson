@@ -11,7 +11,7 @@ from pathlib import Path
 import re
 import typing as T
 
-from .common import CMakeException, CMakeTarget, language_map, cmake_get_generator_args, check_cmake_args
+from .common import CMakeException, CMakeTarget, language_map, cmake_get_generator_args, check_cmake_args, get_config_declined_property
 from .fileapi import CMakeFileAPI
 from .executor import CMakeExecutor
 from .toolchain import CMakeToolchain, CMakeExecScope
@@ -688,8 +688,8 @@ class ConverterCustomTarget:
                     continue
                 elif j in trace.targets:
                     trace_tgt = trace.targets[j]
-                    if trace_tgt.type == 'EXECUTABLE' and 'IMPORTED_LOCATION' in trace_tgt.properties:
-                        cmd += trace_tgt.properties['IMPORTED_LOCATION']
+                    if trace_tgt.type == 'EXECUTABLE' and get_config_declined_property(trace_tgt, 'IMPORTED_LOCATION', trace):
+                        cmd += get_config_declined_property(trace_tgt, 'IMPORTED_LOCATION', trace)
                         continue
                     mlog.debug(f'CMake: Found invalid CMake target "{j}" --> ignoring \n{trace_tgt}')
 
@@ -796,6 +796,10 @@ class CMakeInterpreter:
         self.trace: CMakeTraceParser
         self.output_target_map = OutputTargetMap(self.build_dir)
 
+        # Set the default CMake build type from the meson build type
+        cmake_build_type = T.cast('str', self.env.coredata.get_option(OptionKey('buildtype')))
+        self.build_type = buildtype_map[cmake_build_type] if cmake_build_type in buildtype_map else cmake_build_type
+
         # Generated meson data
         self.generated_targets: T.Dict[str, T.Dict[str, T.Optional[str]]] = {}
         self.internal_name_map: T.Dict[str, str] = {}
@@ -814,7 +818,7 @@ class CMakeInterpreter:
         cmake_exe = CMakeExecutor(self.env, '>=3.14', MachineChoice.BUILD)
         if not cmake_exe.found():
             raise CMakeException('Unable to find CMake')
-        self.trace = CMakeTraceParser(cmake_exe.version(), self.build_dir, self.env, permissive=True)
+        self.trace = CMakeTraceParser(cmake_exe.version(), self.build_dir, self.env, permissive=True, build_type=self.build_type)
 
         preload_file = DataFile('cmake/data/preload.cmake').write_to_private(self.env)
         toolchain = CMakeToolchain(cmake_exe, self.env, self.for_machine, CMakeExecScope.SUBPROJECT, self.build_dir, preload_file)
@@ -827,11 +831,15 @@ class CMakeInterpreter:
         cmake_args += cmake_get_generator_args(self.env)
         cmake_args += [f'-DCMAKE_INSTALL_PREFIX={self.install_prefix}']
         cmake_args += extra_cmake_options
-        if not any(arg.startswith('-DCMAKE_BUILD_TYPE=') for arg in cmake_args):
-            # Our build type is favored over any CMAKE_BUILD_TYPE environment variable
-            buildtype = T.cast('str', self.env.coredata.get_option(OptionKey('buildtype')))
-            if buildtype in buildtype_map:
-                cmake_args += [f'-DCMAKE_BUILD_TYPE={buildtype_map[buildtype]}']
+        if any(arg.startswith('-DCMAKE_BUILD_TYPE=') for arg in cmake_args):
+            # Allow to override the CMAKE_BUILD_TYPE environment variable
+            mlog.debug('CMake build type explicitly set')
+            cmake_build_type = next(arg for arg in cmake_args if arg.startswith('-DCMAKE_BUILD_TYPE=')).split('=')[1]
+            self.build_type = buildtype_map[cmake_build_type] if cmake_build_type in buildtype_map else cmake_build_type
+        else:
+            mlog.debug('CMake build type set from the meson build type')
+            cmake_args += [f'-DCMAKE_BUILD_TYPE={self.build_type}']
+
         trace_args = self.trace.trace_args()
         cmcmp_args = [f'-DCMAKE_POLICY_WARNING_{x}=OFF' for x in disable_policy_warnings]
 
@@ -842,6 +850,7 @@ class CMakeInterpreter:
         with mlog.nested():
             mlog.log('Configuring the build directory with', mlog.bold('CMake'), 'version', mlog.cyan(cmake_exe.version()))
             mlog.log(mlog.bold('Running CMake with:'), ' '.join(cmake_args))
+            mlog.log(mlog.bold('  - build type:              '), self.build_type)
             mlog.log(mlog.bold('  - build directory:         '), self.build_dir.as_posix())
             mlog.log(mlog.bold('  - source directory:        '), self.src_dir.as_posix())
             mlog.log(mlog.bold('  - toolchain file:          '), toolchain_file.as_posix())

@@ -2,7 +2,7 @@
 # Copyright 2021 The Meson development team
 from __future__ import annotations
 
-from .common import cmake_is_debug
+from .common import get_config_declined_property
 from .. import mlog
 from ..mesonlib import Version
 
@@ -58,8 +58,6 @@ def resolve_cmake_trace_targets(target_name: str,
     reg_is_lib = re.compile(r'^(-l[a-zA-Z0-9_]+|-l?pthread)$')
     reg_is_maybe_bare_lib = re.compile(r'^[a-zA-Z0-9_]+$')
 
-    is_debug = cmake_is_debug(env)
-
     processed_targets: T.List[str] = []
     while len(targets) > 0:
         curr = targets.pop(0)
@@ -103,8 +101,6 @@ def resolve_cmake_trace_targets(target_name: str,
             continue
 
         tgt = trace.targets[curr]
-        cfgs = []
-        cfg = ''
         mlog.debug(tgt)
 
         if 'INTERFACE_INCLUDE_DIRECTORIES' in tgt.properties:
@@ -119,37 +115,15 @@ def resolve_cmake_trace_targets(target_name: str,
         if 'INTERFACE_COMPILE_OPTIONS' in tgt.properties:
             res.public_compile_opts += [x for x in tgt.properties['INTERFACE_COMPILE_OPTIONS'] if x]
 
-        if 'IMPORTED_CONFIGURATIONS' in tgt.properties:
-            cfgs = [x for x in tgt.properties['IMPORTED_CONFIGURATIONS'] if x]
-            cfg = cfgs[0]
-
-        if is_debug:
-            if 'DEBUG' in cfgs:
-                cfg = 'DEBUG'
-            elif 'RELEASE' in cfgs:
-                cfg = 'RELEASE'
-        else:
-            if 'RELEASE' in cfgs:
-                cfg = 'RELEASE'
-
-        if f'IMPORTED_IMPLIB_{cfg}' in tgt.properties:
-            res.libraries += [x for x in tgt.properties[f'IMPORTED_IMPLIB_{cfg}'] if x]
-        elif 'IMPORTED_IMPLIB' in tgt.properties:
-            res.libraries += [x for x in tgt.properties['IMPORTED_IMPLIB'] if x]
-        elif f'IMPORTED_LOCATION_{cfg}' in tgt.properties:
-            res.libraries += [x for x in tgt.properties[f'IMPORTED_LOCATION_{cfg}'] if x]
-        elif 'IMPORTED_LOCATION' in tgt.properties:
-            res.libraries += [x for x in tgt.properties['IMPORTED_LOCATION'] if x]
+        res.libraries += get_config_declined_property(tgt, 'IMPORTED_IMPLIB', trace)
+        res.libraries += get_config_declined_property(tgt, 'IMPORTED_LOCATION', trace)
 
         if 'LINK_LIBRARIES' in tgt.properties:
             targets += [x for x in tgt.properties['LINK_LIBRARIES'] if x]
         if 'INTERFACE_LINK_LIBRARIES' in tgt.properties:
             targets += [x for x in tgt.properties['INTERFACE_LINK_LIBRARIES'] if x]
 
-        if f'IMPORTED_LINK_DEPENDENT_LIBRARIES_{cfg}' in tgt.properties:
-            targets += [x for x in tgt.properties[f'IMPORTED_LINK_DEPENDENT_LIBRARIES_{cfg}'] if x]
-        elif 'IMPORTED_LINK_DEPENDENT_LIBRARIES' in tgt.properties:
-            targets += [x for x in tgt.properties['IMPORTED_LINK_DEPENDENT_LIBRARIES'] if x]
+        targets += get_config_declined_property(tgt, 'IMPORTED_LINK_DEPENDENT_LIBRARIES', trace)
 
         processed_targets += [curr]
 

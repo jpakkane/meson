@@ -50,6 +50,22 @@
 #error "The flag CMAKE_PROP2_ERROR was set"
 #endif
 
+#if defined(CMAKE_FLAG_REQUIRED_RELEASE) && defined(DEBUG)
+#error "The flag CMAKE_FLAG_REQUIRED_RELEASE set in debug mode"
+#endif
+
+#if defined(CMAKE_FLAG_REQUIRED_DEBUG) && !defined(DEBUG)
+#error "The flag CMAKE_FLAG_REQUIRED_DEBUG set in release mode"
+#endif
+
+#if !defined(CMAKE_FLAG_REQUIRED_DEBUG) && !defined(CMAKE_FLAG_REQUIRED_RELEASE)
+#error "No build type flag is set"
+#endif
+
+#if defined(CMAKE_FLAG_REQUIRED_DEBUG) && defined(CMAKE_FLAG_REQUIRED_RELEASE)
+#error "Both build type flags are set"
+#endif
+
 class cmModClass {
   private:
     std::string str;

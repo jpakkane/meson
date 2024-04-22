@@ -84,11 +84,12 @@ class CMakeGeneratorTarget(CMakeTarget):
         self.working_dir: T.Optional[Path] = None
 
 class CMakeTraceParser:
-    def __init__(self, cmake_version: str, build_dir: Path, env: 'Environment', permissive: bool = True) -> None:
+    def __init__(self, cmake_version: str, build_dir: Path, env: 'Environment', build_type: str = None, permissive: bool = True) -> None:
         self.vars:                      T.Dict[str, T.List[str]] = {}
         self.vars_by_file: T.Dict[Path, T.Dict[str, T.List[str]]] = {}
         self.targets:                   T.Dict[str, CMakeTarget] = {}
         self.cache:                     T.Dict[str, CMakeCacheEntry] = {}
+        self.build_type:                str = build_type
 
         self.explicit_headers: T.Set[Path] = set()
 

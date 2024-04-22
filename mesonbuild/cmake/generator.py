@@ -5,7 +5,8 @@ from __future__ import annotations
 
 from .. import mesonlib
 from .. import mlog
-from .common import cmake_is_debug
+from ..mesonlib import OptionKey
+from .common import get_config_declined_property
 import typing as T
 
 if T.TYPE_CHECKING:
@@ -61,31 +62,18 @@ def parse_generator_expressions(
             mlog.warning(f"Unable to evaluate the cmake variable '$<TARGET_FILE:{arg}>'.")
             return ''
         tgt = trace.targets[arg]
+        if not tgt.imported:
+            mlog.warning(f"'$<TARGET_FILE:{arg}>' generator expression is supported only for imported targets.")
+        mlog.warning(f"bin_dir is {tgt.current_bin_dir}, {tgt.current_src_dir}")
 
-        cfgs = []
-        cfg = ''
+        implib = get_config_declined_property(tgt, 'IMPORTED_IMPLIB', trace)
+        if implib:
+            return ';'.join(implib)
 
-        if 'IMPORTED_CONFIGURATIONS' in tgt.properties:
-            cfgs = [x for x in tgt.properties['IMPORTED_CONFIGURATIONS'] if x]
-            cfg = cfgs[0]
+        location = get_config_declined_property(tgt, 'IMPORTED_LOCATION', trace)
+        if location:
+            return ';'.join(location)
 
-        if cmake_is_debug(trace.env):
-            if 'DEBUG' in cfgs:
-                cfg = 'DEBUG'
-            elif 'RELEASE' in cfgs:
-                cfg = 'RELEASE'
-        else:
-            if 'RELEASE' in cfgs:
-                cfg = 'RELEASE'
-
-        if f'IMPORTED_IMPLIB_{cfg}' in tgt.properties:
-            return ';'.join([x for x in tgt.properties[f'IMPORTED_IMPLIB_{cfg}'] if x])
-        elif 'IMPORTED_IMPLIB' in tgt.properties:
-            return ';'.join([x for x in tgt.properties['IMPORTED_IMPLIB'] if x])
-        elif f'IMPORTED_LOCATION_{cfg}' in tgt.properties:
-            return ';'.join([x for x in tgt.properties[f'IMPORTED_LOCATION_{cfg}'] if x])
-        elif 'IMPORTED_LOCATION' in tgt.properties:
-            return ';'.join([x for x in tgt.properties['IMPORTED_LOCATION'] if x])
         return ''
 
     supported: T.Dict[str, T.Callable[[str], str]] = {
@@ -130,6 +118,10 @@ def parse_generator_expressions(
         'TARGET_NAME_IF_EXISTS': lambda x: x if x in trace.targets else '',
         'TARGET_PROPERTY': target_property,
         'TARGET_FILE': target_file,
+
+        # Configurations (Debug, Release...)
+        # CMake is case-insensitive
+        'CONFIG': lambda x: '1' if x.upper() == T.cast('str', trace.env.coredata.get_option(OptionKey('buildtype'))).upper() else '0'
     }
 
     # Recursively evaluate generator expressions
@@ -170,6 +162,8 @@ def parse_generator_expressions(
         # Evaluate the function
         if func in supported:
             res = supported[func](args)
+        else:
+            mlog.debug(f"Ignoring unsupported generator expression {func}:{args}.")
 
         return res
 

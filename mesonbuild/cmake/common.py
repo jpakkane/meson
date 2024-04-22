@@ -9,6 +9,7 @@ from pathlib import Path
 import typing as T
 
 if T.TYPE_CHECKING:
+    from .traceparser import CMakeTarget as CMakeTraceTarget, CMakeTraceParser
     from ..environment import Environment
     from ..interpreterbase import TYPE_var
 
@@ -61,6 +62,34 @@ def cmake_is_debug(env: 'Environment') -> bool:
         debug_opt = env.coredata.get_option(OptionKey('debug'))
         assert isinstance(debug_opt, bool)
         return debug_opt
+
+# Get a property that can be overriden depending on the configuration name
+# Example: IMPORTED_LOCATION which can be overriden as IMPORTED_LOCATION_RELEASE
+# https://cmake.org/cmake/help/latest/prop_tgt/IMPORTED_CONFIGURATIONS.html#imported-configurations
+def get_config_declined_property(target: 'CMakeTraceTarget',
+                                 property: str,
+                                 trace: 'CMakeTraceParser') -> T.List[str]:
+    cfg = trace.build_type.upper() if trace.build_type else None
+    imported_cfgs: T.List[str] = []
+    # Does the target define custom build type mapping?
+    if f'MAP_IMPORTED_CONFIG_{cfg}' in target.properties:
+        cfg = target.properties[f'MAP_IMPORTED_CONFIG_{cfg}'][0].upper()
+    # If IMPORTED_CONFIGURATIONS is defined, only explicitly listed configurations may be selected
+    if 'IMPORTED_CONFIGURATIONS' in target.properties:
+        imported_cfgs = [x.upper() for x in target.properties['IMPORTED_CONFIGURATIONS'] if x]
+        if cfg not in imported_cfgs:
+            if cmake_is_debug(trace.env) and 'DEBUG' in imported_cfgs:
+                cfg = 'DEBUG'
+            elif not cmake_is_debug(trace.env) and 'RELEASE' in imported_cfgs:
+                cfg = 'RELEASE'
+            else:
+                cfg = imported_cfgs[0]
+
+    if cfg and f'{property}_{cfg}' in target.properties:
+        return target.properties[f'{property}_{cfg}']
+    if property in target.properties:
+        return target.properties[property]
+    return []
 
 class CMakeException(MesonException):
     pass
