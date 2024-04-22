@@ -327,11 +327,21 @@ class GnuCCompiler(GnuCompiler, CCompiler):
             args.append('-std=' + std)
         return args
 
-    def get_option_link_args(self, target: 'BuildTarget', env: 'Environment') -> T.List[str]:
+    def get_option_link_args(self, target: 'BuildTarget', env: 'Environment', subproject=None) -> T.List[str]:
         if self.info.is_windows() or self.info.is_cygwin():
             # without a typeddict mypy can't figure this out
             key = self.form_compileropt_key('winlibs')
-            libs: T.List[str] = env.get_option_for_target(target, key).copy()
+            if target:
+                libs: T.List[str] = env.get_option_for_target(target,
+                                                              OptionKey('winlibs',
+                                                                        lang=self.language,
+                                                                        machine=self.for_machine)).copy()
+            else:
+                libs: T.List[str] = env.get_option_for_subproject(OptionKey('winlibs',
+                                                                            lang=self.language,
+                                                                            machine=self.for_machine),
+                                                                            subproject).copy()
+
             assert isinstance(libs, list)
             for l in libs:
                 assert isinstance(l, str)

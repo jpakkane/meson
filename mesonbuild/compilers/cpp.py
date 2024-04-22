@@ -491,31 +491,44 @@ class GnuCPPCompiler(_StdCPPLibMixin, GnuCompiler, CPPCompiler):
             )
         return opts
 
-    def get_option_compile_args(self, target: 'BuildTarget', env: 'Environment') -> T.List[str]:
+    def get_option_compile_args(self, target: 'BuildTarget', env: 'Environment', subproject=None) -> T.List[str]:
         args: T.List[str] = []
         stdkey = self.form_compileropt_key('std')
         ehkey = self.form_compileropt_key('eh')
         rttikey = self.form_compileropt_key('rtti')
         debugstlkey = self.form_compileropt_key('debugstl')
 
-        std = env.coredata.get_option_for_target(target, stdkey)
+        if target:
+            std = env.coredata.get_option_for_target(target, stdkey)
+            rtti = env.coredata.get_option_for_target(target, rttikey)
+            debugstl = env.coredata.get_option_for_target(target, debugstlkey)
+            eh = env.coredata.get_option_for_target(target, ehkey)
+        else:
+            std = env.coredata.get_option_for_subproject(stdkey, subproject)
+            rtti = env.coredata.get_option_for_subproject(rttikey, subproject)
+            debugstl = env.coredata.get_option_for_subproject(debugstlkey, subproject)
+            eh = env.coredata.get_option_for_subproject(ehkey, subproject)
+
         if std != 'none':
             args.append(self._find_best_cpp_std(std))
 
-        non_msvc_eh_options(options.get_value(ehkey), args)
+        non_msvc_eh_options(eh, args)
 
-        if not env.coredata.get_option_for_target(target, rttikey):
+        if not rtti:
             args.append('-fno-rtti')
 
-        if env.coredata.get_option_for_target(target, debugstlkey):
+        if debugstl:
             args.append('-D_GLIBCXX_DEBUG=1')
         return args
 
-    def get_option_link_args(self, target: 'BuildTarget', env: 'Environment') -> T.List[str]:
+    def get_option_link_args(self, target: 'BuildTarget', env: 'Environment', subproject=None) -> T.List[str]:
         if self.info.is_windows() or self.info.is_cygwin():
             # without a typedict mypy can't understand this.
             key = self.form_compileropt_key('winlibs')
-            libs = env.coredata.get_option_for_target(target, key).copy()
+            if target:
+                libs = env.coredata.get_option_for_target(target, key).copy()
+            else:
+                libs = env.coredata.get_option_for_subproject(key, subproject)
             assert isinstance(libs, list)
             for l in libs:
                 assert isinstance(l, str)
