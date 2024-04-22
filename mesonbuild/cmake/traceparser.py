@@ -18,6 +18,7 @@ import json
 import textwrap
 
 if T.TYPE_CHECKING:
+    from .interpreter import ConverterTarget
     from ..environment import Environment
 
 class CMakeTraceLine:
@@ -47,7 +48,8 @@ class CMakeTarget:
                 target_type: str,
                 properties:  T.Optional[T.Dict[str, T.List[str]]] = None,
                 imported:    bool = False,
-                tline:       T.Optional[CMakeTraceLine] = None
+                tline:       T.Optional[CMakeTraceLine] = None,
+                target:      T.Optional[ConverterTarget] = None
             ):
         if properties is None:
             properties = {}
@@ -59,6 +61,7 @@ class CMakeTarget:
         self.depends: T.List[str] = []
         self.current_bin_dir: T.Optional[Path] = None
         self.current_src_dir: T.Optional[Path] = None
+        self.target = target
 
     def __repr__(self) -> str:
         s = 'CMake TARGET:\n  -- name:      {}\n  -- type:      {}\n  -- imported:  {}\n  -- properties: {{\n{}     }}\n  -- tline: {}'
@@ -84,11 +87,12 @@ class CMakeGeneratorTarget(CMakeTarget):
         self.working_dir: T.Optional[Path] = None
 
 class CMakeTraceParser:
-    def __init__(self, cmake_version: str, build_dir: Path, env: 'Environment', permissive: bool = True) -> None:
+    def __init__(self, cmake_version: str, build_dir: Path, env: 'Environment', build_type: str = None, permissive: bool = True) -> None:
         self.vars:                      T.Dict[str, T.List[str]] = {}
         self.vars_by_file: T.Dict[Path, T.Dict[str, T.List[str]]] = {}
         self.targets:                   T.Dict[str, CMakeTarget] = {}
         self.cache:                     T.Dict[str, CMakeCacheEntry] = {}
+        self.build_type:                str = build_type
 
         self.explicit_headers: T.Set[Path] = set()
 
@@ -672,11 +676,13 @@ class CMakeTraceParser:
             if i in ignore:
                 continue
 
-            if i in {'INTERFACE', 'LINK_INTERFACE_LIBRARIES', 'PUBLIC', 'PRIVATE', 'LINK_PUBLIC', 'LINK_PRIVATE'}:
+            if i in {'INTERFACE', 'LINK_INTERFACE_LIBRARIES', 'INTERFACE_LINK_LIBRARIES',
+                     'PUBLIC', 'PRIVATE', 'LINK_PUBLIC', 'LINK_PRIVATE'}:
                 mode = i
                 continue
 
-            if mode in {'INTERFACE', 'LINK_INTERFACE_LIBRARIES', 'PUBLIC', 'LINK_PUBLIC'}:
+            if mode in {'INTERFACE', 'LINK_INTERFACE_LIBRARIES', 'INTERFACE_LINK_LIBRARIES',
+                        'PUBLIC', 'LINK_PUBLIC'}:
                 interface += i.split(';')
 
             if mode in {'PUBLIC', 'PRIVATE', 'LINK_PRIVATE'}:

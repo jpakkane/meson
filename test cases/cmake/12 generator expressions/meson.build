@@ -2,6 +2,10 @@ project('cmakeSubTest', ['c', 'cpp'])
 
 cm = import('cmake')
 
+if get_option('debug')
+  add_global_arguments(['-DDEBUG'], language: ['c', 'cpp'])
+endif
+
 sub_pro = cm.subproject('cmMod')
 sub_dep = sub_pro.dependency('cmModLib')
 

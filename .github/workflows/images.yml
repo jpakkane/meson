@@ -7,13 +7,14 @@ concurrency:
 on:
   push:
     branches:
+      - main
     paths:
       - 'ci/ciimage/**'
       - '.github/workflows/images.yml'
 
   pull_request:
     branches:
-      - master
+      - main
     paths:
       - 'ci/ciimage/**'
       - '.github/workflows/images.yml'

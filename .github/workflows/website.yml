@@ -8,7 +8,7 @@ concurrency:
 on:
   push:
     branches:
-      - master
+      - main
     paths:
       - .github/workflows/website.yml
       - docs/**
