@@ -618,7 +618,7 @@ class Compiler(HoldableObject, metaclass=abc.ABCMeta):
         return []
 
     def get_option_link_args(self, target: 'BuildTarget', env: 'Environment', subproject=None) -> T.List[str]:
-        return self.linker.get_option_args(*args, **kwargs)
+        return self.linker.get_option_link_args(target, env, subproject)
 
     def check_header(self, hname: str, prefix: str, env: 'Environment', *,
                      extra_args: T.Union[None, T.List[str], T.Callable[[CompileCheckMode], T.List[str]]] = None,
@@ -910,8 +910,8 @@ class Compiler(HoldableObject, metaclass=abc.ABCMeta):
     def get_std_shared_lib_link_args(self) -> T.List[str]:
         return self.linker.get_std_shared_lib_args()
 
-    def get_std_shared_module_link_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
-        return self.linker.get_std_shared_module_args(options)
+    def get_std_shared_module_link_args(self, target: 'BuildTarget') -> T.List[str]:
+        return self.linker.get_std_shared_module_args(target)
 
     def get_link_whole_for(self, args: T.List[str]) -> T.List[str]:
         return self.linker.get_link_whole_for(args)
