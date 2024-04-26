@@ -451,10 +451,10 @@ class IntelCCompiler(IntelGnuLikeCompiler, CCompiler):
         std_opt.set_versions(stds, gnu=True)
         return opts
 
-    def get_option_compile_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
+    def get_option_compile_args(self, target: 'BuildTarget', env: 'Environment', subproject=None) -> T.List[str]:
         args = []
         key = self.form_compileropt_key('std')
-        std = options.get_value(key)
+        std = env.determine_option_value(key, target, subproject)
         if std != 'none':
             args.append('-std=' + std)
         return args
@@ -538,9 +538,10 @@ class ClangClCCompiler(_ClangCStds, ClangClCompiler, VisualStudioLikeCCompilerMi
                            full_version=full_version)
         ClangClCompiler.__init__(self, target)
 
-    def get_option_compile_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
+    def get_option_compile_args(self, target: 'BuildTarget', env: 'Environment', subproject=None) -> T.List[str]:
+        args = []
         key = self.form_compileropt_key('std')
-        std = options.get_value(key)
+        std = env.determine_option_value(key, target, subproject)
         if std != "none":
             return [f'/clang:-std={std}']
         return []
@@ -570,10 +571,10 @@ class IntelClCCompiler(IntelVisualStudioLikeCompiler, VisualStudioLikeCCompilerM
         std_opt.set_versions(['c89', 'c99', 'c11'])
         return opts
 
-    def get_option_compile_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
+    def get_option_compile_args(self, target: 'BuildTarget', env: 'Environment', subproject=None) -> T.List[str]:
         args = []
         key = self.form_compileropt_key('std')
-        std = options.get_value(key)
+        std = env.determine_option_value(key, target, subproject)
         if std == 'c89':
             mlog.log("ICL doesn't explicitly implement c89, setting the standard to 'none', which is close.", once=True)
         elif std != 'none':

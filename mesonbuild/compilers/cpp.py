@@ -275,19 +275,16 @@ class ClangCPPCompiler(_StdCPPLibMixin, ClangCompiler, CPPCompiler):
             )
         return opts
 
-    def get_option_compile_args(self, target: 'BuildTarget', env: 'Environment') -> T.List[str]:
-        args: T.List[str] = []
+    def get_option_compile_args(self, target: 'BuildTarget', env: 'Environment', subproject=None) -> T.List[str]:
+        args = []
         key = self.form_compileropt_key('std')
-        std = env.get_option_for_target(target, key)
+        std = env.determine_option_value(key, target, subproject)
         if std != 'none':
             args.append(self._find_best_cpp_std(std))
 
-        key = self.form_compileropt_key('eh')
-        non_msvc_eh_options(options.get_value(key), args)
+        non_msvc_eh_options(env.determine_option_value(key.evolve('eh'), target, subproject), args)
 
-        key = self.form_compileropt_key('debugstl')
-
-        if env.get_option_for_target(target, key):
+        if env.determine_option_value(key.evolve('debugstl'), target, subproject):
             args.append('-D_GLIBCXX_DEBUG=1')
 
             # We can't do _LIBCPP_DEBUG because it's unreliable unless libc++ was built with it too:
@@ -297,7 +294,7 @@ class ClangCPPCompiler(_StdCPPLibMixin, ClangCompiler, CPPCompiler):
                 args.append('-D_LIBCPP_HARDENING_MODE=_LIBCPP_HARDENING_MODE_DEBUG')
 
         key = self.form_compileropt_key('rtti')
-        if not options.get_value(key):
+        if not env.determine_option_value(key, target, subproject):
             args.append('-fno-rtti')
 
         return args

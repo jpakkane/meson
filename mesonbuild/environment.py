@@ -1024,3 +1024,13 @@ class Environment:
         if extra_paths:
             env.prepend('PATH', list(extra_paths))
         return env
+
+    def determine_option_value(self, key: T.Union[str, 'OptionKey'], target: T.Optional['BuildTarget'], subproject: T.Optional[str]) -> T.List[str]:
+        if target is None and subproject is None:
+            raise RuntimeError('Internal error, option value determination is missing arguments.')
+        if isinstance(key, str):
+            key = OptionKey(key)
+        if target:
+            return self.coredata.get_option_for_target(target, key)
+        else:
+            return self.coredata.get_option_for_subproject(key, subproject)
