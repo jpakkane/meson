@@ -688,8 +688,14 @@ class Target(HoldableObject, metaclass=abc.ABCMeta):
         self.raw_overrides = self.parse_overrides(kwargs)
 >>>>>>> 772e9033d (Refactor code to use per-target option methods.)
 
-    def get_raw_override(self, key: str) -> T.Optional(str):
-        return None # FIXME
+    def get_override(self, name, fallback):
+        if isinstance(name, str):
+            name = OptionKey(name)
+        # FIXME. A target object should store overrides in the original string form.
+        # We need to refactor to make feasible.
+        if name in self.raw_overrides:
+            return str(self.raw_overrides.get(name, fallback))
+        return fallback
 
     @staticmethod
     def parse_overrides(kwargs: T.Dict[str, T.Any]) -> T.Dict[OptionKey, str]:

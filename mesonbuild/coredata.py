@@ -457,16 +457,22 @@ class CoreData:
 
         raise MesonException(f'Tried to get unknown builtin option {str(key)}')
 
+    def get_option_object_for_target(self, target: BuildTarget, key: T.Union[str, OptionKey]) -> 'UserOption[T.Any]':
+        return self.get_option_for_subproject(key, target.subproject)
+
     def get_option_for_target(self, target: BuildTarget, key: T.Union[str, OptionKey]) -> T.Union[T.List[str], str, int, bool, WrapMode]:
         if isinstance(key, str):
             key = OptionKey(key)
-        override = target.get_raw_override(key.name)
+        option_object = self.get_option_object_for_subproject(key, target.subproject)
+        override = target.get_override(key.name, None)
         if override is not None:
-            # FIXME validate that the value is good.
-            return override
-        return self.get_option_for_subproject(key, target.subproject)
+            return option_object.validate_value(override)
+        return option_object.value
 
-    def get_option_for_subproject(self, key: T.Union[str, OptionKey], subproject) -> T.Union[T.List[str], str, int, bool, WrapMode]:
+    def get_option_for_subproject(self, key: T.Union[str, OptionKey], subproject) -> UserOption[T.Any]:
+        return self.get_option_object_for_subproject(key, subproject).value
+
+    def get_option_object_for_subproject(self, key: T.Union[str, OptionKey], subproject) -> T.Union[T.List[str], str, int, bool, WrapMode]:
         # FIXME: This is fundamentally the same algorithm than interpreter.get_option_internal().
         # We should try to share the code somehow.
         if isinstance(key, str):
@@ -479,7 +485,7 @@ class CoreData:
             opt = self.options[key]
             if opt.yielding:
                 opt = self.options.get(key.as_root(), opt)
-        return opt.value
+        return opt
 
     def set_option(self, key: OptionKey, value, first_invocation: bool = False) -> bool:
         dirty = False
