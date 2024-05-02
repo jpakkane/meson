@@ -3004,12 +3004,11 @@ class Interpreter(InterpreterBase, HoldableObject):
     @noKwargs
     def func_join_paths(self, node: mparser.BaseNode, args: T.Tuple[T.List[str]], kwargs: 'TYPE_kwargs') -> str:
         parts = args[0]
-        other = os.path.join('', *parts[1:]).replace('\\', '/')
-        ret = os.path.join(*parts).replace('\\', '/')
-        if isinstance(parts[0], P_OBJ.DependencyVariableString) and '..' not in other:
+        ret = mesonlib.join_paths(*parts)
+        if isinstance(parts[0], P_OBJ.DependencyVariableString) and '/../' not in ret:
             return P_OBJ.DependencyVariableString(ret)
         elif isinstance(parts[0], P_OBJ.OptionString):
-            name = os.path.join(parts[0].optname, other)
+            name = mesonlib.join_paths(parts[0].optname, *parts[1:])
             return P_OBJ.OptionString(ret, name)
         else:
             return ret

@@ -7,12 +7,13 @@ from __future__ import annotations
 """Windows specific implementations of mesonlib functionality."""
 
 import msvcrt
+import os.path
 import typing as T
 
 from .core import MesonException
 from .platform import BuildDirLock as BuildDirLockBase
 
-__all__ = ['BuildDirLock']
+__all__ = ['BuildDirLock', 'join_paths']
 
 class BuildDirLock(BuildDirLockBase):
 
@@ -27,3 +28,7 @@ class BuildDirLock(BuildDirLockBase):
     def __exit__(self, *args: T.Any) -> None:
         msvcrt.locking(self.lockfile.fileno(), msvcrt.LK_UNLCK, 1)
         self.lockfile.close()
+
+
+def join_paths(*parts: str) -> str:
+    return os.path.join(*parts).replace('\\', '/')
