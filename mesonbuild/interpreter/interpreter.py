@@ -2999,6 +2999,7 @@ class Interpreter(InterpreterBase, HoldableObject):
             return env_convertor_with_method(init, kwargs['method'], kwargs['separator'])
         return EnvironmentVariables()
 
+    @FeatureNew('join_paths', '0.36.0')
     @typed_pos_args('join_paths', varargs=str, min_varargs=1)
     @noKwargs
     def func_join_paths(self, node: mparser.BaseNode, args: T.Tuple[T.List[str]], kwargs: 'TYPE_kwargs') -> str:
