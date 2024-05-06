@@ -260,7 +260,7 @@ class CoreData:
         self.target_guids = {}
         self.version = version
         self.optstore = options.OptionStore()
-        self.sp_option_overrides: 'MutableKeyedOptionDictType' = {}
+        self.sp_option_overrides: T.Dict[str, str] = {}
         self.cross_files = self.__load_config_files(cmd_options, scratch_dir, 'cross')
         self.compilers: PerMachine[T.Dict[str, Compiler]] = PerMachine(OrderedDict(), OrderedDict())
 
@@ -450,7 +450,7 @@ class CoreData:
 
     def get_option(self, key: OptionKey) -> T.Union[T.List[str], str, int, bool]:
         try:
-            return self.get_and_clean(key, self.sp_option_overrides)
+            return self.get_and_clean(key, self.options)
         except KeyError:
             pass
 
@@ -471,16 +471,22 @@ class CoreData:
         override = target.get_override(key.name, None)
         if override is not None:
             return option_object.validate_value(override)
+        return self.compute_value_for_subproject_option(option_object, key.name, target.subproject)
+
+    def compute_value_for_subproject_option(self, option_object, name, subproject):
+        sp_override_key = f'{subproject}:{name}'
+        sp_override_value = self.sp_option_overrides.get(sp_override_key, None)
+        if sp_override_value is not None:
+            return option_object.validate_value(sp_override_value)
         return option_object.value
 
     def get_option_for_subproject(self, key: T.Union[str, OptionKey], subproject) -> UserOption[T.Any]:
-        return self.get_option_object_for_subproject(key, subproject).value
-
-    def get_option_object_for_subproject(self, key: T.Union[str, OptionKey], subproject) -> T.Union[T.List[str], str, int, bool, WrapMode]:
-        # FIXME: This is fundamentally the same algorithm than interpreter.get_option_internal().
-        # We should try to share the code somehow.
         if isinstance(key, str):
             key = OptionKey(key, subproject=subproject)
+        option_object = self.get_option_object_for_subproject(key, subproject)
+        return self.compute_value_for_subproject_option(option_object, key.name, subproject)
+
+    def get_option_object_for_subproject(self, key: T.Union[str, OptionKey], subproject) -> T.Union[T.List[str], str, int, bool, WrapMode]:
         if not key.is_project():
             opt = self.options.get(key)
             if opt is None or opt.yielding:
@@ -715,15 +721,13 @@ class CoreData:
                 raise MesonException(f'Option to add override has no subproject: {entry}')
             if not self.can_set_per_sb(keystr):
                 raise MesonException(f'Option {keystr} can not be set per subproject.')
-            key = OptionKey.from_string(keystr)
-            if key in self.sp_option_overrides:
+            if keystr in self.sp_option_overrides:
                 raise MesonException(f'Override {keystr} already exists.')
+            key = OptionKey.from_string(keystr)
             original_key = key.evolve(subproject='')
             if original_key not in self.options:
                 raise MesonException('Tried to override a nonexisting key.')
-            new_opt = copy.deepcopy(self.options[original_key])
-            new_opt.set_value(valstr)
-            self.sp_option_overrides[key] = new_opt
+            self.sp_option_overrides[keystr] = valstr
             dirty = True
         return dirty
 
@@ -732,9 +736,8 @@ class CoreData:
         if U is None:
             return False
         for entry in U:
-            key = OptionKey.from_string(entry)
-            if key in self.options:
-                del self.options[key]
+            if entry in self.sp_option_overrides:
+                del self.sp_option_overrides[entry]
                 dirty = True
             else:
                 pass # Deleting a non-existing key ok, I guess?
