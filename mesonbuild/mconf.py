@@ -329,6 +329,7 @@ class Conf:
             print_default_values_warning()
 
         self.print_nondefault_buildtype_options()
+        self.print_sp_overrides()
 
     def print_nondefault_buildtype_options(self) -> None:
         mismatching = self.coredata.get_nondefault_buildtype_args()
@@ -338,6 +339,12 @@ class Conf:
         mlog.log('               current   default')
         for m in mismatching:
             mlog.log(f'{m[0]:21}{m[1]:10}{m[2]:10}')
+
+    def print_sp_overrides(self) -> None:
+        if self.coredata.sp_option_overrides:
+            mlog.log('\nThe folowing options have per-subproject overrides:')
+            for k, v in self.coredata.sp_option_overrides.items():
+                mlog.log(f'{k:21}{v:10}')
 
 def has_option_flags(options):
     if options.cmd_line_options:

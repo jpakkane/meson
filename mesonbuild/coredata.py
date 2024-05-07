@@ -691,8 +691,12 @@ class CoreData:
 
         unknown_options: T.List[OptionKey] = []
         for k, v in opts_to_set.items():
+            override_name = f'{k.subproject}:{k.name}'
             if k == pfk:
                 continue
+            elif override_name in self.sp_option_overrides:
+                self.sp_option_overrides[override_name] = v
+                dirty = True
             elif k in self.optstore:
                 dirty |= self.set_option(k, v, first_invocation)
             elif k.machine != MachineChoice.BUILD and not self.optstore.is_compiler_option(k):

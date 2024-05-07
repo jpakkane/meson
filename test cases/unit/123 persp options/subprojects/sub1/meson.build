@@ -11,6 +11,8 @@ elif round == 3
 elif round == 4
    assert(opt == '1')
 elif round == 5
+   assert(opt == '1')
+elif round == 6
    assert(opt == '2')
 else
   assert(false, 'Invalid round number')
