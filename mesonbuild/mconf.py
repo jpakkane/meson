@@ -373,7 +373,7 @@ def run_impl(options: CMDOptions, builddir: str) -> int:
 
         save = False
         if has_option_flags(options):
-            save |= c.set_options(options.cmd_line_options)
+            save |= c.coredata.set_options_from_configure_strings(options.projectoptions)
             save |= c.coredata.create_sp_options(options.A)
             save |= c.coredata.remove_sp_options(options.U)
             coredata.update_cmd_line_file(builddir, options)
