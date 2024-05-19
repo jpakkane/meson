@@ -442,20 +442,14 @@ class CoreData:
                 'Default project to execute in Visual Studio',
                 ''))
 
-    def get_and_clean(self, key, store):
-        v = store[key].value
-        if key.name == 'wrap_mode':
-            return WrapMode[v]
-        return v
-
     def get_option(self, key: OptionKey) -> T.Union[T.List[str], str, int, bool]:
         try:
-            return self.get_and_clean(key, self.options)
+            return self.options[key].value
         except KeyError:
             pass
 
         try:
-            return self.get_and_clean(key.as_root(), self.options)
+            return self.options[key.as_root()].value
         except KeyError:
             pass
 

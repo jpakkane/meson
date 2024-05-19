@@ -41,7 +41,6 @@ DEFAULT_YIELDING = False
 
 # Can't bind this near the class method it seems, sadly.
 _T = T.TypeVar('_T')
-_U = T.TypeVar('_U', bound=UserOption[_T])
 
 backendlist = ['ninja', 'vs', 'vs2010', 'vs2012', 'vs2013', 'vs2015', 'vs2017', 'vs2019', 'vs2022', 'xcode', 'none']
 genvslitelist = ['vs2022']
@@ -274,6 +273,8 @@ class UserOption(T.Generic[_T], HoldableObject):
         oldvalue = getattr(self, 'value', None)
         self.value = self.validate_value(newvalue)
         return self.value != oldvalue
+
+_U = T.TypeVar('_U', bound=UserOption[_T])
 
 class UserStringOption(UserOption[str]):
     def __init__(self, name: str, description: str, value: T.Any, yielding: bool = DEFAULT_YIELDING,
