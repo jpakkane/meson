@@ -685,7 +685,6 @@ class CoreData:
 
         unknown_options: T.List[OptionKey] = []
         for k, v in opts_to_set.items():
-            override_name = f'{k.subproject}:{k.name}'
             if k == pfk:
                 continue
             elif override_name in self.sp_option_overrides:
@@ -718,8 +717,7 @@ class CoreData:
                 self.sp_option_overrides[key] = val
                 dirty = True
             else:
-                # FIXME call the default setter, possibly after creating an OptionKey first.
-                pass
+                dirty |= self.set_options({OptionKey(key): val})
         return dirty
 
     def create_sp_options(self, A) -> bool:
