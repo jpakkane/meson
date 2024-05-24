@@ -692,17 +692,35 @@ class OptionStore:
         from .compilers import all_languages
         self.all_languages = set(all_languages)
         self.build_options = None
+        self.perproject = {}
+        self.does_yield = {}
+
+    def num_options(self):
+        basic = len(self.options)
+        build = len(self.build_options) if self.build_options else 0
+        return basic + build
 
     def __len__(self) -> int:
         return len(self.d)
 
     def add_system_option(self, name, value_object):
         cname = self.form_canonical_keystring(name)
-        self.options[cname] = value_object
+        # FIXME; transfer the old value for combos etc.
+        if cname not in self.options:
+            self.options[cname] = value_object
 
-    def add_project_option(self, name, subproject, keystr, value_object):
+    def add_project_option(self, name, subproject, yielding, value_object):
         cname = self.form_canonical_keystring(name, subproject)
-        self.options[keystr] = value_object
+        self.options[cname] = value_object
+        self.does_yield[cname] = yielding
+
+    def get_value_object_for(self, name, subproject=None):
+        cname = self.form_canonical_keystring(name, subproject)
+        if self.does_yield.get(cname, False):
+            top_cname = self.form_canonical_keystring(name)
+            if top_cname in self.options:
+                return self.options[top_cname]
+        return self.options[cname]
 
     def add_system_option(self, key: T.Union[OptionKey, str], valobj: 'UserOption[T.Any]') -> None:
         key = self.ensure_key(key)
@@ -819,5 +837,4 @@ class OptionStore:
         return key in self.module_options
 
     def get_value_for(self, name, subproject=None):
-        cname = self.form_canonical_keystring(name, subproject)
-        return self.options[cname].value
+        return self.get_value_object_for(name, subproject).value
