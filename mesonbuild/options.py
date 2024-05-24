@@ -25,6 +25,7 @@ from .mesonlib import (
     MesonException,
     listify_array_value,
     MachineChoice,
+    MesonException,
 )
 from . import mlog
 
@@ -692,8 +693,8 @@ class OptionStore:
         from .compilers import all_languages
         self.all_languages = set(all_languages)
         self.build_options = None
-        self.perproject = {}
-        self.does_yield = {}
+        self.project_options = set()
+        self.augments = {}
 
     def num_options(self):
         basic = len(self.options)
@@ -709,18 +710,20 @@ class OptionStore:
         if cname not in self.options:
             self.options[cname] = value_object
 
-    def add_project_option(self, name, subproject, yielding, value_object):
+    def add_project_option(self, name, subproject, value_object):
         cname = self.form_canonical_keystring(name, subproject)
         self.options[cname] = value_object
-        self.does_yield[cname] = yielding
+        self.project_options.add(cname)
 
     def get_value_object_for(self, name, subproject=None):
         cname = self.form_canonical_keystring(name, subproject)
-        if self.does_yield.get(cname, False):
-            top_cname = self.form_canonical_keystring(name)
-            if top_cname in self.options:
-                return self.options[top_cname]
-        return self.options[cname]
+        top_cname = self.form_canonical_keystring(name)
+        potential = self.options.get(cname, None)
+        if potential is None:
+            return self.options[top_cname]
+        if potential.yielding:
+            return self.options.get(top_cname, potential)
+        return potential
 
     def add_system_option(self, key: T.Union[OptionKey, str], valobj: 'UserOption[T.Any]') -> None:
         key = self.ensure_key(key)
@@ -837,4 +840,22 @@ class OptionStore:
         return key in self.module_options
 
     def get_value_for(self, name, subproject=None):
-        return self.get_value_object_for(name, subproject).value
+        vobject = self.get_value_object_for(name, subproject)
+        cname = self.form_canonical_keystring(name, subproject)
+        if cname in self.augments:
+            return vobject.validate_value(self.augments[cname])
+        return vobject.value
+
+    def set_from_configure_command(self, D, A, U):
+        for setval in D:
+            # FIXME
+            pass
+        for add in A:
+            keystr, valstr = add.split('=', 1)
+            keystr = self.canonicalize_keystring(keystr)
+            self.augments[keystr] = valstr
+        for delete in U:
+            delete = self.canonicalize_keystring(delete)
+            if delete in self.augments:
+                del self.augments[delete]
+
