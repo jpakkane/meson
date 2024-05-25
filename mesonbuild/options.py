@@ -8,6 +8,7 @@ from itertools import chain
 from functools import total_ordering
 import argparse
 import re
+import itertools
 import typing as T
 
 from .mesonlib import (
@@ -717,11 +718,12 @@ class OptionStore:
 
     def get_value_object_for(self, name, subproject=None):
         cname = self.form_canonical_keystring(name, subproject)
-        top_cname = self.form_canonical_keystring(name)
         potential = self.options.get(cname, None)
         if potential is None:
+            top_cname = self.form_canonical_keystring(name)
             return self.options[top_cname]
         if potential.yielding:
+            top_cname = self.form_canonical_keystring(name, '')
             return self.options.get(top_cname, potential)
         return potential
 
@@ -848,14 +850,25 @@ class OptionStore:
 
     def set_from_configure_command(self, D, A, U):
         for setval in D:
-            # FIXME
-            pass
+            keystr, valstr = setval.split('=', 1)
+            if keystr in self.augments:
+                self.augments[keystr] = valstr
+            else:
+                self.set_option_from_string(keystr, valstr)
         for add in A:
             keystr, valstr = add.split('=', 1)
             keystr = self.canonicalize_keystring(keystr)
+            if keystr in self.augments:
+                raise MesonException(f'Tried to add augment to option {keystr}, which already has an augment. Set it with -D instead.')
             self.augments[keystr] = valstr
         for delete in U:
             delete = self.canonicalize_keystring(delete)
             if delete in self.augments:
                 del self.augments[delete]
 
+    def set_subproject_options(self, subproject, spcall_default_options, project_default_options):
+        for o in itertools.chain(spcall_default_options, project_default_options):
+            keystr, valstr = o.split('=', 1)
+            keystr = f'{subproject}:{keystr}'
+            if keystr not in self.augments:
+                self.augments[keystr] = valstr
