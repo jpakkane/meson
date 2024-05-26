@@ -285,6 +285,8 @@ def list_buildoptions_from_source(intr: IntrospectionInterpreter) -> T.List[T.Di
 
 def list_buildoptions(coredata: cdata.CoreData, subprojects: T.Optional[T.List[str]] = None) -> T.List[T.Dict[str, T.Union[str, bool, int, T.List[str]]]]:
     optlist: T.List[T.Dict[str, T.Union[str, bool, int, T.List[str]]]] = []
+    if True:
+        return # FIXME
     subprojects = subprojects or []
 
     dir_option_names = set(options.BUILTIN_DIR_OPTIONS)

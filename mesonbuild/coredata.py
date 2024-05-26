@@ -443,17 +443,7 @@ class CoreData:
                 ''))
 
     def get_option(self, key: OptionKey) -> T.Union[T.List[str], str, int, bool]:
-        try:
-            return self.options[key].value
-        except KeyError:
-            pass
-
-        try:
-            return self.options[key.as_root()].value
-        except KeyError:
-            pass
-
-        raise MesonException(f'Tried to get unknown builtin option {str(key)}')
+        return self.optstore.get_value_for(key.name, key.subproject)
 
     def get_option_object_for_target(self, target: BuildTarget, key: T.Union[str, OptionKey]) -> 'UserOption[T.Any]':
         return self.get_option_for_subproject(key, target.subproject)
@@ -481,14 +471,18 @@ class CoreData:
         return self.compute_value_for_subproject_option(option_object, key.name, subproject)
 
     def get_option_object_for_subproject(self, key: T.Union[str, OptionKey], subproject) -> T.Union[T.List[str], str, int, bool, WrapMode]:
-        if not key.is_project():
-            opt = self.options.get(key)
-            if opt is None or opt.yielding:
-                opt = self.options[key.as_root()]
+        if key.lang is not None:
+            keyname = f'{key.lang}_{key.name}'
         else:
-            opt = self.options[key]
-            if opt.yielding:
-                opt = self.options.get(key.as_root(), opt)
+            keyname = key.name
+        if not key.is_project():
+            opt = self.optstore.get_value_object_for(keyname, key.subproject)
+            if opt is None or opt.yielding:
+                opt = self.optstore.get_value_object_for(keyname, '')
+        else:
+            opt = self.optstore.get_value_object_for(keyname, key.subproject)
+            if opt.yielding and self.optstore.has_option(keyname, ''):
+                opt = self.optstore.get_value_object_for(keyname, '')
         return opt
 
     def set_option(self, key: OptionKey, value, first_invocation: bool = False) -> bool:
@@ -497,11 +491,11 @@ class CoreData:
             if key.name == 'prefix':
                 value = self.sanitize_prefix(value)
             else:
-                prefix = self.optstore.get_value('prefix')
+                prefix = self.optstore.get_value_for('prefix')
                 value = self.sanitize_dir_option_value(prefix, key, value)
 
         try:
-            opt = self.optstore.get_value_object(key)
+            opt = self.optstore.get_value_object_for(key.name)
         except KeyError:
             raise MesonException(f'Tried to set unknown builtin option {str(key)}')
 
@@ -621,6 +615,10 @@ class CoreData:
         key = OptionKey(f'{lang}_link_args', machine=for_machine)
         return T.cast('T.List[str]', self.optstore.get_value(key))
 
+    def get_external_link_args(self, for_machine: MachineChoice, lang: str) -> T.List[str]:
+        # mypy cannot analyze type of OptionKey
+        return T.cast('T.List[str]', self.optstore.get_value_for(f'{lang}_link_args')) # FIXME machine=for_machine
+
     def update_project_options(self, project_options: 'MutableKeyedOptionDictType', subproject: SubProject) -> None:
         for key, value in project_options.items():
             if key not in self.optstore:
@@ -654,11 +652,14 @@ class CoreData:
         return len(self.cross_files) > 0
 
     def copy_build_options_from_regular_ones(self) -> bool:
+        # FIXME, needs cross compilation support.
+        if True:
+            return False
         dirty = False
         assert not self.is_cross_build()
         for k in options.BUILTIN_OPTIONS_PER_MACHINE:
-            o = self.optstore.get_value_object(k)
-            dirty |= self.optstore.set_value(k.as_build(), o.value)
+            o = self.optstore.get_value_object_for(k.name)
+            dirty |= self.optstore.set_value(k.name, k.subproject, True, o.value)
         for bk, bv in self.optstore.items():
             if bk.machine is MachineChoice.BUILD:
                 hk = bk.as_host()
@@ -687,10 +688,7 @@ class CoreData:
         for k, v in opts_to_set.items():
             if k == pfk:
                 continue
-            elif override_name in self.sp_option_overrides:
-                self.sp_option_overrides[override_name] = v
-                dirty = True
-            elif k in self.optstore:
+            elif self.optstore.has_option(k.name, None):
                 dirty |= self.set_option(k, v, first_invocation)
             elif k.machine != MachineChoice.BUILD and not self.optstore.is_compiler_option(k):
                 unknown_options.append(k)
@@ -735,7 +733,7 @@ class CoreData:
                 raise MesonException(f'Override {keystr} already exists.')
             key = OptionKey.from_string(keystr)
             original_key = key.evolve(subproject='')
-            if original_key not in self.options:
+            if original_key not in self.optstore:
                 raise MesonException('Tried to override a nonexisting key.')
             self.sp_option_overrides[keystr] = valstr
             dirty = True
@@ -835,20 +833,20 @@ class CoreData:
                 skey = key.evolve(subproject=subproject)
             else:
                 skey = key
-            if skey not in self.optstore:
-                self.optstore.add_system_option(skey, copy.deepcopy(compilers.base_options[key]))
+            if not self.optstore.has_option(skey.name, None):
+                self.optstore.add_system_option(skey.name, copy.deepcopy(compilers.base_options[key]))
                 if skey in env.options:
-                    self.optstore.set_value(skey, env.options[skey])
+                    self.optstore[skey].set_value(env.options[skey])
                     enabled_opts.append(skey)
                 elif subproject and key in env.options:
-                    self.optstore.set_value(skey, env.options[key])
+                    self.optstore[skey].set_value(env.options[key])
                     enabled_opts.append(skey)
                 if subproject and key not in self.optstore:
-                    self.optstore.add_system_option(key, copy.deepcopy(self.optstore.get_value_object(skey)))
+                    self.optstore[key] = copy.deepcopy(self.optstore[skey])
             elif skey in env.options:
-                self.optstore.set_value(skey, env.options[skey])
+                self.optstore[skey].set_value(env.options[skey])
             elif subproject and key in env.options:
-                self.optstore.set_value(skey, env.options[key])
+                self.optstore[skey].set_value(env.options[key])
         self.emit_base_options_warnings(enabled_opts)
 
     def emit_base_options_warnings(self, enabled_opts: T.List[OptionKey]) -> None:

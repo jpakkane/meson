@@ -632,7 +632,7 @@ class NinjaBackend(backends.Backend):
             outfile.write('# Do not edit by hand.\n\n')
             outfile.write('ninja_required_version = 1.8.2\n\n')
 
-            num_pools = self.environment.coredata.optstore.get_value('backend_max_links')
+            num_pools = self.environment.coredata.optstore.get_value_for('backend_max_links')
             if num_pools > 0:
                 outfile.write(f'''pool link_pool
   depth = {num_pools}
@@ -665,8 +665,8 @@ class NinjaBackend(backends.Backend):
             self.generate_dist()
             mlog.log_timestamp("Dist generated")
             key = OptionKey('b_coverage')
-            if (key in self.environment.coredata.optstore and
-                    self.environment.coredata.optstore.get_value(key)):
+            if self.environment.coredata.optstore.has_option('b_coverage', None) and\
+                    self.environment.coredata.optstore.get_value_for('b_coverage'):
                 gcovr_exe, gcovr_version, lcov_exe, lcov_version, genhtml_exe, llvm_cov_exe = environment.find_coverage_tools(self.environment.coredata)
                 mlog.debug(f'Using {gcovr_exe} ({gcovr_version}), {lcov_exe} and {llvm_cov_exe} for code coverage')
                 if gcovr_exe or (lcov_exe and genhtml_exe):
@@ -2306,7 +2306,7 @@ class NinjaBackend(backends.Backend):
         return options
 
     def generate_static_link_rules(self) -> None:
-        num_pools = self.environment.coredata.optstore.get_value('backend_max_links')
+        num_pools = self.environment.coredata.optstore.get_value_for('backend_max_links')
         if 'java' in self.environment.coredata.compilers.host:
             self.generate_java_link()
         for for_machine in MachineChoice:
@@ -2354,7 +2354,7 @@ class NinjaBackend(backends.Backend):
             self.add_rule(NinjaRule(rule, cmdlist, args, description, **options, extra=pool))
 
     def generate_dynamic_link_rules(self) -> None:
-        num_pools = self.environment.coredata.optstore.get_value('backend_max_links')
+        num_pools = self.environment.coredata.optstore.get_value_for('backend_max_links')
         for for_machine in MachineChoice:
             complist = self.environment.coredata.compilers[for_machine]
             for langname, compiler in complist.items():
@@ -3622,6 +3622,8 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
         self.add_build(gcda_elem)
 
     def get_user_option_args(self) -> T.List[str]:
+        if True:
+            return [] # FIXME
         cmds = []
         for k, v in self.environment.coredata.optstore.items():
             if self.environment.coredata.optstore.is_project_option(k):
@@ -3753,8 +3755,8 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
         if ctlist:
             elem.add_dep(self.generate_custom_target_clean(ctlist))
 
-        if OptionKey('b_coverage') in self.environment.coredata.optstore and \
-           self.environment.coredata.optstore.get_value('b_coverage'):
+        if self.environment.coredata.optstore.has_option('b_coverage', None) and \
+           self.environment.coredata.optstore.get_value_for('b_coverage'):
             self.generate_gcov_clean()
             elem.add_dep('clean-gcda')
             elem.add_dep('clean-gcno')
