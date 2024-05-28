@@ -149,13 +149,13 @@ class DependencyCache:
     def __init__(self, builtins: 'KeyedOptionDictType', for_machine: MachineChoice):
         self.__cache: T.MutableMapping[TV_DepID, DependencySubCache] = OrderedDict()
         self.__builtins = builtins
-        self.__pkg_conf_key = OptionKey('pkg_config_path', machine=for_machine)
-        self.__cmake_key = OptionKey('cmake_prefix_path', machine=for_machine)
+        self.__pkg_conf_key = options.OptionKey('pkg_config_path')
+        self.__cmake_key = options.OptionKey('cmake_prefix_path')
 
     def __calculate_subkey(self, type_: DependencyCacheType) -> T.Tuple[str, ...]:
         data: T.Dict[DependencyCacheType, T.List[str]] = {
-            DependencyCacheType.PKG_CONFIG: stringlistify(self.__builtins.get_value(self.__pkg_conf_key)),
-            DependencyCacheType.CMAKE: stringlistify(self.__builtins.get_value(self.__cmake_key)),
+            DependencyCacheType.PKG_CONFIG: stringlistify(self.__builtins.get_value_for(self.__pkg_conf_key)),
+            DependencyCacheType.CMAKE: stringlistify(self.__builtins.get_value_for(self.__cmake_key)),
             DependencyCacheType.OTHER: [],
         }
         assert type_ in data, 'Someone forgot to update subkey calculations for a new type'
@@ -450,7 +450,7 @@ class CoreData:
 
     def get_option_for_target(self, target: BuildTarget, key: T.Union[str, OptionKey]) -> T.Union[T.List[str], str, int, bool, WrapMode]:
         if isinstance(key, str):
-            key = OptionKey(key)
+            key = OptionKey(key, target.subproject)
         option_object = self.get_option_object_for_subproject(key, target.subproject)
         override = target.get_override(key.name, None)
         if override is not None:
@@ -805,14 +805,6 @@ class CoreData:
                     self.optstore.set_value_object(k, o)  # override compiler option on reconfigure
             self.optstore.setdefault(k, o)
 
-            if subproject:
-                sk = k.evolve(subproject=subproject)
-                value = env.options.get(sk) or value
-                if value is not None:
-                    o.set_value(value)
-                    self.optstore.set_value_object(sk, o)  # override compiler option on reconfigure
-                self.optstore.setdefault(sk, o)
-
     def add_lang_args(self, lang: str, comp: T.Type['Compiler'],
                       for_machine: MachineChoice, env: 'Environment') -> None:
         """Add global language arguments that are needed before compiler/linker detection."""
@@ -842,8 +834,9 @@ class CoreData:
                 elif subproject and key in env.options:
                     self.optstore[skey].set_value(env.options[key])
                     enabled_opts.append(skey)
-                if subproject and key not in self.optstore:
-                    self.optstore[key] = copy.deepcopy(self.optstore[skey])
+                # FIXME
+                #if subproject and not self.optstore.has_option(key):
+                #    self.optstore[key] = copy.deepcopy(self.optstore[skey])
             elif skey in env.options:
                 self.optstore[skey].set_value(env.options[skey])
             elif subproject and key in env.options:

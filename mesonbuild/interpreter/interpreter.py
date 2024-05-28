@@ -1167,7 +1167,8 @@ class Interpreter(InterpreterBase, HoldableObject):
             if self.subproject == '':
                 self.coredata.optstore.set_from_top_level_project_call(self.project_default_options)
             else:
-                self.coredata.optstore.set_from_subproject_call(self.subproject, self.project_default_options)
+                sp_override_options = []
+                self.coredata.optstore.set_from_subproject_call(self.subproject, sp_override_options, self.project_default_options)
 
         if not self.is_subproject():
             self.build.project_name = proj_name
@@ -1482,15 +1483,6 @@ class Interpreter(InterpreterBase, HoldableObject):
             else:
                 # update new values from commandline, if it applies
                 self.coredata.process_compiler_options(lang, comp, self.environment, self.subproject)
-
-            # Add per-subproject compiler options. They inherit value from main project.
-            if self.subproject:
-                options = {}
-                for k in comp.get_options():
-                    v = copy.copy(self.coredata.optstore.get_value_object(k))
-                    k = k.evolve(subproject=self.subproject)
-                    options[k] = v
-                self.coredata.add_compiler_options(options, lang, for_machine, self.environment, self.subproject)
 
             if for_machine == MachineChoice.HOST or self.environment.is_cross_build():
                 logger_fun = mlog.log
