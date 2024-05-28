@@ -19,21 +19,33 @@ class OptionTests(unittest.TestCase):
         optstore.set_option(name, '', new_value)
         self.assertEqual(optstore.get_value_for(name), new_value)
 
+    def test_toplevel_project(self):
+        optstore = OptionStore()
+        name = 'someoption'
+        default_value = 'somevalue'
+        new_value = 'new_value'
+        k = OptionKey(name)
+        vo = UserStringOption(k, 'An option of some sort', default_value)
+        optstore.add_system_option(k.name, vo)
+        self.assertEqual(optstore.get_value_for(k), default_value)
+        optstore.set_from_top_level_project_call([f'someoption={new_value}'])
+        self.assertEqual(optstore.get_value_for(k), new_value)
+
     def test_parsing(self):
         optstore = OptionStore()
         s1 = optstore.split_keystring('sub:optname')
-        s1_expected = OptionParts('optname', 'sub', False)
+        s1_expected = OptionKey('optname', 'sub', False)
         self.assertEqual(s1, s1_expected)
         self.assertEqual(optstore.parts_to_canonical_keystring(s1), 'sub:optname')
 
         s2 = optstore.split_keystring('optname')
-        s2_expected = OptionParts('optname', None, False)
+        s2_expected = OptionKey('optname', None, False)
         self.assertEqual(s2, s2_expected)
 
         self.assertEqual(optstore.parts_to_canonical_keystring(s2), 'optname')
 
         s3 = optstore.split_keystring(':optname')
-        s3_expected = OptionParts('optname', '', False)
+        s3_expected = OptionKey('optname', '', False)
         self.assertEqual(s3, s3_expected)
         self.assertEqual(optstore.parts_to_canonical_keystring(s3), ':optname')
 

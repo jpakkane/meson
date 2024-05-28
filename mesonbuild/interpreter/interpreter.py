@@ -302,7 +302,7 @@ class Interpreter(InterpreterBase, HoldableObject):
             self.default_project_options = default_project_options.copy()
         else:
             self.default_project_options = {}
-        self.project_default_options: T.Dict[OptionKey, str] = {}
+        self.project_default_options: T.List[str] = []
         self.build_func_dict()
         self.build_holder_map()
         self.user_defined_options = user_defined_options
@@ -874,7 +874,7 @@ class Interpreter(InterpreterBase, HoldableObject):
             mlog.log('Subproject', mlog.bold(subp_name), ':', 'skipped: feature', mlog.bold(feature), 'disabled')
             return self.disabled_subproject(subp_name, disabled_feature=feature)
 
-        default_options = {k.evolve(subproject=subp_name): v for k, v in kwargs['default_options'].items()}
+        default_options = kwargs['default_options']
 
         if subp_name == '':
             raise InterpreterException('Subproject name must not be empty.')
@@ -943,7 +943,7 @@ class Interpreter(InterpreterBase, HoldableObject):
             raise e
 
     def _do_subproject_meson(self, subp_name: str, subdir: str,
-                             default_options: T.Dict[OptionKey, str],
+                             default_options: T.List[str],
                              kwargs: kwtypes.DoSubproject,
                              ast: T.Optional[mparser.CodeBlockNode] = None,
                              build_def_files: T.Optional[T.List[str]] = None,
@@ -1003,7 +1003,7 @@ class Interpreter(InterpreterBase, HoldableObject):
         return self.subprojects[subp_name]
 
     def _do_subproject_cmake(self, subp_name: str, subdir: str,
-                             default_options: T.Dict[OptionKey, str],
+                             default_options: T.List[str],
                              kwargs: kwtypes.DoSubproject) -> SubprojectHolder:
         from ..cmake import CMakeInterpreter
         with mlog.nested(subp_name):
@@ -1030,7 +1030,7 @@ class Interpreter(InterpreterBase, HoldableObject):
         return result
 
     def _do_subproject_cargo(self, subp_name: str, subdir: str,
-                             default_options: T.Dict[OptionKey, str],
+                             default_options: T.List[str],
                              kwargs: kwtypes.DoSubproject) -> SubprojectHolder:
         from .. import cargo
         FeatureNew.single_use('Cargo subproject', '1.3.0', self.subproject, location=self.current_node)
@@ -1162,28 +1162,12 @@ class Interpreter(InterpreterBase, HoldableObject):
         else:
             self.coredata.options_files[self.subproject] = None
 
-        if self.subproject:
-            self.project_default_options = {k.evolve(subproject=self.subproject): v
-                                            for k, v in kwargs['default_options'].items()}
-        else:
-            self.project_default_options = kwargs['default_options']
-
-        # Do not set default_options on reconfigure otherwise it would override
-        # values previously set from command line. That means that changing
-        # default_options in a project will trigger a reconfigure but won't
-        # have any effect.
-        #
-        # If this is the first invocation we always need to initialize
-        # builtins, if this is a subproject that is new in a re-invocation we
-        # need to initialize builtins for that
+        self.project_default_options = kwargs['default_options']
         if self.environment.first_invocation or (self.subproject != '' and self.subproject not in self.coredata.initialized_subprojects):
-            default_options = self.project_default_options.copy()
-            default_options.update(self.default_project_options)
-            self.coredata.init_builtins(self.subproject)
-            self.coredata.initialized_subprojects.add(self.subproject)
-        else:
-            default_options = {}
-        self.coredata.set_default_options(default_options, self.subproject, self.environment)
+            if self.subproject == '':
+                self.coredata.optstore.set_from_top_level_project_call(self.project_default_options)
+            else:
+                self.coredata.optstore.set_from_subproject_call(self.subproject, self.project_default_options)
 
         if not self.is_subproject():
             self.build.project_name = proj_name

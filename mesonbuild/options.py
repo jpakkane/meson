@@ -867,7 +867,15 @@ class OptionStore:
             if delete in self.augments:
                 del self.augments[delete]
 
-    def set_subproject_options(self, subproject, spcall_default_options, project_default_options):
+    def set_from_top_level_project_call(self, project_default_options):
+        for p in project_default_options:
+            keystr, valstr = p.split('=', 1)
+            key = self.split_keystring(keystr)
+            assert key.subproject is None
+            if key in self.options:
+                self.set_option(key, valstr)
+
+    def set_from_subproject_call(self, subproject, spcall_default_options, project_default_options):
         for o in itertools.chain(spcall_default_options, project_default_options):
             keystr, valstr = o.split('=', 1)
             keystr = f'{subproject}:{keystr}'
