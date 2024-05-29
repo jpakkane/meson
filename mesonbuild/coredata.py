@@ -802,8 +802,10 @@ class CoreData:
             if value is not None:
                 o.set_value(value)
                 if not subproject:
-                    self.optstore.set_value_object(k, o)  # override compiler option on reconfigure
-            self.optstore.setdefault(k, o)
+                    # FIXME, add augment
+                    #self.optstore[k] = o  # override compiler option on reconfigure
+                    pass
+            self.optstore.add_system_option(f'{k.lang}_{k.name}', o)
 
     def add_lang_args(self, lang: str, comp: T.Type['Compiler'],
                       for_machine: MachineChoice, env: 'Environment') -> None:

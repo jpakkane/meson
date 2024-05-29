@@ -11,7 +11,6 @@ import os
 
 from .. import mlog
 from ..mesonlib import PerMachine, Popen_safe, version_compare, is_windows
-from ..options import OptionKey
 from ..programs import find_external_program, NonExistingExternalProgram
 
 if T.TYPE_CHECKING:
@@ -52,7 +51,7 @@ class CMakeExecutor:
             self.cmakebin = None
             return
 
-        self.prefix_paths = self.environment.coredata.optstore.get_value(OptionKey('cmake_prefix_path', machine=self.for_machine))
+        self.prefix_paths = self.environment.coredata.optstore.get_value_for('cmake_prefix_path')
         if self.prefix_paths:
             self.extra_cmake_args += ['-DCMAKE_PREFIX_PATH={}'.format(';'.join(self.prefix_paths))]
 

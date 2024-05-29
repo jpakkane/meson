@@ -868,10 +868,20 @@ class OptionStore:
                 del self.augments[delete]
 
     def set_from_top_level_project_call(self, project_default_options):
-        for p in project_default_options:
-            keystr, valstr = p.split('=', 1)
+        if isinstance(project_default_options, str):
+            project_default_options = [project_default_options]
+        if isinstance(project_default_options, list):
+            optdict = {}
+            for p in project_default_options:
+                 k, v = p.split('=', 1)
+                 optdict[k] = v
+            project_default_options = optdict
+        for keystr, valstr in project_default_options.items():
             key = self.split_keystring(keystr)
-            assert key.subproject is None
+            if key.subproject is not None:
+                # FIXME, add an augment.
+                # test case 87
+                continue
             if key in self.options:
                 self.set_option(key, valstr)
 
