@@ -972,7 +972,7 @@ def parse_cmd_line_options(args: SharedCMDOptions) -> None:
                 cmdline_name = options.BuiltinOption.argparse_name_to_arg(name)
                 raise MesonException(
                     f'Got argument {name} as both -D{name} and {cmdline_name}. Pick one.')
-            args.cmd_line_options[key] = value
+            args.cmd_line_options[key.name] = value
             delattr(args, name)
 
 @dataclasses.dataclass

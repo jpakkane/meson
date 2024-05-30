@@ -1165,7 +1165,7 @@ class Interpreter(InterpreterBase, HoldableObject):
         self.project_default_options = kwargs['default_options']
         if self.environment.first_invocation or (self.subproject != '' and self.subproject not in self.coredata.initialized_subprojects):
             if self.subproject == '':
-                self.coredata.optstore.set_from_top_level_project_call(self.project_default_options)
+                self.coredata.optstore.set_from_top_level_project_call(self.project_default_options, self.user_defined_options.cmd_line_options)
             else:
                 sp_override_options = []
                 self.coredata.optstore.set_from_subproject_call(self.subproject, sp_override_options, self.project_default_options)

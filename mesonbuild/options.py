@@ -867,15 +867,21 @@ class OptionStore:
             if delete in self.augments:
                 del self.augments[delete]
 
-    def set_from_top_level_project_call(self, project_default_options):
-        if isinstance(project_default_options, str):
-            project_default_options = [project_default_options]
-        if isinstance(project_default_options, list):
+    def optlist2optdict(self, optlist):
             optdict = {}
-            for p in project_default_options:
+            for p in optlist:
                  k, v = p.split('=', 1)
                  optdict[k] = v
             project_default_options = optdict
+        
+
+    def set_from_top_level_project_call(self, project_default_options, cmd_line_options):
+        if isinstance(project_default_options, str):
+            project_default_options = [project_default_options]
+        if isinstance(project_default_options, list):
+            project_default_options = self.optlist2optdict(project_default_options)
+        if project_default_options is None:
+            project_default_options  = {}
         for keystr, valstr in project_default_options.items():
             key = self.split_keystring(keystr)
             if key.subproject is not None:
@@ -884,6 +890,11 @@ class OptionStore:
                 continue
             if key in self.options:
                 self.set_option(key, valstr)
+        for keystr, valstr in cmd_line_options.items():
+            key = self.split_keystring(keystr)
+            if key.subproject is None:
+                if self.has_option(key):
+                    self.set_option(key, valstr)
 
     def set_from_subproject_call(self, subproject, spcall_default_options, project_default_options):
         for o in itertools.chain(spcall_default_options, project_default_options):
