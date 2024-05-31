@@ -725,8 +725,12 @@ class OptionStore:
             top_cname = self.form_canonical_keystring(name)
             return self.options[top_cname]
         if potential.yielding:
-            top_cname = self.form_canonical_keystring(name, '')
-            return self.options.get(top_cname, potential)
+            top_option_key = optioninfo.evolve(subproject='')
+            top_option = self.options.get(top_option_key, None)
+            # If parent object has different type, do not yield.
+            # This should probably be an error.
+            if type(top_option) is type(potential):
+                return top_option
         return potential
 
     def add_system_option(self, key: T.Union[OptionKey, str], valobj: 'UserOption[T.Any]') -> None:
@@ -896,6 +900,8 @@ class OptionStore:
             if key.subproject is None:
                 if self.has_option(key):
                     self.set_option(key, valstr)
+                else:
+                    self.pending_project_options[key] = valstr
 
     def hacky_mchackface_back_to_list(self, optdict):
         if isinstance(optdict, dict):

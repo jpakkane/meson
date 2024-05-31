@@ -943,17 +943,14 @@ def register_builtin_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument('-D', action='append', dest='projectoptions', default=[], metavar="option",
                         help='Set the value of an option, can be used several times to set multiple options.')
 
-def create_options_dict(options: T.List[str], subproject: str = '') -> T.Dict[OptionKey, str]:
+def create_options_dict(options: T.List[str], subproject: str = '') -> T.Dict[str, str]:
     result: T.OrderedDict[OptionKey, str] = OrderedDict()
     for o in options:
         try:
             (key, value) = o.split('=', 1)
         except ValueError:
             raise MesonException(f'Option {o!r} must have a value separated by equals sign.')
-        k = OptionKey.from_string(key)
-        if subproject:
-            k = k.evolve(subproject=subproject)
-        result[k] = value
+        result[key] = value
     return result
 
 def parse_cmd_line_options(args: SharedCMDOptions) -> None:
