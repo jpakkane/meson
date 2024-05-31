@@ -300,6 +300,8 @@ class Interpreter(InterpreterBase, HoldableObject):
         # Passed from the outside, only used in subprojects.
         if default_project_options:
             self.default_project_options = default_project_options.copy()
+            if isinstance(default_project_options, dict):
+                pass
         else:
             self.default_project_options = {}
         self.project_default_options: T.List[str] = []
@@ -868,6 +870,8 @@ class Interpreter(InterpreterBase, HoldableObject):
         return sub
 
     def do_subproject(self, subp_name: str, kwargs: kwtypes.DoSubproject, force_method: T.Optional[wrap.Method] = None) -> SubprojectHolder:
+        if subp_name == 'sub_static':
+            pass
         disabled, required, feature = extract_required_kwarg(kwargs, self.subproject)
         if disabled:
             assert feature, 'for mypy'

@@ -696,6 +696,7 @@ class OptionStore:
         self.build_options = None
         self.project_options = set()
         self.augments = {}
+        self.pending_project_options = {}
 
     def num_options(self):
         basic = len(self.options)
@@ -885,18 +886,25 @@ class OptionStore:
         for keystr, valstr in project_default_options.items():
             key = self.split_keystring(keystr)
             if key.subproject is not None:
-                # FIXME, add an augment.
-                # test case 87
-                continue
-            if key in self.options:
+                self.pending_project_options[key] = valstr
+            elif key in self.options:
                 self.set_option(key, valstr)
+            else:
+                self.pending_project_options[key] = valstr
         for keystr, valstr in cmd_line_options.items():
             key = self.split_keystring(keystr)
             if key.subproject is None:
                 if self.has_option(key):
                     self.set_option(key, valstr)
 
+    def hacky_mchackface_back_to_list(self, optdict):
+        if isinstance(optdict, dict):
+            return [f'{k}={v}' for k, v in optdict.items()]
+        return optdict
+
     def set_from_subproject_call(self, subproject, spcall_default_options, project_default_options):
+        spcall_default_options = self.hacky_mchackface_back_to_list(spcall_default_options)
+        project_default_options = self.hacky_mchackface_back_to_list(project_default_options)
         for o in itertools.chain(spcall_default_options, project_default_options):
             keystr, valstr = o.split('=', 1)
             keystr = f'{subproject}:{keystr}'
