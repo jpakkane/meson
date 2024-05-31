@@ -868,11 +868,11 @@ class OptionStore:
                 del self.augments[delete]
 
     def optlist2optdict(self, optlist):
-            optdict = {}
-            for p in optlist:
-                 k, v = p.split('=', 1)
-                 optdict[k] = v
-            project_default_options = optdict
+        optdict = {}
+        for p in optlist:
+             k, v = p.split('=', 1)
+             optdict[k] = v
+        return optdict
         
 
     def set_from_top_level_project_call(self, project_default_options, cmd_line_options):

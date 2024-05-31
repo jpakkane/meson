@@ -1058,8 +1058,19 @@ class Interpreter(InterpreterBase, HoldableObject):
         if optname_regex.search(optname.split('.', maxsplit=1)[-1]) is not None:
             raise InterpreterException(f'Invalid option name {optname!r}')
 
-        opt = self.coredata.get_option_for_subproject(optname, self.subproject)
-        return opt
+        (value_object, value) = self.coredata.optstore.get_value_object_and_value_for(options.OptionKey(optname, self.subproject))
+        if isinstance(value_object, options.UserFeatureOption):
+            ocopy = copy.copy(value_object)
+            ocopy.name = optname
+            ocopy.value = value
+            return ocopy
+        elif isinstance(value_object, options.UserOption):
+            if isinstance(value_object.value, str):
+                return P_OBJ.OptionString(value, f'{{{optname}}}')
+            return value
+        ocopy = copy.copy(value_object)
+        ocopy.value = value
+        return ocopy
 
     @typed_pos_args('configuration_data', optargs=[dict])
     @noKwargs
@@ -1167,8 +1178,8 @@ class Interpreter(InterpreterBase, HoldableObject):
             if self.subproject == '':
                 self.coredata.optstore.set_from_top_level_project_call(self.project_default_options, self.user_defined_options.cmd_line_options)
             else:
-                sp_override_options = []
-                self.coredata.optstore.set_from_subproject_call(self.subproject, sp_override_options, self.project_default_options)
+                invoker_method_default_options = self.default_project_options
+                self.coredata.optstore.set_from_subproject_call(self.subproject, invoker_method_default_options, self.project_default_options)
 
         if not self.is_subproject():
             self.build.project_name = proj_name
