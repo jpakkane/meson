@@ -878,15 +878,23 @@ class OptionStore:
              k, v = p.split('=', 1)
              optdict[k] = v
         return optdict
-        
 
-    def set_from_top_level_project_call(self, project_default_options, cmd_line_options):
+    def set_from_top_level_project_call(self, project_default_options, cmd_line_options, native_file_options):
         if isinstance(project_default_options, str):
             project_default_options = [project_default_options]
         if isinstance(project_default_options, list):
             project_default_options = self.optlist2optdict(project_default_options)
         if project_default_options is None:
             project_default_options  = {}
+        for keystr, valstr in native_file_options.items():
+            key = self.split_keystring(keystr)
+            if key.subproject is not None:
+                #self.pending_project_options[key] = valstr
+                raise MesonException(f'Can not set subproject option {keystr} in machine files.')
+            elif key in self.options:
+                self.set_option(key, valstr)
+            #else:
+            #    self.pending_project_options[key] = valstr
         for keystr, valstr in project_default_options.items():
             key = self.split_keystring(keystr)
             if key.subproject is not None:
@@ -898,10 +906,15 @@ class OptionStore:
         for keystr, valstr in cmd_line_options.items():
             key = self.split_keystring(keystr)
             if key.subproject is None:
+                projectkey = key.copy_with(subproject='')
                 if self.has_option(key):
                     self.set_option(key, valstr)
+                elif self.has_option(projectkey):
+                    self.set_option(projectkey, valstr)
                 else:
                     self.pending_project_options[key] = valstr
+            else:
+                raise MesonException(f'Not implemented option thingy: {keystr}')
 
     def hacky_mchackface_back_to_list(self, optdict):
         if isinstance(optdict, dict):
