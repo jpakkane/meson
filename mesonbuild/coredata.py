@@ -450,19 +450,17 @@ class CoreData:
 
     def get_option_for_target(self, target: BuildTarget, key: T.Union[str, OptionKey]) -> T.Union[T.List[str], str, int, bool, WrapMode]:
         if isinstance(key, str):
-            key = OptionKey(key, target.subproject)
-        option_object = self.get_option_object_for_subproject(key, target.subproject)
-        override = target.get_override(key.name, None)
+            assert ':' not in key
+            oldkey = OptionKey(key, target.subproject)
+        else:
+            oldkey = key
+        newkey = options.convert_oldkey(oldkey)
+        assert newkey.subproject is not None
+        (option_object, value) = self.optstore.get_value_object_and_value_for(newkey)
+        override = target.get_override(newkey.name, None)
         if override is not None:
             return option_object.validate_value(override)
-        return self.compute_value_for_subproject_option(option_object, key.name, target.subproject)
-
-    def compute_value_for_subproject_option(self, option_object, name, subproject):
-        sp_override_key = f'{subproject}:{name}'
-        sp_override_value = self.sp_option_overrides.get(sp_override_key, None)
-        if sp_override_value is not None:
-            return option_object.validate_value(sp_override_value)
-        return option_object.value
+        return value
 
     def get_option_for_subproject(self, key: T.Union[str, OptionKey], subproject) -> UserOption[T.Any]:
         if isinstance(key, str):
