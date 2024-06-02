@@ -236,15 +236,15 @@ class Conf:
             return
         if title:
             self.add_title(title)
-        auto = T.cast('options.UserFeatureOption', self.coredata.optstore.get_value_object('auto_features'))
+        auto = T.cast('options.UserFeatureOption', self.coredata.optstore.get_value_for('auto_features'))
         for k, o in sorted(opts.items()):
             printable_value = o.printable_value()
-            root = k.as_root()
-            if o.yielding and k.subproject and root in self.coredata.optstore:
-                printable_value = '<inherited from main project>'
-            if isinstance(o, options.UserFeatureOption) and o.is_auto():
-                printable_value = auto.printable_value()
-            self.add_option(str(root), o.description, printable_value, o.choices)
+            #root = k.as_root()
+            #if o.yielding and k.subproject and root in self.coredata.options:
+            #    printable_value = '<inherited from main project>'
+            #if isinstance(o, options.UserFeatureOption) and o.is_auto():
+            #    printable_value = auto.printable_value()
+            self.add_option(k.name, o.description, printable_value, o.choices)
 
     def print_conf(self, pager: bool) -> None:
         if pager:
@@ -271,7 +271,7 @@ class Conf:
         test_options: 'coredata.MutableKeyedOptionDictType' = {}
         core_options: 'coredata.MutableKeyedOptionDictType' = {}
         module_options: T.Dict[str, 'coredata.MutableKeyedOptionDictType'] = collections.defaultdict(dict)
-        for k, v in self.coredata.optstore.items():
+        for k, v in self.coredata.optstore.options.items():
             if k in dir_option_names:
                 dir_options[k] = v
             elif k in test_option_names:
@@ -329,7 +329,7 @@ class Conf:
             print_default_values_warning()
 
         self.print_nondefault_buildtype_options()
-        self.print_sp_overrides()
+        self.print_augments()
 
     def print_nondefault_buildtype_options(self) -> None:
         mismatching = self.coredata.get_nondefault_buildtype_args()
@@ -345,6 +345,14 @@ class Conf:
             mlog.log('\nThe folowing options have per-subproject overrides:')
             for k, v in self.coredata.sp_option_overrides.items():
                 mlog.log(f'{k:21}{v:10}')
+
+    def print_augments(self) -> None:
+        if self.coredata.optstore.augments:
+            mlog.log('\nCurrently set option augments:')
+            for k, v in self.coredata.optstore.augments.items():
+                mlog.log(f'{k.form_canonical_keystring():21}{v:10}')
+        else:
+            mlog.log('\nThere are no option augments.')
 
 def has_option_flags(options):
     if options.cmd_line_options:
@@ -373,9 +381,7 @@ def run_impl(options: CMDOptions, builddir: str) -> int:
 
         save = False
         if has_option_flags(options):
-            save |= c.coredata.set_options_from_configure_strings(options.projectoptions)
-            save |= c.coredata.create_sp_options(options.A)
-            save |= c.coredata.remove_sp_options(options.U)
+            save |= c.coredata.optstore.set_from_configure_command(options.projectoptions, options.A, options.U)
             coredata.update_cmd_line_file(builddir, options)
         if options.clearcache:
             c.clear_cache()

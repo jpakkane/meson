@@ -686,6 +686,7 @@ BUILTIN_DIR_NOPREFIX_OPTIONS: T.Dict[OptionKey, T.Dict[str, str]] = {
     OptionKey('python.purelibdir'): {},
 }
 
+
 class OptionStore:
     def __init__(self) -> None:
         self.d: T.Dict['OptionKey', 'UserOption[T.Any]'] = {}
@@ -855,6 +856,9 @@ class OptionStore:
         return vobject.value
 
     def set_from_configure_command(self, D, A, U):
+        D = [] if D is None else D
+        A = [] if A is None else A
+        U = [] if U is None else U
         for setval in D:
             keystr, valstr = setval.split('=', 1)
             if keystr in self.augments:
@@ -871,6 +875,7 @@ class OptionStore:
             delete = self.canonicalize_keystring(delete)
             if delete in self.augments:
                 del self.augments[delete]
+        return True
 
     def optlist2optdict(self, optlist):
         optdict = {}
@@ -878,6 +883,9 @@ class OptionStore:
              k, v = p.split('=', 1)
              optdict[k] = v
         return optdict
+
+    def is_project_option(self, k):
+        return k not in self.project_options
 
     def set_from_top_level_project_call(self, project_default_options, cmd_line_options, native_file_options):
         if isinstance(project_default_options, str):
