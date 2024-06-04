@@ -1011,17 +1011,17 @@ class Interpreter(InterpreterBase, HoldableObject):
                              kwargs: kwtypes.DoSubproject) -> SubprojectHolder:
         from ..cmake import CMakeInterpreter
         with mlog.nested(subp_name):
-            prefix = self.coredata.optstore.get_value('prefix')
+            prefix = self.coredata.optstore.get_value_for('prefix')
 
             from ..modules.cmake import CMakeSubprojectOptions
-            options = kwargs.get('options') or CMakeSubprojectOptions()
-            cmake_options = kwargs.get('cmake_options', []) + options.cmake_options
+            kw_opts = kwargs.get('options') or CMakeSubprojectOptions()
+            cmake_options = kwargs.get('cmake_options', []) + kw_opts.cmake_options
             cm_int = CMakeInterpreter(Path(subdir), Path(prefix), self.build.environment, self.backend)
             cm_int.initialise(cmake_options)
             cm_int.analyse()
 
             # Generate a meson ast and execute it with the normal do_subproject_meson
-            ast = cm_int.pretend_to_be_meson(options.target_options)
+            ast = cm_int.pretend_to_be_meson(kw_opts.target_options)
             result = self._do_subproject_meson(
                     subp_name, subdir, default_options,
                     kwargs, ast,
