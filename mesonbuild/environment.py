@@ -624,6 +624,8 @@ class Environment:
         # 'optimization' and 'debug' keys, it override them.
         self.options: T.MutableMapping[OptionKey, T.Union[str, T.List[str]]] = collections.OrderedDict()
 
+        self.machinestore = machinefile.MachineFileStore(self.coredata.config_files, self.coredata.cross_files, self.source_dir)
+
         ## Read in native file(s) to override build machine configuration
 
         if self.coredata.config_files is not None:
