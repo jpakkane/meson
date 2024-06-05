@@ -1943,9 +1943,9 @@ class Executable(BuildTarget):
             environment: environment.Environment,
             compilers: T.Dict[str, 'Compiler'],
             kwargs):
-        key = OptionKey('b_pie')
-        if 'pie' not in kwargs and key in environment.coredata.optstore:
-            kwargs['pie'] = environment.coredata.optstore.get_value(key)
+        key = options.OptionParts('b_pie')
+        if 'pie' not in kwargs and  environment.coredata.optstore.has_option(key):
+            kwargs['pie'] = environment.coredata.optstore.get_value_for(key)
         super().__init__(name, subdir, subproject, for_machine, sources, structured_sources, objects,
                          environment, compilers, kwargs)
         self.win_subsystem = kwargs.get('win_subsystem') or 'console'
