@@ -224,6 +224,7 @@ class CompilerHolder(ObjectHolder['Compiler']):
                              'symbols_have_underscore_prefix': self.symbols_have_underscore_prefix_method,
                              'get_argument_syntax': self.get_argument_syntax_method,
                              'preprocess': self.preprocess_method,
+                             'get_crt': self.get_crt_method,
                              })
 
     @property
@@ -929,3 +930,20 @@ class CompilerHolder(ObjectHolder['Compiler']):
         # other targets, list outputs, etc.
         private_dir = os.path.relpath(self.interpreter.backend.get_target_private_dir(tg), self.interpreter.subdir)
         return [build.CustomTargetIndex(tg, os.path.join(private_dir, o)) for o in tg.outputs]
+
+    @FeatureNew('compiler.get_crt', '1.5.0')
+    @noPosargs
+    @noKwargs
+    def get_crt_method(self, args: T.List[TYPE_var], kwargs: TYPE_kwargs) -> str:
+        try:
+            vscrt = self.env.coredata.options[OptionKey('b_vscrt')].value
+        except KeyError:
+            vscrt = 'none'
+        assert isinstance(vscrt, str)
+
+        buildtype = self.env.coredata.options[OptionKey('buildtype')].value
+        assert isinstance(buildtype, str)
+
+        # This will raise EnvironmentException if the compiler does not support CRT:
+        self.compiler.get_crt_compile_args(vscrt, buildtype)
+        return self.compiler.get_crt_val(vscrt, buildtype)

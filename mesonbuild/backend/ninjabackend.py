@@ -28,6 +28,7 @@ from ..arglist import CompilerArgs
 from ..compilers import Compiler
 from ..linkers import ArLikeLinker, RSPFileSyntax
 from ..mesonlib import (
+    EnvironmentException,
     File, LibType, MachineChoice, MesonBugException, MesonException, OrderedSet, PerMachine,
     ProgressBar, quote_arg
 )
@@ -1991,7 +1992,7 @@ class NinjaBackend(backends.Backend):
                 buildtype = target.get_option(OptionKey('buildtype'))
                 crt = target.get_option(OptionKey('b_vscrt'))
                 args += rustc.get_crt_link_args(crt, buildtype)
-            except KeyError:
+            except (EnvironmentException, KeyError):
                 pass
 
         if mesonlib.version_compare(rustc.version, '>= 1.67.0'):

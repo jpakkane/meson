@@ -324,11 +324,8 @@ def get_base_compile_args(options: 'KeyedOptionDictType', compiler: 'Compiler', 
     try:
         crt_val = options[OptionKey('b_vscrt')].value
         buildtype = options[OptionKey('buildtype')].value
-        try:
-            args += compiler.get_crt_compile_args(crt_val, buildtype)
-        except AttributeError:
-            pass
-    except KeyError:
+        args += compiler.get_crt_compile_args(crt_val, buildtype)
+    except (EnvironmentException, KeyError):
         pass
     return args
 
@@ -392,11 +389,8 @@ def get_base_link_args(options: 'KeyedOptionDictType', linker: 'Compiler',
     try:
         crt_val = options[OptionKey('b_vscrt')].value
         buildtype = options[OptionKey('buildtype')].value
-        try:
-            args += linker.get_crt_link_args(crt_val, buildtype)
-        except AttributeError:
-            pass
-    except KeyError:
+        args += linker.get_crt_link_args(crt_val, buildtype)
+    except (EnvironmentException, KeyError):
         pass
     return args
 

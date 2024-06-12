@@ -583,7 +583,7 @@ class BoostDependency(SystemDependency):
             crt_val = self.env.coredata.options[mesonlib.OptionKey('b_vscrt')].value
             buildtype = self.env.coredata.options[mesonlib.OptionKey('buildtype')].value
             vscrt = self.clib_compiler.get_crt_compile_args(crt_val, buildtype)[0]
-        except (KeyError, IndexError, AttributeError):
+        except (mesonlib.EnvironmentException, KeyError, IndexError):
             pass
 
         # mlog.debug('    - static: {}'.format(self.static))

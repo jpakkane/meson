@@ -180,11 +180,13 @@ class RustCompiler(Compiler):
 
     def get_crt_compile_args(self, crt_val: str, buildtype: str) -> T.List[str]:
         # Rust handles this for us, we don't need to do anything
+        if not self.info.is_windows():
+            return super().get_crt_compile_args(crt_val, buildtype)
         return []
 
     def get_crt_link_args(self, crt_val: str, buildtype: str) -> T.List[str]:
         if self.linker.id not in {'link', 'lld-link'}:
-            return []
+            return super().get_crt_link_args(crt_val, buildtype)
         return self.MSVCRT_ARGS[self.get_crt_val(crt_val, buildtype)]
 
     def get_colorout_args(self, colortype: str) -> T.List[str]:
