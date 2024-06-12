@@ -11,9 +11,7 @@ port will be required.
 
 from __future__ import annotations
 import dataclasses
-import glob
 import importlib
-import itertools
 import json
 import os
 import shutil
@@ -27,11 +25,14 @@ from .. import coredata, options
 
 if T.TYPE_CHECKING:
     from types import ModuleType
+    from typing_extensions import Literal
 
-    from . import manifest
     from .. import mparser
     from ..environment import Environment
     from ..coredata import KeyedOptionDictType
+
+    EDITION = Literal['2015', '2018', '2021']
+    CRATE_TYPE = Literal['bin', 'lib', 'dylib', 'staticlib', 'cdylib', 'rlib', 'proc-macro']
 
 # tomllib is present in python 3.11, before that it is a pypi module called tomli,
 # we try to import tomllib, then tomli,
@@ -52,7 +53,7 @@ else:
     toml2json = shutil.which('toml2json')
 
 
-def load_toml(filename: str) -> T.Dict[object, object]:
+def load_toml(filename: str) -> T.Any:
     if tomllib:
         with open(filename, 'rb') as f:
             raw = tomllib.load(f)
@@ -81,35 +82,17 @@ def fixup_meson_varname(name: str) -> str:
     return name.replace('-', '_')
 
 
-# Pylance can figure out that these do not, in fact, overlap, but mypy can't
-@T.overload
-def _fixup_raw_mappings(d: manifest.BuildTarget) -> manifest.FixedBuildTarget: ...  # type: ignore
-
-@T.overload
-def _fixup_raw_mappings(d: manifest.LibTarget) -> manifest.FixedLibTarget: ...  # type: ignore
-
-@T.overload
-def _fixup_raw_mappings(d: manifest.Dependency) -> manifest.FixedDependency: ...
-
-def _fixup_raw_mappings(d: T.Union[manifest.BuildTarget, manifest.LibTarget, manifest.Dependency]
-                        ) -> T.Union[manifest.FixedBuildTarget, manifest.FixedLibTarget,
-                                     manifest.FixedDependency]:
+def _fixup_raw_mappings(d: T.Any) -> T.Dict[str, T.Any]:
     """Fixup raw cargo mappings to ones more suitable for python to consume.
 
     This does the following:
     * replaces any `-` with `_`, cargo likes the former, but python dicts make
       keys with `-` in them awkward to work with
-    * Convert Dependndency versions from the cargo format to something meson
-      understands
 
     :param d: The mapping to fix
     :return: the fixed string
     """
-    raw = {fixup_meson_varname(k): v for k, v in d.items()}
-    if 'version' in raw:
-        assert isinstance(raw['version'], str), 'for mypy'
-        raw['version'] = version.convert(raw['version'])
-    return T.cast('T.Union[manifest.FixedBuildTarget, manifest.FixedLibTarget, manifest.FixedDependency]', raw)
+    return {fixup_meson_varname(k): v for k, v in d.items()}
 
 
 @dataclasses.dataclass
@@ -122,7 +105,7 @@ class Package:
     description: T.Optional[str] = None
     resolver: T.Optional[str] = None
     authors: T.List[str] = dataclasses.field(default_factory=list)
-    edition: manifest.EDITION = '2015'
+    edition: EDITION = '2015'
     rust_version: T.Optional[str] = None
     documentation: T.Optional[str] = None
     readme: T.Optional[str] = None
@@ -181,18 +164,19 @@ class Dependency:
             raise MesonException(f'Cannot determine minimum API version from {self.version}.')
 
     @classmethod
-    def from_raw(cls, name: str, raw: manifest.DependencyV) -> Dependency:
+    def from_raw(cls, name: str, raw: T.Any) -> Dependency:
         """Create a dependency from a raw cargo dictionary"""
         if isinstance(raw, str):
             return cls(name, version.convert(raw))
-        return cls(name, **_fixup_raw_mappings(raw))
+        v = version.convert(raw.pop('version', ''))
+        return cls(name, v, **_fixup_raw_mappings(raw))
 
 
 @dataclasses.dataclass
 class BuildTarget:
 
     name: str
-    crate_type: T.List[manifest.CRATE_TYPE] = dataclasses.field(default_factory=lambda: ['lib'])
+    crate_type: T.List[CRATE_TYPE] = dataclasses.field(default_factory=lambda: ['lib'])
     path: dataclasses.InitVar[T.Optional[str]] = None
 
     # https://doc.rust-lang.org/cargo/reference/cargo-targets.html#the-test-field
@@ -212,7 +196,7 @@ class BuildTarget:
     doc: bool = False
 
     harness: bool = True
-    edition: manifest.EDITION = '2015'
+    edition: EDITION = '2015'
     required_features: T.List[str] = dataclasses.field(default_factory=list)
     plugin: bool = False
 
@@ -226,7 +210,7 @@ class Library(BuildTarget):
     doc: bool = True
     path: str = os.path.join('src', 'lib.rs')
     proc_macro: bool = False
-    crate_type: T.List[manifest.CRATE_TYPE] = dataclasses.field(default_factory=lambda: ['lib'])
+    crate_type: T.List[CRATE_TYPE] = dataclasses.field(default_factory=lambda: ['lib'])
     doc_scrape_examples: bool = True
 
 
@@ -259,7 +243,7 @@ class Example(BuildTarget):
 
     """Representation of a Cargo Example Entry."""
 
-    crate_type: T.List[manifest.CRATE_TYPE] = dataclasses.field(default_factory=lambda: ['bin'])
+    crate_type: T.List[CRATE_TYPE] = dataclasses.field(default_factory=lambda: ['bin'])
 
 
 @dataclasses.dataclass
@@ -289,78 +273,43 @@ class Manifest:
     features: T.Dict[str, T.List[str]]
     target: T.Dict[str, T.Dict[str, Dependency]]
     subdir: str
-    path: str = ''
 
     def __post_init__(self) -> None:
         self.features.setdefault('default', [])
 
+    @classmethod
+    def from_raw(cls, raw_manifest: T.Any, subdir: str) -> Manifest:
+        # We need to set the name field if it's not set manually,
+        # including if other fields are set in the lib section
+        lib = raw_manifest.get('lib', {})
+        lib.setdefault('name', raw_manifest['package']['name'])
 
-def _convert_manifest(raw_manifest: manifest.Manifest, subdir: str, path: str = '') -> Manifest:
-    # This cast is a bit of a hack to deal with proc-macro
-    lib = _fixup_raw_mappings(raw_manifest.get('lib', {}))
-
-    # We need to set the name field if it's not set manually,
-    # including if other fields are set in the lib section
-    lib.setdefault('name', raw_manifest['package']['name'])
-
-    pkg = T.cast('manifest.FixedPackage',
-                 {fixup_meson_varname(k): v for k, v in raw_manifest['package'].items()})
-
-    return Manifest(
-        Package(**pkg),
-        {k: Dependency.from_raw(k, v) for k, v in raw_manifest.get('dependencies', {}).items()},
-        {k: Dependency.from_raw(k, v) for k, v in raw_manifest.get('dev-dependencies', {}).items()},
-        {k: Dependency.from_raw(k, v) for k, v in raw_manifest.get('build-dependencies', {}).items()},
-        Library(**lib),
-        [Binary(**_fixup_raw_mappings(b)) for b in raw_manifest.get('bin', {})],
-        [Test(**_fixup_raw_mappings(b)) for b in raw_manifest.get('test', {})],
-        [Benchmark(**_fixup_raw_mappings(b)) for b in raw_manifest.get('bench', {})],
-        [Example(**_fixup_raw_mappings(b)) for b in raw_manifest.get('example', {})],
-        raw_manifest.get('features', {}),
-        {k: {k2: Dependency.from_raw(k2, v2) for k2, v2 in v.get('dependencies', {}).items()}
-         for k, v in raw_manifest.get('target', {}).items()},
-        subdir,
-        path,
-    )
+        return Manifest(
+            Package(**_fixup_raw_mappings(raw_manifest['package'])),
+            {k: Dependency.from_raw(k, v) for k, v in raw_manifest.get('dependencies', {}).items()},
+            {k: Dependency.from_raw(k, v) for k, v in raw_manifest.get('dev-dependencies', {}).items()},
+            {k: Dependency.from_raw(k, v) for k, v in raw_manifest.get('build-dependencies', {}).items()},
+            Library(**_fixup_raw_mappings(lib)),
+            [Binary(**_fixup_raw_mappings(b)) for b in raw_manifest.get('bin', {})],
+            [Test(**_fixup_raw_mappings(b)) for b in raw_manifest.get('test', {})],
+            [Benchmark(**_fixup_raw_mappings(b)) for b in raw_manifest.get('bench', {})],
+            [Example(**_fixup_raw_mappings(b)) for b in raw_manifest.get('example', {})],
+            raw_manifest.get('features', {}),
+            {k: {k2: Dependency.from_raw(k2, v2) for k2, v2 in v.get('dependencies', {}).items()}
+             for k, v in raw_manifest.get('target', {}).items()},
+            subdir,
+        )
 
 
 def _load_manifests(subdir: str) -> T.Dict[str, Manifest]:
     filename = os.path.join(subdir, 'Cargo.toml')
-    raw = load_toml(filename)
+    raw_manifest = load_toml(filename)
 
     manifests: T.Dict[str, Manifest] = {}
 
-    raw_manifest: T.Union[manifest.Manifest, manifest.VirtualManifest]
-    if 'package' in raw:
-        raw_manifest = T.cast('manifest.Manifest', raw)
-        manifest_ = _convert_manifest(raw_manifest, subdir)
+    if 'package' in raw_manifest:
+        manifest_ = Manifest.from_raw(raw_manifest, subdir)
         manifests[manifest_.package.name] = manifest_
-    else:
-        raw_manifest = T.cast('manifest.VirtualManifest', raw)
-
-    if 'workspace' in raw_manifest:
-        # XXX: need to verify that python glob and cargo globbing are the
-        # same and probably write  a glob implementation. Blarg
-
-        # We need to chdir here to make the glob work correctly
-        pwd = os.getcwd()
-        os.chdir(subdir)
-        members: T.Iterable[str]
-        try:
-            members = itertools.chain.from_iterable(
-                glob.glob(m) for m in raw_manifest['workspace']['members'])
-        finally:
-            os.chdir(pwd)
-        if 'exclude' in raw_manifest['workspace']:
-            members = (x for x in members if x not in raw_manifest['workspace']['exclude'])
-
-        for m in members:
-            filename = os.path.join(subdir, m, 'Cargo.toml')
-            raw = load_toml(filename)
-
-            raw_manifest = T.cast('manifest.Manifest', raw)
-            man = _convert_manifest(raw_manifest, subdir, m)
-            manifests[man.package.name] = man
 
     return manifests
 
@@ -618,7 +567,7 @@ def _create_meson_subdir(cargo: Manifest, build: builder.Builder) -> T.List[mpar
     ]
 
 
-def _create_lib(cargo: Manifest, build: builder.Builder, crate_type: manifest.CRATE_TYPE) -> T.List[mparser.BaseNode]:
+def _create_lib(cargo: Manifest, build: builder.Builder, crate_type: CRATE_TYPE) -> T.List[mparser.BaseNode]:
     dependencies: T.List[mparser.BaseNode] = []
     dependency_map: T.Dict[mparser.BaseNode, mparser.BaseNode] = {}
     for name, dep in cargo.dependencies.items():
@@ -708,7 +657,7 @@ def interpret(subp_name: str, subdir: str, env: Environment) -> T.Tuple[mparser.
     if not cargo:
         raise MesonException(f'Cargo package {package_name!r} not found in {subdir}')
 
-    filename = os.path.join(cargo.subdir, cargo.path, 'Cargo.toml')
+    filename = os.path.join(cargo.subdir, 'Cargo.toml')
     build = builder.Builder(filename)
 
     # Generate project options
@@ -726,7 +675,7 @@ def interpret(subp_name: str, subdir: str, env: Environment) -> T.Tuple[mparser.
 
     # Libs are always auto-discovered and there's no other way to handle them,
     # which is unfortunate for reproducability
-    if os.path.exists(os.path.join(env.source_dir, cargo.subdir, cargo.path, cargo.lib.path)):
+    if os.path.exists(os.path.join(env.source_dir, cargo.subdir, cargo.lib.path)):
         for crate_type in cargo.lib.crate_type:
             ast.extend(_create_lib(cargo, build, crate_type))
 
