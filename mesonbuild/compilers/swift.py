@@ -11,6 +11,7 @@ from ..mesonlib import EnvironmentException
 from .compilers import Compiler, clike_debug_args
 
 if T.TYPE_CHECKING:
+    from ..dependencies import Dependency
     from ..envconfig import MachineInfo
     from ..environment import Environment
     from ..linkers.linkers import DynamicLinker
@@ -39,6 +40,10 @@ class SwiftCompiler(Compiler):
                          is_cross=is_cross, full_version=full_version,
                          linker=linker)
         self.version = version
+        if self.info.is_darwin():
+            self.sdk_path = subprocess.check_output(['xcrun', '--show-sdk-path'],
+                                                    universal_newlines=True,
+                                                    encoding='utf-8').strip()
 
     def get_pic_args(self) -> T.List[str]:
         return []
@@ -54,6 +59,22 @@ class SwiftCompiler(Compiler):
 
     def get_dependency_gen_args(self, outtarget: str, outfile: str) -> T.List[str]:
         return ['-emit-dependencies']
+
+    def get_dependency_compile_args(self, dep: Dependency) -> T.List[str]:
+        args = dep.get_compile_args()
+        # Some deps might sneak in a hardcoded path to an older macOS SDK, which can
+        # cause compilation errors. Let's replace all .sdk paths with the current one.
+        # SwiftPM does it this way: https://github.com/swiftlang/swift-package-manager/pull/6772
+        # Not tested on anything else than macOS for now.
+        if not self.info.is_darwin():
+            return args
+        suffix = '.sdk'
+        for idx, arg in enumerate(args):
+            if suffix not in arg:
+                continue
+            sdk_end = arg.index(suffix) + len(suffix)
+            args[idx] = arg[:2] + self.sdk_path + arg[sdk_end:]
+        return args
 
     def depfile_for_object(self, objfile: str) -> T.Optional[str]:
         return os.path.splitext(objfile)[0] + '.' + self.get_depfile_suffix()
