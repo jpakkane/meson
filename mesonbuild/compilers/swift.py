@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import re
 import subprocess, os.path
 import typing as T
 
@@ -68,12 +69,12 @@ class SwiftCompiler(Compiler):
         # Not tested on anything else than macOS for now.
         if not self.info.is_darwin():
             return args
-        suffix = '.sdk'
-        for idx, arg in enumerate(args):
-            if suffix not in arg:
-                continue
-            sdk_end = arg.index(suffix) + len(suffix)
-            args[idx] = arg[:2] + self.sdk_path + arg[sdk_end:]
+        pattern = re.compile(r'.*\/MacOSX[^\/]*\.sdk(\/.*|$)')
+        for i, arg in enumerate(args):
+            if arg.startswith('-I'):
+                match = pattern.match(arg)
+                if match:
+                    args[i] = '-I' + self.sdk_path + match.group(1)
         return args
 
     def depfile_for_object(self, objfile: str) -> T.Optional[str]:
