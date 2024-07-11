@@ -316,19 +316,32 @@ class GnuCCompiler(GnuCompiler, CCompiler):
             )
         return opts
 
-    def get_option_compile_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
+    def get_option_compile_args(self, target: 'BuildTarget', env: 'Environment', subproject=None) -> T.List[str]:
         args = []
         key = self.form_langopt_key('std')
-        std = options.get_value(key)
+        if target:
+            std = env.coredata.get_option_for_target(target, key)
+        else:
+            std = env.coredata.get_option_for_subproject(key, subproject)
         if std != 'none':
             args.append('-std=' + std)
         return args
 
-    def get_option_link_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
+    def get_option_link_args(self, target: 'BuildTarget', env: 'Environment', subproject=None) -> T.List[str]:
         if self.info.is_windows() or self.info.is_cygwin():
             # without a typeddict mypy can't figure this out
             key = self.form_langopt_key('winlibs')
-            libs: T.List[str] = options.get_value(key).copy()
+            if target:
+                libs: T.List[str] = env.get_option_for_target(target,
+                                                              OptionKey('winlibs',
+                                                                        lang=self.language,
+                                                                        machine=self.for_machine)).copy()
+            else:
+                libs: T.List[str] = env.get_option_for_subproject(OptionKey('winlibs',
+                                                                            lang=self.language,
+                                                                            machine=self.for_machine),
+                                                                            subproject).copy()
+
             assert isinstance(libs, list)
             for l in libs:
                 assert isinstance(l, str)
@@ -430,10 +443,10 @@ class IntelCCompiler(IntelGnuLikeCompiler, CCompiler):
         std_opt.set_versions(stds, gnu=True)
         return opts
 
-    def get_option_compile_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
+    def get_option_compile_args(self, target: 'BuildTarget', env: 'Environment', subproject=None) -> T.List[str]:
         args = []
         key = self.form_langopt_key('std')
-        std = options.get_value(key)
+        std = env.determine_option_value(key, target, subproject)
         if std != 'none':
             args.append('-std=' + std)
         return args
@@ -459,10 +472,9 @@ class VisualStudioLikeCCompilerMixin(CompilerMixinBase):
             ),
         )
 
-    def get_option_link_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
-        # need a TypeDict to make this work
+    def get_option_link_args(self, target: 'BuildTarget', env: 'Environment', subproject=None) -> T.List[str]:
         key = self.form_langopt_key('winlibs')
-        libs = options.get_value(key).copy()
+        libs = env.coredata.get_option_for_target(target, key).copy()
         assert isinstance(libs, list)
         for l in libs:
             assert isinstance(l, str)
@@ -496,12 +508,11 @@ class VisualStudioCCompiler(MSVCCompiler, VisualStudioLikeCCompilerMixin, CCompi
         std_opt.set_versions(stds, gnu=True, gnu_deprecated=True)
         return opts
 
-    def get_option_compile_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
+    def get_option_compile_args(self, target: 'BuildTarget', env: 'Environment', subproject=None) -> T.List[str]:
         args = []
         key = self.form_langopt_key('std')
-        std = options.get_value(key)
         # As of MVSC 16.8, /std:c11 and /std:c17 are the only valid C standard options.
-        if std == 'c11':
+        if std in {'c11'}:
             args.append('/std:c11')
         elif std in {'c17', 'c18'}:
             args.append('/std:c17')
@@ -518,9 +529,10 @@ class ClangClCCompiler(_ClangCStds, ClangClCompiler, VisualStudioLikeCCompilerMi
                            full_version=full_version)
         ClangClCompiler.__init__(self, target)
 
-    def get_option_compile_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
+    def get_option_compile_args(self, target: 'BuildTarget', env: 'Environment', subproject=None) -> T.List[str]:
+        args = []
         key = self.form_langopt_key('std')
-        std = options.get_value(key)
+        std = env.determine_option_value(key, target, subproject)
         if std != "none":
             return [f'/clang:-std={std}']
         return []
@@ -550,10 +562,10 @@ class IntelClCCompiler(IntelVisualStudioLikeCompiler, VisualStudioLikeCCompilerM
         std_opt.set_versions(['c89', 'c99', 'c11'])
         return opts
 
-    def get_option_compile_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
+    def get_option_compile_args(self, target: 'BuildTarget', env: 'Environment', subproject=None) -> T.List[str]:
         args = []
         key = self.form_langopt_key('std')
-        std = options.get_value(key)
+        std = env.determine_option_value(key, target, subproject)
         if std == 'c89':
             mlog.log("ICL doesn't explicitly implement c89, setting the standard to 'none', which is close.", once=True)
         elif std != 'none':

@@ -301,9 +301,11 @@ class Interpreter(InterpreterBase, HoldableObject):
         # Passed from the outside, only used in subprojects.
         if default_project_options:
             self.default_project_options = default_project_options.copy()
+            if isinstance(default_project_options, dict):
+                pass
         else:
             self.default_project_options = {}
-        self.project_default_options: T.Dict[OptionKey, str] = {}
+        self.project_default_options: T.List[str] = []
         self.build_func_dict()
         self.build_holder_map()
         self.user_defined_options = user_defined_options
@@ -874,12 +876,14 @@ class Interpreter(InterpreterBase, HoldableObject):
         return sub
 
     def do_subproject(self, subp_name: str, kwargs: kwtypes.DoSubproject, force_method: T.Optional[wrap.Method] = None) -> SubprojectHolder:
+        if subp_name == 'sub_static':
+            pass
         disabled, required, feature = extract_required_kwarg(kwargs, self.subproject)
         if disabled:
             mlog.log('Subproject', mlog.bold(subp_name), ':', 'skipped: feature', mlog.bold(feature), 'disabled')
             return self.disabled_subproject(subp_name, disabled_feature=feature)
 
-        default_options = {k.evolve(subproject=subp_name): v for k, v in kwargs['default_options'].items()}
+        default_options = kwargs['default_options']
 
         if subp_name == '':
             raise InterpreterException('Subproject name must not be empty.')
@@ -948,7 +952,7 @@ class Interpreter(InterpreterBase, HoldableObject):
             raise e
 
     def _do_subproject_meson(self, subp_name: str, subdir: str,
-                             default_options: T.Dict[OptionKey, str],
+                             default_options: T.List[str],
                              kwargs: kwtypes.DoSubproject,
                              ast: T.Optional[mparser.CodeBlockNode] = None,
                              build_def_files: T.Optional[T.List[str]] = None,
@@ -1009,21 +1013,21 @@ class Interpreter(InterpreterBase, HoldableObject):
         return self.subprojects[subp_name]
 
     def _do_subproject_cmake(self, subp_name: str, subdir: str,
-                             default_options: T.Dict[OptionKey, str],
+                             default_options: T.List[str],
                              kwargs: kwtypes.DoSubproject) -> SubprojectHolder:
         from ..cmake import CMakeInterpreter
         with mlog.nested(subp_name):
-            prefix = self.coredata.optstore.get_value('prefix')
+            prefix = self.coredata.optstore.get_value_for('prefix')
 
             from ..modules.cmake import CMakeSubprojectOptions
-            options = kwargs.get('options') or CMakeSubprojectOptions()
-            cmake_options = kwargs.get('cmake_options', []) + options.cmake_options
+            kw_opts = kwargs.get('options') or CMakeSubprojectOptions()
+            cmake_options = kwargs.get('cmake_options', []) + kw_opts.cmake_options
             cm_int = CMakeInterpreter(Path(subdir), Path(prefix), self.build.environment, self.backend)
             cm_int.initialise(cmake_options)
             cm_int.analyse()
 
             # Generate a meson ast and execute it with the normal do_subproject_meson
-            ast = cm_int.pretend_to_be_meson(options.target_options)
+            ast = cm_int.pretend_to_be_meson(kw_opts.target_options)
             result = self._do_subproject_meson(
                     subp_name, subdir, default_options,
                     kwargs, ast,
@@ -1036,7 +1040,7 @@ class Interpreter(InterpreterBase, HoldableObject):
         return result
 
     def _do_subproject_cargo(self, subp_name: str, subdir: str,
-                             default_options: T.Dict[OptionKey, str],
+                             default_options: T.List[str],
                              kwargs: kwtypes.DoSubproject) -> SubprojectHolder:
         from .. import cargo
         FeatureNew.single_use('Cargo subproject', '1.3.0', self.subproject, location=self.current_node)
@@ -1047,41 +1051,6 @@ class Interpreter(InterpreterBase, HoldableObject):
                 subp_name, subdir, default_options, kwargs, ast,
                 # FIXME: Are there other files used by cargo interpreter?
                 [os.path.join(subdir, 'Cargo.toml')])
-
-    def get_option_internal(self, optname: str) -> options.UserOption:
-        key = OptionKey.from_string(optname).evolve(subproject=self.subproject)
-
-        if not key.is_project():
-            for opts in [self.coredata.optstore, compilers.base_options]:
-                v = opts.get(key)
-                if v is None or v.yielding:
-                    v = opts.get(key.as_root())
-                if v is not None:
-                    assert isinstance(v, options.UserOption), 'for mypy'
-                    return v
-
-        try:
-            opt = self.coredata.optstore.get_value_object(key)
-            if opt.yielding and key.subproject and key.as_root() in self.coredata.optstore:
-                popt = self.coredata.optstore.get_value_object(key.as_root())
-                if type(opt) is type(popt):
-                    opt = popt
-                else:
-                    # Get class name, then option type as a string
-                    opt_type = opt.__class__.__name__[4:][:-6].lower()
-                    popt_type = popt.__class__.__name__[4:][:-6].lower()
-                    # This is not a hard error to avoid dependency hell, the workaround
-                    # when this happens is to simply set the subproject's option directly.
-                    mlog.warning('Option {0!r} of type {1!r} in subproject {2!r} cannot yield '
-                                 'to parent option of type {3!r}, ignoring parent value. '
-                                 'Use -D{2}:{0}=value to set the value for this option manually'
-                                 '.'.format(optname, opt_type, self.subproject, popt_type),
-                                 location=self.current_node)
-            return opt
-        except KeyError:
-            pass
-
-        raise InterpreterException(f'Tried to access unknown option {optname!r}.')
 
     @typed_pos_args('get_option', str)
     @noKwargs
@@ -1096,15 +1065,19 @@ class Interpreter(InterpreterBase, HoldableObject):
         if optname_regex.search(optname.split('.', maxsplit=1)[-1]) is not None:
             raise InterpreterException(f'Invalid option name {optname!r}')
 
-        opt = self.get_option_internal(optname)
-        if isinstance(opt, options.UserFeatureOption):
-            opt.name = optname
-            return opt
-        elif isinstance(opt, options.UserOption):
-            if isinstance(opt.value, str):
-                return P_OBJ.OptionString(opt.value, f'{{{optname}}}')
-            return opt.value
-        return opt
+        (value_object, value) = self.coredata.optstore.get_value_object_and_value_for(options.OptionParts(optname, self.subproject))
+        if isinstance(value_object, options.UserFeatureOption):
+            ocopy = copy.copy(value_object)
+            ocopy.name = optname
+            ocopy.value = value
+            return ocopy
+        elif isinstance(value_object, options.UserOption):
+            if isinstance(value_object.value, str):
+                return P_OBJ.OptionString(value, f'{{{optname}}}')
+            return value
+        ocopy = copy.copy(value_object)
+        ocopy.value = value
+        return ocopy
 
     @typed_pos_args('configuration_data', optargs=[dict])
     @noKwargs
@@ -1148,7 +1121,7 @@ class Interpreter(InterpreterBase, HoldableObject):
         if self.environment.first_invocation:
             self.coredata.init_backend_options(backend_name)
 
-        options = {k: v for k, v in self.environment.options.items() if k.is_backend()}
+        options = {k: v for k, v in self.environment.options.items() if k.startswith('backend_')}
         self.coredata.set_options(options)
 
     @typed_pos_args('project', str, varargs=str)
@@ -1205,28 +1178,16 @@ class Interpreter(InterpreterBase, HoldableObject):
         else:
             self.coredata.options_files[self.subproject] = None
 
-        if self.subproject:
-            self.project_default_options = {k.evolve(subproject=self.subproject): v
-                                            for k, v in kwargs['default_options'].items()}
-        else:
-            self.project_default_options = kwargs['default_options']
-
-        # Do not set default_options on reconfigure otherwise it would override
-        # values previously set from command line. That means that changing
-        # default_options in a project will trigger a reconfigure but won't
-        # have any effect.
-        #
-        # If this is the first invocation we always need to initialize
-        # builtins, if this is a subproject that is new in a re-invocation we
-        # need to initialize builtins for that
+        self.project_default_options = kwargs['default_options']
         if self.environment.first_invocation or (self.subproject != '' and self.subproject not in self.coredata.initialized_subprojects):
-            default_options = self.project_default_options.copy()
-            default_options.update(self.default_project_options)
-            self.coredata.init_builtins(self.subproject)
-            self.coredata.initialized_subprojects.add(self.subproject)
-        else:
-            default_options = {}
-        self.coredata.set_default_options(default_options, self.subproject, self.environment)
+            if self.subproject == '':
+                self.coredata.optstore.set_from_top_level_project_call(self.project_default_options,
+                                                                       self.user_defined_options.cmd_line_options,
+                                                                       self.environment.options)
+            else:
+                invoker_method_default_options = self.default_project_options
+                self.coredata.optstore.set_from_subproject_call(self.subproject, invoker_method_default_options, self.project_default_options)
+
 
         if not self.is_subproject():
             self.build.project_name = proj_name
@@ -1540,13 +1501,13 @@ class Interpreter(InterpreterBase, HoldableObject):
                 self.coredata.process_compiler_options(lang, comp, self.environment, self.subproject)
 
             # Add per-subproject compiler options. They inherit value from main project.
-            if self.subproject:
-                options = {}
-                for k in comp.get_options():
-                    v = copy.copy(self.coredata.optstore.get_value_object(k))
-                    k = k.evolve(subproject=self.subproject)
-                    options[k] = v
-                self.coredata.add_compiler_options(options, lang, for_machine, self.environment, self.subproject)
+            # if self.subproject:
+            #     options = {}
+            #     for k in comp.get_options():
+            #         v = copy.copy(self.coredata.optstore.get_value_object(k))
+            #         k = k.evolve(subproject=self.subproject)
+            #         options[k] = v
+            #     self.coredata.add_compiler_options(options, lang, for_machine, self.environment, self.subproject)
 
             if for_machine == MachineChoice.HOST or self.environment.is_cross_build():
                 logger_fun = mlog.log
@@ -1806,6 +1767,8 @@ class Interpreter(InterpreterBase, HoldableObject):
         if not isinstance(not_found_message, str):
             raise InvalidArguments('The not_found_message must be a string.')
         try:
+            if 'sub_static' in names:
+                pass
             d = df.lookup(kwargs)
         except Exception:
             if not_found_message:

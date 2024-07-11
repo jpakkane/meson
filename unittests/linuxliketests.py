@@ -1816,3 +1816,56 @@ class LinuxlikeTests(BasePlatformTests):
         self.assertIn('build t9-e1: c_LINKER t9-e1.p/main.c.o | libt9-s1.a libt9-s2.a libt9-s3.a\n', content)
         self.assertIn('build t12-e1: c_LINKER t12-e1.p/main.c.o | libt12-s1.a libt12-s2.a libt12-s3.a\n', content)
         self.assertIn('build t13-e1: c_LINKER t13-e1.p/main.c.o | libt12-s1.a libt13-s3.a\n', content)
+
+    def check_has_flag(self, compdb, src, argument):
+        for i in compdb:
+            if src in i['file']:
+                self.assertIn(argument, i['command'])
+                return
+        self.assertTrue(False, f'Source {src} not found in compdb')
+
+    def test_persp_options(self):
+        testdir = os.path.join(self.unit_test_dir, '123 persp options')
+        self.init(testdir, extra_args='-Doptimization=1')
+        compdb = self.get_compdb()
+        mainsrc = 'toplevel.c'
+        sub1src = 'sub1.c'
+        sub2src = 'sub2.c'
+        self.check_has_flag(compdb, mainsrc, '-O1')
+        self.check_has_flag(compdb, sub1src, '-O1')
+        self.check_has_flag(compdb, sub2src, '-O1')
+
+        # Set subproject option to O2
+        self.setconf(['-Dround=2', '-A', 'sub2:optimization=3'])
+        compdb = self.get_compdb()
+        self.check_has_flag(compdb, mainsrc, '-O1')
+        self.check_has_flag(compdb, sub1src, '-O1')
+        self.check_has_flag(compdb, sub2src, '-O3')
+
+        # Change an already set override.
+        self.setconf(['-Dround=3', '-D', 'sub2:optimization=2'])
+        compdb = self.get_compdb()
+        self.check_has_flag(compdb, mainsrc, '-O1')
+        self.check_has_flag(compdb, sub1src, '-O1')
+        self.check_has_flag(compdb, sub2src, '-O2')
+
+        # Set top level option to O3
+        self.setconf(['-Dround=4', '-A:optimization=3'])
+        compdb = self.get_compdb()
+        self.check_has_flag(compdb, mainsrc, '-O3')
+        self.check_has_flag(compdb, sub1src, '-O1')
+        self.check_has_flag(compdb, sub2src, '-O2')
+
+        # Unset subproject
+        self.setconf(['-Dround=5', '-U', 'sub2:optimization'])
+        compdb = self.get_compdb()
+        self.check_has_flag(compdb, mainsrc, '-O3')
+        self.check_has_flag(compdb, sub1src, '-O1')
+        self.check_has_flag(compdb, sub2src, '-O1')
+
+        # Set global value
+        self.setconf(['-Dround=6', '-D', 'optimization=2'])
+        compdb = self.get_compdb()
+        self.check_has_flag(compdb, mainsrc, '-O3')
+        self.check_has_flag(compdb, sub1src, '-O2')
+        self.check_has_flag(compdb, sub2src, '-O2')

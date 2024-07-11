@@ -296,6 +296,8 @@ class BasePlatformTests(TestCase):
         else:
             arg = list(arg)
         self._run(self.mconf_command + arg + [self.builddir])
+        if will_build:
+            self.build()
 
     def getconf(self, optname: str):
         opts = self.introspect('--buildoptions')

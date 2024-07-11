@@ -18,6 +18,7 @@ from . import coredata
 from . import dependencies
 from . import mlog
 from . import programs
+from . import options
 from .mesonlib import (
     HoldableObject, SecondLevelHolder,
     File, MesonException, MachineChoice, PerMachine, OrderedSet, listify,
@@ -413,10 +414,6 @@ class ExtractedObjects(HoldableObject):
     recursive: bool = True
     pch: bool = False
 
-    def __post_init__(self) -> None:
-        if self.target.is_unity:
-            self.check_unity_compatible()
-
     def __repr__(self) -> str:
         r = '<{0} {1!r}: {2}>'
         return r.format(self.__class__.__name__, self.target.name, self.srclist)
@@ -533,7 +530,6 @@ class Target(HoldableObject, metaclass=abc.ABCMeta):
                    for k, v in overrides.items()}
         else:
             ovr = {}
-        self.options = coredata.OptionsView(self.environment.coredata.optstore, self.subproject, ovr)
         # XXX: this should happen in the interpreter
         if has_path_sep(self.name):
             # Fix failing test 53 when this becomes an error.
@@ -648,23 +644,16 @@ class Target(HoldableObject, metaclass=abc.ABCMeta):
             # set, use the value of 'install' if it's enabled.
             self.build_by_default = True
 
-        self.set_option_overrides(self.parse_overrides(kwargs))
+        self.raw_overrides = self.parse_overrides(kwargs)
 
-    def set_option_overrides(self, option_overrides: T.Dict[OptionKey, str]) -> None:
-        self.options.overrides = {}
-        for k, v in option_overrides.items():
-            if k.lang:
-                self.options.overrides[k.evolve(machine=self.for_machine)] = v
-            else:
-                self.options.overrides[k] = v
-
-    def get_options(self) -> coredata.OptionsView:
-        return self.options
-
-    def get_option(self, key: 'OptionKey') -> T.Union[str, int, bool]:
-        # TODO: if it's possible to annotate get_option or validate_option_value
-        # in the future we might be able to remove the cast here
-        return T.cast('T.Union[str, int, bool]', self.options.get_value(key))
+    def get_override(self, name, fallback):
+        if isinstance(name, str):
+            name = OptionKey(name)
+        # FIXME. A target object should store overrides in the original string form.
+        # We need to refactor to make feasible.
+        if name in self.raw_overrides:
+            return str(self.raw_overrides.get(name, fallback))
+        return fallback
 
     @staticmethod
     def parse_overrides(kwargs: T.Dict[str, T.Any]) -> T.Dict[OptionKey, str]:
@@ -811,11 +800,6 @@ class BuildTarget(Target):
 
     def __str__(self):
         return f"{self.name}"
-
-    @property
-    def is_unity(self) -> bool:
-        unity_opt = self.get_option(OptionKey('unity'))
-        return unity_opt == 'on' or (unity_opt == 'subprojects' and self.subproject != '')
 
     def validate_install(self):
         if self.for_machine is MachineChoice.BUILD and self.install:
@@ -1239,11 +1223,13 @@ class BuildTarget(Target):
             mlog.warning(f"Use the '{arg}' kwarg instead of passing '-f{arg}' manually to {self.name!r}")
             return True
 
-        k = OptionKey(option)
+        k = options.OptionParts(option)
         if kwargs.get(arg) is not None:
             val = T.cast('bool', kwargs[arg])
-        elif k in self.environment.coredata.optstore:
-            val = self.environment.coredata.optstore.get_value(k)
+        elif self.environment.coredata.optstore.has_option(k.name, k.subproject):
+            val = self.environment.coredata.optstore.get_value_for(k.name, k.subproject)
+        elif self.environment.coredata.optstore.has_option(k):
+            val = self.environment.coredata.optstore.get_value_for(k)
         else:
             val = False
 
@@ -1929,9 +1915,9 @@ class Executable(BuildTarget):
             environment: environment.Environment,
             compilers: T.Dict[str, 'Compiler'],
             kwargs):
-        key = OptionKey('b_pie')
-        if 'pie' not in kwargs and key in environment.coredata.optstore:
-            kwargs['pie'] = environment.coredata.optstore.get_value(key)
+        key = options.OptionParts('b_pie')
+        if 'pie' not in kwargs and  environment.coredata.optstore.has_option(key):
+            kwargs['pie'] = environment.coredata.optstore.get_value_for(key)
         super().__init__(name, subdir, subproject, for_machine, sources, structured_sources, objects,
                          environment, compilers, kwargs)
         self.win_subsystem = kwargs.get('win_subsystem') or 'console'
@@ -2786,10 +2772,6 @@ class CompileTarget(BuildTarget):
 
     def type_suffix(self) -> str:
         return "@compile"
-
-    @property
-    def is_unity(self) -> bool:
-        return False
 
     def _add_output(self, f: File) -> None:
         plainname = os.path.basename(f.fname)

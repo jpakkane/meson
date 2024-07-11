@@ -47,6 +47,10 @@ def add_arguments(parser: 'argparse.ArgumentParser') -> None:
                         help='Clear cached state (e.g. found dependencies)')
     parser.add_argument('--no-pager', action='store_false', dest='pager',
                         help='Do not redirect output to a pager')
+    parser.add_argument('-A', action='append', dest='A',
+                        help='Add a subproject option.')
+    parser.add_argument('-U', action='append', dest='U',
+                        help='Remove a subproject option.')
 
 def stringify(val: T.Any) -> str:
     if isinstance(val, bool):
@@ -231,15 +235,15 @@ class Conf:
             return
         if title:
             self.add_title(title)
-        auto = T.cast('options.UserFeatureOption', self.coredata.optstore.get_value_object('auto_features'))
+        auto = T.cast('options.UserFeatureOption', self.coredata.optstore.get_value_for('auto_features'))
         for k, o in sorted(opts.items()):
             printable_value = o.printable_value()
-            root = k.as_root()
-            if o.yielding and k.subproject and root in self.coredata.optstore:
-                printable_value = '<inherited from main project>'
-            if isinstance(o, options.UserFeatureOption) and o.is_auto():
-                printable_value = auto.printable_value()
-            self.add_option(str(root), o.description, printable_value, o.choices)
+            #root = k.as_root()
+            #if o.yielding and k.subproject and root in self.coredata.options:
+            #    printable_value = '<inherited from main project>'
+            #if isinstance(o, options.UserFeatureOption) and o.is_auto():
+            #    printable_value = auto.printable_value()
+            self.add_option(k.name, o.description, printable_value, o.choices)
 
     def print_conf(self, pager: bool) -> None:
         if pager:
@@ -266,33 +270,33 @@ class Conf:
         test_options: 'coredata.MutableKeyedOptionDictType' = {}
         core_options: 'coredata.MutableKeyedOptionDictType' = {}
         module_options: T.Dict[str, 'coredata.MutableKeyedOptionDictType'] = collections.defaultdict(dict)
-        for k, v in self.coredata.optstore.items():
+        for k, v in self.coredata.optstore.options.items():
             if k in dir_option_names:
                 dir_options[k] = v
             elif k in test_option_names:
                 test_options[k] = v
-            elif k.module:
+            elif False:#k.module:
                 # Ignore module options if we did not use that module during
                 # configuration.
                 if self.build and k.module not in self.build.modules:
                     continue
                 module_options[k.module][k] = v
-            elif k.is_builtin():
+            elif not self.coredata.optstore.is_project_option(k):
                 core_options[k] = v
 
-        host_core_options = self.split_options_per_subproject({k: v for k, v in core_options.items() if k.machine is MachineChoice.HOST})
-        build_core_options = self.split_options_per_subproject({k: v for k, v in core_options.items() if k.machine is MachineChoice.BUILD})
-        host_compiler_options = self.split_options_per_subproject({k: v for k, v in self.coredata.optstore.items() if k.is_compiler() and k.machine is MachineChoice.HOST})
-        build_compiler_options = self.split_options_per_subproject({k: v for k, v in self.coredata.optstore.items() if k.is_compiler() and k.machine is MachineChoice.BUILD})
-        project_options = self.split_options_per_subproject({k: v for k, v in self.coredata.optstore.items() if k.is_project()})
+        host_core_options = self.split_options_per_subproject({k: v for k, v in core_options.items() if True})#k.machine is MachineChoice.HOST})
+        build_core_options = {}#self.split_options_per_subproject({k: v for k, v in core_options.items() if k.machine is MachineChoice.BUILD})
+        host_compiler_options = self.split_options_per_subproject({k: v for k, v in self.coredata.optstore.options.items() if k.name.startswith('c_')})#k.is_compiler() and k.machine is MachineChoice.HOST})
+        build_compiler_options = {}#self.split_options_per_subproject({k: v for k, v in self.coredata.options.items() if k.is_compiler() and k.machine is MachineChoice.BUILD})
+        project_options = self.split_options_per_subproject({k: v for k, v in self.coredata.optstore.options.items() if self.coredata.optstore.is_project_option(k)})
         show_build_options = self.default_values_only or self.build.environment.is_cross_build()
 
         self.add_section('Main project options')
         self.print_options('Core options', host_core_options[''])
         if show_build_options:
             self.print_options('', build_core_options[''])
-        self.print_options('Backend options', {k: v for k, v in self.coredata.optstore.items() if k.is_backend()})
-        self.print_options('Base options', {k: v for k, v in self.coredata.optstore.items() if k.is_base()})
+        self.print_options('Backend options', {k: v for k, v in self.coredata.optstore.options.items() if k.name.startswith('backend_')})
+        self.print_options('Base options', {k: v for k, v in self.coredata.optstore.options.items() if k.name.startswith('b_')})
         self.print_options('Compiler options', host_compiler_options.get('', {}))
         if show_build_options:
             self.print_options('', build_compiler_options.get('', {}))
@@ -323,6 +327,8 @@ class Conf:
             print_default_values_warning()
 
         self.print_nondefault_buildtype_options()
+        #self.print_sp_overrides()
+        self.print_augments()
 
     def print_nondefault_buildtype_options(self) -> None:
         mismatching = self.coredata.get_nondefault_buildtype_args()
@@ -333,8 +339,40 @@ class Conf:
         for m in mismatching:
             mlog.log(f'{m[0]:21}{m[1]:10}{m[2]:10}')
 
+    def print_sp_overrides(self) -> None:
+        if self.coredata.sp_option_overrides:
+            mlog.log('\nThe folowing options have per-subproject overrides:')
+            for k, v in self.coredata.sp_option_overrides.items():
+                mlog.log(f'{k:21}{v:10}')
+
+    def print_augments(self) -> None:
+        if self.coredata.optstore.augments:
+            mlog.log('\nCurrently set option augments:')
+            for k, v in self.coredata.optstore.augments.items():
+                mlog.log(f'{k.form_canonical_keystring():21}{v:10}')
+        else:
+            mlog.log('\nThere are no option augments.')
+
+def has_option_flags(options):
+    if options.cmd_line_options:
+        return True
+    if options.A:
+        return True
+    if hasattr(options, 'D') and options.D:
+        return True
+    if options.U:
+        return True
+    return False
+
+def is_print_only(options):
+    if has_option_flags(options):
+        return False
+    if options.clearcache:
+        return False
+    return True
+
 def run_impl(options: CMDOptions, builddir: str) -> int:
-    print_only = not options.cmd_line_options and not options.clearcache
+    print_only = is_print_only(options)
     c = None
     try:
         c = Conf(builddir)
@@ -345,8 +383,8 @@ def run_impl(options: CMDOptions, builddir: str) -> int:
             return 0
 
         save = False
-        if options.cmd_line_options:
-            save = c.set_options(options.cmd_line_options)
+        if has_option_flags(options):
+            save |= c.coredata.optstore.set_from_configure_command(options.projectoptions, options.A, options.U)
             coredata.update_cmd_line_file(builddir, options)
         if options.clearcache:
             c.clear_cache()

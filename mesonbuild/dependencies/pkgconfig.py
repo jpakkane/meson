@@ -8,6 +8,7 @@ from pathlib import Path
 from .base import ExternalDependency, DependencyException, sort_libpaths, DependencyTypeName
 from ..mesonlib import EnvironmentVariables, OptionKey, OrderedSet, PerMachine, Popen_safe, Popen_safe_logged, MachineChoice, join_args
 from ..programs import find_external_program, ExternalProgram
+from ..options import OptionParts
 from .. import mlog
 from pathlib import PurePath
 from functools import lru_cache
@@ -237,8 +238,8 @@ class PkgConfigCLI(PkgConfigInterface):
 
     def _get_env(self, uninstalled: bool = False) -> EnvironmentVariables:
         env = EnvironmentVariables()
-        key = OptionKey('pkg_config_path', machine=self.for_machine)
-        extra_paths: T.List[str] = self.env.coredata.optstore.get_value(key)[:]
+        key = OptionParts('pkg_config_path')
+        extra_paths: T.List[str] = self.env.coredata.optstore.get_value_for(key)[:]
         if uninstalled:
             uninstalled_path = Path(self.env.get_build_dir(), 'meson-uninstalled').as_posix()
             if uninstalled_path not in extra_paths:

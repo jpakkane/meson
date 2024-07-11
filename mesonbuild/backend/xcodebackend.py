@@ -1685,7 +1685,7 @@ class XCodeBackend(backends.Backend):
                 if compiler is None:
                     continue
                 # Start with warning args
-                warn_args = compiler.get_warn_args(target.get_option(OptionKey('warning_level')))
+                warn_args = compiler.get_warn_args(self.get_target_option(target, 'warning_level'))
                 copt_proxy = target.get_options()
                 std_args = compiler.get_option_compile_args(copt_proxy)
                 # Add compile args added using add_project_arguments()
@@ -1738,9 +1738,9 @@ class XCodeBackend(backends.Backend):
             if target.suffix:
                 suffix = '.' + target.suffix
                 settings_dict.add_item('EXECUTABLE_SUFFIX', suffix)
-            settings_dict.add_item('GCC_GENERATE_DEBUGGING_SYMBOLS', BOOL2XCODEBOOL[target.get_option(OptionKey('debug'))])
+            settings_dict.add_item('GCC_GENERATE_DEBUGGING_SYMBOLS', BOOL2XCODEBOOL[self.get_target_option(target, 'debug')])
             settings_dict.add_item('GCC_INLINES_ARE_PRIVATE_EXTERN', 'NO')
-            opt_flag = OPT2XCODEOPT[target.get_option(OptionKey('optimization'))]
+            opt_flag = OPT2XCODEOPT[self.get_target_option(target, 'optimization')]
             if opt_flag is not None:
                 settings_dict.add_item('GCC_OPTIMIZATION_LEVEL', opt_flag)
             if target.has_pch:

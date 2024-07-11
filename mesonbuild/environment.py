@@ -590,6 +590,8 @@ class Environment:
         # 'optimization' and 'debug' keys, it override them.
         self.options: T.MutableMapping[OptionKey, T.Union[str, T.List[str]]] = collections.OrderedDict()
 
+        self.machinestore = machinefile.MachineFileStore(self.coredata.config_files, self.coredata.cross_files, self.source_dir)
+
         ## Read in native file(s) to override build machine configuration
 
         if self.coredata.config_files is not None:
@@ -665,7 +667,7 @@ class Environment:
         if paths:
             mlog.deprecation('The [paths] section is deprecated, use the [built-in options] section instead.')
             for k, v in paths.items():
-                self.options[OptionKey.from_string(k).evolve(machine=machine)] = v
+                self.options[k] = v
 
         # Next look for compiler options in the "properties" section, this is
         # also deprecated, and these will also be overwritten by the "built-in
@@ -677,7 +679,7 @@ class Environment:
         for k, v in properties.properties.copy().items():
             if k in deprecated_properties:
                 mlog.deprecation(f'{k} in the [properties] section of the machine file is deprecated, use the [built-in options] section.')
-                self.options[OptionKey.from_string(k).evolve(machine=machine)] = v
+                self.options[k] = v
                 del properties.properties[k]
 
         for section, values in config.items():
@@ -693,7 +695,7 @@ class Environment:
                         mlog.deprecation('Setting build machine options in cross files, please use a native file instead, this will be removed in meson 0.60', once=True)
                     if key.subproject:
                         raise MesonException('Do not set subproject options in [built-in options] section, use [subproject:built-in options] instead.')
-                    self.options[key.evolve(subproject=subproject, machine=machine)] = v
+                    self.options[k] = v
             elif section == 'project options' and machine is MachineChoice.HOST:
                 # Project options are only for the host machine, we don't want
                 # to read these from the native file
@@ -702,7 +704,7 @@ class Environment:
                     key = OptionKey.from_string(k)
                     if key.subproject:
                         raise MesonException('Do not set subproject options in [built-in options] section, use [subproject:built-in options] instead.')
-                    self.options[key.evolve(subproject=subproject)] = v
+                    self.options[k] = v
 
     def _set_default_options_from_env(self) -> None:
         opts: T.List[T.Tuple[str, str]] = (
@@ -965,3 +967,13 @@ class Environment:
 
     def has_exe_wrapper(self) -> bool:
         return self.exe_wrapper and self.exe_wrapper.found()
+
+    def determine_option_value(self, key: T.Union[str, 'OptionKey'], target: T.Optional['BuildTarget'], subproject: T.Optional[str]) -> T.List[str]:
+        if target is None and subproject is None:
+            raise RuntimeError('Internal error, option value determination is missing arguments.')
+        if isinstance(key, str):
+            key = OptionKey(key)
+        if target:
+            return self.coredata.get_option_for_target(target, key)
+        else:
+            return self.coredata.get_option_for_subproject(key, subproject)
