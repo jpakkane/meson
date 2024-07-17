@@ -636,6 +636,7 @@ class CoreData:
         return dirty
 
     def set_options(self, opts_to_set: T.Dict[OptionKey, T.Any], subproject: str = '', first_invocation: bool = False) -> bool:
+        from .compilers import base_options
         dirty = False
         if not self.is_cross_build():
             opts_to_set = {k: v for k, v in opts_to_set.items() if k.machine is not MachineChoice.BUILD}
@@ -655,6 +656,8 @@ class CoreData:
             elif k in self.optstore:
                 dirty |= self.set_option(k, v, first_invocation)
             elif k.machine != MachineChoice.BUILD and k.type != OptionType.COMPILER:
+                if k.type == OptionType.BASE and k.as_root() in base_options:
+                    continue
                 unknown_options.append(k)
         if unknown_options:
             unknown_options_str = ', '.join(sorted(str(s) for s in unknown_options))
