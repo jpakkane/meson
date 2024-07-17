@@ -518,8 +518,8 @@ class CMakeDependency(ExternalDependency):
 
         # Set dependencies with CMake targets
         # recognise arguments we should pass directly to the linker
-        incDirs = []
-        compileOptions = []
+        incDirs = [x for x in self.traceparser.get_cmake_var('PACKAGE_INCLUDE_DIRS') if x]
+        compileOptions = [x for x in self.traceparser.get_cmake_var('PACKAGE_DEFINITIONS') if x]
         libraries = []
 
         for i, required in modules:
