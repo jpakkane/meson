@@ -560,6 +560,13 @@ class ClangSystemDependency(SystemDependency):
 
         dirs: T.List[T.List[str]] = [[llvm.get_variable(configtool='libdir', cmake='LLVM_LIBRARY_DIR')], []]
 
+        # Need the Windows version.dll library for the C++ interface
+        machine = self.env.machines[self.for_machine]
+        assert machine is not None, 'for mypy'
+        if machine.is_windows() and language == 'cpp':
+            libver = self.clib_compiler.find_library('version', env, [])
+            self.link_args = libver if libver is not None else []
+
         # Clang provides up to two interfaces for C++ code, and only one for C
         #
         # For C++ you can use libclang-cpp.so, or you can use loose static
@@ -589,7 +596,7 @@ class ClangSystemDependency(SystemDependency):
 
                     if not self.version_reqs or mesonlib.version_compare_many(version, self.version_reqs):
                         self.version = version
-                        self.link_args = lib
+                        self.link_args.extend(lib)
                         self.is_found = True
                         return
 
