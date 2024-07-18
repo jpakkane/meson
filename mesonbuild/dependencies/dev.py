@@ -601,10 +601,15 @@ class ClangSystemDependency(SystemDependency):
 
         libtype = mesonlib.LibType.PREFER_STATIC if self.static else mesonlib.LibType.PREFER_SHARED
 
-        for search in dirs:
+        # Sometimes (especially on Windows), the libs will have a suffix of the
+        # major version, so thigs like `clangBasic-8.lib` or
+        # `cygclangBasic-8.dll`
+        assert llvm.version is not None, 'for mypy'
+        for search, suffix in zip(dirs, ['', f'-{llvm.version.split(".")[0]}']):
             self.module_details.clear()
             libs: T.List[str] = []
             for m in modules:
+                m = f'{m}{suffix}'
                 lib = self.clib_compiler.find_library(m, env, search, libtype)
                 if lib:
                     libs.extend(lib)
@@ -619,6 +624,7 @@ class ClangSystemDependency(SystemDependency):
                 continue
 
             for m in opt_modules:
+                m = f'{m}{suffix}'
                 lib = self.clib_compiler.find_library(m, env, search, libtype)
                 if lib:
                     libs.extend(lib)
