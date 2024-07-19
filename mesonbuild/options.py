@@ -699,6 +699,14 @@ class OptionStore:
         self.augments = {}
         self.pending_project_options = {}
 
+    def ensure_key(self, key: T.Union[OptionKey, str]) -> OptionKey:
+        if isinstance(key, str):
+            return OptionKey(key)
+        return key
+
+    def get_value(self, key: T.Union[OptionKey, str]) -> 'T.Any':
+        return self.get_value_object(key).value
+
     def num_options(self):
         basic = len(self.options)
         build = len(self.build_options) if self.build_options else 0
@@ -714,20 +722,15 @@ class OptionStore:
         if cname not in self.options:
             self.options[cname] = value_object
 
-    def add_project_option(self, name, subproject, value_object):
-        cname = self.form_canonical_keystring(name, subproject)
-        self.options[cname] = value_object
-        self.project_options.add(cname)
-
     def get_value_object_for(self, name, subproject=None):
-        cname = self.form_canonical_keystring(name, subproject)
-        potential = self.options.get(cname, None)
+        top_key = self.ensure_key(name)
+        assert top_key.subproject is None or top_key.subproject == ''
+        sp_key = top_key.evolve(subproject=subproject)
+        potential = self.options.get(top_key, None)
         if potential is None:
-            top_cname = self.form_canonical_keystring(name)
-            return self.options[top_cname]
+            return self.options[sp_key]
         if potential.yielding:
-            top_option_key = optioninfo.evolve(subproject='')
-            top_option = self.options.get(top_option_key, None)
+            top_option = self.options.get(top_key, None)
             # If parent object has different type, do not yield.
             # This should probably be an error.
             if type(top_option) is type(potential):
@@ -743,7 +746,7 @@ class OptionStore:
     def add_system_option_internal(self, key: T.Union[OptionKey, str], valobj: 'UserOption[T.Any]') -> None:
         key = self.ensure_key(key)
         assert isinstance(valobj, UserOption)
-        self.d[key] = valobj
+        self.options[key] = valobj
 
     def add_compiler_option(self, language: str, key: T.Union[OptionKey, str], valobj: 'UserOption[T.Any]') -> None:
         key = self.ensure_key(key)
@@ -753,7 +756,7 @@ class OptionStore:
 
     def add_project_option(self, key: T.Union[OptionKey, str], valobj: 'UserOption[T.Any]') -> None:
         key = self.ensure_key(key)
-        self.d[key] = valobj
+        self.options[key] = valobj
         self.project_options.add(key)
 
     def add_module_option(self, modulename: str, key: T.Union[OptionKey, str], valobj: 'UserOption[T.Any]') -> None:
@@ -774,12 +777,25 @@ class OptionStore:
         key = self.ensure_key(key)
         self.d[key] = new_object
 
+    def get_value_object(self, key: T.Union[OptionKey, str]) -> 'UserOption[T.Any]':
+        key = self.ensure_key(key)
+        return self.options[key]
+
+    def get_value_object_and_value_for(self, optioninfo):
+        assert isinstance(optioninfo, OptionKey)
+        vobject = self.get_value_object_for(optioninfo)
+        if optioninfo in self.augments:
+            computed_value = vobject.validate_value(self.augments[optioninfo])
+        else:
+            computed_value = vobject.value
+        return (vobject, computed_value)
+
     def remove(self, key: OptionKey) -> None:
         del self.d[key]
 
     def __contains__(self, key: OptionKey) -> bool:
         key = self.ensure_key(key)
-        return key in self.d
+        return key in self.options
 
     def __repr__(self) -> str:
         return repr(self.d)
@@ -792,6 +808,19 @@ class OptionStore:
 
     def items(self) -> T.ItemsView['OptionKey', 'UserOption[T.Any]']:
         return self.d.items()
+=======
+    def __repr__(self):
+        return repr(self.options)
+
+    def keys(self):
+        return self.options.keys()
+
+    def values(self):
+        return self.options.values()
+
+    def items(self) -> ItemsView['OptionKey', 'UserOption[T.Any]']:
+        return self.options.items()
+>>>>>>> 777574444 (Fix errors of mega rebase enough to compile trivial test project.)
 
     # FIXME: this method must be deleted and users moved to use "add_xxx_option"s instead.
     def update(self, **kwargs: UserOption[T.Any]) -> None:
@@ -850,7 +879,8 @@ class OptionStore:
 
     def get_value_for(self, name, subproject=None):
         vobject = self.get_value_object_for(name, subproject)
-        cname = self.form_canonical_keystring(name, subproject)
+        key = self.ensure_key(name).evolve(subproject=subproject)
+        cname = str(key)
         if cname in self.augments:
             return vobject.validate_value(self.augments[cname])
         return vobject.value
@@ -884,9 +914,6 @@ class OptionStore:
              optdict[k] = v
         return optdict
 
-    def is_project_option(self, k):
-        return k not in self.project_options
-
     def set_from_top_level_project_call(self, project_default_options, cmd_line_options, native_file_options):
         if isinstance(project_default_options, str):
             project_default_options = [project_default_options]
@@ -904,7 +931,7 @@ class OptionStore:
             #else:
             #    self.pending_project_options[key] = valstr
         for keystr, valstr in project_default_options.items():
-            key = self.split_keystring(keystr)
+            key = self.ensure_key(keystr)
             if key.subproject is not None:
                 self.pending_project_options[key] = valstr
             elif key in self.options:

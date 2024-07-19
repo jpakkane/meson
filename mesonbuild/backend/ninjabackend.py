@@ -665,7 +665,7 @@ class NinjaBackend(backends.Backend):
             self.generate_dist()
             mlog.log_timestamp("Dist generated")
             key = OptionKey('b_coverage')
-            if self.environment.coredata.optstore.has_option('b_coverage', None) and\
+            if OptionKey('b_coverage') in self.environment.coredata.optstore and\
                     self.environment.coredata.optstore.get_value_for('b_coverage'):
                 gcovr_exe, gcovr_version, lcov_exe, lcov_version, genhtml_exe, llvm_cov_exe = environment.find_coverage_tools(self.environment.coredata)
                 mlog.debug(f'Using {gcovr_exe} ({gcovr_version}), {lcov_exe} and {llvm_cov_exe} for code coverage')
@@ -3755,7 +3755,7 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
         if ctlist:
             elem.add_dep(self.generate_custom_target_clean(ctlist))
 
-        if self.environment.coredata.optstore.has_option('b_coverage', None) and \
+        if OptionKey('b_coverage') in self.environment.coredata.optstore and \
            self.environment.coredata.optstore.get_value_for('b_coverage'):
             self.generate_gcov_clean()
             elem.add_dep('clean-gcda')

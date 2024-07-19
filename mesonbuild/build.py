@@ -1234,7 +1234,7 @@ class BuildTarget(Target):
         k = OptionKey(option)
         if kwargs.get(arg) is not None:
             val = T.cast('bool', kwargs[arg])
-        elif self.environment.coredata.optstore.has_option(k.name, k.subproject):
+        elif k in self.environment.coredata.optstore:
             val = self.environment.coredata.optstore.get_value_for(k.name, k.subproject)
         else:
             val = False
@@ -1943,7 +1943,7 @@ class Executable(BuildTarget):
             environment: environment.Environment,
             compilers: T.Dict[str, 'Compiler'],
             kwargs):
-        key = options.OptionParts('b_pie')
+        key = OptionKey('b_pie')
         if 'pie' not in kwargs and  environment.coredata.optstore.has_option(key):
             kwargs['pie'] = environment.coredata.optstore.get_value_for(key)
         super().__init__(name, subdir, subproject, for_machine, sources, structured_sources, objects,
