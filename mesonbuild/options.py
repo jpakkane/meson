@@ -105,7 +105,7 @@ class OptionKey:
     __slots__ = ['name', 'subproject', 'machine', '_hash']
 
     name: str
-    subproject: str
+    subproject: T.Optional[str] # None is global, empty string means top level project
     machine: MachineChoice
     _hash: int
 
@@ -178,7 +178,7 @@ class OptionKey:
         try:
             subproject, raw2 = raw.split(':')
         except ValueError:
-            subproject, raw2 = '', raw
+            subproject, raw2 = None, raw
 
         for_machine = MachineChoice.HOST
         try:
@@ -861,7 +861,11 @@ class OptionStore:
 
     def is_backend_option(self, key: OptionKey) -> bool:
         """Convenience method to check if this is a backend option."""
-        return key.name.startswith('backend_')
+        if isinstance(key, str):
+            name = key
+        else:
+            name = key.name
+        return name.startswith('backend_')
 
     def is_compiler_option(self, key: OptionKey) -> bool:
         """Convenience method to check if this is a compiler option."""
@@ -922,7 +926,7 @@ class OptionStore:
         if project_default_options is None:
             project_default_options  = {}
         for keystr, valstr in native_file_options.items():
-            key = self.split_keystring(keystr)
+            key = OptionKey.from_string(keystr)
             if key.subproject is not None:
                 #self.pending_project_options[key] = valstr
                 raise MesonException(f'Can not set subproject option {keystr} in machine files.')
@@ -939,13 +943,13 @@ class OptionStore:
             else:
                 self.pending_project_options[key] = valstr
         for keystr, valstr in cmd_line_options.items():
-            key = self.split_keystring(keystr)
+            key = OptionKey.from_string(keystr)
             if key.subproject is None:
-                projectkey = key.copy_with(subproject='')
-                if self.has_option(key):
+                projectkey = key.evolve(subproject='')
+                if key in self.options:
                     self.set_option(key, valstr)
-                elif self.has_option(projectkey):
-                    self.set_option(projectkey, valstr)
+                elif projectkey in self.options:
+                    self.options[projectkey].set_value(valstr)
                 else:
                     self.pending_project_options[key] = valstr
             else:

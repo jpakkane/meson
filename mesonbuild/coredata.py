@@ -468,10 +468,7 @@ class CoreData:
         return self.compute_value_for_subproject_option(option_object, key.name, subproject)
 
     def get_option_object_for_subproject(self, key: T.Union[str, OptionKey], subproject) -> T.Union[T.List[str], str, int, bool, WrapMode]:
-        if key.lang is not None:
-            keyname = f'{key.lang}_{key.name}'
-        else:
-            keyname = key.name
+        keyname = key.name
         if not key.is_project():
             opt = self.optstore.get_value_object_for(keyname, key.subproject)
             if opt is None or opt.yielding:
