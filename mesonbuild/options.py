@@ -92,6 +92,8 @@ _BUILTIN_NAMES = {
     'vsenv',
 }
 
+_BAD_VALUE = 'Qwert Zuiopü'
+
 @total_ordering
 class OptionKey:
 
@@ -109,7 +111,9 @@ class OptionKey:
     machine: MachineChoice
     _hash: int
 
-    def __init__(self, name: str, subproject: str = '',
+    def __init__(self, 
+                 name: str, 
+                 subproject: T.Optional[str] = None,
                  machine: MachineChoice = MachineChoice.HOST):
         # the _type option to the constructor is kinda private. We want to be
         # able to save the state and avoid the lookup function when
@@ -161,7 +165,7 @@ class OptionKey:
         out = self.name
         if self.machine is MachineChoice.BUILD:
             out = f'build.{out}'
-        if self.subproject:
+        if self.subproject is not None:
             out = f'{self.subproject}:{out}'
         return out
 
@@ -196,8 +200,10 @@ class OptionKey:
 
         return cls(opt, subproject, for_machine)
 
-    def evolve(self, name: T.Optional[str] = None, subproject: T.Optional[str] = None,
-               machine: T.Optional[MachineChoice] = None) -> 'OptionKey':
+    def evolve(self, 
+               name: T.Optional[str] = _BAD_VALUE, 
+               subproject: T.Optional[str] = _BAD_VALUE,
+               machine: T.Optional[MachineChoice] = _BAD_VALUE) -> 'OptionKey':
         """Create a new copy of this key, but with altered members.
 
         For example:
@@ -208,11 +214,9 @@ class OptionKey:
         """
         # We have to be a little clever with lang here, because lang is valid
         # as None, for non-compiler options
-        return OptionKey(
-            name if name is not None else self.name,
-            subproject if subproject is not None else self.subproject,
-            machine if machine is not None else self.machine,
-        )
+        return OptionKey(name if name != _BAD_VALUE else self.name,
+                         subproject if subproject != _BAD_VALUE else self.subproject, # None is a valid value so it can'the default value in method declaration.
+                         machine if machine != _BAD_VALUE else self.machine)
 
     def as_root(self) -> 'OptionKey':
         """Convenience method for key.evolve(subproject='')."""
@@ -722,20 +726,25 @@ class OptionStore:
         if cname not in self.options:
             self.options[cname] = value_object
 
-    def get_value_object_for(self, name, subproject=None):
-        top_key = self.ensure_key(name)
-        assert top_key.subproject is None or top_key.subproject == ''
-        sp_key = top_key.evolve(subproject=subproject)
-        potential = self.options.get(top_key, None)
-        if potential is None:
-            return self.options[sp_key]
-        if potential.yielding:
-            top_option = self.options.get(top_key, None)
-            # If parent object has different type, do not yield.
-            # This should probably be an error.
-            if type(top_option) is type(potential):
-                return top_option
-        return potential
+    def get_value_object_for(self, key):
+        potential = self.options.get(key, None)
+        if self.is_project_option(key):
+            if potential is not None and potential.yielding:
+                parent_key = key.evolve(subproject='')
+                parent_option = self.options[parent_key]
+                # If parent object has different type, do not yield.
+                # This should probably be an error.
+                if type(parent_option) is type(potential):
+                    return parent_option
+                return potential
+            if potential is None:
+                raise MesonException(f'Tried to access nonexistant project option {key}.')
+            return potential
+        else:
+            if potential is None:
+                parent_key = key.evolve(subproject=None)
+                return self.options[parent_key]
+            return potential
 
     def add_system_option(self, key: T.Union[OptionKey, str], valobj: 'UserOption[T.Any]') -> None:
         key = self.ensure_key(key)
@@ -746,7 +755,8 @@ class OptionStore:
     def add_system_option_internal(self, key: T.Union[OptionKey, str], valobj: 'UserOption[T.Any]') -> None:
         key = self.ensure_key(key)
         assert isinstance(valobj, UserOption)
-        self.options[key] = valobj
+        if key not in self.options:
+            self.options[key] = valobj
 
     def add_compiler_option(self, language: str, key: T.Union[OptionKey, str], valobj: 'UserOption[T.Any]') -> None:
         key = self.ensure_key(key)
@@ -770,7 +780,11 @@ class OptionStore:
 
     def set_value(self, key: T.Union[OptionKey, str], new_value: 'T.Any') -> bool:
         key = self.ensure_key(key)
-        return self.d[key].set_value(new_value)
+        return self.options[key].set_value(new_value)
+
+    def set_option(self, name: str, subproject: T.Optional[str], new_value: str):
+        key = OptionKey(name, subproject)
+        self.set_value(key, new_value)
 
     # FIXME, this should be removed.or renamed to "change_type_of_existing_object" or something like that
     def set_value_object(self, key: T.Union[OptionKey, str], new_object: 'UserOption[T.Any]') -> None:
@@ -781,13 +795,14 @@ class OptionStore:
         key = self.ensure_key(key)
         return self.options[key]
 
-    def get_value_object_and_value_for(self, optioninfo):
-        assert isinstance(optioninfo, OptionKey)
-        vobject = self.get_value_object_for(optioninfo)
-        if optioninfo in self.augments:
-            computed_value = vobject.validate_value(self.augments[optioninfo])
-        else:
-            computed_value = vobject.value
+    def get_value_object_and_value_for(self, key: OptionKey):
+        assert isinstance(key, OptionKey)
+        vobject = self.get_value_object_for(key)
+        computed_value = vobject.value
+        if key.subproject is not None:
+            keystr = str(key)
+            if keystr in self.augments:
+                computed_value = vobject.validate_value(self.augments[keystr])
         return (vobject, computed_value)
 
     def remove(self, key: OptionKey) -> None:
@@ -882,12 +897,28 @@ class OptionStore:
         return key in self.module_options
 
     def get_value_for(self, name, subproject=None):
-        vobject = self.get_value_object_for(name, subproject)
-        key = self.ensure_key(name).evolve(subproject=subproject)
-        cname = str(key)
-        if cname in self.augments:
-            return vobject.validate_value(self.augments[cname])
-        return vobject.value
+        if isinstance(name, str):
+            key = OptionKey(name, subproject)
+        else:
+            assert subproject is None
+            key = name
+        vobject, resolved_value = self.get_value_object_and_value_for(key)
+        return resolved_value
+
+    def set_option_from_string(self, keystr, new_value):
+        o = OptionKey.from_string(keystr)
+        if o in self.options:
+            return self.options[o].set_value(new_value)
+        o = o.copy_with(subproject='')
+        return self.options[o].set_value(new_value)
+
+    def set_subproject_options(self, subproject, spcall_default_options, project_default_options):
+        for o in itertools.chain(spcall_default_options, project_default_options):
+            keystr, valstr = o.split('=', 1)
+            assert ':' not in keystr
+            keystr = f'{subproject}:{keystr}'
+            if keystr not in self.augments:
+                self.augments[keystr] = valstr
 
     def set_from_configure_command(self, D, A, U):
         D = [] if D is None else D
@@ -901,12 +932,11 @@ class OptionStore:
                 self.set_option_from_string(keystr, valstr)
         for add in A:
             keystr, valstr = add.split('=', 1)
-            keystr = self.canonicalize_keystring(keystr)
+            assert ':' in keystr
             if keystr in self.augments:
                 raise MesonException(f'Tried to add augment to option {keystr}, which already has an augment. Set it with -D instead.')
             self.augments[keystr] = valstr
         for delete in U:
-            delete = self.canonicalize_keystring(delete)
             if delete in self.augments:
                 del self.augments[delete]
         return True
@@ -939,7 +969,7 @@ class OptionStore:
             if key.subproject is not None:
                 self.pending_project_options[key] = valstr
             elif key in self.options:
-                self.set_option(key, valstr)
+                self.set_option(key.name, key.subproject, valstr)
             else:
                 self.pending_project_options[key] = valstr
         for keystr, valstr in cmd_line_options.items():
