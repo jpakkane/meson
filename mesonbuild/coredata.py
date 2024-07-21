@@ -408,10 +408,10 @@ class CoreData:
     def init_builtins(self, subproject: str) -> None:
         # Create builtin options with default values
         for key, opt in options.BUILTIN_OPTIONS.items():
-            self.add_builtin_option(self.optstore, key.evolve(subproject=subproject), opt)
+            self.add_builtin_option(self.optstore, key, opt)
         for for_machine in iter(MachineChoice):
             for key, opt in options.BUILTIN_OPTIONS_PER_MACHINE.items():
-                self.add_builtin_option(self.optstore, key.evolve(subproject=subproject, machine=for_machine), opt)
+                self.add_builtin_option(self.optstore, key.evolve(machine=for_machine), opt)
 
     @staticmethod
     def add_builtin_option(opts_map: 'MutableKeyedOptionDictType', key: OptionKey,
@@ -454,7 +454,11 @@ class CoreData:
             newkey = OptionKey(key, target.subproject)
         else:
             newkey = key
-        assert newkey.subproject is not None
+        if newkey.subproject != target.subproject:
+            # FIXME: this should be an error. The caller needs to ensure that
+            # key and target have the same subproject for consistency.
+            # Now just do this to get things going.
+            newkey = newkey.evolve(subproject=target.subproject)
         (option_object, value) = self.optstore.get_value_object_and_value_for(newkey)
         override = target.get_override(newkey.name, None)
         if override is not None:
@@ -464,20 +468,17 @@ class CoreData:
     def get_option_for_subproject(self, key: T.Union[str, OptionKey], subproject) -> UserOption[T.Any]:
         if isinstance(key, str):
             key = OptionKey(key, subproject=subproject)
-        option_object = self.get_option_object_for_subproject(key, subproject)
-        return self.compute_value_for_subproject_option(option_object, key.name, subproject)
+        if key.subproject != subproject:
+            # This should be an error, fix before merging.
+            key = key.evolve(subproject=subproject)
+        return self.optstore.get_value_for(key)
 
     def get_option_object_for_subproject(self, key: T.Union[str, OptionKey], subproject) -> T.Union[T.List[str], str, int, bool, WrapMode]:
         keyname = key.name
-        if not key.is_project():
-            opt = self.optstore.get_value_object_for(keyname, key.subproject)
-            if opt is None or opt.yielding:
-                opt = self.optstore.get_value_object_for(keyname, '')
-        else:
-            opt = self.optstore.get_value_object_for(keyname, key.subproject)
-            if opt.yielding and self.optstore.has_option(keyname, ''):
-                opt = self.optstore.get_value_object_for(keyname, '')
-        return opt
+        if key.subproject != subproject:
+            # This should be an error, fix before merging.
+            key = key.evolve(subproject=subproject)
+        return self.optstore.get_value_object_for(key)
 
     def set_option(self, key: OptionKey, value, first_invocation: bool = False) -> bool:
         dirty = False

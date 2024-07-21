@@ -115,6 +115,8 @@ class OptionKey:
                  name: str, 
                  subproject: T.Optional[str] = None,
                  machine: MachineChoice = MachineChoice.HOST):
+        if not isinstance(machine, MachineChoice):
+            raise MesonException(f'Internal error, bad machine type: {machine}')
         # the _type option to the constructor is kinda private. We want to be
         # able to save the state and avoid the lookup function when
         # pickling/unpickling, but we need to be able to calculate it when
@@ -727,8 +729,10 @@ class OptionStore:
             self.options[cname] = value_object
 
     def get_value_object_for(self, key):
+        key = self.ensure_key(key)
         potential = self.options.get(key, None)
         if self.is_project_option(key):
+            assert key.subproject is not None
             if potential is not None and potential.yielding:
                 parent_key = key.evolve(subproject='')
                 parent_option = self.options[parent_key]
@@ -738,11 +742,13 @@ class OptionStore:
                     return parent_option
                 return potential
             if potential is None:
-                raise MesonException(f'Tried to access nonexistant project option {key}.')
+                raise KeyError(f'Tried to access nonexistant project option {key}.')
             return potential
         else:
             if potential is None:
                 parent_key = key.evolve(subproject=None)
+                if parent_key not in self.options:
+                    raise KeyError(f'Tried to access nonexistant project parent option {parent_key}.')
                 return self.options[parent_key]
             return potential
 
@@ -789,7 +795,7 @@ class OptionStore:
     # FIXME, this should be removed.or renamed to "change_type_of_existing_object" or something like that
     def set_value_object(self, key: T.Union[OptionKey, str], new_object: 'UserOption[T.Any]') -> None:
         key = self.ensure_key(key)
-        self.d[key] = new_object
+        self.options[key] = new_object
 
     def get_value_object(self, key: T.Union[OptionKey, str]) -> 'UserOption[T.Any]':
         key = self.ensure_key(key)
@@ -806,46 +812,29 @@ class OptionStore:
         return (vobject, computed_value)
 
     def remove(self, key: OptionKey) -> None:
-        del self.d[key]
+        del self.options[key]
 
     def __contains__(self, key: OptionKey) -> bool:
         key = self.ensure_key(key)
         return key in self.options
 
     def __repr__(self) -> str:
-        return repr(self.d)
-
-    def keys(self) -> T.KeysView[OptionKey]:
-        return self.d.keys()
-
-    def values(self) -> T.ValuesView[UserOption[T.Any]]:
-        return self.d.values()
-
-    def items(self) -> T.ItemsView['OptionKey', 'UserOption[T.Any]']:
-        return self.d.items()
-=======
-    def __repr__(self):
         return repr(self.options)
 
-    def keys(self):
+    def keys(self) -> T.KeysView[OptionKey]:
         return self.options.keys()
 
-    def values(self):
+    def values(self) -> T.ValuesView[UserOption[T.Any]]:
         return self.options.values()
 
-    def items(self) -> ItemsView['OptionKey', 'UserOption[T.Any]']:
+    def items(self) -> T.ItemsView['OptionKey', 'UserOption[T.Any]']:
         return self.options.items()
->>>>>>> 777574444 (Fix errors of mega rebase enough to compile trivial test project.)
-
-    # FIXME: this method must be deleted and users moved to use "add_xxx_option"s instead.
-    def update(self, **kwargs: UserOption[T.Any]) -> None:
-        self.d.update(**kwargs)
 
     def setdefault(self, k: OptionKey, o: UserOption[T.Any]) -> UserOption[T.Any]:
-        return self.d.setdefault(k, o)
+        return self.options.setdefault(k, o)
 
     def get(self, o: OptionKey, default: T.Optional[UserOption[T.Any]] = None) -> T.Optional[UserOption[T.Any]]:
-        return self.d.get(o, default)
+        return self.options.get(o, **kwargs)
 
     def is_project_option(self, key: OptionKey) -> bool:
         """Convenience method to check if this is a project option."""
@@ -961,7 +950,7 @@ class OptionStore:
                 #self.pending_project_options[key] = valstr
                 raise MesonException(f'Can not set subproject option {keystr} in machine files.')
             elif key in self.options:
-                self.set_option(key, valstr)
+                self.options[key].set_value(valstr)
             #else:
             #    self.pending_project_options[key] = valstr
         for keystr, valstr in project_default_options.items():
@@ -977,7 +966,7 @@ class OptionStore:
             if key.subproject is None:
                 projectkey = key.evolve(subproject='')
                 if key in self.options:
-                    self.set_option(key, valstr)
+                    self.options[key].set_value(valstr)
                 elif projectkey in self.options:
                     self.options[projectkey].set_value(valstr)
                 else:

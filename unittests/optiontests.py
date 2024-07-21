@@ -77,11 +77,11 @@ class OptionTests(unittest.TestCase):
         top_value = 'top'
         sub_value = 'sub'
         vo = UserStringOption(name, 'A top level option', top_value, False)
-        optstore.add_project_option(name, '', vo)
+        optstore.add_project_option(OptionKey(name, ''), vo)
         self.assertEqual(optstore.get_value_for(name, ''), top_value, False)
         self.assertEqual(optstore.num_options(), 1)
         vo2 = UserStringOption(name, 'A subproject option', sub_value)
-        optstore.add_project_option(name, 'sub', vo2)
+        optstore.add_project_option(OptionKey(name, 'sub'), vo2)
         self.assertEqual(optstore.get_value_for(name, ''), top_value)
         self.assertEqual(optstore.get_value_for(name, 'sub'), sub_value)
         self.assertEqual(optstore.num_options(), 2)
@@ -92,11 +92,11 @@ class OptionTests(unittest.TestCase):
         top_value = 'top'
         sub_value = 'sub'
         vo = UserStringOption(name, 'A top level option', top_value)
-        optstore.add_project_option(name, '', vo)
+        optstore.add_project_option(OptionKey(name, ''), vo)
         self.assertEqual(optstore.get_value_for(name, ''), top_value)
         self.assertEqual(optstore.num_options(), 1)
         vo2 = UserStringOption(name, 'A subproject option', sub_value, True)
-        optstore.add_project_option(name, 'sub', vo2)
+        optstore.add_project_option(OptionKey(name, 'sub'), vo2)
         self.assertEqual(optstore.get_value_for(name, ''), top_value)
         self.assertEqual(optstore.get_value_for(name, 'sub'), top_value)
         self.assertEqual(optstore.num_options(), 2)
