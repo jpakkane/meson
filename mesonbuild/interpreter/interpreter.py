@@ -1298,8 +1298,8 @@ class Interpreter(InterpreterBase, HoldableObject):
                 mlog.warning('add_languages is missing native:, assuming languages are wanted for both host and build.',
                              location=node)
 
-            success = self.add_languages(langs, False, MachineChoice.BUILD)
-            success &= self.add_languages(langs, required, MachineChoice.HOST)
+            success = self.add_languages(langs, required, MachineChoice.HOST)
+            success &= self.add_languages(langs, False, MachineChoice.BUILD)
             return success
 
     def _stringify_user_arguments(self, args: T.List[TYPE_var], func_name: str) -> T.List[str]:
