@@ -121,6 +121,7 @@ class OptionKey:
         # able to save the state and avoid the lookup function when
         # pickling/unpickling, but we need to be able to calculate it when
         # constructing a new OptionKey
+        assert ':' not in name
         object.__setattr__(self, 'name', name)
         object.__setattr__(self, 'subproject', subproject)
         object.__setattr__(self, 'machine', machine)
@@ -763,9 +764,15 @@ class OptionStore:
         assert isinstance(valobj, UserOption)
         if key not in self.options:
             self.options[key] = valobj
+            pval = self.pending_project_options.pop(key, None)
+            if pval is not None:
+                self.set_option(key.name, key.subproject, pval)
+
 
     def add_compiler_option(self, language: str, key: T.Union[OptionKey, str], valobj: 'UserOption[T.Any]') -> None:
         key = self.ensure_key(key)
+        if key.name == 'cpp_eh':
+            pass
         if not key.name.startswith(language + '_'):
             raise MesonException(f'Internal error: all compiler option names must start with language prefix. ({key.name} vs {language}_)')
         self.add_system_option(key, valobj)
@@ -774,6 +781,9 @@ class OptionStore:
         key = self.ensure_key(key)
         self.options[key] = valobj
         self.project_options.add(key)
+        pval = self.pending_project_options.pop(key, None)
+        if pval is not None:
+            self.set_option(key.name, key.subproject, pval)
 
     def add_module_option(self, modulename: str, key: T.Union[OptionKey, str], valobj: 'UserOption[T.Any]') -> None:
         key = self.ensure_key(key)
@@ -954,7 +964,7 @@ class OptionStore:
             #else:
             #    self.pending_project_options[key] = valstr
         for keystr, valstr in project_default_options.items():
-            key = self.ensure_key(keystr)
+            key = OptionKey.from_string(keystr)
             if key.subproject is not None:
                 self.pending_project_options[key] = valstr
             elif key in self.options:
