@@ -44,6 +44,15 @@ if T.TYPE_CHECKING:
         win_flex_version: T.List[str]
         implementations: T.List[LexImpls]
 
+    class YaccKwargs(TypedDict):
+
+        args: T.List[str]
+        version: T.List[str]
+        source: T.Optional[str]
+        header: T.Optional[str]
+        locations: T.Optional[str]
+        plainname: bool
+
 
 def is_subset_validator(choices: T.Set[str]) -> T.Callable[[T.List[str]], T.Optional[str]]:
 
@@ -75,10 +84,11 @@ class CodeGenModule(ExtensionModule):
 
     def __init__(self, interpreter: Interpreter) -> None:
         super().__init__(interpreter)
-        self._generators: T.Dict[Literal['lex'], Generator] = {}
+        self._generators: T.Dict[Literal['lex', 'yacc'], Generator] = {}
         self.methods.update({
             'find_lex': self.find_lex_method,
             'lex': self.lex_method,
+            'yacc': self.yacc_method,
         })
 
     def __find_lex(self, state: ModuleState,
@@ -184,8 +194,9 @@ class CodeGenModule(ExtensionModule):
             except KeyError:
                 raise MesonException("Could not find a C++ compiler to search for FlexLexer.h")
 
+        base = '@PLAINNAME@' if kwargs['plainname'] else '@BASENAME@'
         if kwargs['source'] is None:
-            outputs = [f'@BASENAME@.{"cpp" if is_cpp else "c"}']
+            outputs = [f'{base}.{"cpp" if is_cpp else "c"}']
         else:
             outputs = [kwargs['source']]
 
@@ -208,6 +219,80 @@ class CodeGenModule(ExtensionModule):
             outputs,
             backend=state.backend,
             description='Generating lexer {} with lex',
+        )
+
+        return ModuleReturnValue(target, [target])
+
+    def __find_yacc(self, state: ModuleState, version: T.List[str]) -> None:
+        if 'yacc' in self._generators:
+            return
+
+        assert state.environment.machines.host is not None, 'for mypy'
+        names: T.List[str]
+        if state.environment.machines.host.system == 'windows':
+            names = ['win_bison', 'bison', 'yacc']
+        else:
+            names = ['bison', 'byacc', 'yacc']
+
+        for name in names:
+            bin = state.find_program(names, wanted=version, required=name == names[-1])
+            if bin.found():
+                break
+
+        args: T.List[str] = ['@INPUT@', '-o', '@OUTPUT0@']
+        # TODO: Determine if "yacc" is "bison" or "byacc"
+        if bin.name == 'bison':
+            # TODO: add --color=always when appropriate
+            args.append('--defines=@OUTPUT1@')
+        else:
+            args.extend(['-H', '@OUTPUT1@'])
+        self._generators['yacc'] = Generator(bin, T.cast('ImmutableListProtocol[str]', args))
+
+    @typed_pos_args('codegen.yacc', (str, File, GeneratedList, CustomTarget, CustomTargetIndex))
+    @typed_kwargs(
+        'codegen.yacc',
+        KwargInfo('version', ContainerTypeInfo(list, str), default=[], listify=True),
+        KwargInfo('args', ContainerTypeInfo(list, str), default=[], listify=True),
+        KwargInfo('source', (str, NoneType)),
+        KwargInfo('header', (str, NoneType)),
+        KwargInfo('locations', (str, NoneType)),
+        KwargInfo('plainname', bool, default=False),
+    )
+    def yacc_method(self, state: ModuleState, args: T.Tuple[T.Union[str, File, CustomTarget, CustomTargetIndex, GeneratedList]], kwargs: YaccKwargs) -> ModuleReturnValue:
+        self.__find_yacc(state, kwargs['version'])
+
+        input = state._interpreter.source_strings_to_files([args[0]])[0]
+        if isinstance(input, File):
+            is_cpp = input.endswith(".yy")
+            name = os.path.splitext(input.fname)[0]
+        else:
+            is_cpp = input.get_outputs()[0].endswith('.yy')
+            name = os.path.splitext(input.get_outputs()[0])[0]
+        name = os.path.basename(name)
+
+        command = self._generators['yacc'].command()
+        command.extend(kwargs['args'])
+
+        source_ext = 'cpp' if is_cpp else 'c'
+        header_ext = 'hpp' if is_cpp else 'h'
+
+        base = '@PLAINNAME@' if kwargs['plainname'] else '@BASENAME@'
+        outputs: T.List[str] = []
+        outputs.append(f'{base}.{source_ext}' if kwargs['source'] is None else kwargs['source'])
+        outputs.append(f'{base}.{header_ext}' if kwargs['header'] is None else kwargs['header'])
+        if kwargs['locations'] is not None:
+            outputs.append(kwargs['locations'])
+
+        target = CustomTarget(
+            f'codegen-yacc-{name}',
+            state.subdir,
+            state.subproject,
+            state.environment,
+            command,
+            [input],
+            outputs,
+            backend=state.backend,
+            description='Generating parser {} with yacc',
         )
 
         return ModuleReturnValue(target, [target])
