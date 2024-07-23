@@ -38,6 +38,7 @@ index.md
 		Code-formatting.md
 		Modules.md
 			CMake-module.md
+			Codegen-module.md
 			Cuda-module.md
 			Dlang-module.md
 			External-Project-module.md
