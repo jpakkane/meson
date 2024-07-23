@@ -52,7 +52,7 @@ blacklist_cmake_defs = [
 ]
 
 def cmake_is_debug(env: 'Environment') -> bool:
-    if env.coredata.optstore.has_option('b_vscrt'):
+    if 'b_vscrt' in env.coredata.optstore:
         is_debug = env.coredata.optstore.get_value_for('buildtype') == 'debug'
         if env.coredata.optstore.get_value_for('b_vscrt') in {'mdd', 'mtd'}:
             is_debug = True
