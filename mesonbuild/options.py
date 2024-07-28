@@ -907,9 +907,9 @@ class OptionStore:
     def set_option_from_string(self, keystr, new_value):
         o = OptionKey.from_string(keystr)
         if o in self.options:
-            return self.options[o].set_value(new_value)
+            return self.set_value(o.name, o.subproject, new_value)
         o = o.copy_with(subproject='')
-        return self.options[o].set_value(new_value)
+        return self.set_value(o.name, o.subproject, new_value)
 
     def set_subproject_options(self, subproject, spcall_default_options, project_default_options):
         for o in itertools.chain(spcall_default_options, project_default_options):
