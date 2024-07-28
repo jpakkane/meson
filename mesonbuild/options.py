@@ -257,6 +257,7 @@ class UserOption(T.Generic[_T], HoldableObject):
                  yielding: bool,
                  deprecated: T.Union[bool, str, T.Dict[str, str], T.List[str]] = False):
         super().__init__()
+        assert isinstance(name, str)
         self.name = name
         self.choices = choices
         self.description = description
@@ -458,7 +459,8 @@ class UserFeatureOption(UserComboOption):
     def __init__(self, name: str, description: str, value: T.Any, yielding: bool = DEFAULT_YIELDING,
                  deprecated: T.Union[bool, str, T.Dict[str, str], T.List[str]] = False):
         super().__init__(name, description, self.static_choices, value, yielding, deprecated)
-        self.name: T.Optional[str] = None  # TODO: Refactor options to all store their name
+        assert hasattr(self, 'name')
+        assert isinstance(self.name, str)
 
     def is_enabled(self) -> bool:
         return self.value == 'enabled'
@@ -762,6 +764,8 @@ class OptionStore:
     def add_system_option_internal(self, key: T.Union[OptionKey, str], valobj: 'UserOption[T.Any]') -> None:
         key = self.ensure_key(key)
         assert isinstance(valobj, UserOption)
+        if not isinstance(valobj.name, str):
+            assert isinstance(valobj.name, str)
         if key not in self.options:
             self.options[key] = valobj
             pval = self.pending_project_options.pop(key, None)
@@ -771,8 +775,6 @@ class OptionStore:
 
     def add_compiler_option(self, language: str, key: T.Union[OptionKey, str], valobj: 'UserOption[T.Any]') -> None:
         key = self.ensure_key(key)
-        if key.name == 'cpp_eh':
-            pass
         if not key.name.startswith(language + '_'):
             raise MesonException(f'Internal error: all compiler option names must start with language prefix. ({key.name} vs {language}_)')
         self.add_system_option(key, valobj)
@@ -796,11 +798,36 @@ class OptionStore:
 
     def set_value(self, key: T.Union[OptionKey, str], new_value: 'T.Any') -> bool:
         key = self.ensure_key(key)
+        if key not in self.options:
+           raise MesonException(f'Internal error, tried to access non-existing option {key.name}.')
         return self.options[key].set_value(new_value)
 
     def set_option(self, name: str, subproject: T.Optional[str], new_value: str):
         key = OptionKey(name, subproject)
-        self.set_value(key, new_value)
+        opt = self.get_value_object_for(key)
+        if opt.deprecated is True:
+            mlog.deprecation(f'Option {key.name!r} is deprecated')
+        elif isinstance(opt.deprecated, list):
+            for v in opt.listify(new_value):
+                if v in opt.deprecated:
+                    mlog.deprecation(f'Option {key.name!r} value {v!r} is deprecated')
+        elif isinstance(opt.deprecated, dict):
+            def replace(v):
+                newvalue = opt.deprecated.get(v)
+                if newvalue is not None:
+                    mlog.deprecation(f'Option {key.name!r} value {v!r} is replaced by {newvalue!r}')
+                    return newvalue
+                return v
+            valarr = [replace(v) for v in opt.listify(new_value)]
+            new_value = ','.join(valarr)
+        elif isinstance(opt.deprecated, str):
+            mlog.deprecation(f'Option {name!r} is replaced by {opt.deprecated!r}')
+            # Change both this aption and the new one pointed to.
+            dirty = self.set_option(opt.deprecated, subproject, new_value)
+            dirty |= opt.set_value(new_value)
+            return dirty
+
+        return opt.set_value(new_value)
 
     # FIXME, this should be removed.or renamed to "change_type_of_existing_object" or something like that
     def set_value_object(self, key: T.Union[OptionKey, str], new_object: 'UserOption[T.Any]') -> None:
@@ -820,6 +847,11 @@ class OptionStore:
             if keystr in self.augments:
                 computed_value = vobject.validate_value(self.augments[keystr])
         return (vobject, computed_value)
+
+    def get_option_from_meson_file(self, key: OptionKey):
+        assert isinstance(key, OptionKey)
+        (value_object, value) = self.get_value_object_and_value_for(key)
+        return (value_object, value)
 
     def remove(self, key: OptionKey) -> None:
         del self.options[key]
@@ -987,7 +1019,7 @@ class OptionStore:
                 # file, not in the project call.
                 proj_key = key.evolve(subproject='')
                 if self.is_project_option(proj_key):
-                    self.options[proj_key].set_value(valstr)
+                    self.set_option(proj_key.name, proj_key.subproject, valstr)
                 else:
                     self.pending_project_options[key] = valstr
         for keystr, valstr in cmd_line_options.items():

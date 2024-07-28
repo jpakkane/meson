@@ -494,36 +494,7 @@ class CoreData:
         except KeyError:
             raise MesonException(f'Tried to set unknown builtin option {str(key)}')
 
-        if opt.deprecated is True:
-            mlog.deprecation(f'Option {key.name!r} is deprecated')
-        elif isinstance(opt.deprecated, list):
-            for v in opt.listify(value):
-                if v in opt.deprecated:
-                    mlog.deprecation(f'Option {key.name!r} value {v!r} is deprecated')
-        elif isinstance(opt.deprecated, dict):
-            def replace(v):
-                newvalue = opt.deprecated.get(v)
-                if newvalue is not None:
-                    mlog.deprecation(f'Option {key.name!r} value {v!r} is replaced by {newvalue!r}')
-                    return newvalue
-                return v
-            newvalue = [replace(v) for v in opt.listify(value)]
-            value = ','.join(newvalue)
-        elif isinstance(opt.deprecated, str):
-            # Option is deprecated and replaced by another. Note that a project
-            # option could be replaced by a built-in or module option, which is
-            # why we use OptionKey.from_string(newname) instead of
-            # key.evolve(newname). We set the value on both the old and new names,
-            # assuming they accept the same value. That could for example be
-            # achieved by adding the values from old option as deprecated on the
-            # new option, for example in the case of boolean option is replaced
-            # by a feature option with a different name.
-            newname = opt.deprecated
-            newkey = OptionKey.from_string(newname).evolve(subproject=key.subproject)
-            mlog.deprecation(f'Option {key.name!r} is replaced by {newname!r}')
-            dirty |= self.set_option(newkey, value, first_invocation)
-
-        changed = opt.set_value(value)
+        changed = self.optstore.set_value(key.name, key.subproject, value)
         if changed and opt.readonly and not first_invocation:
             raise MesonException(f'Tried modify read only option {str(key)!r}')
         dirty |= changed
