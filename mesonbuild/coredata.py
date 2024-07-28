@@ -460,7 +460,7 @@ class CoreData:
             # Now just do this to get things going.
             newkey = newkey.evolve(subproject=target.subproject)
         (option_object, value) = self.optstore.get_value_object_and_value_for(newkey)
-        override = target.get_override(newkey.name, None)
+        override = target.get_override(newkey.name)
         if override is not None:
             return option_object.validate_value(override)
         return value
