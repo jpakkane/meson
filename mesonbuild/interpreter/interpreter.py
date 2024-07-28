@@ -1187,7 +1187,6 @@ class Interpreter(InterpreterBase, HoldableObject):
                 invoker_method_default_options = self.default_project_options
                 self.coredata.optstore.set_from_subproject_call(self.subproject, invoker_method_default_options, self.project_default_options)
 
-
         if not self.is_subproject():
             self.build.project_name = proj_name
         self.active_projectname = proj_name

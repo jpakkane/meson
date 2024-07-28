@@ -964,13 +964,32 @@ class OptionStore:
             #else:
             #    self.pending_project_options[key] = valstr
         for keystr, valstr in project_default_options.items():
+            # Ths is complicated by the fact that a string can have two meanings:
+            #
+            # default_options: 'foo=bar'
+            #
+            # can be either
+            #
+            # A) a system option in which case the subproject is None
+            # B) a project option, in which case the subproject is '' (this method is only called from top level)
+            #
+            # The key parsing fucntion can not handle the difference between the two
+            # an defaults to A 
             key = OptionKey.from_string(keystr)
             if key.subproject is not None:
                 self.pending_project_options[key] = valstr
             elif key in self.options:
                 self.set_option(key.name, key.subproject, valstr)
             else:
-                self.pending_project_options[key] = valstr
+                # Setting a project option with default_options.
+                # Argubly this should be a hard error, the default
+                # value of project option should be set in the option
+                # file, not in the project call.
+                proj_key = key.evolve(subproject='')
+                if self.is_project_option(proj_key):
+                    self.options[proj_key].set_value(valstr)
+                else:
+                    self.pending_project_options[key] = valstr
         for keystr, valstr in cmd_line_options.items():
             key = OptionKey.from_string(keystr)
             if key.subproject is None:
