@@ -182,6 +182,7 @@ class OptionKey:
         This takes strings like `mysubproject:build.myoption` and Creates an
         OptionKey out of them.
         """
+        assert isinstance(raw, str)
         try:
             subproject, raw2 = raw.split(':')
         except ValueError:
@@ -987,7 +988,11 @@ class OptionStore:
         if project_default_options is None:
             project_default_options  = {}
         for keystr, valstr in native_file_options.items():
-            key = OptionKey.from_string(keystr)
+            if isinstance(keystr, str):
+                # FIXME, standardise on Key or string.
+                key = OptionKey.from_string(keystr)
+            else:
+                key = keystr
             if key.subproject is not None:
                 #self.pending_project_options[key] = valstr
                 raise MesonException(f'Can not set subproject option {keystr} in machine files.')
