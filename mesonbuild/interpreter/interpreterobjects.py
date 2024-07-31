@@ -958,7 +958,14 @@ class BuildTargetHolder(ObjectHolder[_BuildTarget]):
     @noKwargs
     @typed_pos_args('extract_objects', varargs=(mesonlib.File, str, build.CustomTarget, build.CustomTargetIndex, build.GeneratedList))
     def extract_objects_method(self, args: T.Tuple[T.List[T.Union[mesonlib.FileOrString, 'build.GeneratedTypes']]], kwargs: TYPE_nkwargs) -> build.ExtractedObjects:
-        return self._target_object.extract_objects(args[0])
+        tobj = self._target_object
+        unity_value = self.interpreter.coredata.get_option_for_target(tobj, "unity")
+        if unity_value == 'on' or \
+            (unity_value == 'subprojects' and tobj.subproject != ''):
+            raise mesonlib.MesonException(('Single object files cannot be extracted '
+                                           'in Unity builds. You can only extract all '
+                                           'the object files for each compiler at once.'))
+        return tobj.extract_objects(args[0])
 
     @noPosargs
     @typed_kwargs(

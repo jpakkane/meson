@@ -356,22 +356,6 @@ class CoreData:
         if self.cross_files:
             options.BUILTIN_OPTIONS[OptionKey('libdir')].default = 'lib'
 
-    def sanitize_prefix(self, prefix: str) -> str:
-        prefix = os.path.expanduser(prefix)
-        if not os.path.isabs(prefix):
-            raise MesonException(f'prefix value {prefix!r} must be an absolute path')
-        if prefix.endswith('/') or prefix.endswith('\\'):
-            # On Windows we need to preserve the trailing slash if the
-            # string is of type 'C:\' because 'C:' is not an absolute path.
-            if len(prefix) == 3 and prefix[1] == ':':
-                pass
-            # If prefix is a single character, preserve it since it is
-            # the root directory.
-            elif len(prefix) == 1:
-                pass
-            else:
-                prefix = prefix[:-1]
-        return prefix
 
     def sanitize_dir_option_value(self, prefix: str, option: OptionKey, value: T.Any) -> T.Any:
         '''
@@ -482,12 +466,6 @@ class CoreData:
 
     def set_option(self, key: OptionKey, value, first_invocation: bool = False) -> bool:
         dirty = False
-        if self.optstore.is_builtin_option(key):
-            if key.name == 'prefix':
-                value = self.sanitize_prefix(value)
-            else:
-                prefix = self.optstore.get_value_for('prefix')
-                value = self.sanitize_dir_option_value(prefix, key, value)
 
         try:
             opt = self.optstore.get_value_object_for(key.name)

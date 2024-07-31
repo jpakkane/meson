@@ -9,6 +9,7 @@ from functools import total_ordering
 import argparse
 import re
 import itertools
+import os
 import typing as T
 
 from .mesonlib import (
@@ -810,14 +811,39 @@ class OptionStore:
         self.add_system_option_internal(key, valobj)
         self.module_options.add(key)
 
+    def sanitize_prefix(self, prefix: str) -> str:
+        prefix = os.path.expanduser(prefix)
+        if not os.path.isabs(prefix):
+            raise MesonException(f'prefix value {prefix!r} must be an absolute path')
+        if prefix.endswith('/') or prefix.endswith('\\'):
+            # On Windows we need to preserve the trailing slash if the
+            # string is of type 'C:\' because 'C:' is not an absolute path.
+            if len(prefix) == 3 and prefix[1] == ':':
+                pass
+            # If prefix is a single character, preserve it since it is
+            # the root directory.
+            elif len(prefix) == 1:
+                pass
+            else:
+                prefix = prefix[:-1]
+        return prefix
+
     def set_value(self, key: T.Union[OptionKey, str], new_value: 'T.Any') -> bool:
         key = self.ensure_and_validate_key(key)
+        if key.name == 'prefix':
+            new_value = self.sanitize_prefix(new_value)
+        elif self.is_builtin_option(key):
+                prefix = self.optstore.get_value_for('prefix')
+                new_value = self.sanitize_dir_option_value(prefix, key, new_value)
         if key not in self.options:
            raise MesonException(f'Internal error, tried to access non-existing option {key.name}.')
         return self.options[key].set_value(new_value)
 
     def set_option(self, name: str, subproject: T.Optional[str], new_value: str):
         key = OptionKey(name, subproject)
+        # FIRXME, dupe ofr the on in set_value.
+        if key.name == 'prefix':
+            new_value = self.sanitize_prefix(new_value)
         opt = self.get_value_object_for(key)
         if opt.deprecated is True:
             mlog.deprecation(f'Option {key.name!r} is deprecated')
@@ -1011,8 +1037,12 @@ class OptionStore:
                 raise MesonException(f'Can not set subproject option {keystr} in machine files.')
             elif key in self.options:
                 self.options[key].set_value(valstr)
-            #else:
-            #    self.pending_project_options[key] = valstr
+            else:
+                proj_key = key.evolve(subproject='')
+                if proj_key in self.options:
+                    self.options[proj_key].set_value(valstr)
+                else:
+                    self.pending_project_options[key] = valstr
         for keystr, valstr in project_default_options.items():
             # Ths is complicated by the fact that a string can have two meanings:
             #
