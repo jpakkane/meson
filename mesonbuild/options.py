@@ -708,10 +708,23 @@ class OptionStore:
         self.project_options = set()
         self.augments = {}
         self.pending_project_options = {}
+        self.is_cross = is_cross
 
-    def ensure_key(self, key: T.Union[OptionKey, str]) -> OptionKey:
+    def ensure_and_validate_key(self, key: T.Union[OptionKey, str]) -> OptionKey:
         if isinstance(key, str):
             return OptionKey(key)
+        # FIXME. When not cross building all "build" options need to fall back
+        # to "host" options due to how the old code worked.
+        #
+        # This is NOT how it should be.
+        #
+        # This needs to be changed to that trying to add or access "build" keys
+        # is a hard error and fix issues that arise.
+        #
+        # I did not do this yet, because it would make this MR even
+        # more massive than it already is. Later then.
+        if not self.is_cross and key.machine == MachineChoice.BUILD:
+            key = key.evolve(machine=MachineChoice.HOST)
         return key
 
     def get_value(self, key: T.Union[OptionKey, str]) -> 'T.Any':
@@ -733,7 +746,7 @@ class OptionStore:
             self.options[cname] = value_object
 
     def get_value_object_for(self, key):
-        key = self.ensure_key(key)
+        key = self.ensure_and_validate_key(key)
         potential = self.options.get(key, None)
         if self.is_project_option(key):
             assert key.subproject is not None
@@ -757,13 +770,13 @@ class OptionStore:
             return potential
 
     def add_system_option(self, key: T.Union[OptionKey, str], valobj: 'UserOption[T.Any]') -> None:
-        key = self.ensure_key(key)
+        key = self.ensure_and_validate_key(key)
         if '.' in key.name:
             raise MesonException(f'Internal error: non-module option has a period in its name {key.name}.')
         self.add_system_option_internal(key, valobj)
 
     def add_system_option_internal(self, key: T.Union[OptionKey, str], valobj: 'UserOption[T.Any]') -> None:
-        key = self.ensure_key(key)
+        key = self.ensure_and_validate_key(key)
         assert isinstance(valobj, UserOption)
         if not isinstance(valobj.name, str):
             assert isinstance(valobj.name, str)
@@ -775,7 +788,7 @@ class OptionStore:
 
 
     def add_compiler_option(self, language: str, key: T.Union[OptionKey, str], valobj: 'UserOption[T.Any]') -> None:
-        key = self.ensure_key(key)
+        key = self.ensure_and_validate_key(key)
         if not key.name.startswith(language + '_'):
             raise MesonException(f'Internal error: all compiler option names must start with language prefix. ({key.name} vs {language}_)')
         self.add_system_option(key, valobj)
@@ -789,7 +802,7 @@ class OptionStore:
             self.set_option(key.name, key.subproject, pval)
 
     def add_module_option(self, modulename: str, key: T.Union[OptionKey, str], valobj: 'UserOption[T.Any]') -> None:
-        key = self.ensure_key(key)
+        key = self.ensure_and_validate_key(key)
         if key.name.startswith('build.'):
             raise MesonException('FATAL internal error: somebody goofed option handling.')
         if not key.name.startswith(modulename + '.'):
@@ -798,7 +811,7 @@ class OptionStore:
         self.module_options.add(key)
 
     def set_value(self, key: T.Union[OptionKey, str], new_value: 'T.Any') -> bool:
-        key = self.ensure_key(key)
+        key = self.ensure_and_validate_key(key)
         if key not in self.options:
            raise MesonException(f'Internal error, tried to access non-existing option {key.name}.')
         return self.options[key].set_value(new_value)
@@ -832,11 +845,11 @@ class OptionStore:
 
     # FIXME, this should be removed.or renamed to "change_type_of_existing_object" or something like that
     def set_value_object(self, key: T.Union[OptionKey, str], new_object: 'UserOption[T.Any]') -> None:
-        key = self.ensure_key(key)
+        key = self.ensure_and_validate_key(key)
         self.options[key] = new_object
 
     def get_value_object(self, key: T.Union[OptionKey, str]) -> 'UserOption[T.Any]':
-        key = self.ensure_key(key)
+        key = self.ensure_and_validate_key(key)
         return self.options[key]
 
     def get_value_object_and_value_for(self, key: OptionKey):
@@ -858,7 +871,7 @@ class OptionStore:
         del self.options[key]
 
     def __contains__(self, key: OptionKey) -> bool:
-        key = self.ensure_key(key)
+        key = self.ensure_and_validate_key(key)
         return key in self.options
 
     def __repr__(self) -> str:

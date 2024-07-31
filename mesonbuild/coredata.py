@@ -259,10 +259,10 @@ class CoreData:
         self.meson_command = meson_command
         self.target_guids = {}
         self.version = version
-        self.optstore = options.OptionStore()
         self.sp_option_overrides: T.Dict[str, str] = {}
         self.cross_files = self.__load_config_files(cmd_options, scratch_dir, 'cross')
         self.compilers: PerMachine[T.Dict[str, Compiler]] = PerMachine(OrderedDict(), OrderedDict())
+        self.optstore = options.OptionStore(self.is_cross_build())
 
         # Stores the (name, hash) of the options file, The name will be either
         # "meson_options.txt" or "meson.options".
