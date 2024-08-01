@@ -633,7 +633,7 @@ class CoreData:
         for k, v in opts_to_set.items():
             if k == pfk:
                 continue
-            elif self.optstore.has_option(k.name, None):
+            elif k.evolve(subproject=None) in self.optstore:
                 dirty |= self.set_option(k, v, first_invocation)
             elif k.machine != MachineChoice.BUILD and not self.optstore.is_compiler_option(k):
                 unknown_options.append(k)

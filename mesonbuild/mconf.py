@@ -381,7 +381,11 @@ def run_impl(options: CMDOptions, builddir: str) -> int:
 
         save = False
         if has_option_flags(options):
-            save |= c.coredata.optstore.set_from_configure_command(options.projectoptions, options.A, options.U)
+            if hasattr(options.A):
+                A = options.A
+            else:
+                A = []
+            save |= c.coredata.optstore.set_from_configure_command(options.projectoptions, A, options.U)
             coredata.update_cmd_line_file(builddir, options)
         if options.clearcache:
             c.clear_cache()
