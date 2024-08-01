@@ -294,7 +294,7 @@ class Conf:
         show_build_options = self.default_values_only or self.build.environment.is_cross_build()
 
         self.add_section('Main project options')
-        self.print_options('Core options', host_core_options[''])
+        self.print_options('Core options', host_core_options[None])
         if show_build_options:
             self.print_options('', build_core_options[''])
         self.print_options('Backend options', {k: v for k, v in self.coredata.optstore.items() if self.coredata.optstore.is_backend_option(k)})
@@ -350,7 +350,7 @@ class Conf:
         if self.coredata.optstore.augments:
             mlog.log('\nCurrently set option augments:')
             for k, v in self.coredata.optstore.augments.items():
-                mlog.log(f'{k.form_canonical_keystring():21}{v:10}')
+                mlog.log(f'{k:21}{v:10}')
         else:
             mlog.log('\nThere are no option augments.')
 

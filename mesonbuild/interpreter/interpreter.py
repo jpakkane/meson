@@ -1372,7 +1372,13 @@ class Interpreter(InterpreterBase, HoldableObject):
                 values['Cross files'] = self.user_defined_options.cross_file
             if self.user_defined_options.native_file:
                 values['Native files'] = self.user_defined_options.native_file
-            sorted_options = sorted(self.user_defined_options.cmd_line_options.items())
+            def compatibility_sort_helper(s):
+                if isinstance(s, tuple):
+                    s = s[0]
+                if isinstance(s, str):
+                    return s
+                return s.name
+            sorted_options = sorted(self.user_defined_options.cmd_line_options.items(), key=compatibility_sort_helper)
             values.update({str(k): v for k, v in sorted_options})
             if values:
                 self.summary_impl('User defined options', values, {'bool_yn': False, 'list_sep': None})

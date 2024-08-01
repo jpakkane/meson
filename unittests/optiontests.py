@@ -9,7 +9,7 @@ import unittest
 class OptionTests(unittest.TestCase):
 
     def test_basic(self):
-        optstore = OptionStore()
+        optstore = OptionStore(False)
         name = 'someoption'
         default_value = 'somevalue'
         new_value = 'new_value'
@@ -20,19 +20,18 @@ class OptionTests(unittest.TestCase):
         self.assertEqual(optstore.get_value_for(name), new_value)
 
     def test_toplevel_project(self):
-        optstore = OptionStore()
+        optstore = OptionStore(False)
         name = 'someoption'
         default_value = 'somevalue'
         new_value = 'new_value'
         k = OptionKey(name)
-        vo = UserStringOption(k, 'An option of some sort', default_value)
+        vo = UserStringOption(k.name, 'An option of some sort', default_value)
         optstore.add_system_option(k.name, vo)
         self.assertEqual(optstore.get_value_for(k), default_value)
         optstore.set_from_top_level_project_call([f'someoption={new_value}'], {}, {})
         self.assertEqual(optstore.get_value_for(k), new_value)
 
     def test_parsing(self):
-        optstore = OptionStore()
         s1 = OptionKey.from_string('sub:optname')
         s1_expected = OptionKey('optname', 'sub', MachineChoice.HOST)
         self.assertEqual(s1, s1_expected)
@@ -50,7 +49,7 @@ class OptionTests(unittest.TestCase):
         self.assertEqual(str(s3), ':optname')
 
     def test_subproject_for_system(self):
-        optstore = OptionStore()
+        optstore = OptionStore(False)
         name = 'someoption'
         default_value = 'somevalue'
         vo = UserStringOption(name, 'An option of some sort', default_value)
@@ -58,7 +57,7 @@ class OptionTests(unittest.TestCase):
         self.assertEqual(optstore.get_value_for(name, 'somesubproject'), default_value)
 
     def test_reset(self):
-        optstore = OptionStore()
+        optstore = OptionStore(False)
         name = 'someoption'
         original_value = 'original'
         reset_value = 'reset'
@@ -72,7 +71,7 @@ class OptionTests(unittest.TestCase):
         self.assertEqual(optstore.num_options(), 1)
 
     def test_project_nonyielding(self):
-        optstore = OptionStore()
+        optstore = OptionStore(False)
         name = 'someoption'
         top_value = 'top'
         sub_value = 'sub'
@@ -87,7 +86,7 @@ class OptionTests(unittest.TestCase):
         self.assertEqual(optstore.num_options(), 2)
 
     def test_project_yielding(self):
-        optstore = OptionStore()
+        optstore = OptionStore(False)
         name = 'someoption'
         top_value = 'top'
         sub_value = 'sub'
@@ -102,7 +101,7 @@ class OptionTests(unittest.TestCase):
         self.assertEqual(optstore.num_options(), 2)
 
     def test_augments(self):
-        optstore = OptionStore()
+        optstore = OptionStore(False)
         name = 'cpp_std'
         sub_name = 'sub'
         sub2_name = 'sub2'
@@ -140,7 +139,7 @@ class OptionTests(unittest.TestCase):
         self.assertEqual(optstore.get_value_for(name, sub2_name), top_value)
 
     def test_augment_set_sub(self):
-        optstore = OptionStore()
+        optstore = OptionStore(False)
         name = 'cpp_std'
         sub_name = 'sub'
         sub2_name = 'sub2'
@@ -159,7 +158,7 @@ class OptionTests(unittest.TestCase):
         self.assertEqual(optstore.get_value_for(name, sub_name), set_value)
 
     def test_subproject_call_options(self):
-        optstore = OptionStore()
+        optstore = OptionStore(False)
         name = 'cpp_std'
         default_value = 'c++11'
         override_value = 'c++14'
