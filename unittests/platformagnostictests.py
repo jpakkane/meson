@@ -36,7 +36,7 @@ class PlatformAgnosticTests(BasePlatformTests):
         self.init(testdir, workdir=testdir)
 
     def test_invalid_option_names(self):
-        store = OptionStore()
+        store = OptionStore(False)
         interp = OptionInterpreter(store, '')
 
         def write_file(code: str):
@@ -406,7 +406,6 @@ class PlatformAgnosticTests(BasePlatformTests):
         self.assertIn('\nMessage: c_std: c89\n', out)
 
         out = self.init(testdir, extra_args=['--reconfigure', '-Db_ndebug=if-release', '-Dsub:b_ndebug=false', '-Dc_std=c99', '-Dsub:c_std=c11'])
-        raise RuntimError(out)
         self.assertIn('\nMessage: b_ndebug: if-release\n', out)
         self.assertIn('\nMessage: c_std: c99\n', out)
         self.assertIn('\nMessage: sub:b_ndebug: false\n', out)

@@ -356,39 +356,6 @@ class CoreData:
         if self.cross_files:
             options.BUILTIN_OPTIONS[OptionKey('libdir')].default = 'lib'
 
-
-    def sanitize_dir_option_value(self, prefix: str, option: OptionKey, value: T.Any) -> T.Any:
-        '''
-        If the option is an installation directory option, the value is an
-        absolute path and resides within prefix, return the value
-        as a path relative to the prefix. Otherwise, return it as is.
-
-        This way everyone can do f.ex, get_option('libdir') and usually get
-        the library directory relative to prefix, even though it really
-        should not be relied upon.
-        '''
-        try:
-            value = PurePath(value)
-        except TypeError:
-            return value
-        if option.name.endswith('dir') and value.is_absolute() and \
-           option not in options.BUILTIN_DIR_NOPREFIX_OPTIONS:
-            try:
-                # Try to relativize the path.
-                value = value.relative_to(prefix)
-            except ValueError:
-                # Path is not relative, let’s keep it as is.
-                pass
-            if '..' in value.parts:
-                raise MesonException(
-                    f'The value of the \'{option}\' option is \'{value}\' but '
-                    'directory options are not allowed to contain \'..\'.\n'
-                    f'If you need a path outside of the {prefix!r} prefix, '
-                    'please use an absolute path.'
-                )
-        # .as_posix() keeps the posix-like file separators Meson uses.
-        return value.as_posix()
-
     def init_builtins(self, subproject: str) -> None:
         # Create builtin options with default values
         for key, opt in options.BUILTIN_OPTIONS.items():

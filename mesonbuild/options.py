@@ -10,6 +10,7 @@ import argparse
 import re
 import itertools
 import os
+import pathlib
 import typing as T
 
 from .mesonlib import (
@@ -787,7 +788,6 @@ class OptionStore:
             if pval is not None:
                 self.set_option(key.name, key.subproject, pval)
 
-
     def add_compiler_option(self, language: str, key: T.Union[OptionKey, str], valobj: 'UserOption[T.Any]') -> None:
         key = self.ensure_and_validate_key(key)
         if not key.name.startswith(language + '_'):
@@ -796,11 +796,15 @@ class OptionStore:
 
     def add_project_option(self, key: T.Union[OptionKey, str], valobj: 'UserOption[T.Any]') -> None:
         key = self.ensure_key(key)
-        self.options[key] = valobj
-        self.project_options.add(key)
+        assert key.subproject is not None
         pval = self.pending_project_options.pop(key, None)
-        if pval is not None:
-            self.set_option(key.name, key.subproject, pval)
+        if key in self.options:
+            raise MesonException(f'Internal error: tried to add a project option {key} that already exists.')
+        else:
+            self.options[key] = valobj
+            self.project_options.add(key)
+            if pval is not None:
+                self.set_option(key.name, key.subproject, pval)
 
     def add_module_option(self, modulename: str, key: T.Union[OptionKey, str], valobj: 'UserOption[T.Any]') -> None:
         key = self.ensure_and_validate_key(key)
@@ -828,12 +832,45 @@ class OptionStore:
                 prefix = prefix[:-1]
         return prefix
 
+    def sanitize_dir_option_value(self, prefix: str, option: OptionKey, value: T.Any) -> T.Any:
+        '''
+        If the option is an installation directory option, the value is an
+        absolute path and resides within prefix, return the value
+        as a path relative to the prefix. Otherwise, return it as is.
+
+        This way everyone can do f.ex, get_option('libdir') and usually get
+        the library directory relative to prefix, even though it really
+        should not be relied upon.
+        '''
+        try:
+            value = pathlib.PurePath(value)
+        except TypeError:
+            return value
+        if option.name.endswith('dir') and value.is_absolute() and \
+           option not in options.BUILTIN_DIR_NOPREFIX_OPTIONS:
+            try:
+                # Try to relativize the path.
+                value = value.relative_to(prefix)
+            except ValueError:
+                # Path is not relative, let’s keep it as is.
+                pass
+            if '..' in value.parts:
+                raise MesonException(
+                    f"The value of the '{option}' option is '{value}' but "
+                    "directory options are not allowed to contain '..'.\n"
+                    f"If you need a path outside of the {prefix!r} prefix, "
+                    "please use an absolute path."
+                )
+        # .as_posix() keeps the posix-like file separators Meson uses.
+        return value.as_posix()
+
+
     def set_value(self, key: T.Union[OptionKey, str], new_value: 'T.Any') -> bool:
         key = self.ensure_and_validate_key(key)
         if key.name == 'prefix':
             new_value = self.sanitize_prefix(new_value)
         elif self.is_builtin_option(key):
-                prefix = self.optstore.get_value_for('prefix')
+                prefix = self.get_value_for('prefix')
                 new_value = self.sanitize_dir_option_value(prefix, key, new_value)
         if key not in self.options:
            raise MesonException(f'Internal error, tried to access non-existing option {key.name}.')
@@ -979,9 +1016,9 @@ class OptionStore:
     def set_option_from_string(self, keystr, new_value):
         o = OptionKey.from_string(keystr)
         if o in self.options:
-            return self.set_value(o.name, o.subproject, new_value)
-        o = o.copy_with(subproject='')
-        return self.set_value(o.name, o.subproject, new_value)
+            return self.set_value(o, new_value)
+        o = o.evolve(subproject='')
+        return self.set_value(o, new_value)
 
     def set_subproject_options(self, subproject, spcall_default_options, project_default_options):
         for o in itertools.chain(spcall_default_options, project_default_options):
