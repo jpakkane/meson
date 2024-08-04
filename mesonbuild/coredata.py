@@ -289,7 +289,7 @@ class CoreData:
         # Only to print a warning if it changes between Meson invocations.
         self.config_files = self.__load_config_files(cmd_options, scratch_dir, 'native')
         self.builtin_options_libdir_cross_fixup()
-        self.init_builtins('')
+        self.init_builtins()
 
     @staticmethod
     def __load_config_files(cmd_options: SharedCMDOptions, scratch_dir: str, ftype: str) -> T.List[str]:
@@ -356,7 +356,7 @@ class CoreData:
         if self.cross_files:
             options.BUILTIN_OPTIONS[OptionKey('libdir')].default = 'lib'
 
-    def init_builtins(self, subproject: str) -> None:
+    def init_builtins(self) -> None:
         # Create builtin options with default values
         for key, opt in options.BUILTIN_OPTIONS.items():
             self.add_builtin_option(self.optstore, key, opt)
@@ -439,9 +439,7 @@ class CoreData:
         except KeyError:
             raise MesonException(f'Tried to set unknown builtin option {str(key)}')
 
-        changed = self.optstore.set_value(key.name, key.subproject, value)
-        if changed and opt.readonly and not first_invocation:
-            raise MesonException(f'Tried modify read only option {str(key)!r}')
+        changed = self.optstore.set_value(key, value)
         dirty |= changed
 
         if key.name == 'buildtype':
@@ -685,6 +683,8 @@ class CoreData:
         options = OrderedDict()
 
         for k, v in env.options.items():
+            if isinstance(k, str):
+                k = OptionKey.from_string(k)
             # If this is a subproject, don't use other subproject options
             if k.subproject and k.subproject != subproject:
                 continue

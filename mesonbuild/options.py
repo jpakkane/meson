@@ -847,7 +847,7 @@ class OptionStore:
         except TypeError:
             return value
         if option.name.endswith('dir') and value.is_absolute() and \
-           option not in options.BUILTIN_DIR_NOPREFIX_OPTIONS:
+           option not in BUILTIN_DIR_NOPREFIX_OPTIONS:
             try:
                 # Try to relativize the path.
                 value = value.relative_to(prefix)
@@ -874,7 +874,11 @@ class OptionStore:
                 new_value = self.sanitize_dir_option_value(prefix, key, new_value)
         if key not in self.options:
            raise MesonException(f'Internal error, tried to access non-existing option {key.name}.')
-        return self.options[key].set_value(new_value)
+        valobj = self.options[key]
+        changed = valobj.set_value(new_value)
+        if valobj.readonly and changed:
+            raise MesonException(f'Tried modify read only option {str(key)!r}')
+        return changed
 
     def set_option(self, name: str, subproject: T.Optional[str], new_value: str):
         key = OptionKey(name, subproject)
@@ -904,7 +908,13 @@ class OptionStore:
             dirty |= opt.set_value(new_value)
             return dirty
 
-        return opt.set_value(new_value)
+        changed = opt.set_value(new_value)
+
+        if opt.readonly and changed:
+            raise MesonException(f'Tried modify read only option {str(key)!r}')
+
+
+        return changed
 
     # FIXME, this should be removed.or renamed to "change_type_of_existing_object" or something like that
     def set_value_object(self, key: T.Union[OptionKey, str], new_object: 'UserOption[T.Any]') -> None:
@@ -1108,7 +1118,10 @@ class OptionStore:
                 else:
                     self.pending_project_options[key] = valstr
         for keystr, valstr in cmd_line_options.items():
-            key = OptionKey.from_string(keystr)
+            if isinstance(keystr, str):
+                key = OptionKey.from_string(keystr)
+            else:
+                key = keystr
             if key.subproject is None:
                 projectkey = key.evolve(subproject='')
                 if key in self.options:

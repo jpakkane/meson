@@ -174,13 +174,13 @@ class PlatformAgnosticTests(BasePlatformTests):
             self.setconf('-Dbackend=none')
         self.assertIn("ERROR: Tried modify read only option 'backend'", cm.exception.stdout)
 
-        # Reconfigure with a different backend is not allowed
-        with self.assertRaises(subprocess.CalledProcessError) as cm:
-            self.init(testdir, extra_args=['--reconfigure', '--backend=none'])
-        self.assertIn("ERROR: Tried modify read only option 'backend'", cm.exception.stdout)
+        # Check that the new value was not written in the store.
+        self.assertEqual(self.getconf('backend'), 'ninja')
 
         # Wipe with a different backend is allowed
         self.init(testdir, extra_args=['--wipe', '--backend=none'])
+
+        self.assertEqual(self.getconf('backend'), 'none')
 
     def test_validate_dirs(self):
         testdir = os.path.join(self.common_test_dir, '1 trivial')
