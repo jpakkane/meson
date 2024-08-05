@@ -70,7 +70,7 @@ class PlatformAgnosticTests(BasePlatformTests):
 
     def test_option_validation(self):
         """Test cases that are not catch by the optinterpreter itself."""
-        store = OptionStore()
+        store = OptionStore(False)
         interp = OptionInterpreter(store, '')
 
         def write_file(code: str):

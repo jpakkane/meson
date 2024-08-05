@@ -551,7 +551,8 @@ class CoreData:
                                  fatal=False)
 
         # Find any extranious keys for this project and remove them
-        for key in self.optstore.keys() - project_options.keys():
+        potential_removed_keys = self.optstore.keys() - project_options.keys()
+        for key in potential_removed_keys:
             if self.optstore.is_project_option(key) and key.subproject == subproject:
                 self.optstore.remove(key)
 
