@@ -338,25 +338,27 @@ class AllPlatformTests(BasePlatformTests):
              'sysconfdir':     '/etc',
              'localstatedir':  '/var',
              'sharedstatedir': '/sharedstate'},
+
             '--sharedstatedir=/var/state':
             {'prefix':         '/usr',
              'sysconfdir':     '/etc',
              'localstatedir':  '/var',
              'sharedstatedir': '/var/state'},
+
             '--sharedstatedir=/var/state --prefix=/usr --sysconfdir=sysconf':
             {'prefix':         '/usr',
              'sysconfdir':     'sysconf',
              'localstatedir':  '/var',
              'sharedstatedir': '/var/state'},
         }
-        for args in expected:
-            self.init(testdir, extra_args=args.split(), default_args=False)
+        for argument_string, expected_values in expected.items():
+            self.init(testdir, extra_args=argument_string.split(), default_args=False)
             opts = self.introspect('--buildoptions')
             for opt in opts:
                 name = opt['name']
                 value = opt['value']
-                if name in expected[args]:
-                    self.assertEqual(value, expected[args][name])
+                if name in expected_values:
+                    self.assertEqual(value, expected_values[name], f'For option {name}, Meson arg: {argument_string}')
             self.wipe()
 
     def test_clike_get_library_dirs(self):

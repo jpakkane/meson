@@ -867,26 +867,37 @@ class OptionStore:
         return value.as_posix()
 
 
-    def set_value(self, key: T.Union[OptionKey, str], new_value: 'T.Any') -> bool:
+    def set_value(self, key: T.Union[OptionKey, str], new_value: 'T.Any', first_invocation: bool = False) -> bool:
         key = self.ensure_and_validate_key(key)
         if key.name == 'prefix':
             new_value = self.sanitize_prefix(new_value)
         elif self.is_builtin_option(key):
-                prefix = self.get_value_for('prefix')
-                new_value = self.sanitize_dir_option_value(prefix, key, new_value)
+            prefix = self.get_value_for('prefix')
+            new_value = self.sanitize_dir_option_value(prefix, key, new_value)
         if key not in self.options:
            raise MesonException(f'Unknown options: "{key.name}" not found.')
+
         valobj = self.options[key]
+        old_value = valobj.value
         changed = valobj.set_value(new_value)
+
         if valobj.readonly and changed:
             raise MesonException(f'Tried modify read only option {str(key)!r}')
+
+        if key.name == 'prefix' and first_invocation and changed:
+            self.reset_prefixed_options(old_value, new_value)
+
         return changed
 
-    def set_option(self, name: str, subproject: T.Optional[str], new_value: str):
+    def set_option(self, name: str, subproject: T.Optional[str], new_value: str, first_invocation:bool = False):
         key = OptionKey(name, subproject)
-        # FIRXME, dupe ofr the on in set_value.
+        # FIXME, dupe of set_value
+        # Remove one of the two before merging to master.
         if key.name == 'prefix':
             new_value = self.sanitize_prefix(new_value)
+        elif self.is_builtin_option(key):
+            prefix = self.get_value_for('prefix')
+            new_value = self.sanitize_dir_option_value(prefix, key, new_value)
         opt = self.get_value_object_for(key)
         if opt.deprecated is True:
             mlog.deprecation(f'Option {key.name!r} is deprecated')
@@ -910,13 +921,28 @@ class OptionStore:
             dirty |= opt.set_value(new_value)
             return dirty
 
+        old_value = opt.value
         changed = opt.set_value(new_value)
 
         if opt.readonly and changed:
             raise MesonException(f'Tried modify read only option {str(key)!r}')
 
+        if key.name == 'prefix' and first_invocation and changed:
+            self.reset_prefixed_options(old_value, new_value)
 
         return changed
+
+    def reset_prefixed_options(self, old_prefix, new_prefix):
+        for optkey, prefix_mapping in BUILTIN_DIR_NOPREFIX_OPTIONS.items():
+            if new_prefix not in prefix_mapping:
+                continue
+            valobj = self.options[optkey]
+            if old_prefix in prefix_mapping:
+                # Only reset the value if it has not been changed from the default.
+                if prefix_mapping[old_prefix] == valobj.value:
+                    valobj.set_value(prefix_mapping[new_prefix])
+            else:
+                valobj.set_value(prefix_mapping[new_prefix])
 
     # FIXME, this should be removed.or renamed to "change_type_of_existing_object" or something like that
     def set_value_object(self, key: T.Union[OptionKey, str], new_object: 'UserOption[T.Any]') -> None:
@@ -1074,6 +1100,7 @@ class OptionStore:
         return optdict
 
     def set_from_top_level_project_call(self, project_default_options, cmd_line_options, native_file_options):
+        first_invocation = True
         if isinstance(project_default_options, str):
             project_default_options = [project_default_options]
         if isinstance(project_default_options, list):
@@ -1090,7 +1117,7 @@ class OptionStore:
                 #self.pending_project_options[key] = valstr
                 raise MesonException(f'Can not set subproject option {keystr} in machine files.')
             elif key in self.options:
-                self.options[key].set_value(valstr)
+                self.set_value(key, valstr, first_invocation)
             else:
                 proj_key = key.evolve(subproject='')
                 if proj_key in self.options:
@@ -1113,7 +1140,7 @@ class OptionStore:
             if key.subproject is not None:
                 self.pending_project_options[key] = valstr
             elif key in self.options:
-                self.set_option(key.name, key.subproject, valstr)
+                self.set_option(key.name, key.subproject, valstr, first_invocation)
             else:
                 # Setting a project option with default_options.
                 # Argubly this should be a hard error, the default
@@ -1132,7 +1159,7 @@ class OptionStore:
             if key.subproject is None:
                 projectkey = key.evolve(subproject='')
                 if key in self.options:
-                    self.set_value(key, valstr)
+                    self.set_value(key, valstr, True)
                 elif projectkey in self.options:
                     self.options[projectkey].set_value(valstr)
                 else:
