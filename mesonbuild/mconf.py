@@ -389,7 +389,10 @@ def run_impl(options: CMDOptions, builddir: str) -> int:
                 U = options.U
             else:
                 U = []
-            save |= c.coredata.optstore.set_from_configure_command(options.projectoptions, A, U)
+            all_D = options.projectoptions[:]
+            for keystr, valstr in options.cmd_line_options.items():
+                all_D.append(f'{keystr}={valstr}')
+            save |= c.coredata.optstore.set_from_configure_command(all_D, A, U)
             coredata.update_cmd_line_file(builddir, options)
         if options.clearcache:
             c.clear_cache()
