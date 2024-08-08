@@ -14,17 +14,33 @@ This module provides wrappers around common code generators, such as flex/lex an
 
 ## Functions
 
+### find_lex()
+
+```meson
+codegen.find_lex(implementations : ['flex', 'reflex], flex_version : ['>= 2.6', '< 3'], reflex_version : '!= 1.4.2')
+```
+
+This function provides fine grained control over what implementation(s) and version(s) of lex are acceptable for a given project (These are set per-subproject). This call may only be made once per subproject, and must be made before any calls to [codegen.lex](#lex).
+
+It accepts the following keyword arguments:
+
+ - `implementations`: a string array of acceptable implementations to use. May include: `lex`, `flex`, `reflex`, or `win_flex`.
+ - `lex_version`: a string array of version constraints to apply to the `lex` binary
+ - `flex_version`: a string array of version constraints to apply to the `flex` binary
+ - `reflex_version`: a string array of version constraints to apply to the `relex` binary
+ - `win_flex_version`: a string array of version constraints to apply to the `win_flex` binary
+
+
 ### lex()
 
 ```meson
 codegen.lex('lexer.l')
 ```
 
-This function wraps flex, lex, reflex (but not RE/flex), and win_flex (on Windows). When using win_flex it will automatically add the `--wincompat` argument.
+This function wraps flex, lex, reflex (but not RE/flex), and win_flex (on Windows). When using win_flex it will automatically add the `--wincompat` argument. When this function is run the first time, if no lex implementation has been found it will search for any version of lex, flex, reflex, and win_flex, with any version. For greater control over what implementation is used, refer to the [find_lex method](#find_lex).
 
 This requires an input file, which may be a string, File, or generated source. It additionally takes the following options keyword arguments:
 
-- `version`: Version constraints on the lexer
 - `args`: An array of extra arguments to pass the lexer
 - `plainname`: If set to true then `@PLAINNAME@` will be used as the source base, otherwise `@BASENAME@`.
 - `source`: the name of the source output. If this is unset Meson will use `{base}.{ext}` with an extension of `cpp` if the input has an extension of `.ll` or `c` otherwise, with base being determined by the `plainname` argument.

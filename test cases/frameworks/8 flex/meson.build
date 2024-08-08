@@ -9,7 +9,7 @@ project('flex and bison', 'c')
 
 # TODO: handle win_flex/win_bison
 
-flex = find_program('flex', 'lex', required: false)
+flex = find_program('reflex', 'flex', 'lex', required: false)
 bison = find_program('bison', required: false)
 
 if not flex.found()
@@ -21,6 +21,7 @@ if not bison.found()
 endif
 
 codegen = import('unstable-codegen')
+codegen.find_lex(implementations : ['lex', 'flex', 'reflex'])
 lfiles = codegen.lex('lexer.l')
 
 pgen = generator(bison,
