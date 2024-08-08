@@ -245,11 +245,6 @@ class OptionKey:
         """Convenience method for key.evolve(machine=MachineChoice.HOST)."""
         return self.evolve(machine=MachineChoice.HOST)
 
-    def is_project_hack_for_optionsview(self) -> bool:
-        """This method will be removed once we can delete OptionsView."""
-        import sys
-        sys.exit('FATAL internal error. This should not make it into an actual release. File a bug.')
-
     def has_module_prefix(self) -> bool:
         return '.' in self.name
 
@@ -1182,8 +1177,15 @@ class OptionStore:
     def set_from_subproject_call(self, subproject, spcall_default_options, project_default_options):
         spcall_default_options = self.hacky_mchackface_back_to_list(spcall_default_options)
         project_default_options = self.hacky_mchackface_back_to_list(project_default_options)
-        for o in itertools.chain(spcall_default_options, project_default_options):
+        for o in itertools.chain(project_default_options, spcall_default_options):
             keystr, valstr = o.split('=', 1)
-            keystr = f'{subproject}:{keystr}'
-            if keystr not in self.augments:
-                self.augments[keystr] = valstr
+            key = OptionKey.from_string(keystr)
+            assert key.subproject is None
+            key = key.evolve(subproject=subproject)
+            # If the key points to a project option, set the value from that.
+            # Otherwise set an augment.
+            if key in self.project_options:
+                self.set_value(key, valstr, True)
+            else:
+                aug_str = f'{subproject}:{keystr}'
+                self.augments[aug_str] = valstr

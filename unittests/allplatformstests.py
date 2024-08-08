@@ -2629,7 +2629,7 @@ class AllPlatformTests(BasePlatformTests):
         obj = mesonbuild.coredata.load(self.builddir)
         self.assertEqual(obj.optstore.get_value('default_library'), 'static')
         self.assertEqual(obj.optstore.get_value('warning_level'), '1')
-        self.assertEqual(obj.optstore.get_value('set_sub_opt'), True)
+        self.assertEqual(obj.optstore.get_value(OptionKey('set_sub_opt', '')), True)
         self.assertEqual(obj.optstore.get_value(OptionKey('subp_opt', 'subp')), 'default3')
         self.wipe()
 
