@@ -23,6 +23,7 @@ endif
 codegen = import('unstable-codegen')
 codegen.find_lex(implementations : ['lex', 'flex', 'reflex'])
 lfiles = codegen.lex('lexer.l')
+codegen.find_yacc(implementations : ['byacc', 'bison', 'yacc'])
 pfiles = codegen.yacc('parser.y', header : '@BASENAME@.tab.h')
 
 e = executable(

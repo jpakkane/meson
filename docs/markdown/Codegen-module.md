@@ -46,7 +46,7 @@ This requires an input file, which may be a string, File, or generated source. I
 - `source`: the name of the source output. If this is unset Meson will use `{base}.{ext}` with an extension of `cpp` if the input has an extension of `.ll` or `c` otherwise, with base being determined by the `plainname` argument.
 - `header`: The optional output name for a header file. If this is unset no header is added
 - `table`: The optional output name for a table file. If this is unset no table will be generated
-
+                         'POSIX specification does not require that header output be cont')
 The outputs will be in the form `source [header] [table]`, which means those can be accessed by indexing the output of the `lex` call:
 
 ```meson
@@ -56,6 +56,22 @@ headers = [l1[1], l1[2]]  # [header, table]
 l2 = codegen.lex('lexer.l', table : '@BASENAME@.tab.h')
 table = l2[1]
 ```
+
+### find_yacc()
+
+```meson
+codegen.find_yacc(implementations : ['bison', 'win_bison'])
+```
+
+This function provides fine grained controls over which implementation(s) and version(s) of the parser generator to use.
+
+Accepts the following keyword arguments:
+
+ - `implementations`: a string array of acceptable implementations to use. May include: `yacc`, `byacc`, or `bison`.
+ - `yacc_version`: a string array of version constraints to apply to the `yacc` binary
+ - `byacc_version`: a string array of version constraints to apply to the `byacc` binary
+ - `bison_version`: a string array of version constraints to apply to the `bison` binary
+ - `win_bison_version`: a string array of version constraints to apply to the `win_bison` binary
 
 ### yacc()
 
