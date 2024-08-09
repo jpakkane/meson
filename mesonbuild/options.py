@@ -1165,6 +1165,11 @@ class OptionStore:
                 elif projectkey in self.options:
                     self.options[projectkey].set_value(valstr)
                 else:
+                    # Fail on unknown options that we can know must
+                    # exist at this point in time. Subproject and compiler
+                    # options are resolved later.
+                    if ':' not in keystr and not self.is_compiler_option(key):
+                        raise MesonException('Unknown options: "{keystr}"')
                     self.pending_project_options[key] = valstr
             else:
                 raise MesonException(f'Not implemented option thingy: {keystr}')
