@@ -662,9 +662,6 @@ class Environment:
         self.properties = properties.default_missing()
         self.cmakevars = cmakevars.default_missing()
 
-        # Command line options override those from cross/native files
-        self.options.update(cmd_options.cmd_line_options)
-
         # Take default value from env if not set in cross/native files or command line.
         self._set_default_options_from_env()
         self._set_default_binaries_from_env()

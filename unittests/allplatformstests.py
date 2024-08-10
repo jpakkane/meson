@@ -2739,7 +2739,7 @@ class AllPlatformTests(BasePlatformTests):
 
         self.init(testdir, extra_args=['-Dset_percent_opt=myoption%', '--fatal-meson-warnings'])
         obj = mesonbuild.coredata.load(self.builddir)
-        self.assertEqual(obj.optstore.get_value('set_percent_opt'), 'myoption%')
+        self.assertEqual(obj.optstore.get_value(OptionKey('set_percent_opt', '')), 'myoption%')
         self.wipe()
 
         # Setting a 2nd time the same option should override the first value

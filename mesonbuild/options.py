@@ -1158,28 +1158,32 @@ class OptionStore:
                 key = OptionKey.from_string(keystr)
             else:
                 key = keystr
-            if key.subproject is None:
+            if key in self.options:
+                self.set_value(key, valstr, True)
+            elif key.subproject is None:
                 projectkey = key.evolve(subproject='')
-                if key in self.options:
-                    self.set_value(key, valstr, True)
-                elif projectkey in self.options:
+                if projectkey in self.options:
                     self.options[projectkey].set_value(valstr)
                 else:
                     # Fail on unknown options that we can know must
                     # exist at this point in time. Subproject and compiler
                     # options are resolved later.
-                    if ':' not in keystr and not self.is_compiler_option(key):
-                        raise MesonException('Unknown options: "{keystr}"')
+                    #
+                    # Some base options (sanitizers etc) might get added later.
+                    # Permitting them all is not strictly correct.
+                    if ':' not in keystr and not self.is_compiler_option(key) and not self.is_base_option(key):
+                        raise MesonException(f'Unknown options: "{keystr}"')
                     self.pending_project_options[key] = valstr
             else:
-                raise MesonException(f'Not implemented option thingy: {keystr}')
+                self.pending_project_options[key] = valstr
 
     def hacky_mchackface_back_to_list(self, optdict):
         if isinstance(optdict, dict):
             return [f'{k}={v}' for k, v in optdict.items()]
         return optdict
 
-    def set_from_subproject_call(self, subproject, spcall_default_options, project_default_options):
+    def set_from_subproject_call(self, subproject, spcall_default_options, project_default_options, cmd_line_options):
+        is_first_invocation = True
         spcall_default_options = self.hacky_mchackface_back_to_list(spcall_default_options)
         project_default_options = self.hacky_mchackface_back_to_list(project_default_options)
         for o in itertools.chain(project_default_options, spcall_default_options):
@@ -1190,7 +1194,13 @@ class OptionStore:
             # If the key points to a project option, set the value from that.
             # Otherwise set an augment.
             if key in self.project_options:
-                self.set_value(key, valstr, True)
+                self.set_value(key, valstr, is_first_invocation)
             else:
                 aug_str = f'{subproject}:{keystr}'
                 self.augments[aug_str] = valstr
+        # Check for pending options
+        for key, valstr in cmd_line_options.items():
+            if not isinstance(key, OptionKey):
+                key = OptionKey.from_string(key)
+            if key.subproject == subproject and key in self.options:
+                self.set_value(key, valstr, is_first_invocation)
