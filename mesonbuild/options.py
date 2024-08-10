@@ -1101,7 +1101,7 @@ class OptionStore:
              optdict[k] = v
         return optdict
 
-    def set_from_top_level_project_call(self, project_default_options, cmd_line_options, native_file_options):
+    def initialize_from_top_level_project_call(self, project_default_options, cmd_line_options, native_file_options):
         first_invocation = True
         if isinstance(project_default_options, str):
             project_default_options = [project_default_options]
@@ -1182,7 +1182,7 @@ class OptionStore:
             return [f'{k}={v}' for k, v in optdict.items()]
         return optdict
 
-    def set_from_subproject_call(self, subproject, spcall_default_options, project_default_options, cmd_line_options):
+    def initialize_from_subproject_call(self, subproject, spcall_default_options, project_default_options, cmd_line_options):
         is_first_invocation = True
         spcall_default_options = self.hacky_mchackface_back_to_list(spcall_default_options)
         project_default_options = self.hacky_mchackface_back_to_list(project_default_options)

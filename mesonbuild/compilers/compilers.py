@@ -278,6 +278,18 @@ def get_option_value(options: 'KeyedOptionDictType', opt: OptionKey, fallback: '
     # Mypy doesn't understand that the above assert ensures that v is type _T
     return v
 
+def get_option_value_for_target(env: 'Environment', target, opt: OptionKey, fallback: '_T') -> '_T':
+    """Get the value of an option, or the fallback value."""
+    try:
+        v: '_T' = env.coredata.get_option_for_target(target, opt)
+    except (KeyError, AttributeError):
+        return fallback
+
+    assert isinstance(v, type(fallback)), f'Should have {type(fallback)!r} but was {type(v)!r}'
+    # Mypy doesn't understand that the above assert ensures that v is type _T
+    return v
+
+
 def get_target_option_value(target: 'BuildTarget',
                             env: 'Environment',
                             opt: T.Union[OptionKey, str],
@@ -308,9 +320,11 @@ def get_base_compile_args(target: 'BuildTarget', compiler: 'Compiler', env: 'Env
     args: T.List[str] = []
     try:
         if env.coredata.get_option_for_target(target, 'b_lto'):
+            num_threads = get_option_value_for_target(env, target, OptionKey('b_lto_threads'), 0)
+            ltomode = get_option_value_for_target(env, target, OptionKey('b_lto_mode'), 'default')
             args.extend(compiler.get_lto_compile_args(
-                threads=get_option_value(options, OptionKey('b_lto_threads'), 0),
-                mode=get_option_value(options, OptionKey('b_lto_mode'), 'default')))
+                threads=num_threads,
+                mode=ltomode))
     except (KeyError, AttributeError):
         pass
     try:
@@ -363,13 +377,16 @@ def get_base_link_args(target: 'BuildTarget',
                 args.extend(linker.get_werror_args())
 
             thinlto_cache_dir = None
-            if get_option_value(options, OptionKey('b_thinlto_cache'), False):
-                thinlto_cache_dir = get_option_value(options, OptionKey('b_thinlto_cache_dir'), '')
+            cachedir_key = OptionKey('b_thinlto_cache')
+            if get_option_value_for_target(env, target, cachedir_key, False):
+                thinlto_cache_dir = get_option_value_for_target(env, target, OptionKey('b_thinlto_cache_dir'), '')
                 if thinlto_cache_dir == '':
                     thinlto_cache_dir = os.path.join(build_dir, 'meson-private', 'thinlto-cache')
+            num_threads = get_option_value_for_target(env, target, OptionKey('b_lto_threads'), 0)
+            lto_mode = get_option_value_for_target(env, target, OptionKey('b_lto_mode'), 'default')
             args.extend(linker.get_lto_link_args(
-                threads=get_option_value(options, OptionKey('b_lto_threads'), 0),
-                mode=get_option_value(options, OptionKey('b_lto_mode'), 'default'),
+                threads=num_threads,
+                mode=lto_mode,
                 thinlto_cache_dir=thinlto_cache_dir))
     except (KeyError, AttributeError):
         pass
