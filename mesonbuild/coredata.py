@@ -673,6 +673,8 @@ class CoreData:
         # 'optimization' if it is in default_options.
         options: T.MutableMapping[OptionKey, T.Any] = OrderedDict()
         for k, v in default_options.items():
+            if isinstance(k, str):
+                k = OptionKey.from_string(k)
             if not subproject or k.subproject == subproject:
                 options[k] = v
         options.update(env.options)
@@ -696,7 +698,7 @@ class CoreData:
             # Always test this using the HOST machine, as many builtin options
             # are not valid for the BUILD machine, but the yielding value does
             # not differ between them even when they are valid for both.
-            if subproject and self.optstore.is_builtin_option(k) and self.optstore.get_value_object(k.evolve(subproject='', machine=MachineChoice.HOST)).yielding:
+            if subproject and self.optstore.is_builtin_option(k) and self.optstore.get_value_object(k.evolve(subproject=None, machine=MachineChoice.HOST)).yielding:
                 continue
             # Skip base, compiler, and backend options, they are handled when
             # adding languages and setting backend.

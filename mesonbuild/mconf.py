@@ -295,8 +295,8 @@ class Conf:
 
         self.add_section('Main project options')
         self.print_options('Core options', host_core_options[None])
-        if show_build_options:
-            self.print_options('', build_core_options[''])
+        if show_build_options and build_core_options:
+            self.print_options('', build_core_options[None])
         self.print_options('Backend options', {k: v for k, v in self.coredata.optstore.items() if self.coredata.optstore.is_backend_option(k)})
         self.print_options('Base options', {k: v for k, v in self.coredata.optstore.items() if self.coredata.optstore.is_base_option(k)})
         self.print_options('Compiler options', host_compiler_options.get('', {}))
