@@ -28,7 +28,7 @@ class OptionTests(unittest.TestCase):
         vo = UserStringOption(k.name, 'An option of some sort', default_value)
         optstore.add_system_option(k.name, vo)
         self.assertEqual(optstore.get_value_for(k), default_value)
-        optstore.set_from_top_level_project_call([f'someoption={new_value}'], {}, {})
+        optstore.initialize_from_top_level_project_call([f'someoption={new_value}'], {}, {})
         self.assertEqual(optstore.get_value_for(k), new_value)
 
     def test_parsing(self):
@@ -118,22 +118,22 @@ class OptionTests(unittest.TestCase):
         self.assertEqual(optstore.get_value_for(name, sub2_name), top_value)
 
         # First augment a subproject
-        optstore.set_from_configure_command([], [f'{sub_name}:{name}={aug_value}'], [])
+        optstore.intialize_from_configure_command([], [f'{sub_name}:{name}={aug_value}'], [])
         self.assertEqual(optstore.get_value_for(name), top_value)
         self.assertEqual(optstore.get_value_for(name, sub_name), aug_value)
         self.assertEqual(optstore.get_value_for(name, sub2_name), top_value)
-        optstore.set_from_configure_command([], [], [f'{sub_name}:{name}'])
+        optstore.intialize_from_configure_command([], [], [f'{sub_name}:{name}'])
         self.assertEqual(optstore.get_value_for(name), top_value)
         self.assertEqual(optstore.get_value_for(name, sub_name), top_value)
         self.assertEqual(optstore.get_value_for(name, sub2_name), top_value)
 
         # And now augment the top level option
-        optstore.set_from_configure_command([], [f':{name}={aug_value}'], [])
+        optstore.intialize_from_configure_command([], [f':{name}={aug_value}'], [])
         self.assertEqual(optstore.get_value_for(name, None), top_value)
         self.assertEqual(optstore.get_value_for(name, ''), aug_value)
         self.assertEqual(optstore.get_value_for(name, sub_name), top_value)
         self.assertEqual(optstore.get_value_for(name, sub2_name), top_value)
-        optstore.set_from_configure_command([], [], [f':{name}'])
+        optstore.intialize_from_configure_command([], [], [f':{name}'])
         self.assertEqual(optstore.get_value_for(name), top_value)
         self.assertEqual(optstore.get_value_for(name, sub_name), top_value)
         self.assertEqual(optstore.get_value_for(name, sub2_name), top_value)
@@ -152,8 +152,8 @@ class OptionTests(unittest.TestCase):
                              ['c++98', 'c++11', 'c++14', 'c++17', 'c++20', 'c++23'],
                              top_value)
         optstore.add_system_option(name, co)
-        optstore.set_from_configure_command([], [f'{sub_name}:{name}={aug_value}'], [])
-        optstore.set_from_configure_command([f'{sub_name}:{name}={set_value}'], [], [])
+        optstore.intialize_from_configure_command([], [f'{sub_name}:{name}={aug_value}'], [])
+        optstore.intialize_from_configure_command([f'{sub_name}:{name}={set_value}'], [], [])
         self.assertEqual(optstore.get_value_for(name), top_value)
         self.assertEqual(optstore.get_value_for(name, sub_name), set_value)
 

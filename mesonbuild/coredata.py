@@ -510,6 +510,8 @@ class CoreData:
         return dirty
 
     def is_per_machine_option(self, optname: OptionKey) -> bool:
+        if isinstance(optname, str):
+            optname = OptionKey.from_string(optname)
         if optname.as_host() in options.BUILTIN_OPTIONS_PER_MACHINE:
             return True
         return self.optstore.is_compiler_option(optname)

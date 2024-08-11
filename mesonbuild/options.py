@@ -1074,25 +1074,30 @@ class OptionStore:
                 self.augments[keystr] = valstr
 
     def set_from_configure_command(self, D, A, U):
+        dirty = False
         D = [] if D is None else D
         A = [] if A is None else A
         U = [] if U is None else U
         for setval in D:
             keystr, valstr = setval.split('=', 1)
             if keystr in self.augments:
-                self.augments[keystr] = valstr
+                if self.augments[keystr] != valstr:
+                    self.augments[keystr] = valstr
+                    dirty = True
             else:
-                self.set_option_from_string(keystr, valstr)
+                dirty |= self.set_option_from_string(keystr, valstr)
         for add in A:
             keystr, valstr = add.split('=', 1)
             assert ':' in keystr
             if keystr in self.augments:
                 raise MesonException(f'Tried to add augment to option {keystr}, which already has an augment. Set it with -D instead.')
             self.augments[keystr] = valstr
+            dirty = True
         for delete in U:
             if delete in self.augments:
                 del self.augments[delete]
-        return True
+                dirty = True
+        return dirty
 
     def optlist2optdict(self, optlist):
         optdict = {}
