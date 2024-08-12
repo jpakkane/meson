@@ -883,7 +883,7 @@ class OptionStore:
         old_value = valobj.value
         changed = valobj.set_value(new_value)
 
-        if valobj.readonly and changed:
+        if valobj.readonly and changed and not first_invocation:
             raise MesonException(f'Tried modify read only option {str(key)!r}')
 
         if key.name == 'prefix' and first_invocation and changed:

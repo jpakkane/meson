@@ -747,18 +747,18 @@ class CoreData:
             if skey not in self.optstore:
                 self.optstore.add_system_option(skey.name, copy.deepcopy(compilers.base_options[key]))
                 if skey in env.options:
-                    self.optstore[skey].set_value(env.options[skey])
+                    self.optstore.set_value(skey, env.options[skey])
                     enabled_opts.append(skey)
                 elif subproject and key in env.options:
-                    self.optstore[skey].set_value(env.options[key])
+                    self.optstore.set_value(skey, env.options[key])
                     enabled_opts.append(skey)
                 # FIXME
                 #if subproject and not self.optstore.has_option(key):
                 #    self.optstore[key] = copy.deepcopy(self.optstore[skey])
             elif skey in env.options:
-                self.optstore[skey].set_value(env.options[skey])
+                self.optstore.set_value(skey, env.options[skey])
             elif subproject and key in env.options:
-                self.optstore[skey].set_value(env.options[key])
+                self.optstore.set_value(skey, env.options[key])
         self.emit_base_options_warnings(enabled_opts)
 
     def emit_base_options_warnings(self, enabled_opts: T.List[OptionKey]) -> None:
