@@ -279,27 +279,44 @@ class AllPlatformTests(BasePlatformTests):
         testdir = os.path.join(self.common_test_dir, '1 trivial')
         expected = {
             '/opt': {'prefix': '/opt',
-                     'bindir': 'bin', 'datadir': 'share', 'includedir': 'include',
+                     'bindir': 'bin',
+                     'datadir': 'share',
+                     'includedir': 'include',
                      'infodir': 'share/info',
-                     'libexecdir': 'libexec', 'localedir': 'share/locale',
-                     'localstatedir': 'var', 'mandir': 'share/man',
-                     'sbindir': 'sbin', 'sharedstatedir': 'com',
-                     'sysconfdir': 'etc'},
+                     'libexecdir': 'libexec',
+                     'localedir': 'share/locale',
+                     'localstatedir': 'var',
+                     'mandir': 'share/man',
+                     'sbindir': 'sbin',
+                     'sharedstatedir': 'com',
+                     'sysconfdir': 'etc',
+                     },
             '/usr': {'prefix': '/usr',
-                     'bindir': 'bin', 'datadir': 'share', 'includedir': 'include',
+                     'bindir': 'bin',
+                     'datadir': 'share',
+                     'includedir': 'include',
                      'infodir': 'share/info',
-                     'libexecdir': 'libexec', 'localedir': 'share/locale',
-                     'localstatedir': '/var', 'mandir': 'share/man',
-                     'sbindir': 'sbin', 'sharedstatedir': '/var/lib',
-                     'sysconfdir': '/etc'},
+                     'libexecdir': 'libexec',
+                     'localedir': 'share/locale',
+                     'localstatedir': '/var',
+                     'mandir': 'share/man',
+                     'sbindir': 'sbin',
+                     'sharedstatedir': '/var/lib',
+                     'sysconfdir': '/etc',
+                     },
             '/usr/local': {'prefix': '/usr/local',
-                           'bindir': 'bin', 'datadir': 'share',
-                           'includedir': 'include', 'infodir': 'share/info',
+                           'bindir': 'bin',
+                           'datadir': 'share',
+                           'includedir': 'include',
+                           'infodir': 'share/info',
                            'libexecdir': 'libexec',
                            'localedir': 'share/locale',
-                           'localstatedir': '/var/local', 'mandir': 'share/man',
-                           'sbindir': 'sbin', 'sharedstatedir': '/var/local/lib',
-                           'sysconfdir': 'etc'},
+                           'localstatedir': '/var/local',
+                           'mandir': 'share/man',
+                           'sbindir': 'sbin',
+                           'sharedstatedir': '/var/local/lib',
+                           'sysconfdir': 'etc',
+                           },
             # N.B. We don't check 'libdir' as it's platform dependent, see
             # default_libdir():
         }
@@ -317,7 +334,7 @@ class AllPlatformTests(BasePlatformTests):
                 name = opt['name']
                 value = opt['value']
                 if name in expected[prefix]:
-                    self.assertEqual(value, expected[prefix][name])
+                    self.assertEqual(value, expected[prefix][name], f'For option {name} and prefix {prefix}.')
             self.wipe()
 
     def test_default_options_prefix_dependent_defaults(self):

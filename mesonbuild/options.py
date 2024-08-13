@@ -936,15 +936,18 @@ class OptionStore:
 
     def reset_prefixed_options(self, old_prefix, new_prefix):
         for optkey, prefix_mapping in BUILTIN_DIR_NOPREFIX_OPTIONS.items():
-            if new_prefix not in prefix_mapping:
-                continue
             valobj = self.options[optkey]
-            if old_prefix in prefix_mapping:
-                # Only reset the value if it has not been changed from the default.
-                if prefix_mapping[old_prefix] == valobj.value:
-                    valobj.set_value(prefix_mapping[new_prefix])
+            new_value = valobj.value
+            if new_prefix not in prefix_mapping:
+                new_value = BUILTIN_OPTIONS[optkey].default
             else:
-                valobj.set_value(prefix_mapping[new_prefix])
+                if old_prefix in prefix_mapping:
+                    # Only reset the value if it has not been changed from the default.
+                    if prefix_mapping[old_prefix] == valobj.value:
+                        new_value = prefix_mapping[new_prefix]
+                else:
+                    new_value = prefix_mapping[new_prefix]
+            valobj.set_value(new_value)
 
     # FIXME, this should be removed.or renamed to "change_type_of_existing_object" or something like that
     def set_value_object(self, key: T.Union[OptionKey, str], new_object: 'UserOption[T.Any]') -> None:
@@ -1106,8 +1109,51 @@ class OptionStore:
              optdict[k] = v
         return optdict
 
+    def prefix_split_options(self, coll):
+        prefix = None
+        if isinstance(coll, list):
+            others = []
+            for e in coll:
+                if e.startswith('prefix='):
+                    prefix = e.split('=', 1)[1]
+                else:
+                    others.append(e)
+            return (prefix, others)
+        else:
+            others = {}
+            for k, v in coll.items():
+                if k == 'prefix':
+                    prefix = v
+                else:
+                    others[k] = v
+            return (prefix, others)
+
+    def first_handle_prefix(self, project_default_options, cmd_line_options, native_file_options):
+        prefix = None
+        (possible_prefix, nopref_project_default_options) = self.prefix_split_options(project_default_options)
+        prefix = prefix if possible_prefix is None else possible_prefix
+        (possible_prefix, nopref_native_file_options) = self.prefix_split_options(native_file_options)
+        prefix = prefix if possible_prefix is None else possible_prefix
+        (possible_prefix, nopref_cmd_line_options) = self.prefix_split_options(cmd_line_options)
+        prefix = prefix if possible_prefix is None else possible_prefix
+
+        if prefix is not None:
+            self.hard_reset_from_prefix(prefix)
+        return (nopref_project_default_options, nopref_cmd_line_options, nopref_native_file_options)
+
+    def hard_reset_from_prefix(self, prefix:str):
+        for optkey, prefix_mapping in BUILTIN_DIR_NOPREFIX_OPTIONS.items():
+            valobj = self.options[optkey]
+            if prefix in prefix_mapping:
+                new_value = prefix_mapping[prefix]
+            else:
+                new_value = BUILTIN_OPTIONS[optkey].default
+            valobj.set_value(new_value)
+        self.options[OptionKey('prefix')].set_value(prefix)
+
     def initialize_from_top_level_project_call(self, project_default_options, cmd_line_options, native_file_options):
         first_invocation = True
+        (project_default_options, cmd_line_options, native_file_options) = self.first_handle_prefix(project_default_options, cmd_line_options, native_file_options)
         if isinstance(project_default_options, str):
             project_default_options = [project_default_options]
         if isinstance(project_default_options, list):
