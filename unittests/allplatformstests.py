@@ -4454,11 +4454,14 @@ class AllPlatformTests(BasePlatformTests):
                 link_args = env.coredata.get_external_link_args(cc.for_machine, cc.language)
                 self.assertEqual(sorted(link_args), sorted(['-DCFLAG', '-flto']))
 
-            # And one that doesn't
-            with mock.patch.object(cc_type, 'INVOKES_LINKER', False):
-                cc =  detect_compiler_for(env, 'c', MachineChoice.HOST, True, '')
-                link_args = env.coredata.get_external_link_args(cc.for_machine, cc.language)
-                self.assertEqual(sorted(link_args), sorted(['-flto']))
+            # This test no longer really makes sense. Linker flags are set in options
+            # when it is set up. Changing the compiler after the fact does not really
+            # make sense and is not supported.
+            ## And one that doesn't
+            #with mock.patch.object(cc_type, 'INVOKES_LINKER', False):
+            #    cc =  detect_compiler_for(env, 'c', MachineChoice.HOST, True, '')
+            #    link_args = env.coredata.get_external_link_args(cc.for_machine, cc.language)
+            #    self.assertEqual(sorted(link_args), sorted(['-flto']))
 
     def test_install_tag(self) -> None:
         testdir = os.path.join(self.unit_test_dir, '98 install all targets')
