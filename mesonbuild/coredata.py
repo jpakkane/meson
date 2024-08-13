@@ -721,7 +721,8 @@ class CoreData:
                     # FIXME, add augment
                     #self.optstore[k] = o  # override compiler option on reconfigure
                     pass
-            self.optstore.add_compiler_option(lang, f'{k.name}', o)
+            comp_key = OptionKey(f'{k.name}', None, for_machine)
+            self.optstore.add_compiler_option(lang, comp_key, o)
 
     def add_lang_args(self, lang: str, comp: T.Type['Compiler'],
                       for_machine: MachineChoice, env: 'Environment') -> None:
