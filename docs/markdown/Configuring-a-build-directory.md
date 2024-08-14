@@ -119,3 +119,40 @@ by invoking [`meson configure`](Commands.md#configure) with the
 project source directory or the path to the root `meson.build`. In
 this case, Meson will print the default values of all options similar
 to the example output from above.
+
+## Per project subproject options rewrite (Since 1.7)
+
+A common requirement when building large projects with many
+subprojects is to build some (or all) subprojects with project options
+that are different from the "main project". This has been sort of
+possible in a limited way but is now possible in a general way. These
+additions can be added, changed and removed at runtime using the
+command line or, in other words, without editing existing
+`meson.build` files.
+
+Starting with version 1.7 you can specify per-project option settings.
+These can be specified for every top level (i.e. not project) options.
+Suppose you have a project that has a single subproject called
+`numbercruncher` that does heavy computation. During development you
+want to build that subproject with optimizations enabled but your main
+project without optimizations. This can be done by specifying an
+augment to the given subproject:
+
+    meson configure -Dnumbercruncher:optimization=3
+
+Another case might be that you want to build with errors as warnings,
+but some subproject does not support it. It would be set up like this:
+
+    meson configure -Dwerror=true -Anaughty:werror=false
+
+You can also specify an augment on the top level project. A more
+general version of enabling optimizations on all subprojects but not
+the top project would be done like this:
+
+    meson configure -Doptimization=2 -D:optimization=0
+
+Note the colon after the second `D`.
+
+Subproject specific values can be removed with -U
+
+    meson configure -Usubproject:optionnname
