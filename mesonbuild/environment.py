@@ -690,6 +690,13 @@ class Environment:
         # Store a global state of Cargo dependencies
         self.cargo: T.Optional[cargo.Interpreter] = None
 
+    def mfilestr2key(self, machine_file_string: str, machine: MachineChoice):
+        key = OptionKey.from_string(machine_file_string)
+        assert key.machine == MachineChoice.HOST
+        if machine == MachineChoice.BUILD:
+            return key.evolve(machine=machine)
+        return key
+
     def _load_machine_file_options(self, config: 'ConfigParser', properties: Properties, machine: MachineChoice) -> None:
         """Read the contents of a Machine file and put it in the options store."""
 
@@ -699,7 +706,8 @@ class Environment:
         paths = config.get('paths')
         if paths:
             mlog.deprecation('The [paths] section is deprecated, use the [built-in options] section instead.')
-            for k, v in paths.items():
+            for strk, v in paths.items():
+                k = self.mfilestr2key(strk, machine)
                 self.options[k] = v
 
         # Next look for compiler options in the "properties" section, this is
@@ -709,11 +717,12 @@ class Environment:
         for lang in compilers.all_languages:
             deprecated_properties.add(lang + '_args')
             deprecated_properties.add(lang + '_link_args')
-        for k, v in properties.properties.copy().items():
-            if k in deprecated_properties:
-                mlog.deprecation(f'{k} in the [properties] section of the machine file is deprecated, use the [built-in options] section.')
+        for strk, v in properties.properties.copy().items():
+            if strk in deprecated_properties:
+                mlog.deprecation(f'{strk} in the [properties] section of the machine file is deprecated, use the [built-in options] section.')
+                k = self.mfilestr2key(strk, machine)
                 self.options[k] = v
-                del properties.properties[k]
+                del properties.properties[strk]
 
         for section, values in config.items():
             if ':' in section:
@@ -721,23 +730,23 @@ class Environment:
             else:
                 subproject = ''
             if section == 'built-in options':
-                for k, v in values.items():
-                    key = OptionKey.from_string(k)
+                for strk, v in values.items():
+                    key = self.mfilestr2key(strk, machine)
                     # If we're in the cross file, and there is a `build.foo` warn about that. Later we'll remove it.
                     if machine is MachineChoice.HOST and key.machine is not machine:
                         mlog.deprecation('Setting build machine options in cross files, please use a native file instead, this will be removed in meson 2.0', once=True)
                     if key.subproject:
                         raise MesonException('Do not set subproject options in [built-in options] section, use [subproject:built-in options] instead.')
-                    self.options[k] = v
+                    self.options[key] = v
             elif section == 'project options' and machine is MachineChoice.HOST:
                 # Project options are only for the host machine, we don't want
                 # to read these from the native file
-                for k, v in values.items():
+                for strk, v in values.items():
                     # Project options are always for the host machine
-                    key = OptionKey.from_string(k)
+                    key = self.mfilestr2key(strk, machine)
                     if key.subproject:
                         raise MesonException('Do not set subproject options in [built-in options] section, use [subproject:built-in options] instead.')
-                    self.options[k] = v
+                    self.options[key] = v
 
     def _set_default_options_from_env(self) -> None:
         opts: T.List[T.Tuple[str, str]] = (

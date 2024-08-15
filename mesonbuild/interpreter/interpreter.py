@@ -1178,6 +1178,9 @@ class Interpreter(InterpreterBase, HoldableObject):
             self.coredata.options_files[self.subproject] = None
 
         self.project_default_options = kwargs['default_options']
+        if isinstance(self.project_default_options, str):
+            self.project_default_options = [self.project_default_options]
+        assert isinstance(self.project_default_options, (list, dict))
         if self.environment.first_invocation or (self.subproject != '' and self.subproject not in self.coredata.initialized_subprojects):
             if self.subproject == '':
                 self.coredata.optstore.initialize_from_top_level_project_call(self.project_default_options,
