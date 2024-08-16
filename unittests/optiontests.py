@@ -16,7 +16,7 @@ class OptionTests(unittest.TestCase):
         vo = UserStringOption(name, 'An option of some sort', default_value)
         optstore.add_system_option(name, vo)
         self.assertEqual(optstore.get_value_for(name), default_value)
-        optstore.set_option(name, None, new_value)
+        optstore.set_option(OptionKey.from_string(name), new_value)
         self.assertEqual(optstore.get_value_for(name), new_value)
 
     def test_toplevel_project(self):

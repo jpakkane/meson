@@ -790,7 +790,7 @@ class OptionStore:
             self.options[key] = valobj
             pval = self.pending_project_options.pop(key, None)
             if pval is not None:
-                self.set_option(key.name, key.subproject, pval)
+                self.set_option(key, pval)
 
     def add_compiler_option(self, language: str, key: T.Union[OptionKey, str], valobj: 'UserOption[T.Any]') -> None:
         key = self.ensure_and_validate_key(key)
@@ -808,7 +808,7 @@ class OptionStore:
             self.options[key] = valobj
             self.project_options.add(key)
             if pval is not None:
-                self.set_option(key.name, key.subproject, pval)
+                self.set_option(key, pval)
 
     def add_module_option(self, modulename: str, key: T.Union[OptionKey, str], valobj: 'UserOption[T.Any]') -> None:
         key = self.ensure_and_validate_key(key)
@@ -891,8 +891,8 @@ class OptionStore:
 
         return changed
 
-    def set_option(self, name: str, subproject: T.Optional[str], new_value: str, first_invocation:bool = False):
-        key = OptionKey(name, subproject)
+    def set_option(self, key: OptionKey, new_value: str, first_invocation:bool = False):
+        assert isinstance(key, OptionKey)
         # FIXME, dupe of set_value
         # Remove one of the two before merging to master.
         if key.name == 'prefix':
@@ -919,7 +919,7 @@ class OptionStore:
         elif isinstance(opt.deprecated, str):
             mlog.deprecation(f'Option {name!r} is replaced by {opt.deprecated!r}')
             # Change both this aption and the new one pointed to.
-            dirty = self.set_option(opt.deprecated, subproject, new_value)
+            dirty = self.set_option(key.evolve(name=opt.deprecated), new_value)
             dirty |= opt.set_value(new_value)
             return dirty
 
@@ -1195,7 +1195,7 @@ class OptionStore:
             if key.subproject is not None:
                 self.pending_project_options[key] = valstr
             elif key in self.options:
-                self.set_option(key.name, key.subproject, valstr, first_invocation)
+                self.set_option(key, valstr, first_invocation)
             else:
                 # Setting a project option with default_options.
                 # Argubly this should be a hard error, the default
@@ -1203,7 +1203,7 @@ class OptionStore:
                 # file, not in the project call.
                 proj_key = key.evolve(subproject='')
                 if self.is_project_option(proj_key):
-                    self.set_option(proj_key.name, proj_key.subproject, valstr)
+                    self.set_option(proj_key, valstr)
                 else:
                     self.pending_project_options[key] = valstr
         for keystr, valstr in cmd_line_options.items():
