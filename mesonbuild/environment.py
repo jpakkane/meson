@@ -690,9 +690,13 @@ class Environment:
         # Store a global state of Cargo dependencies
         self.cargo: T.Optional[cargo.Interpreter] = None
 
-    def mfilestr2key(self, machine_file_string: str, machine: MachineChoice):
+    def mfilestr2key(self, machine_file_string: str, section_subproject:str, machine: MachineChoice):
         key = OptionKey.from_string(machine_file_string)
         assert key.machine == MachineChoice.HOST
+        if key.subproject:
+            raise MesonException('Do not set subproject options in [built-in options] section, use [subproject:built-in options] instead.')
+        if section_subproject:
+            key = key.evolve(subproject=section_subproject)
         if machine == MachineChoice.BUILD:
             return key.evolve(machine=machine)
         return key
@@ -707,7 +711,7 @@ class Environment:
         if paths:
             mlog.deprecation('The [paths] section is deprecated, use the [built-in options] section instead.')
             for strk, v in paths.items():
-                k = self.mfilestr2key(strk, machine)
+                k = self.mfilestr2key(strk, None, machine)
                 self.options[k] = v
 
         # Next look for compiler options in the "properties" section, this is
@@ -720,30 +724,28 @@ class Environment:
         for strk, v in properties.properties.copy().items():
             if strk in deprecated_properties:
                 mlog.deprecation(f'{strk} in the [properties] section of the machine file is deprecated, use the [built-in options] section.')
-                k = self.mfilestr2key(strk, machine)
+                k = self.mfilestr2key(strk, None, machine)
                 self.options[k] = v
                 del properties.properties[strk]
 
         for section, values in config.items():
             if ':' in section:
-                subproject, section = section.split(':')
+                section_subproject, section = section.split(':')
             else:
-                subproject = ''
+                section_subproject = ''
             if section == 'built-in options':
                 for strk, v in values.items():
-                    key = self.mfilestr2key(strk, machine)
+                    key = self.mfilestr2key(strk, section_subproject, machine)
                     # If we're in the cross file, and there is a `build.foo` warn about that. Later we'll remove it.
                     if machine is MachineChoice.HOST and key.machine is not machine:
                         mlog.deprecation('Setting build machine options in cross files, please use a native file instead, this will be removed in meson 2.0', once=True)
-                    if key.subproject:
-                        raise MesonException('Do not set subproject options in [built-in options] section, use [subproject:built-in options] instead.')
                     self.options[key] = v
             elif section == 'project options' and machine is MachineChoice.HOST:
                 # Project options are only for the host machine, we don't want
                 # to read these from the native file
                 for strk, v in values.items():
                     # Project options are always for the host machine
-                    key = self.mfilestr2key(strk, machine)
+                    key = self.mfilestr2key(strk, section_subproject, machine)
                     if key.subproject:
                         raise MesonException('Do not set subproject options in [built-in options] section, use [subproject:built-in options] instead.')
                     self.options[key] = v

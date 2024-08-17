@@ -1170,7 +1170,8 @@ class OptionStore:
                 key = keystr
             if key.subproject is not None:
                 #self.pending_project_options[key] = valstr
-                raise MesonException(f'Can not set subproject option {keystr} in machine files.')
+                augstr = str(key)
+                self.augments[augstr] = valstr
             elif key in self.options:
                 self.set_value(key, valstr, first_invocation)
             else:
