@@ -187,6 +187,34 @@ class MesonApp:
         with mesonlib.BuildDirLock(self.build_dir):
             return self._generate(env, capture, vslite_ctx)
 
+    def check_unused_options(self, coredata, cmd_line_options, all_subprojects):
+        pending = coredata.optstore.pending_project_options
+        errlist: T.List[str] = []
+        permitted_unknowns = ['b_vscrt', 'b_lto', 'b_lundef']
+        permitlist: T.List[str] = []
+        for opt in pending:
+            # Due to backwards compatibility setting build options in non-cross
+            # builds is permitted and is a no-op. This should be made
+            # a hard error.
+            if not coredata.is_cross_build() and opt.is_for_build():
+                continue
+            # It is not an error to set wrong option for unknown subprojects or
+            # language because we don't have control on which one will be selected.
+            if opt.subproject and opt.subproject not in all_subprojects:
+                continue
+            if coredata.optstore.is_compiler_option(opt):
+                continue
+            if opt.name == 'b_vscrt':
+                continue
+            keystr = str(opt)
+            if keystr in cmd_line_options:
+                errlist.append(f'"{keystr}"')
+        if errlist:
+            errstr = ', '.join(errlist)
+            raise MesonException(f'Unknown options: {errstr}')
+        coredata.optstore.clear_pending()
+
+
     def _generate(self, env: environment.Environment, capture: bool, vslite_ctx: T.Optional[dict]) -> T.Optional[dict]:
         # Get all user defined options, including options that have been defined
         # during a previous invocation or using meson configure.
@@ -242,6 +270,9 @@ class MesonApp:
             cdf = env.dump_coredata()
 
             self.finalize_postconf_hooks(b, intr)
+            self.check_unused_options(env.coredata, 
+                                      intr.user_defined_options.cmd_line_options,
+                                      intr.subprojects)
             if self.options.profile:
                 localvars = locals()
                 fname = f'profile-{intr.backend.name}-backend.log'

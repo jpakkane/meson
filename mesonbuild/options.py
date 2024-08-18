@@ -259,6 +259,9 @@ class OptionKey:
             return self.evolve(newname)
         return self
 
+    def is_for_build(self) -> bool:
+        return self.machine is MachineChoice.BUILD
+
 class UserOption(T.Generic[_T], HoldableObject):
     def __init__(self, name: str, description: str, choices: T.Optional[T.Union[str, T.List[_T]]],
                  yielding: bool,
@@ -716,6 +719,9 @@ class OptionStore:
         self.pending_project_options = {}
         self.is_cross = is_cross
 
+    def clear_pending(self):
+        self.pending_project_options = []
+
     def ensure_and_validate_key(self, key: T.Union[OptionKey, str]) -> OptionKey:
         if isinstance(key, str):
             return OptionKey(key)
@@ -917,7 +923,7 @@ class OptionStore:
             valarr = [replace(v) for v in opt.listify(new_value)]
             new_value = ','.join(valarr)
         elif isinstance(opt.deprecated, str):
-            mlog.deprecation(f'Option {name!r} is replaced by {opt.deprecated!r}')
+            mlog.deprecation(f'Option {key.name!r} is replaced by {opt.deprecated!r}')
             # Change both this aption and the new one pointed to.
             dirty = self.set_option(key.evolve(name=opt.deprecated), new_value)
             dirty |= opt.set_value(new_value)
@@ -1144,6 +1150,7 @@ class OptionStore:
         return (nopref_project_default_options, nopref_cmd_line_options, nopref_native_file_options)
 
     def hard_reset_from_prefix(self, prefix:str):
+        prefix = self.sanitize_prefix(prefix)
         for optkey, prefix_mapping in BUILTIN_DIR_NOPREFIX_OPTIONS.items():
             valobj = self.options[optkey]
             if prefix in prefix_mapping:
@@ -1193,6 +1200,10 @@ class OptionStore:
             # The key parsing fucntion can not handle the difference between the two
             # an defaults to A 
             key = OptionKey.from_string(keystr)
+            # Due to backwards compatibility we ignore all cross options when building
+            # natively.
+            if not self.is_cross and key.is_for_build():
+                continue
             if key.subproject is not None:
                 self.pending_project_options[key] = valstr
             elif key in self.options:
@@ -1212,6 +1223,10 @@ class OptionStore:
                 key = OptionKey.from_string(keystr)
             else:
                 key = keystr
+            # Due to backwards compatibility we ignore all cross options when building
+            # natively.
+            if not self.is_cross and key.is_for_build():
+                continue
             if key in self.options:
                 self.set_value(key, valstr, True)
             elif key.subproject is None:
@@ -1250,11 +1265,17 @@ class OptionStore:
             if key in self.project_options:
                 self.set_value(key, valstr, is_first_invocation)
             else:
+                self.pending_project_options.pop(key, None)
                 aug_str = f'{subproject}:{keystr}'
                 self.augments[aug_str] = valstr
         # Check for pending options
         for key, valstr in cmd_line_options.items():
             if not isinstance(key, OptionKey):
                 key = OptionKey.from_string(key)
-            if key.subproject == subproject and key in self.options:
+            if key.subproject != subproject:
+                continue
+            self.pending_project_options.pop(key, None)
+            if key in self.options:
                 self.set_value(key, valstr, is_first_invocation)
+            else:
+                self.augments[str(key)] = valstr

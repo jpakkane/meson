@@ -1054,6 +1054,8 @@ class Interpreter(InterpreterBase, HoldableObject):
     def func_get_option(self, nodes: mparser.BaseNode, args: T.Tuple[str],
                         kwargs: 'TYPE_kwargs') -> T.Union[options.UserOption, 'TYPE_var']:
         optname = args[0]
+        if optname == 'optimization' and self.subproject == 'sub2':
+            pass
         if ':' in optname:
             raise InterpreterException('Having a colon in option name is forbidden, '
                                        'projects are not allowed to directly access '
@@ -1192,6 +1194,7 @@ class Interpreter(InterpreterBase, HoldableObject):
                                                                        invoker_method_default_options,
                                                                        self.project_default_options,
                                                                        self.user_defined_options.cmd_line_options)
+                self.coredata.initialized_subprojects.add(self.subproject)
 
         if not self.is_subproject():
             self.build.project_name = proj_name
