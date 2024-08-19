@@ -985,8 +985,7 @@ class BuildTarget(Target):
             self.compilers['c'] = self.all_compilers['c']
         if 'cython' in self.compilers:
             key = OptionKey('cython_language', machine=self.for_machine)
-            value = self.get_option(key)
-
+            value = self.environment.coredata.optstore.get_value_for(key)
             try:
                 self.compilers[value] = self.all_compilers[value]
             except KeyError:

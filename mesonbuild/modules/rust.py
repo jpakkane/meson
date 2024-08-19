@@ -12,7 +12,7 @@ from . import ExtensionModule, ModuleReturnValue, ModuleInfo
 from .. import mesonlib, mlog
 from ..build import (BothLibraries, BuildTarget, CustomTargetIndex, Executable, ExtractedObjects, GeneratedList,
                      CustomTarget, InvalidArguments, Jar, StructuredSources, SharedLibrary)
-from ..compilers.compilers import are_asserts_disabled, lang_suffixes
+from ..compilers.compilers import are_asserts_disabled_for_subproject, lang_suffixes
 from ..interpreter.type_checking import (
     DEPENDENCIES_KW, LINK_WITH_KW, SHARED_LIB_KWS, TEST_KWS, OUTPUT_KW,
     INCLUDE_DIRECTORIES, SOURCES_VARARGS, NoneType, in_set_validator
@@ -234,7 +234,7 @@ class RustModule(ExtensionModule):
             # bindgen always uses clang, so it's safe to hardcode -I here
             clang_args.extend([f'-I{x}' for x in i.to_string_list(
                 state.environment.get_source_dir(), state.environment.get_build_dir())])
-        if are_asserts_disabled(state.environment.coredata.optstore):
+        if are_asserts_disabled_for_subproject(state.subproject, state.environment):
             clang_args.append('-DNDEBUG')
 
         for de in kwargs['dependencies']:

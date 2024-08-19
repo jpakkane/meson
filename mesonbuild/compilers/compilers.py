@@ -312,9 +312,15 @@ def are_asserts_disabled(target: 'BuildTarget', env: 'Environment') -> bool:
     :param env: the environment
     :return: whether to disable assertions or not
     """
-    return env.coredata.get_option_for_target(target,'b_ndebug') == 'true' or \
-           env.coredata.get_option_for_target(target,'b_ndebug') == 'if-release' and \
-           env.coredata.get_option_for_target(target,'buildtype') in {'release', 'plain'}
+    return env.coredata.get_option_for_target(target, 'b_ndebug') == 'true' or \
+           env.coredata.get_option_for_target(target, 'b_ndebug') == 'if-release' and \
+           env.coredata.get_option_for_target(target, 'buildtype') in {'release', 'plain'}
+
+def are_asserts_disabled_for_subproject(subproject: str, env: 'Environment') -> bool:
+    return env.coredata.get_option_for_subproject('b_ndebug', subproject) == 'true' or \
+           env.coredata.get_option_for_subproject('b_ndebug', subproject) == 'if-release' and \
+           env.coredata.get_option_for_subproject('buildtype', subproject) in {'release', 'plain'}
+
 
 def get_base_compile_args(target: 'BuildTarget', compiler: 'Compiler', env: 'Environment') -> T.List[str]:
     args: T.List[str] = []
