@@ -163,19 +163,23 @@ class ClangCCompiler(_ClangCStds, ClangCompiler, CCompiler):
             )
         return opts
 
-    def get_option_compile_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
+    def get_option_compile_args(self, target: 'BuildTarget', env: 'Environment', subproject=None) -> T.List[str]:
         args = []
         key = self.form_compileropt_key('std')
-        std = options.get_value(key)
+        if target:
+            std = env.coredata.get_option_for_target(target, key)
+        else:
+            std = env.coredata.get_option_for_subproject(key, subproject)
         if std != 'none':
             args.append('-std=' + std)
         return args
 
-    def get_option_link_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
+    def get_option_link_args(self, target: 'BuildTarget', env: 'Environment', subproject=None) -> T.List[str]:
         if self.info.is_windows() or self.info.is_cygwin():
-            # without a typedict mypy can't understand this.
-            key = self.form_compileropt_key('winlibs')
-            libs = options.get_value(key).copy()
+            libs: T.List[str] = env.get_option_for_target(target,
+                                                          OptionKey('winlibs',
+                                                                    subproject=subproject,
+                                                                    machine=self.for_machine)).copy()            # without a typedict mypy can't understand this.
             assert isinstance(libs, list)
             for l in libs:
                 assert isinstance(l, str)
@@ -264,7 +268,7 @@ class ArmclangCCompiler(ArmclangCompiler, CCompiler):
             args.append('-std=' + std)
         return args
 
-    def get_option_link_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
+    def get_option_link_args(self, target: 'BuildTarget', env: 'Environment', subproject=None) -> T.List[str]:
         return []
 
 
@@ -605,7 +609,7 @@ class ArmCCompiler(ArmCompiler, CCompiler):
         std_opt.set_versions(['c89', 'c99', 'c11'])
         return opts
 
-    def get_option_compile_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
+    def get_option_compile_args(self, target: 'BuildTarget', env: 'Environment', subproject=None) -> T.List[str]:
         args = []
         key = self.form_compileropt_key('std')
         std = options.get_value(key)
