@@ -141,7 +141,7 @@ class ValaCompiler(Compiler):
     def thread_link_flags(self, env: 'Environment') -> T.List[str]:
         return []
 
-    def get_option_link_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
+    def get_option_link_args(self, target: 'BuildTarget', env: 'Environment', subproject=None) -> T.List[str]:
         return []
 
     def build_wrapper_args(self, env: 'Environment',
