@@ -815,16 +815,18 @@ class VisualStudioLikeCPPCompilerMixin(CompilerMixinBase):
 
     def get_option_compile_args(self, target: 'BuildTarget', env: 'Environment', subproject=None) -> T.List[str]:
         args: T.List[str] = []
-        key = self.form_compileropt_key('std')
+        stdkey = self.form_compileropt_key('std')
+        ehkey = self.form_compileropt_key('eh')
+        rttikey = self.form_compileropt_key('rtti')
 
         if target is not None:
-            std = env.coredata.get_option_for_target(target, key)
-            eh = env.coredata.get_option_for_target(target, key.evolve('eh'))
-            rtti = env.coredata.get_option_for_target(target, key.evolve('rtti'))
+            std = env.coredata.get_option_for_target(target, stdkey)
+            eh = env.coredata.get_option_for_target(target, ehkey)
+            rtti = env.coredata.get_option_for_target(target, rttikey)
         else:
-            std = env.coredata.get_option_for_subproject(key, subprojct)
-            eh = env.coredata.get_option_for_target(key.evolve('eh'), subproject)
-            rtti = env.coredata.get_option_for_target(key.evolve('rtti'), subproject)
+            std = env.coredata.get_option_for_subproject(stdkey, subproject)
+            eh = env.coredata.get_option_for_subproject(ehkey, subproject)
+            rtti = env.coredata.get_option_for_subproject(rttikey, subproject)
 
         if eh == 'default':
             args.append('/EHsc')
@@ -863,8 +865,11 @@ class CPP11AsCPP14Mixin(CompilerMixinBase):
         # which means setting the C++ standard version to C++14, in compilers that support it
         # (i.e., after VS2015U3)
         # if one is using anything before that point, one cannot set the standard.
-        key = self.form_compileropt_key('std')
-        std = env.coredata.get_option_for_target(target, key)
+        stdkey = self.form_compileropt_key('std')
+        if target is not None:
+            std = env.coredata.get_option_for_target(target, stdkey)
+        else:
+            std = env.coredata.get_option_for_subproject(stdkey, subproject)
         if std in {'vc++11', 'c++11'}:
             mlog.warning(self.id, 'does not support C++11;',
                          'attempting best effort; setting the standard to C++14',
@@ -903,8 +908,11 @@ class VisualStudioCPPCompiler(CPP11AsCPP14Mixin, VisualStudioLikeCPPCompilerMixi
         return self._get_options_impl(super().get_options(), cpp_stds)
 
     def get_option_compile_args(self, target: 'BuildTarget', env: 'Environment', subproject=None) -> T.List[str]:
-        key = self.form_compileropt_key('std')
-        std = env.coredata.get_option_for_target(target, key)
+        stdkey = self.form_compileropt_key('std')
+        if target is not None:
+            std = env.coredata.get_option_for_target(target, stdkey)
+        else:
+            std = env.coredata.get_option_for_subproject(stdkey, subproject)
         if std != 'none' and version_compare(self.version, '<19.00.24210'):
             mlog.warning('This version of MSVC does not support cpp_std arguments', fatal=False)
 

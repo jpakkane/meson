@@ -486,7 +486,10 @@ class VisualStudioLikeCCompilerMixin(CompilerMixinBase):
 
     def get_option_link_args(self, target: 'BuildTarget', env: 'Environment', subproject=None) -> T.List[str]:
         key = self.form_compileropt_key('winlibs')
-        libs = env.coredata.get_option_for_target(target, key).copy()
+        if target is not None:
+            libs = env.coredata.get_option_for_target(target, key).copy()
+        else:
+            libs = env.coredata.get_option_for_subproject(key, subproject).copy()
         assert isinstance(libs, list)
         for l in libs:
             assert isinstance(l, str)
@@ -522,8 +525,12 @@ class VisualStudioCCompiler(MSVCCompiler, VisualStudioLikeCCompilerMixin, CCompi
 
     def get_option_compile_args(self, target: 'BuildTarget', env: 'Environment', subproject=None) -> T.List[str]:
         args = []
-        key = self.form_compileropt_key('std')
-        std = env.coredata.get_option_for_target(target, key)
+        stdkey = self.form_compileropt_key('std')
+        if target is not None:
+            std = env.coredata.get_option_for_target(target, stdkey)
+        else:
+            std = env.coredata.get_option_for_subproject(stdkey, subproject)
+
         # As of MVSC 16.8, /std:c11 and /std:c17 are the only valid C standard options.
         if std in {'c11'}:
             args.append('/std:c11')

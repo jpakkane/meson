@@ -18,7 +18,7 @@ if get_option('array_opt') != ['one', 'two']
 endif
 
 # If the default changes, update test cases/unit/13 reconfigure
-if get_option('b_lto') != false
+if get_option('b_pch') != true
   error('Incorrect value in base option.')
 endif
 
