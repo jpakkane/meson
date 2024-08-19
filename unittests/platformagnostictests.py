@@ -172,7 +172,7 @@ class PlatformAgnosticTests(BasePlatformTests):
         # Change backend option is not allowed
         with self.assertRaises(subprocess.CalledProcessError) as cm:
             self.setconf('-Dbackend=none')
-        self.assertIn("ERROR: Tried modify read only option 'backend'", cm.exception.stdout)
+        self.assertIn("ERROR: Tried to modify read only option 'backend'", cm.exception.stdout)
 
         # Check that the new value was not written in the store.
         self.assertEqual(self.getconf('backend'), 'ninja')

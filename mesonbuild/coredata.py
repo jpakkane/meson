@@ -439,7 +439,7 @@ class CoreData:
         except KeyError:
             raise MesonException(f'Tried to set unknown builtin option {str(key)}')
 
-        changed = self.optstore.set_value(key, value)
+        changed = self.optstore.set_value(key, value, first_invocation)
         dirty |= changed
 
         if key.name == 'buildtype':
