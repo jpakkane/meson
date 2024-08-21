@@ -721,8 +721,15 @@ class CoreData:
                     # FIXME, add augment
                     #self.optstore[k] = o  # override compiler option on reconfigure
                     pass
+
             comp_key = OptionKey(f'{k.name}', None, for_machine)
-            self.optstore.add_compiler_option(lang, comp_key, o)
+            if lang == 'objc' and k.name == 'c_std':
+                # For objective C, always fall back to c_std.
+                self.optstore.add_compiler_option('c', comp_key, o)
+            elif lang == 'objcpp' and k.name == 'cpp_std':
+                self.optstore.add_compiler_option('cpp', comp_key, o)
+            else:
+                self.optstore.add_compiler_option(lang, comp_key, o)
 
     def add_lang_args(self, lang: str, comp: T.Type['Compiler'],
                       for_machine: MachineChoice, env: 'Environment') -> None:

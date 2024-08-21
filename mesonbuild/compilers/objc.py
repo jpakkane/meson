@@ -88,9 +88,13 @@ class ClangObjCCompiler(ClangCompiler, ObjCCompiler):
                                'none'),
         )
 
-    def get_option_compile_args(self, options: 'coredata.KeyedOptionDictType') -> T.List[str]:
+    def get_option_compile_args(self, target: 'BuildTarget', env: 'Environment', subproject=None) -> T.List[str]:
         args = []
-        std = options.get_value(OptionKey('c_std', machine=self.for_machine))
+        key = OptionKey('c_std', machine=self.for_machine)
+        if target:
+            std = env.coredata.get_option_for_target(target, key)
+        else:
+            std = env.coredata.get_option_for_subproject(key, subproject)
         if std != 'none':
             args.append('-std=' + std)
         return args

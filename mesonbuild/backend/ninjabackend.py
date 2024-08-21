@@ -2802,11 +2802,10 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
         return []
 
     def generate_llvm_ir_compile(self, target, src: FileOrString):
-        base_proxy = target.get_options()
         compiler = get_compiler_for_source(target.compilers.values(), src)
         commands = compiler.compiler_args()
         # Compiler args for compiling this target
-        commands += compilers.get_base_compile_args(base_proxy, compiler, self.environment)
+        commands += compilers.get_base_compile_args(target, compiler, self.environment)
         if isinstance(src, File):
             if src.is_built:
                 src_filename = os.path.join(src.subdir, src.fname)
