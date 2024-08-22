@@ -874,7 +874,11 @@ class CPP11AsCPP14Mixin(CompilerMixinBase):
             mlog.warning(self.id, 'does not support C++11;',
                          'attempting best effort; setting the standard to C++14',
                          once=True, fatal=False)
-        return super().get_option_compile_args(target, env, subproject)
+        original_args = super().get_option_compile_args(target, env, subproject)
+        std_mapping = {'/std:c++11': '/std:c++14',
+                       '/std:c++14': '/std:vc++14'}
+        processed_args = [std_mapping.get(x, x) for x in original_args]
+        return processed_args
 
 
 class VisualStudioCPPCompiler(CPP11AsCPP14Mixin, VisualStudioLikeCPPCompilerMixin, MSVCCompiler, CPPCompiler):

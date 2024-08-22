@@ -271,7 +271,7 @@ class Vs2010Backend(backends.Backend):
         self.debug = self.environment.coredata.get_option(OptionKey('debug'))
         try:
             self.sanitize = self.environment.coredata.get_option(OptionKey('b_sanitize'))
-        except MesonException:
+        except KeyError:
             self.sanitize = 'none'
         sln_filename = os.path.join(self.environment.get_build_dir(), self.build.project_name + '.sln')
         projlist = self.generate_projects(vslite_ctx)
