@@ -8,7 +8,6 @@ import os.path
 import string
 import typing as T
 
-from .. import coredata
 from .. import options
 from .. import mlog
 from ..mesonlib import (
@@ -21,7 +20,7 @@ from .compilers import Compiler
 if T.TYPE_CHECKING:
     from .compilers import CompileCheckMode
     from ..build import BuildTarget
-    from ..coredata import MutableKeyedOptionDictType, KeyedOptionDictType
+    from ..coredata import MutableKeyedOptionDictType
     from ..dependencies import Dependency
     from ..environment import Environment  # noqa: F401
     from ..envconfig import MachineInfo
@@ -553,7 +552,7 @@ class CudaCompiler(Compiler):
         # Use the -ccbin option, if available, even during sanity checking.
         # Otherwise, on systems where CUDA does not support the default compiler,
         # NVCC becomes unusable.
-        flags += self.get_ccbin_args(env.coredata.optstore)
+        flags += self.get_ccbin_args(None, env, '')
 
         # If cross-compiling, we can't run the sanity check, only compile it.
         if self.is_cross and not env.has_exe_wrapper():
@@ -659,35 +658,29 @@ class CudaCompiler(Compiler):
                                ''),
         )
 
-    def _to_host_compiler_options(self, master_options: 'KeyedOptionDictType') -> 'KeyedOptionDictType':
-        """
-        Convert an NVCC Option set to a host compiler's option set.
-        """
-
-        # We must strip the -std option from the host compiler option set, as NVCC has
-        # its own -std flag that may not agree with the host compiler's.
-        host_options = {key: master_options.get(key, opt) for key, opt in self.host_compiler.get_options().items()}
-        std_key = OptionKey(f'{self.host_compiler.language}_std', machine=self.for_machine)
-        overrides = {std_key: 'none'}
-        # To shut up mypy.
-        return coredata.OptionsView(host_options, overrides=overrides)
-
-    def get_option_compile_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
-        args = self.get_ccbin_args(options)
+    def get_option_compile_args(self, target: 'BuildTarget', env: 'Environment', subproject=None) -> T.List[str]:
+        args = self.get_ccbin_args(target, env, subproject)
         # On Windows, the version of the C++ standard used by nvcc is dictated by
         # the combination of CUDA version and MSVC version; the --std= is thus ignored
         # and attempting to use it will result in a warning: https://stackoverflow.com/a/51272091/741027
         if not is_windows():
             key = self.form_compileropt_key('std')
-            std = options.get_value(key)
+            if target:
+                std = env.coredata.get_option_for_target(target, key)
+            else:
+                std = env.coredata.get_option_for_subproject(key, subproject)
             if std != 'none':
                 args.append('--std=' + std)
 
-        return args + self._to_host_flags(self.host_compiler.get_option_compile_args(self._to_host_compiler_options(options)))
+        try:
+            host_compiler_args = self.host_compiler.get_option_compile_args(target, env, subproject)
+        except KeyError:
+            host_compiler_args = []
+        return args + self._to_host_flags(host_compiler_args)
 
-    def get_option_link_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
-        args = self.get_ccbin_args(options)
-        return args + self._to_host_flags(self.host_compiler.get_option_link_args(self._to_host_compiler_options(options)), Phase.LINKER)
+    def get_option_link_args(self, target: 'BuildTarget', env: 'Environment', subproject=None) -> T.List[str]:
+        args = self.get_ccbin_args(target, env, subproject)
+        return args + self._to_host_flags(self.host_compiler.get_option_link_args(target, env, subproject), _Phase.LINKER)
 
     def get_soname_args(self, env: 'Environment', prefix: str, shlib_name: str,
                         suffix: str, soversion: str,
@@ -797,9 +790,12 @@ class CudaCompiler(Compiler):
     def get_dependency_link_args(self, dep: 'Dependency') -> T.List[str]:
         return self._to_host_flags(super().get_dependency_link_args(dep), Phase.LINKER)
 
-    def get_ccbin_args(self, ccoptions: 'KeyedOptionDictType') -> T.List[str]:
+    def get_ccbin_args(self, target: 'BuildTarget', env: 'Environment', subproject=None) -> T.List[str]:
         key = self.form_compileropt_key('ccbindir')
-        ccbindir = ccoptions.get_value(key)
+        if target:
+            ccbindir = env.coredata.get_option_for_target(target, key)
+        else:
+            ccbindir = env.coredata.get_option_for_subproject(key, subproject)
         if isinstance(ccbindir, str) and ccbindir != '':
             return [self._shield_nvcc_list_arg('-ccbin='+ccbindir, False)]
         else:
