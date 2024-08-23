@@ -177,10 +177,11 @@ class ClangCCompiler(_ClangCStds, ClangCompiler, CCompiler):
 
     def get_option_link_args(self, target: 'BuildTarget', env: 'Environment', subproject=None) -> T.List[str]:
         if self.info.is_windows() or self.info.is_cygwin():
-            libs: T.List[str] = env.get_option_for_target(target,
-                                                          OptionKey('winlibs',
-                                                                    subproject=subproject,
-                                                                    machine=self.for_machine)).copy()            # without a typedict mypy can't understand this.
+            winlibkey = self.form_compileropt_key('winlibs')
+            if target:
+                libs: T.List[str] = env.coredata.get_option_for_target(target, winlibkey).copy()
+            else:
+                libs: T.List[str] = env.coredata.get_option_for_subproject(winlibkey, subproject).copy()
             assert isinstance(libs, list)
             for l in libs:
                 assert isinstance(l, str)
@@ -335,17 +336,11 @@ class GnuCCompiler(GnuCompiler, CCompiler):
     def get_option_link_args(self, target: 'BuildTarget', env: 'Environment', subproject=None) -> T.List[str]:
         if self.info.is_windows() or self.info.is_cygwin():
             # without a typeddict mypy can't figure this out
-            key = self.form_compileropt_key('winlibs')
+            winlibkey = self.form_compileropt_key('winlibs')
             if target:
-                libs: T.List[str] = env.get_option_for_target(target,
-                                                              OptionKey('winlibs',
-                                                                        lang=self.language,
-                                                                        machine=self.for_machine)).copy()
+                libs: T.List[str] = env.coredata.get_option_for_target(target, winlibkey).copy()
             else:
-                libs: T.List[str] = env.get_option_for_subproject(OptionKey('winlibs',
-                                                                            lang=self.language,
-                                                                            machine=self.for_machine),
-                                                                            subproject).copy()
+                libs: T.List[str] = env.coredata.get_option_for_subproject(winlibkey, subproject).copy()
 
             assert isinstance(libs, list)
             for l in libs:
