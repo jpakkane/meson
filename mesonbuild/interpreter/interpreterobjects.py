@@ -962,10 +962,10 @@ class BuildTargetHolder(ObjectHolder[_BuildTarget]):
         unity_value = self.interpreter.coredata.get_option_for_target(tobj, "unity")
         if unity_value == 'on' or \
             (unity_value == 'subprojects' and tobj.subproject != ''):
-            raise mesonlib.MesonException(('Single object files cannot be extracted '
-                                           'in Unity builds. You can only extract all '
-                                           'the object files for each compiler at once.'))
-        return tobj.extract_objects(args[0])
+            is_unity = True
+        else:
+            is_unity = False
+        return tobj.extract_objects(args[0], is_unity)
 
     @noPosargs
     @typed_kwargs(

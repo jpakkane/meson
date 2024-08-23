@@ -2064,6 +2064,8 @@ class Backend:
                                           target.output_templ, target.depends)
 
     def is_unity(self, target: build.BuildTarget) -> bool:
+        if isinstance(target, build.CompileTarget):
+            return False
         val = self.get_target_option(target, 'unity')
         if val == 'on':
             return True

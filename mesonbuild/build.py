@@ -1021,7 +1021,7 @@ class BuildTarget(Target):
                     'Link_depends arguments must be strings, Files, '
                     'or a Custom Target, or lists thereof.')
 
-    def extract_objects(self, srclist: T.List[T.Union['FileOrString', 'GeneratedTypes']]) -> ExtractedObjects:
+    def extract_objects(self, srclist: T.List[T.Union['FileOrString', 'GeneratedTypes']], is_unity: bool) -> ExtractedObjects:
         sources_set = set(self.sources)
         generated_set = set(self.generated)
 
@@ -1044,7 +1044,10 @@ class BuildTarget(Target):
                 obj_gen.append(src)
             else:
                 raise MesonException(f'Object extraction arguments must be strings, Files or targets (got {type(src).__name__}).')
-        return ExtractedObjects(self, obj_src, obj_gen)
+        eobjs = ExtractedObjects(self, obj_src, obj_gen)
+        if is_unity:
+            eobjs.check_unity_compatible()
+        return eobjs
 
     def extract_all_objects(self, recursive: bool = True) -> ExtractedObjects:
         return ExtractedObjects(self, self.sources, self.generated, self.objects,
