@@ -251,9 +251,15 @@ class WindowsTests(BasePlatformTests):
                 env=current_env)
 
             # Check this has actually built the appropriate exes
-            output_debug = subprocess.check_output(str(os.path.join(self.builddir+'_debug', 'genvslite.exe')))
-            self.assertEqual( output_debug, b'Debug\r\n' )
-            output_release = subprocess.check_output(str(os.path.join(self.builddir+'_release', 'genvslite.exe')))
+            exe_path = str(os.path.join(self.builddir+'_debug', 'genvslite.exe'))
+            self.assertTrue(os.path.exists(exe_path))
+            rc = subprocess.run([exe_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            self.assertEqual(rc.returncode, 0, rc.stdout + rc.stderr)
+            output_debug = rc.stdout
+            self.assertEqual(output_debug, b'Debug\r\n' )
+            exe_path = str(os.path.join(self.builddir+'_release', 'genvslite.exe'))
+            self.assertTrue(os.path.exists(exe_path))
+            output_release = subprocess.check_output([exe_path])
             self.assertEqual( output_release, b'Non-debug\r\n' )
 
         finally:

@@ -352,10 +352,10 @@ def run_genvslite_setup(options: CMDOptions) -> None:
     # invoke the appropriate 'meson compile ...' build commands upon the normal visual studio build/rebuild/clean actions, instead of using
     # the native VS/msbuild system.
     builddir_prefix = options.builddir
-    genvsliteval = options.cmd_line_options.pop(OptionKey('genvslite'))
+    genvsliteval = options.cmd_line_options.pop('genvslite')
     # The command line may specify a '--backend' option, which doesn't make sense in conjunction with
     # '--genvslite', where we always want to use a ninja back end -
-    k_backend = OptionKey('backend')
+    k_backend = 'backend'
     if k_backend in options.cmd_line_options.keys():
         if options.cmd_line_options[k_backend] != 'ninja':
             raise MesonException('Explicitly specifying a backend option with \'genvslite\' is not necessary '
@@ -389,7 +389,7 @@ def run(options: T.Union[CMDOptions, T.List[str]]) -> int:
     # lie
     options.pager = False
 
-    if OptionKey('genvslite') in options.cmd_line_options.keys():
+    if 'genvslite' in options.cmd_line_options.keys():
         run_genvslite_setup(options)
     else:
         app = MesonApp(options)
