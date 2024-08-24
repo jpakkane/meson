@@ -1402,7 +1402,7 @@ class Vs2010Backend(backends.Backend):
             ET.SubElement(link, 'GenerateDebugInformation').text = 'false'
         if not isinstance(target, build.StaticLibrary):
             if isinstance(target, build.SharedModule):
-                extra_link_args += compiler.get_std_shared_module_link_args(target.get_options())
+                extra_link_args += compiler.get_std_shared_module_link_args(target)
             # Add link args added using add_project_link_arguments()
             extra_link_args += self.build.get_project_link_args(compiler, target.subproject, target.for_machine)
             # Add link args added using add_global_link_arguments()
@@ -1534,7 +1534,8 @@ class Vs2010Backend(backends.Backend):
         # /nologo
         ET.SubElement(link, 'SuppressStartupBanner').text = 'true'
         # /release
-        if not self.get_target_option(target, 'debug'):
+        addchecksum = self.get_target_option(target, 'buildtype') != 'debug'
+        if addchecksum:
             ET.SubElement(link, 'SetChecksum').text = 'true'
 
     # Visual studio doesn't simply allow the src files of a project to be added with the 'Condition=...' attribute,

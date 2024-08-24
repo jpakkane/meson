@@ -1400,8 +1400,8 @@ def get_global_options(lang: str,
     """Retrieve options that apply to all compilers for a given language."""
     description = f'Extra arguments passed to the {lang}'
     argkey = OptionKey(f'{lang}_args', machine=for_machine)
-    largkey = argkey.evolve(f'{lang}_link_args')
-    envkey = argkey.evolve(f'{lang}_env_args')
+    largkey = OptionKey(f'{lang}_link_args', machine=for_machine)
+    envkey = OptionKey(f'{lang}_env_args', machine=for_machine)
 
     comp_key = argkey if argkey in env.options else envkey
 
@@ -1409,12 +1409,12 @@ def get_global_options(lang: str,
     link_options = env.options.get(largkey, [])
 
     cargs = options.UserArrayOption(
-        f'{lang}_{argkey.name}',
+        argkey.name,
         description + ' compiler',
         comp_options, split_args=True, allow_dups=True)
 
     largs = options.UserArrayOption(
-        f'{lang}_{largkey.name}',
+        largkey.name,
         description + ' linker',
         link_options, split_args=True, allow_dups=True)
 

@@ -390,7 +390,7 @@ class PlatformAgnosticTests(BasePlatformTests):
         code = 'a = {\n    # comment\n}\n'
         formatted = formatter.format(code, Path())
         self.assertEqual(code, formatted)
-        
+
     def test_error_configuring_subdir(self):
         testdir = os.path.join(self.common_test_dir, '152 index customtarget')
         out = self.init(os.path.join(testdir, 'subdir'), allow_fail=True)

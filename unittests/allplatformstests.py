@@ -4460,7 +4460,10 @@ class AllPlatformTests(BasePlatformTests):
                 matches += 1
         self.assertEqual(matches, 1)
 
-    def test_env_flags_to_linker(self) -> None:
+    # This test no longer really makes sense. Linker flags are set in options
+    # when it is set up. Changing the compiler after the fact does not really
+    # make sense and is not supported.
+    def DISABLED_test_env_flags_to_linker(self) -> None:
         # Compilers that act as drivers should add their compiler flags to the
         # linker, those that do not shouldn't
         with mock.patch.dict(os.environ, {'CFLAGS': '-DCFLAG', 'LDFLAGS': '-flto'}):
@@ -4470,15 +4473,12 @@ class AllPlatformTests(BasePlatformTests):
             cc =  detect_compiler_for(env, 'c', MachineChoice.HOST, True, '')
             cc_type = type(cc)
 
-            # Test a compiler that acts as a linker
+            # The compiler either invokes the linker or doesn't. Act accordingly.
             with mock.patch.object(cc_type, 'INVOKES_LINKER', True):
                 cc =  detect_compiler_for(env, 'c', MachineChoice.HOST, True, '')
                 link_args = env.coredata.get_external_link_args(cc.for_machine, cc.language)
                 self.assertEqual(sorted(link_args), sorted(['-DCFLAG', '-flto']))
 
-            # This test no longer really makes sense. Linker flags are set in options
-            # when it is set up. Changing the compiler after the fact does not really
-            # make sense and is not supported.
             ## And one that doesn't
             #with mock.patch.object(cc_type, 'INVOKES_LINKER', False):
             #    cc =  detect_compiler_for(env, 'c', MachineChoice.HOST, True, '')
