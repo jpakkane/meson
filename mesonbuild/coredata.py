@@ -529,7 +529,8 @@ class CoreData:
 
     def get_external_link_args(self, for_machine: MachineChoice, lang: str) -> T.List[str]:
         # mypy cannot analyze type of OptionKey
-        return T.cast('T.List[str]', self.optstore.get_value_for(f'{lang}_link_args')) # FIXME machine=for_machine
+        linkkey = OptionKey(f'{lang}_link_args', machine=for_machine)
+        return T.cast('T.List[str]', self.optstore.get_value_for(linkkey))
 
     def update_project_options(self, project_options: 'MutableKeyedOptionDictType', subproject: SubProject) -> None:
         for key, value in project_options.items():
