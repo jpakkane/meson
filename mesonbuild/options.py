@@ -707,8 +707,15 @@ BUILTIN_DIR_NOPREFIX_OPTIONS: T.Dict[OptionKey, T.Dict[str, str]] = {
 
 
 class OptionStore:
-    def __init__(self) -> None:
-        self.d: T.Dict['OptionKey', 'UserOption[T.Any]'] = {}
+    DEFAULT_DEPENDENTS = {'plain': ('plain', False),
+                          'debug': ('0', True),
+                          'debugoptimized': ('2', True),
+                          'release': ('3', False),
+                          'minsize': ('s', True),
+                          }
+
+    def __init__(self, is_cross: bool) -> None:
+        self.options: T.Dict['OptionKey', 'UserOption[T.Any]'] = {}
         self.project_options: T.Set[OptionKey] = set()
         self.module_options: T.Set[OptionKey] = set()
         from .compilers import all_languages
@@ -895,7 +902,19 @@ class OptionStore:
         if key.name == 'prefix' and first_invocation and changed:
             self.reset_prefixed_options(old_value, new_value)
 
+        if changed:
+            self.set_dependents(key, new_value)
+
         return changed
+
+    def set_dependents(self, key: OptionKey, value: str):
+        if key.name != 'buildtype':
+            return
+        opt, debug = self.DEFAULT_DEPENDENTS[value]
+        dkey = key.evolve(name='debug')
+        optkey = key.evolve(name='optimization')
+        self.options[dkey].set_value(debug)
+        self.options[optkey].set_value(opt)
 
     def set_option(self, key: OptionKey, new_value: str, first_invocation:bool = False):
         assert isinstance(key, OptionKey)
@@ -937,6 +956,9 @@ class OptionStore:
 
         if key.name == 'prefix' and first_invocation and changed:
             self.reset_prefixed_options(old_value, new_value)
+
+        if changed:
+            self.set_dependents(key, new_value)
 
         return changed
 
