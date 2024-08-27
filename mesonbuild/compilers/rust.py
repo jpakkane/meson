@@ -210,6 +210,7 @@ class RustCompiler(Compiler):
             std = env.coredata.get_option_for_target(target, key)
         else:
             std = env.coredata.get_option_for_subproject(key, subproject)
+        assert isinstance(std, str)
         if std != 'none':
             args.append('--edition=' + std)
         return args

@@ -19,6 +19,7 @@ from ...options import OptionKey
 if T.TYPE_CHECKING:
     from ...environment import Environment
     from ...coredata import KeyedOptionDictType
+    from ...build import BuildTarget
 
 
 class ElbrusCompiler(GnuLikeCompiler):

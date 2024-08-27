@@ -13,6 +13,7 @@ from .compilers import Compiler
 if T.TYPE_CHECKING:
     from ..coredata import MutableKeyedOptionDictType
     from ..environment import Environment
+    from ..build import BuildTarget
 
 
 class CythonCompiler(Compiler):

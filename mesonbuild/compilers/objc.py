@@ -19,6 +19,7 @@ if T.TYPE_CHECKING:
     from ..environment import Environment
     from ..linkers.linkers import DynamicLinker
     from ..mesonlib import MachineChoice
+    from ..build import BuildTarget
 
 
 class ObjCCompiler(CLikeCompiler, Compiler):
@@ -88,13 +89,14 @@ class ClangObjCCompiler(ClangCompiler, ObjCCompiler):
                                'none'),
         )
 
-    def get_option_compile_args(self, target: 'BuildTarget', env: 'Environment', subproject=None) -> T.List[str]:
+    def get_option_compile_args(self, target: 'BuildTarget', env: 'Environment', subproject:T.Optional[str]=None) -> T.List[str]:
         args = []
         key = OptionKey('c_std', machine=self.for_machine)
         if target:
             std = env.coredata.get_option_for_target(target, key)
         else:
             std = env.coredata.get_option_for_subproject(key, subproject)
+        assert isinstance(std, str)
         if std != 'none':
             args.append('-std=' + std)
         return args

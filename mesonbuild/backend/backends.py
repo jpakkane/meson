@@ -2073,7 +2073,7 @@ class Backend:
             return False
         if val == 'subprojects':
             return target.subproject != ''
-        sys.exit('Internal error: invalid option type for "unity".')
+        raise MesonException(f'Internal error: invalid option type for "unity": {val}')
 
     def get_target_option(self, target: build.Target, name: T.Union[str, OptionKey]) -> T.Union[str, int, bool, 'WrapMode']:
         if isinstance(name, str):
