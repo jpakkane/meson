@@ -1096,6 +1096,9 @@ class Compiler(HoldableObject, metaclass=abc.ABCMeta):
     def get_compile_only_args(self) -> T.List[str]:
         return []
 
+    def get_cxx_interoperability_args(self, lang: T.Dict[str]) -> T.List[str]:
+        raise EnvironmentException('This compiler does not support CXX interoperability')
+
     def get_preprocess_only_args(self) -> T.List[str]:
         raise EnvironmentException('This compiler does not have a preprocessor')
 
