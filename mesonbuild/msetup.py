@@ -187,7 +187,7 @@ class MesonApp:
         with mesonlib.BuildDirLock(self.build_dir):
             return self._generate(env, capture, vslite_ctx)
 
-    def check_unused_options(self, coredata, cmd_line_options, all_subprojects):
+    def check_unused_options(self, coredata: 'coredata.CoreData', cmd_line_options: T.Any, all_subprojects: T.Any) -> None:
         pending = coredata.optstore.pending_project_options
         errlist: T.List[str] = []
         permitted_unknowns = ['b_vscrt', 'b_lto', 'b_lundef']
@@ -363,17 +363,17 @@ def run_genvslite_setup(options: CMDOptions) -> None:
     # invoke the appropriate 'meson compile ...' build commands upon the normal visual studio build/rebuild/clean actions, instead of using
     # the native VS/msbuild system.
     builddir_prefix = options.builddir
-    genvsliteval = options.cmd_line_options.pop('genvslite')
+    genvsliteval = options.cmd_line_options.pop('genvslite') # type: ignore [call-overload]
     # The command line may specify a '--backend' option, which doesn't make sense in conjunction with
     # '--genvslite', where we always want to use a ninja back end -
     k_backend = 'backend'
     if k_backend in options.cmd_line_options.keys():
-        if options.cmd_line_options[k_backend] != 'ninja':
+        if options.cmd_line_options[k_backend] != 'ninja': # type: ignore [index]
             raise MesonException('Explicitly specifying a backend option with \'genvslite\' is not necessary '
                                  '(the ninja backend is always used) but specifying a non-ninja backend '
                                  'conflicts with a \'genvslite\' setup')
     else:
-        options.cmd_line_options[k_backend] = 'ninja'
+        options.cmd_line_options[k_backend] = 'ninja' # type: ignore [index]
     buildtypes_list = coredata.get_genvs_default_buildtype_list()
     vslite_ctx = {}
 

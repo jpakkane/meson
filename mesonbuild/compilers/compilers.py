@@ -363,7 +363,9 @@ def get_base_compile_args(target: 'BuildTarget', compiler: 'Compiler', env: 'Env
         args.append('-fembed-bitcode')
     try:
         crt_val = env.coredata.get_option_for_target(target,'b_vscrt')
+        assert isinstance(crt_val, str)
         buildtype = env.coredata.get_option_for_target(target, 'buildtype')
+        assert isinstance(buildtype, str)
         try:
             args += compiler.get_crt_compile_args(crt_val, buildtype)
         except AttributeError:

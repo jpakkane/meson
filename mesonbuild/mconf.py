@@ -354,14 +354,14 @@ class Conf:
         else:
             mlog.log('\nThere are no option augments.')
 
-def has_option_flags(options):
+def has_option_flags(options: T.Any) -> bool:
     if options.cmd_line_options:
         return True
     if options.U:
         return True
     return False
 
-def is_print_only(options):
+def is_print_only(options: T.Any) -> bool:
     if has_option_flags(options):
         return False
     if options.clearcache:

@@ -728,7 +728,7 @@ class OptionStore:
         self.pending_project_options = {}
         self.is_cross = is_cross
 
-    def clear_pending(self):
+    def clear_pending(self) -> None:
         self.pending_project_options = []
 
     def ensure_and_validate_key(self, key: T.Union[OptionKey, str]) -> OptionKey:
@@ -1106,7 +1106,7 @@ class OptionStore:
             if keystr not in self.augments:
                 self.augments[keystr] = valstr
 
-    def set_from_configure_command(self, D, A, U):
+    def set_from_configure_command(self, D: T.List[str], A: T.List[str], U: T.List[str]) -> bool:
         dirty = False
         D = [] if D is None else D
         A = [] if A is None else A
