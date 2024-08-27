@@ -278,7 +278,7 @@ def get_option_value(options: 'KeyedOptionDictType', opt: OptionKey, fallback: '
     # Mypy doesn't understand that the above assert ensures that v is type _T
     return v
 
-def get_option_value_for_target(env: 'Environment', target, opt: OptionKey, fallback: '_T') -> '_T':
+def get_option_value_for_target(env: 'Environment', target: 'BuildTarget', opt: OptionKey, fallback: '_T') -> '_T':
     """Get the value of an option, or the fallback value."""
     try:
         v: '_T' = env.coredata.get_option_for_target(target, opt)

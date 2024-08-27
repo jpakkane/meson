@@ -481,7 +481,7 @@ class UserFeatureOption(UserComboOption):
     def is_auto(self) -> bool:
         return self.value == 'auto'
 
-    
+
 class UserStdOption(UserComboOption):
     '''
     UserOption specific to c_std and cpp_std options. User can set a list of
@@ -617,6 +617,8 @@ class BuiltinOption(T.Generic[_T, _U]):
         cmdline_name = self.argparse_name_to_arg(name)
         parser.add_argument(cmdline_name, help=h + help_suffix, **kwargs)
 
+
+OptionValueType = T.Union[str, int, bool, T.List[T.Union[str, int, bool]]]
 
 # Update `docs/markdown/Builtin-options.md` after changing the options below
 # Also update mesonlib._BUILTIN_NAMES. See the comment there for why this is required.
@@ -764,7 +766,7 @@ class OptionStore:
         if cname not in self.options:
             self.options[cname] = value_object
 
-    def get_value_object_for(self, key):
+    def get_value_object_for(self, key: 'T.Union[OptionKey, str]') -> 'UserOption[T.Any]':
         key = self.ensure_and_validate_key(key)
         potential = self.options.get(key, None)
         if self.is_project_option(key):
@@ -1080,7 +1082,7 @@ class OptionStore:
     def is_module_option(self, key: OptionKey) -> bool:
         return key in self.module_options
 
-    def get_value_for(self, name, subproject=None):
+    def get_value_for(self, name: 'T.Union[OptionKey, str]', subproject: T.Optional[str] = None) -> 'OptionValueType':
         if isinstance(name, str):
             key = OptionKey(name, subproject)
         else:

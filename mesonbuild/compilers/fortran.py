@@ -33,6 +33,7 @@ if T.TYPE_CHECKING:
     from ..environment import Environment
     from ..linkers.linkers import DynamicLinker
     from ..mesonlib import MachineChoice
+    from ..build import BuildTarget
 
 
 class FortranCompiler(CLikeCompiler, Compiler):
