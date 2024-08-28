@@ -337,7 +337,7 @@ def list_buildoptions(coredata: cdata.CoreData, subprojects: T.Optional[T.List[s
     )
     add_keys(dir_options, 'directory')
 
-    def project_option_key_to_introname(key: OptionKey):
+    def project_option_key_to_introname(key: OptionKey) -> OptionKey:
         assert key.subproject is not None
         if key.subproject == '':
             return key.evolve(subproject=None)

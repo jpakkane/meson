@@ -281,7 +281,7 @@ def get_option_value(options: 'KeyedOptionDictType', opt: OptionKey, fallback: '
 def get_option_value_for_target(env: 'Environment', target: 'BuildTarget', opt: OptionKey, fallback: '_T') -> '_T':
     """Get the value of an option, or the fallback value."""
     try:
-        v: '_T' = env.coredata.get_option_for_target(target, opt)
+        v = env.coredata.get_option_for_target(target, opt)
     except (KeyError, AttributeError):
         return fallback
 
@@ -296,7 +296,7 @@ def get_target_option_value(target: 'BuildTarget',
                             fallback: '_T') -> '_T':
     """Get the value of an option, or the fallback value."""
     try:
-        v: '_T' = env.coredata.get_option_for_target(target, opt)
+        v = env.coredata.get_option_for_target(target, opt)
     except KeyError:
         return fallback
 
@@ -334,11 +334,15 @@ def get_base_compile_args(target: 'BuildTarget', compiler: 'Compiler', env: 'Env
     except (KeyError, AttributeError):
         pass
     try:
-        args += compiler.get_colorout_args(env.coredata.get_option_for_target(target,'b_colorout'))
+        clrout = env.coredata.get_option_for_target(target,'b_colorout')
+        assert isinstance(clrout, str)
+        args += compiler.get_colorout_args(clrout)
     except KeyError:
         pass
     try:
-        args += compiler.sanitizer_compile_args(env.coredata.get_option_for_target(target, 'b_sanitize'))
+        sanitize = env.coredata.get_option_for_target(target, 'b_sanitize')
+        assert isinstance(sanitize, str)
+        args += compiler.sanitizer_compile_args(sanitize)
     except KeyError:
         pass
     try:
@@ -399,7 +403,9 @@ def get_base_link_args(target: 'BuildTarget',
     except (KeyError, AttributeError):
         pass
     try:
-        args += linker.sanitizer_link_args(env.coredata.get_option_for_target(target, 'b_sanitize'))
+        sanitizer = env.coredata.get_option_for_target(target, 'b_sanitize')
+        assert isinstance(sanitizer, str)
+        args += linker.sanitizer_link_args(sanitizer)
     except KeyError:
         pass
     try:
@@ -439,9 +445,13 @@ def get_base_link_args(target: 'BuildTarget',
 
     try:
         crt_val = env.coredata.get_option_for_target(target, 'b_vscrt')
+        assert isinstance(crt_val, str)
         buildtype = env.coredata.get_option_for_target(target, 'buildtype')
+        assert isinstance(buildtype, str)
         try:
-            args += linker.get_crt_link_args(crt_val, buildtype)
+            crtargs = linker.get_crt_link_args(crt_val, buildtype)
+            assert isinstance(crtargs, list)
+            args += crtargs
         except AttributeError:
             pass
     except KeyError:

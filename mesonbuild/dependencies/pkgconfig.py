@@ -256,7 +256,9 @@ class PkgConfigCLI(PkgConfigInterface):
     def _get_env(self, uninstalled: bool = False) -> EnvironmentVariables:
         env = EnvironmentVariables()
         key = OptionKey('pkg_config_path', machine=self.for_machine)
-        extra_paths: T.List[str] = self.env.coredata.optstore.get_value_for(key)[:]
+        pathlist = self.env.coredata.optstore.get_value_for(key)
+        assert isinstance(pathlist, list)
+        extra_paths: T.List[str] = pathlist[:]
         if uninstalled:
             uninstalled_path = Path(self.env.get_build_dir(), 'meson-uninstalled').as_posix()
             if uninstalled_path not in extra_paths:

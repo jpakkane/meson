@@ -417,7 +417,7 @@ class CoreData:
             return option_object.validate_value(override)
         return value
 
-    def get_option_for_subproject(self, key: T.Union[str, OptionKey], subproject) -> UserOption[T.Any]:
+    def get_option_for_subproject(self, key: T.Union[str, OptionKey], subproject) -> T.Union[T.List[str], str, int, bool]:
         if isinstance(key, str):
             key = OptionKey(key, subproject=subproject)
         if key.subproject != subproject:
@@ -425,7 +425,7 @@ class CoreData:
             key = key.evolve(subproject=subproject)
         return self.optstore.get_value_for(key)
 
-    def get_option_object_for_subproject(self, key: T.Union[str, OptionKey], subproject) -> T.Union[T.List[str], str, int, bool, WrapMode]:
+    def get_option_object_for_subproject(self, key: T.Union[str, OptionKey], subproject) -> UserOption[T.Any]:
         keyname = key.name
         if key.subproject != subproject:
             # This should be an error, fix before merging.
