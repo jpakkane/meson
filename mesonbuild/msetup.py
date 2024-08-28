@@ -225,7 +225,6 @@ class MesonApp:
 
         coredata.optstore.clear_pending()
 
-
     def _generate(self, env: environment.Environment, capture: bool, vslite_ctx: T.Optional[dict]) -> T.Optional[dict]:
         # Get all user defined options, including options that have been defined
         # during a previous invocation or using meson configure.

@@ -237,13 +237,14 @@ def set_meson_command(mainfile: str) -> None:
 def validate_original_args(args):
     import mesonbuild.options
     import itertools
+
     def has_startswith(coll, target):
         for entry in coll:
             if entry.startswith(target):
                 return True
         return False
-    ds = [x for x in args if x.startswith('-D')]
-    longs = [x for x in args if x.startswith('--')]
+    #ds = [x for x in args if x.startswith('-D')]
+    #longs = [x for x in args if x.startswith('--')]
     for optionkey in itertools.chain(mesonbuild.options.BUILTIN_DIR_OPTIONS, mesonbuild.options.BUILTIN_CORE_OPTIONS):
         longarg = mesonbuild.options.BuiltinOption.argparse_name_to_arg(optionkey.name)
         shortarg = f'-D{optionkey.name}'

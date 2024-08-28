@@ -665,7 +665,7 @@ class NinjaBackend(backends.Backend):
             self.generate_dist()
             mlog.log_timestamp("Dist generated")
             key = OptionKey('b_coverage')
-            if OptionKey('b_coverage') in self.environment.coredata.optstore and\
+            if key in self.environment.coredata.optstore and\
                     self.environment.coredata.optstore.get_value_for('b_coverage'):
                 gcovr_exe, gcovr_version, lcov_exe, lcov_version, genhtml_exe, llvm_cov_exe = environment.find_coverage_tools(self.environment.coredata)
                 mlog.debug(f'Using {gcovr_exe} ({gcovr_version}), {lcov_exe} and {llvm_cov_exe} for code coverage')

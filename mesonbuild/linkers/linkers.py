@@ -14,7 +14,6 @@ from ..mesonlib import EnvironmentException, MesonException
 from ..arglist import CompilerArgs
 
 if T.TYPE_CHECKING:
-    from ..coredata import KeyedOptionDictType
     from ..environment import Environment
     from ..mesonlib import MachineChoice
     from ..build import BuildTarget

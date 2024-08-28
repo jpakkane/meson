@@ -236,7 +236,7 @@ class Conf:
             return
         if title:
             self.add_title(title)
-        auto = T.cast('options.UserFeatureOption', self.coredata.optstore.get_value_for('auto_features'))
+        #auto = T.cast('options.UserFeatureOption', self.coredata.optstore.get_value_for('auto_features'))
         for k, o in sorted(opts.items()):
             printable_value = o.printable_value()
             #root = k.as_root()

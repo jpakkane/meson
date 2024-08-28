@@ -35,7 +35,7 @@ from .compilers import (
 )
 
 if T.TYPE_CHECKING:
-    from ..coredata import MutableKeyedOptionDictType, KeyedOptionDictType
+    from ..coredata import MutableKeyedOptionDictType
     from ..dependencies import Dependency
     from ..envconfig import MachineInfo
     from ..environment import Environment

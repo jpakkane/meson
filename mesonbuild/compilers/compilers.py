@@ -312,14 +312,14 @@ def are_asserts_disabled(target: 'BuildTarget', env: 'Environment') -> bool:
     :param env: the environment
     :return: whether to disable assertions or not
     """
-    return env.coredata.get_option_for_target(target, 'b_ndebug') == 'true' or \
-           env.coredata.get_option_for_target(target, 'b_ndebug') == 'if-release' and \
-           env.coredata.get_option_for_target(target, 'buildtype') in {'release', 'plain'}
+    return (env.coredata.get_option_for_target(target, 'b_ndebug') == 'true' or
+            (env.coredata.get_option_for_target(target, 'b_ndebug') == 'if-release' and
+             env.coredata.get_option_for_target(target, 'buildtype') in {'release', 'plain'}))
 
 def are_asserts_disabled_for_subproject(subproject: str, env: 'Environment') -> bool:
-    return env.coredata.get_option_for_subproject('b_ndebug', subproject) == 'true' or \
-           env.coredata.get_option_for_subproject('b_ndebug', subproject) == 'if-release' and \
-           env.coredata.get_option_for_subproject('buildtype', subproject) in {'release', 'plain'}
+    return (env.coredata.get_option_for_subproject('b_ndebug', subproject) == 'true' or
+            (env.coredata.get_option_for_subproject('b_ndebug', subproject) == 'if-release' and
+             env.coredata.get_option_for_subproject('buildtype', subproject) in {'release', 'plain'}))
 
 
 def get_base_compile_args(target: 'BuildTarget', compiler: 'Compiler', env: 'Environment') -> T.List[str]:
@@ -334,7 +334,7 @@ def get_base_compile_args(target: 'BuildTarget', compiler: 'Compiler', env: 'Env
     except (KeyError, AttributeError):
         pass
     try:
-        clrout = env.coredata.get_option_for_target(target,'b_colorout')
+        clrout = env.coredata.get_option_for_target(target, 'b_colorout')
         assert isinstance(clrout, str)
         args += compiler.get_colorout_args(clrout)
     except KeyError:
@@ -346,7 +346,7 @@ def get_base_compile_args(target: 'BuildTarget', compiler: 'Compiler', env: 'Env
     except KeyError:
         pass
     try:
-        pgo_val = env.coredata.get_option_for_target(target,'b_pgo')
+        pgo_val = env.coredata.get_option_for_target(target, 'b_pgo')
         if pgo_val == 'generate':
             args.extend(compiler.get_profile_generate_args())
         elif pgo_val == 'use':
@@ -354,7 +354,7 @@ def get_base_compile_args(target: 'BuildTarget', compiler: 'Compiler', env: 'Env
     except (KeyError, AttributeError):
         pass
     try:
-        if env.coredata.get_option_for_target(target,'b_coverage'):
+        if env.coredata.get_option_for_target(target, 'b_coverage'):
             args += compiler.get_coverage_args()
     except (KeyError, AttributeError):
         pass
@@ -366,7 +366,7 @@ def get_base_compile_args(target: 'BuildTarget', compiler: 'Compiler', env: 'Env
     if option_enabled(compiler.base_options, target, env, 'b_bitcode'):
         args.append('-fembed-bitcode')
     try:
-        crt_val = env.coredata.get_option_for_target(target,'b_vscrt')
+        crt_val = env.coredata.get_option_for_target(target, 'b_vscrt')
         assert isinstance(crt_val, str)
         buildtype = env.coredata.get_option_for_target(target, 'buildtype')
         assert isinstance(buildtype, str)
@@ -409,7 +409,7 @@ def get_base_link_args(target: 'BuildTarget',
     except KeyError:
         pass
     try:
-        pgo_val = env.coredata.get_option_for_target(target,'b_pgo')
+        pgo_val = env.coredata.get_option_for_target(target, 'b_pgo')
         if pgo_val == 'generate':
             args.extend(linker.get_profile_generate_args())
         elif pgo_val == 'use':

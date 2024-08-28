@@ -531,11 +531,6 @@ class Target(HoldableObject, metaclass=abc.ABCMeta):
         pass
 
     def __post_init__(self, overrides: T.Optional[T.Dict[OptionKey, str]]) -> None:
-        if overrides:
-            ovr = {k.evolve(machine=self.for_machine) if k.lang else k: v
-                   for k, v in overrides.items()}
-        else:
-            ovr = {}
         # XXX: this should happen in the interpreter
         if has_path_sep(self.name):
             # Fix failing test 53 when this becomes an error.

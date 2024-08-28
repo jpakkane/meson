@@ -1381,6 +1381,7 @@ class Interpreter(InterpreterBase, HoldableObject):
                 values['Cross files'] = self.user_defined_options.cross_file
             if self.user_defined_options.native_file:
                 values['Native files'] = self.user_defined_options.native_file
+
             def compatibility_sort_helper(s):
                 if isinstance(s, tuple):
                     s = s[0]

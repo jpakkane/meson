@@ -880,7 +880,6 @@ class OptionStore:
         # .as_posix() keeps the posix-like file separators Meson uses.
         return value.as_posix()
 
-
     def set_value(self, key: T.Union[OptionKey, str], new_value: 'T.Any', first_invocation: bool = False) -> bool:
         key = self.ensure_and_validate_key(key)
         if key.name == 'prefix':
@@ -915,7 +914,7 @@ class OptionStore:
         self.options[dkey].set_value(debug)
         self.options[optkey].set_value(opt)
 
-    def set_option(self, key: OptionKey, new_value: str, first_invocation:bool = False):
+    def set_option(self, key: OptionKey, new_value: str, first_invocation: bool = False):
         assert isinstance(key, OptionKey)
         # FIXME, dupe of set_value
         # Remove one of the two before merging to master.
@@ -1006,7 +1005,6 @@ class OptionStore:
             self.project_options.remove(key)
         except KeyError:
             pass
-
 
     def __contains__(self, key: OptionKey) -> bool:
         key = self.ensure_and_validate_key(key)
@@ -1170,7 +1168,7 @@ class OptionStore:
             self.hard_reset_from_prefix(prefix)
         return (nopref_project_default_options, nopref_cmd_line_options, nopref_native_file_options)
 
-    def hard_reset_from_prefix(self, prefix:str):
+    def hard_reset_from_prefix(self, prefix: str):
         prefix = self.sanitize_prefix(prefix)
         for optkey, prefix_mapping in BUILTIN_DIR_NOPREFIX_OPTIONS.items():
             valobj = self.options[optkey]
@@ -1189,7 +1187,7 @@ class OptionStore:
         if isinstance(project_default_options, list):
             project_default_options = self.optlist2optdict(project_default_options)
         if project_default_options is None:
-            project_default_options  = {}
+            project_default_options = {}
         for keystr, valstr in native_file_options.items():
             if isinstance(keystr, str):
                 # FIXME, standardise on Key or string.

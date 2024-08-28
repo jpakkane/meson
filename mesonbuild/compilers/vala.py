@@ -14,7 +14,6 @@ from .compilers import CompileCheckMode, Compiler
 
 if T.TYPE_CHECKING:
     from ..arglist import CompilerArgs
-    from ..coredata import KeyedOptionDictType
     from ..envconfig import MachineInfo
     from ..environment import Environment
     from ..mesonlib import MachineChoice

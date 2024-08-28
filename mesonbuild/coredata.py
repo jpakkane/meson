@@ -426,7 +426,7 @@ class CoreData:
         return self.optstore.get_value_for(key)
 
     def get_option_object_for_subproject(self, key: T.Union[str, OptionKey], subproject) -> UserOption[T.Any]:
-        keyname = key.name
+        #keyname = key.name
         if key.subproject != subproject:
             # This should be an error, fix before merging.
             key = key.evolve(subproject=subproject)
@@ -434,13 +434,10 @@ class CoreData:
 
     def set_option(self, key: OptionKey, value, first_invocation: bool = False) -> bool:
         dirty = False
-
         try:
-            opt = self.optstore.get_value_object_for(key.name)
+            changed = self.optstore.set_value(key, value, first_invocation)
         except KeyError:
             raise MesonException(f'Tried to set unknown builtin option {str(key)}')
-
-        changed = self.optstore.set_value(key, value, first_invocation)
         dirty |= changed
 
         if key.name == 'buildtype':
@@ -560,7 +557,7 @@ class CoreData:
             return False
         return len(self.cross_files) > 0
 
-    def copy_build_options_from_regular_ones(self, shut_up_pylint:bool=True) -> bool:
+    def copy_build_options_from_regular_ones(self, shut_up_pylint: bool = True) -> bool:
         # FIXME, needs cross compilation support.
         if shut_up_pylint:
             return False

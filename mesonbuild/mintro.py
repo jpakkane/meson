@@ -343,7 +343,7 @@ def list_buildoptions(coredata: cdata.CoreData, subprojects: T.Optional[T.List[s
             return key.evolve(subproject=None)
         return key
 
-    add_keys({project_option_key_to_introname(k): v \
+    add_keys({project_option_key_to_introname(k): v
               for k, v in coredata.optstore.items() if coredata.optstore.is_project_option(k)}, 'user')
     add_keys(test_options, 'test')
     return optlist
