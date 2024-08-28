@@ -10,7 +10,6 @@ from . import mlog, options
 import pickle, os, uuid
 import sys
 from itertools import chain
-from pathlib import PurePath
 from collections import OrderedDict, abc
 import dataclasses
 import textwrap
@@ -45,6 +44,7 @@ if T.TYPE_CHECKING:
     from .cmake.traceparser import CMakeCacheEntry
     from .interpreterbase import SubProject
     from .options import UserOption
+    from .build import BuildTarget
 
     class SharedCMDOptions(Protocol):
 
@@ -319,15 +319,15 @@ class CoreData:
                     # in this case we've been passed some kind of pipe, copy
                     # the contents of that file into the meson private (scratch)
                     # directory so that it can be re-read when wiping/reconfiguring
-                    copy = os.path.join(scratch_dir, f'{uuid.uuid4()}.{ftype}.ini')
+                    fcopy = os.path.join(scratch_dir, f'{uuid.uuid4()}.{ftype}.ini')
                     with open(f, encoding='utf-8') as rf:
-                        with open(copy, 'w', encoding='utf-8') as wf:
+                        with open(fcopy, 'w', encoding='utf-8') as wf:
                             wf.write(rf.read())
-                    real.append(copy)
+                    real.append(fcopy)
 
                     # Also replace the command line argument, as the pipe
                     # probably won't exist on reconfigure
-                    filenames[i] = copy
+                    filenames[i] = fcopy
                     continue
             if sys.platform != 'win32':
                 paths = [
@@ -397,10 +397,10 @@ class CoreData:
     def get_option(self, key: OptionKey) -> T.Union[T.List[str], str, int, bool]:
         return self.optstore.get_value_for(key.name, key.subproject)
 
-    def get_option_object_for_target(self, target: BuildTarget, key: T.Union[str, OptionKey]) -> 'UserOption[T.Any]':
+    def get_option_object_for_target(self, target: 'BuildTarget', key: T.Union[str, OptionKey]) -> 'UserOption[T.Any]':
         return self.get_option_for_subproject(key, target.subproject)
 
-    def get_option_for_target(self, target: BuildTarget, key: T.Union[str, OptionKey]) -> T.Union[T.List[str], str, int, bool, WrapMode]:
+    def get_option_for_target(self, target: 'BuildTarget', key: T.Union[str, OptionKey]) -> T.Union[T.List[str], str, int, bool]:
         if isinstance(key, str):
             assert ':' not in key
             newkey = OptionKey(key, target.subproject)
@@ -524,11 +524,6 @@ class CoreData:
 
     def get_external_link_args(self, for_machine: MachineChoice, lang: str) -> T.List[str]:
         # mypy cannot analyze type of OptionKey
-        key = OptionKey(f'{lang}_link_args', machine=for_machine)
-        return T.cast('T.List[str]', self.optstore.get_value(key))
-
-    def get_external_link_args(self, for_machine: MachineChoice, lang: str) -> T.List[str]:
-        # mypy cannot analyze type of OptionKey
         linkkey = OptionKey(f'{lang}_link_args', machine=for_machine)
         return T.cast('T.List[str]', self.optstore.get_value_for(linkkey))
 
@@ -565,15 +560,15 @@ class CoreData:
             return False
         return len(self.cross_files) > 0
 
-    def copy_build_options_from_regular_ones(self) -> bool:
+    def copy_build_options_from_regular_ones(self, shut_up_pylint:bool=True) -> bool:
         # FIXME, needs cross compilation support.
-        if True:
+        if shut_up_pylint:
             return False
         dirty = False
         assert not self.is_cross_build()
         for k in options.BUILTIN_OPTIONS_PER_MACHINE:
             o = self.optstore.get_value_object_for(k.name)
-            dirty |= self.optstore.set_value(k.name, k.subproject, True, o.value)
+            dirty |= self.optstore.set_value(k, True, o.value)
         for bk, bv in self.optstore.items():
             if bk.machine is MachineChoice.BUILD:
                 hk = bk.as_host()
@@ -636,7 +631,6 @@ class CoreData:
     def create_sp_options(self, A_args) -> bool:
         if A_args is None:
             return False
-        import copy
         dirty = False
         for entry in A_args:
             keystr, valstr = entry.split('=', 1)

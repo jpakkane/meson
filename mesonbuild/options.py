@@ -7,7 +7,6 @@ from collections import OrderedDict
 from itertools import chain
 from functools import total_ordering
 import argparse
-import re
 import itertools
 import os
 import pathlib
@@ -29,7 +28,6 @@ from .mesonlib import (
     MesonBugException,
     listify_array_value,
     MachineChoice,
-    MesonException,
 )
 from . import mlog
 
@@ -116,8 +114,8 @@ class OptionKey:
     machine: MachineChoice
     _hash: int
 
-    def __init__(self, 
-                 name: str, 
+    def __init__(self,
+                 name: str,
                  subproject: T.Optional[str] = None,
                  machine: MachineChoice = MachineChoice.HOST):
         if not isinstance(machine, MachineChoice):
@@ -215,8 +213,8 @@ class OptionKey:
 
         return cls(opt, subproject, for_machine)
 
-    def evolve(self, 
-               name: T.Optional[str] = _BAD_VALUE, 
+    def evolve(self,
+               name: T.Optional[str] = _BAD_VALUE,
                subproject: T.Optional[str] = _BAD_VALUE,
                machine: T.Optional[MachineChoice] = _BAD_VALUE) -> 'OptionKey':
         """Create a new copy of this key, but with altered members.
@@ -891,7 +889,7 @@ class OptionStore:
             prefix = self.get_value_for('prefix')
             new_value = self.sanitize_dir_option_value(prefix, key, new_value)
         if key not in self.options:
-           raise MesonException(f'Unknown options: "{key.name}" not found.')
+            raise MesonException(f'Unknown options: "{key.name}" not found.')
 
         valobj = self.options[key]
         old_value = valobj.value
@@ -1134,8 +1132,8 @@ class OptionStore:
     def optlist2optdict(self, optlist):
         optdict = {}
         for p in optlist:
-             k, v = p.split('=', 1)
-             optdict[k] = v
+            k, v = p.split('=', 1)
+            optdict[k] = v
         return optdict
 
     def prefix_split_options(self, coll):
@@ -1221,7 +1219,7 @@ class OptionStore:
             # B) a project option, in which case the subproject is '' (this method is only called from top level)
             #
             # The key parsing fucntion can not handle the difference between the two
-            # an defaults to A 
+            # and defaults to A.
             key = OptionKey.from_string(keystr)
             # Due to backwards compatibility we ignore all cross options when building
             # natively.

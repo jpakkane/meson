@@ -281,7 +281,7 @@ class MesonApp:
             cdf = env.dump_coredata()
 
             self.finalize_postconf_hooks(b, intr)
-            self.check_unused_options(env.coredata, 
+            self.check_unused_options(env.coredata,
                                       intr.user_defined_options.cmd_line_options,
                                       intr.subprojects)
             if self.options.profile:
