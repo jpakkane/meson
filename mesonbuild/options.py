@@ -142,7 +142,7 @@ class OptionKey:
     def __hash__(self) -> int:
         return self._hash
 
-    def _to_tuple(self) -> T.Tuple[str, str, str, MachineChoice, str]:
+    def _to_tuple(self) -> T.Tuple[str, MachineChoice, str]:
         return (self.subproject, self.machine, self.name)
 
     def __eq__(self, other: object) -> bool:
