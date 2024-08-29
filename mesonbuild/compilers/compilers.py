@@ -219,16 +219,16 @@ class BaseOption(T.Generic[_T]):
     choices: T.Any = None
 
     def init_option(self, name: OptionKey) -> options.UserOption[_T]:
-        keywords = {'value': self.default}
+        keywords = {}
         if self.choices:
             keywords['choices'] = self.choices
-        return self.opt_type(name.name, self.description, **keywords)
+        return self.opt_type(name.name, self.description, self.default, **keywords)
 
 
 BASE_OPTIONS: T.Mapping[OptionKey, BaseOption] = {
     OptionKey('b_pch'): BaseOption(options.UserBooleanOption, 'Use precompiled headers', True),
     OptionKey('b_lto'): BaseOption(options.UserBooleanOption, 'Use link time optimization', False),
-    OptionKey('b_lto_threads'): BaseOption(options.UserIntegerOption, 'Use multiple threads for Link Time Optimization', (None, None, 0)),
+    OptionKey('b_lto_threads'): BaseOption(options.UserIntegerOption, 'Use multiple threads for Link Time Optimization', 0),
     OptionKey('b_lto_mode'): BaseOption(options.UserComboOption, 'Select between different LTO modes.', 'default',
                                         choices=['default', 'thin']),
     OptionKey('b_thinlto_cache'): BaseOption(options.UserBooleanOption, 'Use LLVM ThinLTO caching for faster incremental builds', False),

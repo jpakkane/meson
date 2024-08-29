@@ -85,10 +85,10 @@ class ClangObjCPPCompiler(ClangCompiler, ObjCPPCompiler):
         opts[key] = options.UserComboOption(
             self.make_option_name(key),
             'C++ language standard to use',
+            'none',
             ['none', 'c++98', 'c++11', 'c++14', 'c++17', 'c++20', 'c++2b',
              'gnu++98', 'gnu++11', 'gnu++14', 'gnu++17', 'gnu++20',
-             'gnu++2b'],
-            'none')
+             'gnu++2b'])
 
         return opts
 

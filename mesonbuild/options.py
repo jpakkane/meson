@@ -7,6 +7,7 @@ from collections import OrderedDict
 from itertools import chain
 from functools import total_ordering
 import argparse
+import dataclasses
 import typing as T
 
 from .mesonlib import (
@@ -28,7 +29,9 @@ from .mesonlib import (
 from . import mlog
 
 if T.TYPE_CHECKING:
-    from typing_extensions import TypedDict
+    from typing_extensions import TypeAlias, TypedDict
+
+    DeprecatedType: TypeAlias = T.Union[bool, str, T.Dict[str, str], T.List[str]]
 
     class ArgparseKWs(TypedDict, total=False):
 
@@ -244,19 +247,19 @@ class OptionKey:
         return self
 
 
+@dataclasses.dataclass
 class UserOption(T.Generic[_T], HoldableObject):
-    def __init__(self, name: str, description: str, choices: T.Optional[T.Union[str, T.List[_T]]],
-                 yielding: bool,
-                 deprecated: T.Union[bool, str, T.Dict[str, str], T.List[str]] = False):
-        super().__init__()
-        self.name = name
-        self.choices = choices
-        self.description = description
-        if not isinstance(yielding, bool):
-            raise MesonException('Value of "yielding" must be a boolean.')
-        self.yielding = yielding
-        self.deprecated = deprecated
-        self.readonly = False
+
+    name: str
+    description: str
+    value_: dataclasses.InitVar[_T]
+    choices: T.Optional[T.Union[str, T.List[_T]]] = None
+    yielding: bool = DEFAULT_YIELDING
+    deprecated: DeprecatedType = False
+    readonly: bool = dataclasses.field(default=False, init=False)
+
+    def __post_init__(self, value_: _T) -> None:
+        self.value = self.validate_value(value_)
 
     def listify(self, value: T.Any) -> T.List[T.Any]:
         return [value]
@@ -277,27 +280,23 @@ class UserOption(T.Generic[_T], HoldableObject):
         raise RuntimeError('Derived option class did not override validate_value.')
 
     def set_value(self, newvalue: T.Any) -> bool:
-        oldvalue = getattr(self, 'value', None)
+        oldvalue = self.value
         self.value = self.validate_value(newvalue)
         return self.value != oldvalue
 
 
+@dataclasses.dataclass
 class UserStringOption(UserOption[str]):
-    def __init__(self, name: str, description: str, value: T.Any, yielding: bool = DEFAULT_YIELDING,
-                 deprecated: T.Union[bool, str, T.Dict[str, str], T.List[str]] = False):
-        super().__init__(name, description, None, yielding, deprecated)
-        self.set_value(value)
 
     def validate_value(self, value: T.Any) -> str:
         if not isinstance(value, str):
             raise MesonException(f'The value of option "{self.name}" is "{value}", which is not a string.')
         return value
 
+@dataclasses.dataclass
 class UserBooleanOption(UserOption[bool]):
-    def __init__(self, name: str, description: str, value: bool, yielding: bool = DEFAULT_YIELDING,
-                 deprecated: T.Union[bool, str, T.Dict[str, str], T.List[str]] = False):
-        super().__init__(name, description, [True, False], yielding, deprecated)
-        self.set_value(value)
+
+    choices: T.List[bool] = dataclasses.field(default_factory=lambda: [True, False])
 
     def __bool__(self) -> bool:
         return self.value
@@ -313,20 +312,20 @@ class UserBooleanOption(UserOption[bool]):
             return False
         raise MesonException(f'Option "{self.name}" value {value} is not boolean (true or false).')
 
+@dataclasses.dataclass
 class UserIntegerOption(UserOption[int]):
-    def __init__(self, name: str, description: str, value: T.Any, yielding: bool = DEFAULT_YIELDING,
-                 deprecated: T.Union[bool, str, T.Dict[str, str], T.List[str]] = False):
-        min_value, max_value, default_value = value
-        self.min_value = min_value
-        self.max_value = max_value
-        c: T.List[str] = []
-        if min_value is not None:
-            c.append('>=' + str(min_value))
-        if max_value is not None:
-            c.append('<=' + str(max_value))
-        choices = ', '.join(c)
-        super().__init__(name, description, choices, yielding, deprecated)
-        self.set_value(default_value)
+
+    min_value: T.Optional[int] = None
+    max_value: T.Optional[int] = None
+
+    def __post_init__(self, value_: int) -> None:
+        super().__post_init__(value_)
+        choices: T.List[str] = []
+        if self.min_value is not None:
+            choices.append(f'>= {self.min_value!s}')
+        if self.max_value is not None:
+            choices.append(f'<= {self.max_value!s}')
+        self.choices = ', '.join(choices)
 
     def validate_value(self, value: T.Any) -> int:
         if isinstance(value, str):
@@ -352,11 +351,11 @@ class OctalInt(int):
     def __str__(self) -> str:
         return oct(int(self))
 
+@dataclasses.dataclass
 class UserUmaskOption(UserIntegerOption, UserOption[T.Union[str, OctalInt]]):
-    def __init__(self, name: str, description: str, value: T.Any, yielding: bool = DEFAULT_YIELDING,
-                 deprecated: T.Union[bool, str, T.Dict[str, str], T.List[str]] = False):
-        super().__init__(name, description, (0, 0o777, value), yielding, deprecated)
-        self.choices = ['preserve', '0000-0777']
+
+    min_value: T.Optional[int] = dataclasses.field(default=0, init=False)
+    max_value: T.Optional[int] = dataclasses.field(default=0o777, init=False)
 
     def printable_value(self) -> str:
         if self.value == 'preserve':
@@ -374,17 +373,8 @@ class UserUmaskOption(UserIntegerOption, UserOption[T.Union[str, OctalInt]]):
         except ValueError as e:
             raise MesonException(f'Invalid mode for option "{self.name}" {e}')
 
+@dataclasses.dataclass
 class UserComboOption(UserOption[str]):
-    def __init__(self, name: str, description: str, choices: T.List[str], value: T.Any,
-                 yielding: bool = DEFAULT_YIELDING,
-                 deprecated: T.Union[bool, str, T.Dict[str, str], T.List[str]] = False):
-        super().__init__(name, description, choices, yielding, deprecated)
-        if not isinstance(self.choices, list):
-            raise MesonException(f'Combo choices for option "{self.name}" must be an array.')
-        for i in self.choices:
-            if not isinstance(i, str):
-                raise MesonException(f'Combo choice elements for option "{self.name}" must be strings.')
-        self.set_value(value)
 
     def validate_value(self, value: T.Any) -> str:
         if value not in self.choices:
@@ -400,16 +390,12 @@ class UserComboOption(UserOption[str]):
                                      value, _type, self.name, optionsstring))
         return value
 
+@dataclasses.dataclass
 class UserArrayOption(UserOption[T.List[str]]):
-    def __init__(self, name: str, description: str, value: T.Union[str, T.List[str]],
-                 split_args: bool = False,
-                 allow_dups: bool = False, yielding: bool = DEFAULT_YIELDING,
-                 choices: T.Optional[T.List[str]] = None,
-                 deprecated: T.Union[bool, str, T.Dict[str, str], T.List[str]] = False):
-        super().__init__(name, description, choices if choices is not None else [], yielding, deprecated)
-        self.split_args = split_args
-        self.allow_dups = allow_dups
-        self.set_value(value)
+
+    value_: dataclasses.InitVar[T.Union[str, T.List[str]]]
+    split_args: bool = False
+    allow_dups: bool = False
 
     def listify(self, value: T.Any) -> T.List[T.Any]:
         try:
@@ -445,13 +431,12 @@ class UserArrayOption(UserOption[T.List[str]]):
         self.set_value(self.value + new)
 
 
+@dataclasses.dataclass
 class UserFeatureOption(UserComboOption):
-    static_choices = ['enabled', 'disabled', 'auto']
 
-    def __init__(self, name: str, description: str, value: T.Any, yielding: bool = DEFAULT_YIELDING,
-                 deprecated: T.Union[bool, str, T.Dict[str, str], T.List[str]] = False):
-        super().__init__(name, description, self.static_choices, value, yielding, deprecated)
-        self.name: T.Optional[str] = None  # TODO: Refactor options to all store their name
+    choices: T.List[str] = dataclasses.field(
+        # Ensure we get a copy with the lambda
+        default_factory=lambda: ['enabled', 'disabled', 'auto'], init=False)
 
     def is_enabled(self) -> bool:
         return self.value == 'enabled'
@@ -462,6 +447,8 @@ class UserFeatureOption(UserComboOption):
     def is_auto(self) -> bool:
         return self.value == 'auto'
 
+
+@dataclasses.dataclass(init=False)
 class UserStdOption(UserComboOption):
     '''
     UserOption specific to c_std and cpp_std options. User can set a list of
@@ -482,7 +469,7 @@ class UserStdOption(UserComboOption):
         # Map a deprecated std to its replacement. e.g. gnu11 -> c11.
         self.deprecated_stds: T.Dict[str, str] = {}
         opt_name = 'cpp_std' if lang == 'c++' else f'{lang}_std'
-        super().__init__(opt_name, f'{lang} language standard to use', ['none'], 'none')
+        super().__init__(opt_name, f'{lang} language standard to use', 'none', ['none'])
 
     def set_versions(self, versions: T.List[str], gnu: bool = False, gnu_deprecated: bool = False) -> None:
         assert all(std in self.all_stds for std in versions)
@@ -529,19 +516,21 @@ class BuiltinOption(T.Generic[_T]):
     """
 
     def __init__(self, opt_type: T.Type[UserOption[_T]], description: str, default: T.Any, yielding: bool = True, *,
-                 choices: T.Any = None, readonly: bool = False):
+                 choices: T.Any = None, readonly: bool = False, **kwargs: object):
         self.opt_type = opt_type
         self.description = description
         self.default = default
         self.choices = choices
         self.yielding = yielding
         self.readonly = readonly
+        self.kwargs = kwargs
 
     def init_option(self, name: 'OptionKey', value: T.Optional[T.Any], prefix: str) -> UserOption[_T]:
         """Create an instance of opt_type and return it."""
         if value is None:
             value = self.prefixed_default(name, prefix)
-        keywords = {'yielding': self.yielding, 'value': value}
+        keywords = {'yielding': self.yielding, 'value_': value}
+        keywords.update(self.kwargs)
         if self.choices:
             keywords['choices'] = self.choices
         o = self.opt_type(name.name, self.description, **keywords)
@@ -559,8 +548,6 @@ class BuiltinOption(T.Generic[_T]):
     def _argparse_choices(self) -> T.Any:
         if self.opt_type is UserBooleanOption:
             return [True, False]
-        elif self.opt_type is UserFeatureOption:
-            return UserFeatureOption.static_choices
         return self.choices
 
     @staticmethod
@@ -644,7 +631,7 @@ BUILTIN_CORE_OPTIONS: T.Dict['OptionKey', 'BuiltinOption'] = OrderedDict([
     (OptionKey('stdsplit'),        BuiltinOption(UserBooleanOption, 'Split stdout and stderr in test logs', True)),
     (OptionKey('strip'),           BuiltinOption(UserBooleanOption, 'Strip targets on install', False)),
     (OptionKey('unity'),           BuiltinOption(UserComboOption, 'Unity build', 'off', choices=['on', 'off', 'subprojects'])),
-    (OptionKey('unity_size'),      BuiltinOption(UserIntegerOption, 'Unity block size', (2, None, 4))),
+    (OptionKey('unity_size'),      BuiltinOption(UserIntegerOption, 'Unity block size', 4, min_value=2)),
     (OptionKey('warning_level'),   BuiltinOption(UserComboOption, 'Compiler warning level to use', '1', choices=['0', '1', '2', '3', 'everything'], yielding=False)),
     (OptionKey('werror'),          BuiltinOption(UserBooleanOption, 'Treat warnings as errors', False, yielding=False)),
     (OptionKey('wrap_mode'),       BuiltinOption(UserComboOption, 'Wrap mode', 'default', choices=['default', 'nofallback', 'nodownload', 'forcefallback', 'nopromote'])),
@@ -657,7 +644,7 @@ BUILTIN_CORE_OPTIONS: T.Dict['OptionKey', 'BuiltinOption'] = OrderedDict([
 
     # Python module
     (OptionKey('python.bytecompile'),
-     BuiltinOption(UserIntegerOption, 'Whether to compile bytecode', (-1, 2, 0))),
+     BuiltinOption(UserIntegerOption, 'Whether to compile bytecode', 0, min_value=-1, max_value=2)),
     (OptionKey('python.install_env'),
      BuiltinOption(UserComboOption, 'Which python environment to install to', 'prefix', choices=['auto', 'prefix', 'system', 'venv'])),
     (OptionKey('python.platlibdir'),

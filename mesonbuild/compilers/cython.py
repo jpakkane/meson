@@ -73,15 +73,15 @@ class CythonCompiler(Compiler):
         opts[key] = options.UserComboOption(
             self.make_option_name(key),
             'Python version to target',
-            ['2', '3'],
-            '3')
+            '3',
+            ['2', '3'])
 
         key = self.form_compileropt_key('language')
         opts[key] = options.UserComboOption(
             self.make_option_name(key),
             'Output C or C++ files',
-            ['c', 'cpp'],
-            'c')
+            'c',
+            ['c', 'cpp'])
 
         return opts
 

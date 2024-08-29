@@ -648,12 +648,13 @@ class CudaCompiler(Compiler):
 
         opts = super().get_options()
 
+        # XXX: cpp_std is correct, the annotations are wrong
         key = self.form_compileropt_key('std')
         opts[key] = options.UserComboOption(
             self.make_option_name(key),
             'C++ language standard to use with CUDA',
-            cpp_stds,
-            'none')
+            'none',
+            cpp_stds)
 
         key = self.form_compileropt_key('ccbindir')
         opts[key] = options.UserStringOption(

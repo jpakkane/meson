@@ -118,8 +118,8 @@ class FortranCompiler(CLikeCompiler, Compiler):
         opts[key] = options.UserComboOption(
             self.make_option_name(key),
             'Fortran language standard to use',
-            ['none'],
-            'none')
+            'none',
+            ['none'])
 
         return opts
 

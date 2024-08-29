@@ -434,7 +434,8 @@ class CoreData:
                 'backend_max_links',
                 'Maximum number of linker processes to run or 0 for no '
                 'limit',
-                (0, None, 0)))
+                0,
+                min_value=0))
         elif backend_name.startswith('vs'):
             self.optstore.add_system_option('backend_startup_project', options.UserStringOption(
                 'backend_startup_project',
