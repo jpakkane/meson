@@ -1353,6 +1353,15 @@ class Compiler(HoldableObject, metaclass=abc.ABCMeta):
     def form_compileropt_key(self, basename: str) -> OptionKey:
         return OptionKey(f'{self.language}_{basename}', machine=self.for_machine)
 
+    def _update_language_stds(self, opts: MutableKeyedOptionDictType, value: T.List[str]) -> None:
+        key = self.form_compileropt_key('std')
+        std = opts[key]
+        assert isinstance(std, (options.UserStdOption, options.UserComboOption)), 'for mypy'
+        if 'none' not in value:
+            value = ['none'] + value
+        std.choices = value
+
+
 def get_global_options(lang: str,
                        comp: T.Type[Compiler],
                        for_machine: MachineChoice,
@@ -1368,12 +1377,12 @@ def get_global_options(lang: str,
     comp_options = env.options.get(comp_key, [])
     link_options = env.options.get(largkey, [])
 
-    cargs = options.UserArrayOption(
+    cargs = options.UserStringArrayOption(
         f'{lang}_{argkey.name}',
         description + ' compiler',
         comp_options, split_args=True, allow_dups=True)
 
-    largs = options.UserArrayOption(
+    largs = options.UserStringArrayOption(
         f'{lang}_{largkey.name}',
         description + ' linker',
         link_options, split_args=True, allow_dups=True)

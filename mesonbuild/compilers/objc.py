@@ -86,7 +86,7 @@ class ClangObjCCompiler(ClangCompiler, ObjCCompiler):
             self.make_option_name(key),
             'C language standard to use',
             'none',
-            ['none', 'c89', 'c99', 'c11', 'c17', 'gnu89', 'gnu99', 'gnu11', 'gnu17'])
+            choices=['none', 'c89', 'c99', 'c11', 'c17', 'gnu89', 'gnu99', 'gnu11', 'gnu17'])
 
         return opts
 

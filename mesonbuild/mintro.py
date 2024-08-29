@@ -318,7 +318,7 @@ def list_buildoptions(coredata: cdata.CoreData, subprojects: T.Optional[T.List[s
                 typestr = 'combo'
             elif isinstance(opt, options.UserIntegerOption):
                 typestr = 'integer'
-            elif isinstance(opt, options.UserArrayOption):
+            elif isinstance(opt, options.UserStringArrayOption):
                 typestr = 'array'
                 c = opt.printable_choices()
                 if c:

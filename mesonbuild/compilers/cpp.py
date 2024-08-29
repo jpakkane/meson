@@ -246,7 +246,7 @@ class ClangCPPCompiler(_StdCPPLibMixin, ClangCompiler, CPPCompiler):
             self.make_option_name(key),
             'C++ exception handling type.',
             'default',
-            ['none', 'default', 'a', 's', 'sc'])
+            choices=['none', 'default', 'a', 's', 'sc'])
 
         key = self.form_compileropt_key('rtti')
         opts[key] = options.UserBooleanOption(
@@ -272,7 +272,7 @@ class ClangCPPCompiler(_StdCPPLibMixin, ClangCompiler, CPPCompiler):
         std_opt.set_versions(cppstd_choices, gnu=True)
         if self.info.is_windows() or self.info.is_cygwin():
             key = self.form_compileropt_key('winlibs')
-            opts[key] = options.UserArrayOption(
+            opts[key] = options.UserStringArrayOption(
                 self.make_option_name(key),
                 'Standard Win libraries to link against',
                 gnu_winlibs)
@@ -401,7 +401,7 @@ class ArmclangCPPCompiler(ArmclangCompiler, CPPCompiler):
             self.make_option_name(key),
             'C++ exception handling type.',
             'default',
-            ['none', 'default', 'a', 's', 'sc'])
+            choices=['none', 'default', 'a', 's', 'sc'])
 
         key = self.form_compileropt_key('std')
         std_opt = opts[key]
@@ -451,7 +451,7 @@ class GnuCPPCompiler(_StdCPPLibMixin, GnuCompiler, CPPCompiler):
             self.make_option_name(key),
             'C++ exception handling type.',
             'default',
-            ['none', 'default', 'a', 's', 'sc'])
+            choices=['none', 'default', 'a', 's', 'sc'])
 
         key = self.form_compileropt_key('rtti')
         opts[key] = options.UserBooleanOption(
@@ -480,7 +480,7 @@ class GnuCPPCompiler(_StdCPPLibMixin, GnuCompiler, CPPCompiler):
 
         if self.info.is_windows() or self.info.is_cygwin():
             key = key.evolve(name='cpp_winlibs')
-            opts[key] = options.UserArrayOption(
+            opts[key] = options.UserStringArrayOption(
                 self.make_option_name(key),
                 'Standard Win libraries to link against',
                 gnu_winlibs)
@@ -582,7 +582,7 @@ class ElbrusCPPCompiler(ElbrusCompiler, CPPCompiler):
             self.make_option_name(key),
             'C++ exception handling type.',
             'default',
-            ['none', 'default', 'a', 's', 'sc'])
+            choices=['none', 'default', 'a', 's', 'sc'])
 
         key = self.form_compileropt_key('debugstl')
         opts[key] = options.UserBooleanOption(
@@ -665,7 +665,7 @@ class IntelCPPCompiler(IntelGnuLikeCompiler, CPPCompiler):
             self.make_option_name(key),
             'C++ exception handling type.',
             'default',
-            ['none', 'default', 'a', 's', 'sc'])
+            choices=['none', 'default', 'a', 's', 'sc'])
 
         key = self.form_compileropt_key('rtti')
         opts[key] = options.UserBooleanOption(
@@ -695,9 +695,7 @@ class IntelCPPCompiler(IntelGnuLikeCompiler, CPPCompiler):
             c_stds += ['c++2a']
             g_stds += ['gnu++2a']
 
-        std_opt = opts[self.form_compileropt_key('std')]
-        assert isinstance(std_opt, options.UserStdOption), 'for mypy'
-        std_opt.set_versions(c_stds + g_stds)
+        self._update_language_stds(opts, c_stds + g_stds)
         return opts
 
     def get_option_compile_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
@@ -758,7 +756,7 @@ class VisualStudioLikeCPPCompilerMixin(CompilerMixinBase):
             self.make_option_name(key),
             'C++ exception handling type.',
             'default',
-            ['none', 'default', 'a', 's', 'sc'])
+            choices=['none', 'default', 'a', 's', 'sc'])
 
         key = self.form_compileropt_key('rtti')
         opts[key] = options.UserBooleanOption(
@@ -767,7 +765,7 @@ class VisualStudioLikeCPPCompilerMixin(CompilerMixinBase):
             True)
 
         key = self.form_compileropt_key('winlibs')
-        opts[key] = options.UserArrayOption(
+        opts[key] = options.UserStringArrayOption(
             self.make_option_name(key),
             'Standard Win libraries to link against',
             msvc_winlibs)
@@ -1039,8 +1037,7 @@ class MetrowerksCPPCompilerARM(MetrowerksCompiler, CPPCompiler):
 
     def get_options(self) -> 'MutableKeyedOptionDictType':
         opts = CPPCompiler.get_options(self)
-        key = self.form_compileropt_key('std')
-        opts[key].choices = ['none']
+        self._update_language_stds(opts, [])
         return opts
 
     def get_option_compile_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
@@ -1068,8 +1065,7 @@ class MetrowerksCPPCompilerEmbeddedPowerPC(MetrowerksCompiler, CPPCompiler):
 
     def get_options(self) -> 'MutableKeyedOptionDictType':
         opts = CPPCompiler.get_options(self)
-        key = self.form_compileropt_key('std')
-        opts[key].choices = ['none']
+        self._update_language_stds(opts, [])
         return opts
 
     def get_option_compile_args(self, options: 'KeyedOptionDictType') -> T.List[str]:

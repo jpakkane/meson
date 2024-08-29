@@ -119,7 +119,7 @@ class FortranCompiler(CLikeCompiler, Compiler):
             self.make_option_name(key),
             'Fortran language standard to use',
             'none',
-            ['none'])
+            choices=['none'])
 
         return opts
 
@@ -149,8 +149,7 @@ class GnuFortranCompiler(GnuCompiler, FortranCompiler):
             fortran_stds += ['f2008']
         if version_compare(self.version, '>=8.0.0'):
             fortran_stds += ['f2018']
-        key = self.form_compileropt_key('std')
-        opts[key].choices = ['none'] + fortran_stds
+        self._update_language_stds(opts, fortran_stds)
         return opts
 
     def get_option_compile_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
@@ -206,9 +205,7 @@ class ElbrusFortranCompiler(ElbrusCompiler, FortranCompiler):
 
     def get_options(self) -> 'MutableKeyedOptionDictType':
         opts = FortranCompiler.get_options(self)
-        fortran_stds = ['f95', 'f2003', 'f2008', 'gnu', 'legacy', 'f2008ts']
-        key = self.form_compileropt_key('std')
-        opts[key].choices = ['none'] + fortran_stds
+        self._update_language_stds(opts, ['f95', 'f2003', 'f2008', 'gnu', 'legacy', 'f2008ts'])
         return opts
 
     def get_module_outdir_args(self, path: str) -> T.List[str]:
@@ -286,8 +283,7 @@ class IntelFortranCompiler(IntelGnuLikeCompiler, FortranCompiler):
 
     def get_options(self) -> 'MutableKeyedOptionDictType':
         opts = FortranCompiler.get_options(self)
-        key = self.form_compileropt_key('std')
-        opts[key].choices = ['none', 'legacy', 'f95', 'f2003', 'f2008', 'f2018']
+        self._update_language_stds(opts, ['none', 'legacy', 'f95', 'f2003', 'f2008', 'f2018'])
         return opts
 
     def get_option_compile_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
@@ -341,8 +337,7 @@ class IntelClFortranCompiler(IntelVisualStudioLikeCompiler, FortranCompiler):
 
     def get_options(self) -> 'MutableKeyedOptionDictType':
         opts = FortranCompiler.get_options(self)
-        key = self.form_compileropt_key('std')
-        opts[key].choices = ['none', 'legacy', 'f95', 'f2003', 'f2008', 'f2018']
+        self._update_language_stds(opts, ['none', 'legacy', 'f95', 'f2003', 'f2008', 'f2018'])
         return opts
 
     def get_option_compile_args(self, options: 'KeyedOptionDictType') -> T.List[str]:

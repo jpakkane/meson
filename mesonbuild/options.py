@@ -253,7 +253,6 @@ class UserOption(T.Generic[_T], HoldableObject):
     name: str
     description: str
     value_: dataclasses.InitVar[_T]
-    choices: T.Optional[T.Union[str, T.List[_T]]] = None
     yielding: bool = DEFAULT_YIELDING
     deprecated: DeprecatedType = False
     readonly: bool = dataclasses.field(default=False, init=False)
@@ -269,9 +268,7 @@ class UserOption(T.Generic[_T], HoldableObject):
         return self.value
 
     def printable_choices(self) -> T.Optional[T.List[str]]:
-        if not self.choices:
-            return None
-        return [str(c) for c in self.choices]
+        return None
 
     # Check that the input is a valid value and return the
     # "cleaned" or "native" version. For example the Boolean
@@ -286,6 +283,17 @@ class UserOption(T.Generic[_T], HoldableObject):
 
 
 @dataclasses.dataclass
+class EnumeratedUserOption(UserOption[_T]):
+
+    """A generic UserOption that has enumerated values."""
+
+    choices: T.List[_T] = dataclasses.field(default_factory=list)
+
+    def printable_choices(self) -> T.Optional[T.List[str]]:
+        return [str(c) for c in self.choices]
+
+
+@dataclasses.dataclass
 class UserStringOption(UserOption[str]):
 
     def validate_value(self, value: T.Any) -> str:
@@ -294,7 +302,7 @@ class UserStringOption(UserOption[str]):
         return value
 
 @dataclasses.dataclass
-class UserBooleanOption(UserOption[bool]):
+class UserBooleanOption(EnumeratedUserOption[bool]):
 
     choices: T.List[bool] = dataclasses.field(default_factory=lambda: [True, False])
 
@@ -325,7 +333,10 @@ class UserIntegerOption(UserOption[int]):
             choices.append(f'>= {self.min_value!s}')
         if self.max_value is not None:
             choices.append(f'<= {self.max_value!s}')
-        self.choices = ', '.join(choices)
+        self.__choices: str = ', '.join(choices)
+
+    def printable_choices(self) -> T.Optional[T.List[str]]:
+        return [self.__choices]
 
     def validate_value(self, value: T.Any) -> int:
         if isinstance(value, str):
@@ -374,7 +385,7 @@ class UserUmaskOption(UserIntegerOption, UserOption[T.Union[str, OctalInt]]):
             raise MesonException(f'Invalid mode for option "{self.name}" {e}')
 
 @dataclasses.dataclass
-class UserComboOption(UserOption[str]):
+class UserComboOption(EnumeratedUserOption[str]):
 
     def validate_value(self, value: T.Any) -> str:
         if value not in self.choices:
@@ -388,14 +399,31 @@ class UserComboOption(UserOption[str]):
             raise MesonException('Value "{}" (of type "{}") for option "{}" is not one of the choices.'
                                  ' Possible choices are (as string): {}.'.format(
                                      value, _type, self.name, optionsstring))
+
+        assert isinstance(value, str), 'for mypy'
         return value
 
 @dataclasses.dataclass
-class UserArrayOption(UserOption[T.List[str]]):
+class UserArrayOption(UserOption[T.List[_T]]):
 
-    value_: dataclasses.InitVar[T.Union[str, T.List[str]]]
+    value_: dataclasses.InitVar[T.Union[_T, T.List[_T]]]
+    choices: T.Optional[T.List[_T]] = None
     split_args: bool = False
     allow_dups: bool = False
+
+    def extend_value(self, value: T.Union[str, T.List[str]]) -> None:
+        """Extend the value with an additional value."""
+        new = self.validate_value(value)
+        self.set_value(self.value + new)
+
+    def printable_choices(self) -> T.Optional[T.List[str]]:
+        if self.choices is None:
+            return None
+        return [str(c) for c in self.choices]
+
+
+@dataclasses.dataclass
+class UserStringArrayOption(UserArrayOption[str]):
 
     def listify(self, value: T.Any) -> T.List[T.Any]:
         try:
@@ -424,11 +452,6 @@ class UserArrayOption(UserOption[T.List[str]]):
                     ', '.join(self.choices))
                 )
         return newvalue
-
-    def extend_value(self, value: T.Union[str, T.List[str]]) -> None:
-        """Extend the value with an additional value."""
-        new = self.validate_value(value)
-        self.set_value(self.value + new)
 
 
 @dataclasses.dataclass
@@ -469,7 +492,7 @@ class UserStdOption(UserComboOption):
         # Map a deprecated std to its replacement. e.g. gnu11 -> c11.
         self.deprecated_stds: T.Dict[str, str] = {}
         opt_name = 'cpp_std' if lang == 'c++' else f'{lang}_std'
-        super().__init__(opt_name, f'{lang} language standard to use', 'none', ['none'])
+        super().__init__(opt_name, f'{lang} language standard to use', 'none', choices=['none'])
 
     def set_versions(self, versions: T.List[str], gnu: bool = False, gnu_deprecated: bool = False) -> None:
         assert all(std in self.all_stds for std in versions)
@@ -635,7 +658,7 @@ BUILTIN_CORE_OPTIONS: T.Dict['OptionKey', 'BuiltinOption'] = OrderedDict([
     (OptionKey('warning_level'),   BuiltinOption(UserComboOption, 'Compiler warning level to use', '1', choices=['0', '1', '2', '3', 'everything'], yielding=False)),
     (OptionKey('werror'),          BuiltinOption(UserBooleanOption, 'Treat warnings as errors', False, yielding=False)),
     (OptionKey('wrap_mode'),       BuiltinOption(UserComboOption, 'Wrap mode', 'default', choices=['default', 'nofallback', 'nodownload', 'forcefallback', 'nopromote'])),
-    (OptionKey('force_fallback_for'), BuiltinOption(UserArrayOption, 'Force fallback for those subprojects', [])),
+    (OptionKey('force_fallback_for'), BuiltinOption(UserStringArrayOption, 'Force fallback for those subprojects', [])),
     (OptionKey('vsenv'),           BuiltinOption(UserBooleanOption, 'Activate Visual Studio environment', False, readonly=True)),
 
     # Pkgconfig module
@@ -658,8 +681,8 @@ BUILTIN_CORE_OPTIONS: T.Dict['OptionKey', 'BuiltinOption'] = OrderedDict([
 BUILTIN_OPTIONS = OrderedDict(chain(BUILTIN_DIR_OPTIONS.items(), BUILTIN_CORE_OPTIONS.items()))
 
 BUILTIN_OPTIONS_PER_MACHINE: T.Dict['OptionKey', 'BuiltinOption'] = OrderedDict([
-    (OptionKey('pkg_config_path'), BuiltinOption(UserArrayOption, 'List of additional paths for pkg-config to search', [])),
-    (OptionKey('cmake_prefix_path'), BuiltinOption(UserArrayOption, 'List of additional prefixes for cmake to search', [])),
+    (OptionKey('pkg_config_path'), BuiltinOption(UserStringArrayOption, 'List of additional paths for pkg-config to search', [])),
+    (OptionKey('cmake_prefix_path'), BuiltinOption(UserStringArrayOption, 'List of additional prefixes for cmake to search', [])),
 ])
 
 # Special prefix-dependent defaults for installation directories that reside in

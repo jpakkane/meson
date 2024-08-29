@@ -599,7 +599,7 @@ class CoreData:
             oldval = self.optstore.get_value_object(key)
             if type(oldval) is not type(value):
                 self.optstore.set_value(key, value.value)
-            elif oldval.choices != value.choices:
+            elif oldval.printable_choices() != value.printable_choices():
                 # If the choices have changed, use the new value, but attempt
                 # to keep the old options. If they are not valid keep the new
                 # defaults but warn.

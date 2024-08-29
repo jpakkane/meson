@@ -240,7 +240,7 @@ class Conf:
                 printable_value = '<inherited from main project>'
             if isinstance(o, options.UserFeatureOption) and o.is_auto():
                 printable_value = auto.printable_value()
-            self.add_option(str(root), o.description, printable_value, o.choices)
+            self.add_option(str(root), o.description, printable_value, o.printable_choices())
 
     def print_conf(self, pager: bool) -> None:
         if pager:

@@ -213,7 +213,7 @@ class OptionInterpreter:
         KwargInfo('value', str, default=''),
     )
     def string_parser(self, name: str, description: str, args: T.Tuple[bool, _DEPRECATED_ARGS], kwargs: StringArgs) -> options.UserOption:
-        return options.UserStringOption(name, description, kwargs['value'], None, *args)
+        return options.UserStringOption(name, description, kwargs['value'], *args)
 
     @typed_kwargs(
         'boolean option',
@@ -239,7 +239,7 @@ class OptionInterpreter:
         value = kwargs['value']
         if value is None:
             value = kwargs['choices'][0]
-        return options.UserComboOption(name, description, value, choices, *args)
+        return options.UserComboOption(name, description, value, *args, choices)
 
     @typed_kwargs(
         'integer option',
@@ -255,7 +255,7 @@ class OptionInterpreter:
     )
     def integer_parser(self, name: str, description: str, args: T.Tuple[bool, _DEPRECATED_ARGS], kwargs: IntegerArgs) -> options.UserOption:
         return options.UserIntegerOption(
-            name, description, kwargs['value'], None, *args, min_value=kwargs['min'], max_value=kwargs['max'])
+            name, description, kwargs['value'], *args, min_value=kwargs['min'], max_value=kwargs['max'])
 
     @typed_kwargs(
         'string array option',
@@ -272,10 +272,11 @@ class OptionInterpreter:
                 raise mesonlib.MesonException('Value does not define an array: ' + value)
         # XXX: the value of choices is correct, the annotation is wrong.
         #      the annotation will be fixed in a later commit
-        return options.UserArrayOption(name, description, value,
-                                       choices=choices,  # type: ignore[arg-type]
-                                       yielding=args[0],
-                                       deprecated=args[1])
+        return options.UserStringArrayOption(
+            name, description, value,
+            choices=choices,
+            yielding=args[0],
+            deprecated=args[1])
 
     @typed_kwargs(
         'feature option',
