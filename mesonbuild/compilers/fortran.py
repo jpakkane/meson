@@ -112,14 +112,16 @@ class FortranCompiler(CLikeCompiler, Compiler):
         return self._has_multi_link_arguments(args, env, 'stop; end program')
 
     def get_options(self) -> 'MutableKeyedOptionDictType':
-        return self.update_options(
-            super().get_options(),
-            self.create_option(options.UserComboOption,
-                               self.form_compileropt_key('std'),
-                               'Fortran language standard to use',
-                               ['none'],
-                               'none'),
-        )
+        opts = super().get_options()
+
+        key = self.form_compileropt_key('std')
+        opts[key] = options.UserComboOption(
+            self.make_option_name(key),
+            'Fortran language standard to use',
+            ['none'],
+            'none')
+
+        return opts
 
 
 class GnuFortranCompiler(GnuCompiler, FortranCompiler):

@@ -35,8 +35,9 @@ if T.TYPE_CHECKING:
     from ..dependencies import Dependency
 
     CompilerType = T.TypeVar('CompilerType', bound='Compiler')
-    _T = T.TypeVar('_T')
     UserOptionType = T.TypeVar('UserOptionType', bound=options.UserOption)
+
+_T = T.TypeVar('_T')
 
 """This file contains the data files of all compilers Meson knows
 about. To support a new compiler, add its information below.
@@ -585,8 +586,8 @@ class Compiler(HoldableObject, metaclass=abc.ABCMeta):
         """
         return []
 
-    def create_option(self, option_type: T.Type[UserOptionType], option_key: OptionKey, *args: T.Any, **kwargs: T.Any) -> T.Tuple[OptionKey, UserOptionType]:
-        return option_key, option_type(f'{self.language}_{option_key.name}', *args, **kwargs)
+    def make_option_name(self, key: OptionKey) -> str:
+        return f'{self.language}_{key.name}'
 
     @staticmethod
     def update_options(options: MutableKeyedOptionDictType, *args: T.Tuple[OptionKey, UserOptionType]) -> MutableKeyedOptionDictType:
