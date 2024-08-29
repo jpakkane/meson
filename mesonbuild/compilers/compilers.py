@@ -20,9 +20,7 @@ from ..mesonlib import (
     EnvironmentException, MesonException,
     Popen_safe_logged, LibType, TemporaryDirectoryWinProof,
 )
-
 from ..options import OptionKey
-
 from ..arglist import CompilerArgs
 
 if T.TYPE_CHECKING:
@@ -211,18 +209,20 @@ clike_debug_args: T.Dict[bool, T.List[str]] = {
 
 MSCRT_VALS = ['none', 'md', 'mdd', 'mt', 'mtd']
 
+
 @dataclass
-class BaseOption(T.Generic[options._T, options._U]):
-    opt_type: T.Type[options._U]
+class BaseOption(T.Generic[_T]):
+    opt_type: T.Type[options.UserOption[_T]]
     description: str
     default: T.Any = None
     choices: T.Any = None
 
-    def init_option(self, name: OptionKey) -> options._U:
+    def init_option(self, name: OptionKey) -> options.UserOption[_T]:
         keywords = {'value': self.default}
         if self.choices:
             keywords['choices'] = self.choices
         return self.opt_type(name.name, self.description, **keywords)
+
 
 BASE_OPTIONS: T.Mapping[OptionKey, BaseOption] = {
     OptionKey('b_pch'): BaseOption(options.UserBooleanOption, 'Use precompiled headers', True),

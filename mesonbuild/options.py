@@ -281,8 +281,6 @@ class UserOption(T.Generic[_T], HoldableObject):
         self.value = self.validate_value(newvalue)
         return self.value != oldvalue
 
-_U = T.TypeVar('_U', bound=UserOption[_T])
-
 
 class UserStringOption(UserOption[str]):
     def __init__(self, name: str, description: str, value: T.Any, yielding: bool = DEFAULT_YIELDING,
@@ -523,14 +521,14 @@ class UserStdOption(UserComboOption):
                              f'Possible values for option "{self.name}" are {self.choices}')
 
 
-class BuiltinOption(T.Generic[_T, _U]):
+class BuiltinOption(T.Generic[_T]):
 
     """Class for a builtin option type.
 
     There are some cases that are not fully supported yet.
     """
 
-    def __init__(self, opt_type: T.Type[_U], description: str, default: T.Any, yielding: bool = True, *,
+    def __init__(self, opt_type: T.Type[UserOption[_T]], description: str, default: T.Any, yielding: bool = True, *,
                  choices: T.Any = None, readonly: bool = False):
         self.opt_type = opt_type
         self.description = description
@@ -539,7 +537,7 @@ class BuiltinOption(T.Generic[_T, _U]):
         self.yielding = yielding
         self.readonly = readonly
 
-    def init_option(self, name: 'OptionKey', value: T.Optional[T.Any], prefix: str) -> _U:
+    def init_option(self, name: 'OptionKey', value: T.Optional[T.Any], prefix: str) -> UserOption[_T]:
         """Create an instance of opt_type and return it."""
         if value is None:
             value = self.prefixed_default(name, prefix)
