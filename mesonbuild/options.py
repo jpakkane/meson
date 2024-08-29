@@ -265,6 +265,11 @@ class UserOption(T.Generic[_T], HoldableObject):
         assert isinstance(self.value, (str, int, bool, list))
         return self.value
 
+    def printable_choices(self) -> T.Optional[T.List[str]]:
+        if not self.choices:
+            return None
+        return [str(c) for c in self.choices]
+
     # Check that the input is a valid value and return the
     # "cleaned" or "native" version. For example the Boolean
     # option could take the string "true" and return True.
