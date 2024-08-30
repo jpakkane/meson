@@ -29,7 +29,7 @@ from .mesonlib import (
 from . import mlog
 
 if T.TYPE_CHECKING:
-    from typing_extensions import TypeAlias, TypedDict
+    from typing_extensions import Literal, TypeAlias, TypedDict
 
     DeprecatedType: TypeAlias = T.Union[bool, str, T.Dict[str, str], T.List[str]]
 
@@ -320,13 +320,16 @@ class UserBooleanOption(EnumeratedUserOption[bool]):
             return False
         raise MesonException(f'Option "{self.name}" value {value} is not boolean (true or false).')
 
-@dataclasses.dataclass
-class UserIntegerOption(UserOption[int]):
 
-    min_value: T.Optional[int] = None
-    max_value: T.Optional[int] = None
+class _UserIntegerBase(UserOption[_T]):
 
-    def __post_init__(self, value_: int) -> None:
+    min_value: T.Optional[int]
+    max_value: T.Optional[int]
+
+    if T.TYPE_CHECKING:
+        def toint(self, v: str) -> int: ...
+
+    def __post_init__(self, value_: _T) -> None:
         super().__post_init__(value_)
         choices: T.List[str] = []
         if self.min_value is not None:
@@ -338,22 +341,30 @@ class UserIntegerOption(UserOption[int]):
     def printable_choices(self) -> T.Optional[T.List[str]]:
         return [self.__choices]
 
-    def validate_value(self, value: T.Any) -> int:
+    def validate_value(self, value: T.Any) -> _T:
         if isinstance(value, str):
-            value = self.toint(value)
+            value = T.cast('_T', self.toint(value))
         if not isinstance(value, int):
             raise MesonException(f'Value {value!r} for option "{self.name}" is not an integer.')
         if self.min_value is not None and value < self.min_value:
             raise MesonException(f'Value {value} for option "{self.name}" is less than minimum value {self.min_value}.')
         if self.max_value is not None and value > self.max_value:
             raise MesonException(f'Value {value} for option "{self.name}" is more than maximum value {self.max_value}.')
-        return value
+        return T.cast('_T', value)
+
+
+@dataclasses.dataclass
+class UserIntegerOption(_UserIntegerBase[int]):
+
+    min_value: T.Optional[int] = None
+    max_value: T.Optional[int] = None
 
     def toint(self, valuestring: str) -> int:
         try:
             return int(valuestring)
         except ValueError:
             raise MesonException(f'Value string "{valuestring}" for option "{self.name}" is not convertible to an integer.')
+
 
 class OctalInt(int):
     # NinjaBackend.get_user_option_args uses str() to converts it to a command line option
@@ -362,27 +373,29 @@ class OctalInt(int):
     def __str__(self) -> str:
         return oct(int(self))
 
+
 @dataclasses.dataclass
-class UserUmaskOption(UserIntegerOption, UserOption[T.Union[str, OctalInt]]):
+class UserUmaskOption(_UserIntegerBase[T.Union["Literal['preserve']", OctalInt]]):
 
     min_value: T.Optional[int] = dataclasses.field(default=0, init=False)
     max_value: T.Optional[int] = dataclasses.field(default=0o777, init=False)
 
     def printable_value(self) -> str:
-        if self.value == 'preserve':
-            return self.value
-        return format(self.value, '04o')
+        if isinstance(self.value, int):
+            return format(self.value, '04o')
+        return self.value
 
-    def validate_value(self, value: T.Any) -> T.Union[str, OctalInt]:
+    def validate_value(self, value: T.Any) -> T.Union[Literal['preserve'], OctalInt]:
         if value == 'preserve':
             return 'preserve'
         return OctalInt(super().validate_value(value))
 
-    def toint(self, valuestring: T.Union[str, OctalInt]) -> int:
+    def toint(self, valuestring: str) -> int:
         try:
             return int(valuestring, 8)
         except ValueError as e:
             raise MesonException(f'Invalid mode for option "{self.name}" {e}')
+
 
 @dataclasses.dataclass
 class UserComboOption(EnumeratedUserOption[str]):
@@ -581,7 +594,7 @@ class BuiltinOption(T.Generic[_T]):
             return '--' + name.replace('_', '-')
 
     def prefixed_default(self, name: 'OptionKey', prefix: str = '') -> T.Any:
-        if self.opt_type in [UserComboOption, UserIntegerOption]:
+        if self.opt_type in {UserComboOption, UserIntegerOption, UserUmaskOption}:
             return self.default
         try:
             return BUILTIN_DIR_NOPREFIX_OPTIONS[name][prefix]

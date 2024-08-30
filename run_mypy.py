@@ -79,6 +79,7 @@ modules = [
     'mesonbuild/msetup.py',
     'mesonbuild/mtest.py',
     'mesonbuild/optinterpreter.py',
+    'mesonbuild/options.py',
     'mesonbuild/programs.py',
 ]
 additional = [
