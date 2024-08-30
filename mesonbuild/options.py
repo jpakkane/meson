@@ -589,7 +589,7 @@ class BuiltinOption(T.Generic[_T]):
             pass
         return self.default
 
-    def add_to_argparse(self, name: str, parser: argparse.ArgumentParser, help_suffix: str) -> None:
+    def add_to_argparse(self, name: OptionKey, parser: argparse.ArgumentParser, help_suffix: str) -> None:
         kwargs: ArgparseKWs = {}
 
         c = self._argparse_choices()
@@ -602,9 +602,9 @@ class BuiltinOption(T.Generic[_T]):
         if c and not b:
             kwargs['choices'] = c
         kwargs['default'] = argparse.SUPPRESS
-        kwargs['dest'] = name
+        kwargs['dest'] = str(name)
 
-        cmdline_name = self.argparse_name_to_arg(name)
+        cmdline_name = self.argparse_name_to_arg(str(name))
         parser.add_argument(cmdline_name, help=h + help_suffix, **kwargs)
 
 

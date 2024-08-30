@@ -857,10 +857,10 @@ def save(obj: CoreData, build_dir: str) -> str:
 
 def register_builtin_arguments(parser: argparse.ArgumentParser) -> None:
     for n, b in options.BUILTIN_OPTIONS.items():
-        b.add_to_argparse(str(n), parser, '')
+        b.add_to_argparse(n, parser, '')
     for n, b in options.BUILTIN_OPTIONS_PER_MACHINE.items():
-        b.add_to_argparse(str(n), parser, ' (just for host machine)')
-        b.add_to_argparse(str(n.as_build()), parser, ' (just for build machine)')
+        b.add_to_argparse(n, parser, ' (just for host machine)')
+        b.add_to_argparse(n.as_build(), parser, ' (just for build machine)')
     parser.add_argument('-D', action='append', dest='projectoptions', default=[], metavar="option",
                         help='Set the value of an option, can be used several times to set multiple options.')
 
