@@ -756,13 +756,6 @@ class OptionStore:
     def __len__(self) -> int:
         return len(self.d)
 
-    def add_system_option(self, name, value_object):
-        assert isinstance(name, str)
-        cname = self.form_canonical_keystring(name)
-        # FIXME; transfer the old value for combos etc.
-        if cname not in self.options:
-            self.options[cname] = value_object
-
     def get_value_object_for(self, key: 'T.Union[OptionKey, str]') -> 'UserOption[T.Any]':
         key = self.ensure_and_validate_key(key)
         potential = self.options.get(key, None)
@@ -811,7 +804,7 @@ class OptionStore:
         self.add_system_option(key, valobj)
 
     def add_project_option(self, key: T.Union[OptionKey, str], valobj: 'UserOption[T.Any]') -> None:
-        key = self.ensure_key(key)
+        key = self.ensure_and_validate_key(key)
         assert key.subproject is not None
         pval = self.pending_project_options.pop(key, None)
         if key in self.options:
@@ -1006,7 +999,7 @@ class OptionStore:
         except KeyError:
             pass
 
-    def __contains__(self, key: OptionKey) -> bool:
+    def __contains__(self, key: T.Union[str, OptionKey]) -> bool:
         key = self.ensure_and_validate_key(key)
         return key in self.options
 
@@ -1025,7 +1018,7 @@ class OptionStore:
     def setdefault(self, k: OptionKey, o: UserOption[T.Any]) -> UserOption[T.Any]:
         return self.options.setdefault(k, o)
 
-    def get(self, o: OptionKey, default: T.Optional[UserOption[T.Any]] = None) -> T.Optional[UserOption[T.Any]]:
+    def get(self, o: OptionKey, default: T.Optional[UserOption[T.Any]] = None, **kwargs) -> T.Optional[UserOption[T.Any]]:
         return self.options.get(o, **kwargs)
 
     def is_project_option(self, key: OptionKey) -> bool:
@@ -1087,7 +1080,10 @@ class OptionStore:
         return resolved_value
 
     def set_option_from_string(self, keystr, new_value):
-        o = OptionKey.from_string(keystr)
+        if isinstance(keystr, OptionKey):
+            o = keystr
+        else:
+            o = OptionKey.from_string(keystr)
         if o in self.options:
             return self.set_value(o, new_value)
         o = o.evolve(subproject='')

@@ -1405,6 +1405,19 @@ class Compiler(HoldableObject, metaclass=abc.ABCMeta):
     def form_compileropt_key(self, basename: str) -> OptionKey:
         return OptionKey(f'{self.language}_{basename}', machine=self.for_machine)
 
+    def get_compileropt_value(self,
+                              key: T.Union[str, OptionKey],
+                              env: Environment,
+                              target: T.Optional[BuildTarget],
+                              subproject: T.Optional[str] = None
+                              ) -> T.Union[str, int, bool, T.List[str]]:
+        if isinstance(key, str):
+            key = self.form_compileropt_key(key)
+        if target:
+            return env.coredata.get_option_for_target(target, key)
+        else:
+            return env.coredata.get_option_for_subproject(key, subproject)
+
 def get_global_options(lang: str,
                        comp: T.Type[Compiler],
                        for_machine: MachineChoice,

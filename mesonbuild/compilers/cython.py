@@ -84,18 +84,11 @@ class CythonCompiler(Compiler):
 
     def get_option_compile_args(self, target: 'BuildTarget', env: 'Environment', subproject: T.Optional[str] = None) -> T.List[str]:
         args: T.List[str] = []
-        key = self.form_compileropt_key('version')
-        if target:
-            version = env.coredata.get_option_for_target(target, key)
-        else:
-            version = env.coredata.get_option_for_subproject(key, subproject)
+        version = self.get_compileropt_value('version', env, target, subproject)
         assert isinstance(version, str)
         args.append(f'-{version}')
-        key = self.form_compileropt_key('language')
-        if target:
-            lang = env.coredata.get_option_for_target(target, key)
-        else:
-            lang = env.coredata.get_option_for_subproject(key, subproject)
+
+        lang = self.get_compileropt_value('language', env, target, subproject)
         assert isinstance(lang, str)
         if lang == 'cpp':
             args.append('--cplus')

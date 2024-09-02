@@ -663,11 +663,7 @@ class CudaCompiler(Compiler):
         # the combination of CUDA version and MSVC version; the --std= is thus ignored
         # and attempting to use it will result in a warning: https://stackoverflow.com/a/51272091/741027
         if not is_windows():
-            key = self.form_compileropt_key('std')
-            if target:
-                std = env.coredata.get_option_for_target(target, key)
-            else:
-                std = env.coredata.get_option_for_subproject(key, subproject)
+            std = self.get_compileropt_value('std', env, target, subproject)
             assert isinstance(std, str)
             if std != 'none':
                 args.append('--std=' + std)
@@ -680,7 +676,7 @@ class CudaCompiler(Compiler):
 
     def get_option_link_args(self, target: 'BuildTarget', env: 'Environment', subproject: T.Optional[str] = None) -> T.List[str]:
         args = self.get_ccbin_args(target, env, subproject)
-        return args + self._to_host_flags(self.host_compiler.get_option_link_args(target, env, subproject), _Phase.LINKER)
+        return args + self._to_host_flags(self.host_compiler.get_option_link_args(target, env, subproject), Phase.LINKER)
 
     def get_soname_args(self, env: 'Environment', prefix: str, shlib_name: str,
                         suffix: str, soversion: str,
