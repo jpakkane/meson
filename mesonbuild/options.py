@@ -484,7 +484,31 @@ class UserFeatureOption(UserComboOption):
         return self.value == 'auto'
 
 
-@dataclasses.dataclass(init=False)
+_U = T.TypeVar('_U', bound=UserOption)
+
+
+def choices_are_different(a: _U, b: _U) -> bool:
+    """Are the choices between two options the same?
+
+    :param a: A UserOption[T]
+    :param b: A second UserOption[T]
+    :return: True if the choices have changed, otherwise False
+    """
+    if isinstance(a, EnumeratedUserOption):
+        # We expect `a` and `b` to be of the same type, but can't really annotate it that way.
+        assert isinstance(b, EnumeratedUserOption), 'for mypy'
+        return a.choices != b.choices
+    elif isinstance(a, UserArrayOption):
+        # We expect `a` and `b` to be of the same type, but can't really annotate it that way.
+        assert isinstance(b, UserArrayOption), 'for mypy'
+        return a.choices != b.choices
+    elif isinstance(a, _UserIntegerBase):
+        assert isinstance(b, _UserIntegerBase), 'for mypy'
+        return a.max_value != b.max_value or a.min_value != b.min_value
+
+    return False
+
+
 class UserStdOption(UserComboOption):
     '''
     UserOption specific to c_std and cpp_std options. User can set a list of
