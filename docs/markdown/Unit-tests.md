@@ -130,7 +130,12 @@ In addition, sometimes a test fails set up so that it should fail even
 if it is marked as an expected failure. The GNU standard approach in
 this case is to exit the program with error code 99. Again, Meson will
 detect this and report these tests as `ERROR`, ignoring the setting of
-`should_fail`. This behavior was added in version 0.50.0.
+`should_fail`. This behavior was added in version 0.50.0. In version
+1.6.0 `should_fail` has been deprecated and renamed to `expected_fail`.
+
+In version 1.6.0, `success_returncode` has been introduced. This makes
+it possible to positively test for non-zero return codes. An example
+of this would be to test if failure injection is detected in a test.
 
 ## Testing tool
 
