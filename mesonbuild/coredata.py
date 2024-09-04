@@ -227,7 +227,7 @@ class CMakeStateCache:
     def items(self) -> T.Iterator[T.Tuple[str, T.Dict[str, T.List[str]]]]:
         return iter(self.__cache.items())
 
-    def update(self, language: str, variables: T.Dict[str, T.List[str]]):
+    def update(self, language: str, variables: T.Dict[str, T.List[str]]) -> None:
         if language not in self.__cache:
             self.__cache[language] = {}
         self.__cache[language].update(variables)
@@ -258,7 +258,7 @@ class CoreData:
         self.regen_guid = str(uuid.uuid4()).upper()
         self.install_guid = str(uuid.uuid4()).upper()
         self.meson_command = meson_command
-        self.target_guids = {}
+        self.target_guids: T.Dict[str, str] = {}
         self.version = version
         self.optstore = options.OptionStore()
         self.cross_files = self.__load_config_files(cmd_options, scratch_dir, 'cross')
