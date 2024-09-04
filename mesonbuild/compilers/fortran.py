@@ -156,6 +156,7 @@ class GnuFortranCompiler(GnuCompiler, FortranCompiler):
         args: T.List[str] = []
         key = self.form_compileropt_key('std')
         std = options.get_value(key)
+        assert isinstance(std, str), 'for mypy'
         if std != 'none':
             args.append('-std=' + std)
         return args
@@ -290,6 +291,7 @@ class IntelFortranCompiler(IntelGnuLikeCompiler, FortranCompiler):
         args: T.List[str] = []
         key = self.form_compileropt_key('std')
         std = options.get_value(key)
+        assert isinstance(std, str), 'for mypy'
         stds = {'legacy': 'none', 'f95': 'f95', 'f2003': 'f03', 'f2008': 'f08', 'f2018': 'f18'}
         if std != 'none':
             args.append('-stand=' + stds[std])
@@ -344,6 +346,7 @@ class IntelClFortranCompiler(IntelVisualStudioLikeCompiler, FortranCompiler):
         args: T.List[str] = []
         key = self.form_compileropt_key('std')
         std = options.get_value(key)
+        assert isinstance(std, str), 'for mypy'
         stds = {'legacy': 'none', 'f95': 'f95', 'f2003': 'f03', 'f2008': 'f08', 'f2018': 'f18'}
         if std != 'none':
             args.append('/stand:' + stds[std])

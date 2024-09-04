@@ -911,6 +911,7 @@ class GnomeModule(ExtensionModule):
                 cflags += state.project_args[lang]
             if OptionKey('b_sanitize') in compiler.base_options:
                 sanitize = state.environment.coredata.optstore.get_value('b_sanitize')
+                assert isinstance(sanitize, str), 'for mypy'
                 cflags += compiler.sanitizer_compile_args(sanitize)
                 sanitize = sanitize.split(',')
                 # These must be first in ldflags

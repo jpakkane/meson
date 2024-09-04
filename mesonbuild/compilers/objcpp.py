@@ -97,6 +97,7 @@ class ClangObjCPPCompiler(ClangCompiler, ObjCPPCompiler):
     def get_option_compile_args(self, options: 'coredata.KeyedOptionDictType') -> T.List[str]:
         args = []
         std = options.get_value(OptionKey('cpp_std', machine=self.for_machine))
+        assert isinstance(std, str), 'for mypy'
         if std != 'none':
             args.append('-std=' + std)
         return args

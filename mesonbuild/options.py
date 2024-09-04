@@ -36,6 +36,7 @@ if T.TYPE_CHECKING:
         'UserBooleanOption', 'UserComboOption', 'UserFeatureOption',
         'UserIntegerOption', 'UserStdOption', 'UserStringArrayOption',
         'UserStringOption', 'UserUmaskOption']
+    ElementaryOptionValues: TypeAlias = T.Union[str, bool, int, T.List[str]]
 
     class ArgparseKWs(TypedDict, total=False):
 
@@ -755,7 +756,7 @@ class OptionStore:
     def get_value_object(self, key: T.Union[OptionKey, str]) -> AnyOptionType:
         return self.d[self.ensure_key(key)]
 
-    def get_value(self, key: T.Union[OptionKey, str]) -> 'T.Any':
+    def get_value(self, key: T.Union[OptionKey, str]) -> ElementaryOptionValues:
         return self.get_value_object(key).value
 
     def add_system_option(self, key: T.Union[OptionKey, str], valobj: AnyOptionType) -> None:

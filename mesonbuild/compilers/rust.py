@@ -204,6 +204,7 @@ class RustCompiler(Compiler):
         args = []
         key = self.form_compileropt_key('std')
         std = options.get_value(key)
+        assert isinstance(std, str), 'for mypy'
         if std != 'none':
             args.append('--edition=' + std)
         return args

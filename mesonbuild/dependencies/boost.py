@@ -582,7 +582,9 @@ class BoostDependency(SystemDependency):
         vscrt = ''
         try:
             crt_val = self.env.coredata.optstore.get_value('b_vscrt')
+            assert isinstance(crt_val, str), 'for mypy'
             buildtype = self.env.coredata.optstore.get_value('buildtype')
+            assert isinstance(buildtype, str), 'for mypy'
             vscrt = self.clib_compiler.get_crt_compile_args(crt_val, buildtype)[0]
         except (KeyError, IndexError, AttributeError):
             pass

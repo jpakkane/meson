@@ -32,6 +32,7 @@ if T.TYPE_CHECKING:
     from ..linkers import RSPFileSyntax
     from ..linkers.linkers import DynamicLinker
     from ..mesonlib import MachineChoice
+    from ..options import AnyOptionType, ElementaryOptionValues
     from ..dependencies import Dependency
 
     CompilerType = T.TypeVar('CompilerType', bound='Compiler')
@@ -266,13 +267,13 @@ def option_enabled(boptions: T.Set[OptionKey], options: 'KeyedOptionDictType',
 def get_option_value(options: 'KeyedOptionDictType', opt: OptionKey, fallback: '_T') -> '_T':
     """Get the value of an option, or the fallback value."""
     try:
-        v: '_T' = options.get_value(opt)
+        v = options.get_value(opt)
     except (KeyError, AttributeError):
         return fallback
 
     assert isinstance(v, type(fallback)), f'Should have {type(fallback)!r} but was {type(v)!r}'
     # Mypy doesn't understand that the above assert ensures that v is type _T
-    return v
+    return T.cast('_T', v)
 
 
 def are_asserts_disabled(options: KeyedOptionDictType) -> bool:
@@ -286,6 +287,11 @@ def are_asserts_disabled(options: KeyedOptionDictType) -> bool:
              options.get_value('buildtype') in {'release', 'plain'}))
 
 
+def _as_str(obj: ElementaryOptionValues) -> str:
+    assert isinstance(obj, str), 'for mypy'
+    return obj
+
+
 def get_base_compile_args(options: 'KeyedOptionDictType', compiler: 'Compiler', env: 'Environment') -> T.List[str]:
     args: T.List[str] = []
     try:
@@ -296,11 +302,11 @@ def get_base_compile_args(options: 'KeyedOptionDictType', compiler: 'Compiler', 
     except (KeyError, AttributeError):
         pass
     try:
-        args += compiler.get_colorout_args(options.get_value(OptionKey('b_colorout')))
+        args += compiler.get_colorout_args(_as_str(options.get_value(OptionKey('b_colorout'))))
     except (KeyError, AttributeError):
         pass
     try:
-        args += compiler.sanitizer_compile_args(options.get_value(OptionKey('b_sanitize')))
+        args += compiler.sanitizer_compile_args(_as_str(options.get_value(OptionKey('b_sanitize'))))
     except (KeyError, AttributeError):
         pass
     try:
@@ -325,8 +331,8 @@ def get_base_compile_args(options: 'KeyedOptionDictType', compiler: 'Compiler', 
         args.append('-fembed-bitcode')
     try:
         try:
-            crt_val = options.get_value(OptionKey('b_vscrt'))
-            buildtype = options.get_value(OptionKey('buildtype'))
+            crt_val = _as_str(options.get_value(OptionKey('b_vscrt')))
+            buildtype = _as_str(options.get_value(OptionKey('buildtype')))
             args += compiler.get_crt_compile_args(crt_val, buildtype)
         except AttributeError:
             pass
@@ -354,7 +360,7 @@ def get_base_link_args(options: 'KeyedOptionDictType', linker: 'Compiler',
     except (KeyError, AttributeError):
         pass
     try:
-        args += linker.sanitizer_link_args(options.get_value('b_sanitize'))
+        args += linker.sanitizer_link_args(_as_str(options.get_value('b_sanitize')))
     except (KeyError, AttributeError):
         pass
     try:
@@ -393,8 +399,8 @@ def get_base_link_args(options: 'KeyedOptionDictType', linker: 'Compiler',
 
     try:
         try:
-            crt_val = options.get_value(OptionKey('b_vscrt'))
-            buildtype = options.get_value(OptionKey('buildtype'))
+            crt_val = _as_str(options.get_value(OptionKey('b_vscrt')))
+            buildtype = _as_str(options.get_value(OptionKey('buildtype')))
             args += linker.get_crt_link_args(crt_val, buildtype)
         except AttributeError:
             pass

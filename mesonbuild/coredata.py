@@ -38,6 +38,7 @@ if T.TYPE_CHECKING:
     from typing import Any
 
     from . import dependencies
+    from .options import ElementaryOptionValues
     from .compilers.compilers import Compiler, CompileResult, RunResult, CompileCheckMode
     from .dependencies.detect import TV_DepID
     from .environment import Environment
@@ -414,7 +415,7 @@ class CoreData:
                 self.add_builtin_option(self.optstore, key.evolve(subproject=subproject, machine=for_machine), opt)
 
     @staticmethod
-    def add_builtin_option(opts_map: 'MutableKeyedOptionDictType', key: OptionKey,
+    def add_builtin_option(opts_map: options.OptionStore, key: OptionKey,
                            opt: 'options.BuiltinOption') -> None:
         if key.subproject:
             if opt.yielding:
@@ -443,7 +444,7 @@ class CoreData:
                 'Default project to execute in Visual Studio',
                 ''))
 
-    def get_option(self, key: OptionKey) -> T.Union[T.List[str], str, int, bool]:
+    def get_option(self, key: OptionKey) -> ElementaryOptionValues:
         try:
             v = self.optstore.get_value(key)
             return v
@@ -712,7 +713,8 @@ class CoreData:
 
         self.set_options(options, subproject=subproject, first_invocation=env.first_invocation)
 
-    def add_compiler_options(self, c_options: MutableKeyedOptionDictType, lang: str, for_machine: MachineChoice,
+    def add_compiler_options(self, c_options: T.Union[MutableKeyedOptionDictType, options.OptionStore],
+                             lang: str, for_machine: MachineChoice,
                              env: Environment, subproject: str) -> None:
         for k, o in c_options.items():
             value = env.options.get(k)
@@ -906,7 +908,7 @@ class OptionsView(abc.Mapping):
     # python 3.8 or typing_extensions
     original_options: T.Union[KeyedOptionDictType, 'dict[OptionKey, UserOption[Any]]']
     subproject: T.Optional[str] = None
-    overrides: T.Optional[T.Mapping[OptionKey, T.Union[str, int, bool, T.List[str]]]] = dataclasses.field(default_factory=dict)
+    overrides: T.Optional[T.Mapping[OptionKey, ElementaryOptionValues]] = dataclasses.field(default_factory=dict)
 
     def __getitem__(self, key: OptionKey) -> options.UserOption:
         # FIXME: This is fundamentally the same algorithm than interpreter.get_option_internal().
@@ -945,7 +947,7 @@ class OptionsView(abc.Mapping):
                 opt.set_value(override_value)
         return opt
 
-    def get_value(self, key: T.Union[str, OptionKey]):
+    def get_value(self, key: T.Union[str, OptionKey]) -> options.ElementaryOptionValues:
         if isinstance(key, str):
             key = OptionKey(key)
         return self[key].value

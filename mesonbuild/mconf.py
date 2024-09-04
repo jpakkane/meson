@@ -34,7 +34,7 @@ if T.TYPE_CHECKING:
         clearcache: bool
         pager: bool
 
-    # cannot be TV_Loggable, because non-ansidecorators do direct string concat
+    # cannot be TV_Loggable, because non-ansidec        'UserBooleanOption', 'UserComboOption', 'UserIntegerOption', 'UserStringArrayOption', 'UserStringOption', 'UserUmaskOption']orators do direct string concat
     LOGLINE = T.Union[str, mlog.AnsiDecorator]
 
 # Note: when adding arguments, please also add them to the completion

@@ -282,11 +282,13 @@ class ClangCPPCompiler(_StdCPPLibMixin, ClangCompiler, CPPCompiler):
         args: T.List[str] = []
         key = self.form_compileropt_key('std')
         std = options.get_value(key)
+        assert isinstance(std, str), 'for mypy'
         if std != 'none':
             args.append(self._find_best_cpp_std(std))
 
-        key = self.form_compileropt_key('eh')
-        non_msvc_eh_options(options.get_value(key), args)
+        eh_val = options.get_value(self.form_compileropt_key('eh'))
+        assert isinstance(eh_val, str), 'for mypy'
+        non_msvc_eh_options(eh_val, args)
 
         key = self.form_compileropt_key('debugstl')
         if options.get_value(key):
@@ -308,11 +310,9 @@ class ClangCPPCompiler(_StdCPPLibMixin, ClangCompiler, CPPCompiler):
         if self.info.is_windows() or self.info.is_cygwin():
             # without a typedict mypy can't understand this.
             key = self.form_compileropt_key('winlibs')
-            libs = options.get_value(key).copy()
-            assert isinstance(libs, list)
-            for l in libs:
-                assert isinstance(l, str)
-            return libs
+            libs = options.get_value(key)
+            assert isinstance(libs, list), 'for mypy'
+            return libs.copy()
         return []
 
     def get_assert_args(self, disable: bool, env: 'Environment') -> T.List[str]:
@@ -369,6 +369,7 @@ class EmscriptenCPPCompiler(EmscriptenMixin, ClangCPPCompiler):
         args: T.List[str] = []
         key = self.form_compileropt_key('std')
         std = options.get_value(key)
+        assert isinstance(std, str), 'for mypy'
         if std != 'none':
             args.append(self._find_best_cpp_std(std))
         return args
@@ -413,11 +414,13 @@ class ArmclangCPPCompiler(ArmclangCompiler, CPPCompiler):
         args: T.List[str] = []
         key = self.form_compileropt_key('std')
         std = options.get_value(key)
+        assert isinstance(std, str), 'for mypy'
         if std != 'none':
             args.append('-std=' + std)
 
-        key = self.form_compileropt_key('eh')
-        non_msvc_eh_options(options.get_value(key), args)
+        eh_val = options.get_value(self.form_compileropt_key('eh'))
+        assert isinstance(eh_val, str), 'for mypy'
+        non_msvc_eh_options(eh_val, args)
 
         return args
 
@@ -495,10 +498,13 @@ class GnuCPPCompiler(_StdCPPLibMixin, GnuCompiler, CPPCompiler):
         debugstlkey = self.form_compileropt_key('debugstl')
 
         std = options.get_value(stdkey)
+        assert isinstance(std, str), 'for mypy'
         if std != 'none':
             args.append(self._find_best_cpp_std(std))
 
-        non_msvc_eh_options(options.get_value(ehkey), args)
+        eh_val = options.get_value(ehkey)
+        assert isinstance(eh_val, str), 'for mypy'
+        non_msvc_eh_options(eh_val, args)
 
         if not options.get_value(rttikey):
             args.append('-fno-rtti')
@@ -511,11 +517,9 @@ class GnuCPPCompiler(_StdCPPLibMixin, GnuCompiler, CPPCompiler):
         if self.info.is_windows() or self.info.is_cygwin():
             # without a typedict mypy can't understand this.
             key = self.form_compileropt_key('winlibs')
-            libs = options.get_value(key).copy()
-            assert isinstance(libs, list)
-            for l in libs:
-                assert isinstance(l, str)
-            return libs
+            libs = options.get_value(key)
+            assert isinstance(libs, list), 'for mypy'
+            return libs.copy()
         return []
 
     def get_assert_args(self, disable: bool, env: 'Environment') -> T.List[str]:
@@ -629,11 +633,13 @@ class ElbrusCPPCompiler(ElbrusCompiler, CPPCompiler):
         args: T.List[str] = []
         key = self.form_compileropt_key('std')
         std = options.get_value(key)
+        assert isinstance(std, str), 'for mypy'
         if std != 'none':
             args.append(self._find_best_cpp_std(std))
 
-        key = self.form_compileropt_key('eh')
-        non_msvc_eh_options(options.get_value(key), args)
+        eh_val = options.get_value(self.form_compileropt_key('eh'))
+        assert isinstance(eh_val, str), 'for mypy'
+        non_msvc_eh_options(eh_val, args)
 
         key = self.form_compileropt_key('debugstl')
         if options.get_value(key):
@@ -702,6 +708,7 @@ class IntelCPPCompiler(IntelGnuLikeCompiler, CPPCompiler):
         args: T.List[str] = []
         key = self.form_compileropt_key('std')
         std = options.get_value(key)
+        assert isinstance(std, str), 'for mypy'
         if std != 'none':
             remap_cpp03 = {
                 'c++03': 'c++98',
@@ -729,7 +736,7 @@ class VisualStudioLikeCPPCompilerMixin(CompilerMixinBase):
 
     """Mixin for C++ specific method overrides in MSVC-like compilers."""
 
-    VC_VERSION_MAP = {
+    VC_VERSION_MAP: T.Dict[str, T.Tuple[bool, T.Union[None, int, str]]] = {
         'none': (True, None),
         'vc++11': (True, 11),
         'vc++14': (True, 14),
@@ -746,7 +753,9 @@ class VisualStudioLikeCPPCompilerMixin(CompilerMixinBase):
     def get_option_link_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
         # need a typeddict for this
         key = self.form_compileropt_key('winlibs')
-        return T.cast('T.List[str]', options.get_value(key)[:])
+        val = options.get_value(key)
+        assert isinstance(val, list), 'for mypy'
+        return val.copy()
 
     def _get_options_impl(self, opts: 'MutableKeyedOptionDictType', cpp_stds: T.List[str]) -> 'MutableKeyedOptionDictType':
         opts = super().get_options()
@@ -780,6 +789,7 @@ class VisualStudioLikeCPPCompilerMixin(CompilerMixinBase):
         key = self.form_compileropt_key('std')
 
         eh = options.get_value(self.form_compileropt_key('eh'))
+        assert isinstance(eh, str), 'for mypy'
         if eh == 'default':
             args.append('/EHsc')
         elif eh == 'none':
@@ -790,7 +800,9 @@ class VisualStudioLikeCPPCompilerMixin(CompilerMixinBase):
         if not options.get_value(self.form_compileropt_key('rtti')):
             args.append('/GR-')
 
-        permissive, ver = self.VC_VERSION_MAP[options.get_value(key)]
+        rkey = options.get_value(key)
+        assert isinstance(rkey, str), 'for mypy'
+        permissive, ver = self.VC_VERSION_MAP[rkey]
 
         if ver is not None:
             args.append(f'/std:c++{ver}')
@@ -1004,6 +1016,7 @@ class TICPPCompiler(TICompiler, CPPCompiler):
         args: T.List[str] = []
         key = self.form_compileropt_key('std')
         std = options.get_value(key)
+        assert isinstance(std, str), 'for mypy'
         if std != 'none':
             args.append('--' + std)
         return args
@@ -1044,6 +1057,7 @@ class MetrowerksCPPCompilerARM(MetrowerksCompiler, CPPCompiler):
         args: T.List[str] = []
         key = self.form_compileropt_key('std')
         std = options.get_value(key)
+        assert isinstance(std, str), 'for mypy'
         if std != 'none':
             args.append('-lang')
             args.append(std)
@@ -1072,6 +1086,7 @@ class MetrowerksCPPCompilerEmbeddedPowerPC(MetrowerksCompiler, CPPCompiler):
         args: T.List[str] = []
         key = self.form_compileropt_key('std')
         std = options.get_value(key)
+        assert isinstance(std, str), 'for mypy'
         if std != 'none':
             args.append('-lang ' + std)
         return args
