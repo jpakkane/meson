@@ -265,7 +265,7 @@ class UserOption(T.Generic[_T], HoldableObject):
     def __post_init__(self, value_: _T) -> None:
         self.value = self.validate_value(value_)
 
-    def listify(self, value: T.Any) -> T.List[T.Any]:
+    def listify(self, value: T.Any) -> T.List[T.Union[str, int, bool]]:
         return [value]
 
     def printable_value(self) -> T.Union[str, int, bool, T.List[T.Union[str, int, bool]]]:
@@ -443,9 +443,11 @@ class UserArrayOption(UserOption[T.List[_T]]):
 @dataclasses.dataclass
 class UserStringArrayOption(UserArrayOption[str]):
 
-    def listify(self, value: T.Any) -> T.List[T.Any]:
+    def listify(self, value: T.Any) -> T.List[T.Union[str, int, bool]]:
         try:
-            return listify_array_value(value, self.split_args)
+            # If we used a Sequence we wouldn't need the cast
+            return T.cast('T.List[T.Union[str, int, bool]]',
+                          listify_array_value(value, self.split_args))
         except MesonException as e:
             raise MesonException(f'error in option "{self.name}": {e!s}')
 
@@ -459,8 +461,9 @@ class UserStringArrayOption(UserArrayOption[str]):
         for i in newvalue:
             if not isinstance(i, str):
                 raise MesonException(f'String array element "{newvalue!s}" for option "{self.name}" is not a string.')
+        newvalue2 = T.cast('T.List[str]', newvalue)
         if self.choices:
-            bad = [x for x in newvalue if x not in self.choices]
+            bad = [x for x in newvalue2 if x not in self.choices]
             if bad:
                 raise MesonException('Value{} "{}" for option "{}" {} not in allowed choices: "{}"'.format(
                     '' if len(bad) == 1 else 's',
@@ -469,7 +472,7 @@ class UserStringArrayOption(UserArrayOption[str]):
                     'is' if len(bad) == 1 else 'are',
                     ', '.join(self.choices))
                 )
-        return newvalue
+        return newvalue2
 
 
 @dataclasses.dataclass

@@ -672,7 +672,7 @@ class CudaCompiler(Compiler):
         # its own -std flag that may not agree with the host compiler's.
         host_options = {key: master_options.get(key, opt) for key, opt in self.host_compiler.get_options().items()}
         std_key = OptionKey(f'{self.host_compiler.language}_std', machine=self.for_machine)
-        overrides = {std_key: 'none'}
+        overrides: T.Dict[OptionKey, T.Union[str, int, bool, T.List[str]]] = {std_key: 'none'}
         # To shut up mypy.
         return coredata.OptionsView(host_options, overrides=overrides)
 
