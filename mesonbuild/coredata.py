@@ -18,6 +18,7 @@ from .mesonlib import (
     MesonBugException,
     MesonException, MachineChoice, PerMachine,
     PerMachineDefaultable,
+    default_prefix,
     stringlistify,
     pickle_load
 )
@@ -424,9 +425,9 @@ class CoreData:
             value = None
         if key.has_module_prefix():
             modulename = key.get_module_prefix()
-            opts_map.add_module_option(modulename, key, opt.init_option(key, value, options.default_prefix()))
+            opts_map.add_module_option(modulename, key, opt.init_option(key, value, default_prefix()))
         else:
-            opts_map.add_system_option(key, opt.init_option(key, value, options.default_prefix()))
+            opts_map.add_system_option(key, opt.init_option(key, value, default_prefix()))
 
     def init_backend_options(self, backend_name: str) -> None:
         if backend_name == 'ninja':
