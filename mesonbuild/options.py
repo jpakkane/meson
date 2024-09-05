@@ -795,7 +795,6 @@ class OptionStore:
         vobject, resolved_value = self.get_value_object_and_value_for(key)
         return resolved_value
 
-
     def num_options(self):
         basic = len(self.options)
         build = len(self.build_options) if self.build_options else 0

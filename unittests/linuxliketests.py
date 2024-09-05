@@ -1883,7 +1883,7 @@ class LinuxlikeTests(BasePlatformTests):
         self.check_has_flag(compdb, sub2src, '-O1')
 
         # Set subproject option to O2
-        self.setconf(['-Dround=2', '-A', 'sub2:optimization=3'])
+        self.setconf(['-Dround=2', '-D', 'sub2:optimization=3'])
         compdb = self.get_compdb()
         self.check_has_flag(compdb, mainsrc, '-O1')
         self.check_has_flag(compdb, sub1src, '-O1')
@@ -1897,7 +1897,7 @@ class LinuxlikeTests(BasePlatformTests):
         self.check_has_flag(compdb, sub2src, '-O2')
 
         # Set top level option to O3
-        self.setconf(['-Dround=4', '-A:optimization=3'])
+        self.setconf(['-Dround=4', '-D:optimization=3'])
         compdb = self.get_compdb()
         self.check_has_flag(compdb, mainsrc, '-O3')
         self.check_has_flag(compdb, sub1src, '-O1')

@@ -48,8 +48,6 @@ def add_arguments(parser: 'argparse.ArgumentParser') -> None:
                         help='Clear cached state (e.g. found dependencies)')
     parser.add_argument('--no-pager', action='store_false', dest='pager',
                         help='Do not redirect output to a pager')
-    parser.add_argument('-A', action='append', dest='A',
-                        help='Add a subproject option.')
     parser.add_argument('-U', action='append', dest='U',
                         help='Remove a subproject option.')
 
@@ -381,10 +379,6 @@ def run_impl(options: CMDOptions, builddir: str) -> int:
 
         save = False
         if has_option_flags(options):
-            if hasattr(options, 'A'):
-                A = options.A
-            else:
-                A = []
             if hasattr(options, 'U'):
                 U = options.U
             else:
@@ -392,7 +386,7 @@ def run_impl(options: CMDOptions, builddir: str) -> int:
             all_D = options.projectoptions[:]
             for keystr, valstr in options.cmd_line_options.items():
                 all_D.append(f'{keystr}={valstr}')
-            save |= c.coredata.optstore.set_from_configure_command(all_D, A, U)
+            save |= c.coredata.optstore.set_from_configure_command(all_D, U)
             coredata.update_cmd_line_file(builddir, options)
         if options.clearcache:
             c.clear_cache()
