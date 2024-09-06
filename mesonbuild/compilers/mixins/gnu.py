@@ -15,11 +15,12 @@ import typing as T
 
 from ... import mesonlib
 from ... import mlog
-from ...options import OptionKey
+from ...options import OptionKey, UserStdOption
 from mesonbuild.compilers.compilers import CompileCheckMode
 
 if T.TYPE_CHECKING:
     from ..._typing import ImmutableListProtocol
+    from ...coredata import MutableKeyedOptionDictType
     from ...environment import Environment
     from ..compilers import Compiler
 else:
@@ -631,3 +632,27 @@ class GnuCompiler(GnuLikeCompiler):
 
     def get_profile_use_args(self) -> T.List[str]:
         return super().get_profile_use_args() + ['-fprofile-correction']
+
+
+class GnuCStds(Compiler):
+
+    """Mixin class for gcc based compilers for setting C standards."""
+
+    _C18_VERSION = '>=8.0.0'
+    _C2X_VERSION = '>=9.0.0'
+    _C23_VERSION = '>=14.0.0'
+
+    def get_options(self) -> MutableKeyedOptionDictType:
+        opts = super().get_options()
+        stds = ['c89', 'c99', 'c11']
+        if mesonlib.version_compare(self.version, self._C18_VERSION):
+            stds += ['c17', 'c18']
+        if mesonlib.version_compare(self.version, self._C2X_VERSION):
+            stds += ['c2x']
+        if mesonlib.version_compare(self.version, self._C23_VERSION):
+            stds += ['c23']
+        key = self.form_compileropt_key('std')
+        std_opt = opts[key]
+        assert isinstance(std_opt, UserStdOption), 'for mypy'
+        std_opt.set_versions(stds, gnu=True)
+        return opts

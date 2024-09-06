@@ -19,7 +19,7 @@ from .mixins.compcert import CompCertCompiler
 from .mixins.ti import TICompiler
 from .mixins.arm import ArmCompiler, ArmclangCompiler
 from .mixins.visualstudio import MSVCCompiler, ClangClCompiler
-from .mixins.gnu import GnuCompiler
+from .mixins.gnu import GnuCompiler, GnuCStds
 from .mixins.gnu import gnu_common_warning_args, gnu_c_warning_args
 from .mixins.intel import IntelGnuLikeCompiler, IntelVisualStudioLikeCompiler
 from .mixins.clang import ClangCompiler, ClangCStds
@@ -237,11 +237,8 @@ class ArmclangCCompiler(ArmclangCompiler, CCompiler):
         return []
 
 
-class GnuCCompiler(GnuCompiler, CCompiler):
+class GnuCCompiler(GnuCStds, GnuCompiler, CCompiler):
 
-    _C18_VERSION = '>=8.0.0'
-    _C2X_VERSION = '>=9.0.0'
-    _C23_VERSION = '>=14.0.0'
     _INVALID_PCH_VERSION = ">=3.4.0"
 
     def __init__(self, ccache: T.List[str], exelist: T.List[str], version: str, for_machine: MachineChoice, is_cross: bool,
@@ -263,23 +260,12 @@ class GnuCCompiler(GnuCompiler, CCompiler):
                                          self.supported_warn_args(gnu_c_warning_args))}
 
     def get_options(self) -> 'MutableKeyedOptionDictType':
-        opts = CCompiler.get_options(self)
-        stds = ['c89', 'c99', 'c11']
-        if version_compare(self.version, self._C18_VERSION):
-            stds += ['c17', 'c18']
-        if version_compare(self.version, self._C2X_VERSION):
-            stds += ['c2x']
-        if version_compare(self.version, self._C23_VERSION):
-            stds += ['c23']
-        key = self.form_compileropt_key('std')
-        std_opt = opts[key]
-        assert isinstance(std_opt, options.UserStdOption), 'for mypy'
-        std_opt.set_versions(stds, gnu=True)
+        opts = super().get_options()
         if self.info.is_windows() or self.info.is_cygwin():
             self.update_options(
                 opts,
                 self.create_option(options.UserArrayOption,
-                                   key.evolve('c_winlibs'),
+                                   self.form_compileropt_key('winlibs'),
                                    'Standard Windows libs to link against',
                                    gnu_winlibs),
             )
