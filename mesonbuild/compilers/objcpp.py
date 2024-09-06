@@ -9,7 +9,7 @@ from ..options import OptionKey, UserStdOption
 
 from .cpp import ALL_STDS
 from .compilers import Compiler
-from .mixins.gnu import GnuCompiler, gnu_common_warning_args, gnu_objc_warning_args
+from .mixins.gnu import GnuCompiler, GnuCPPStds, gnu_common_warning_args, gnu_objc_warning_args
 from .mixins.clang import ClangCompiler, ClangCPPStds
 from .mixins.clike import CLikeCompiler
 
@@ -56,7 +56,7 @@ class ObjCPPCompiler(CLikeCompiler, Compiler):
         return opts
 
 
-class GnuObjCPPCompiler(GnuCompiler, ObjCPPCompiler):
+class GnuObjCPPCompiler(GnuCPPStds, GnuCompiler, ObjCPPCompiler):
     def __init__(self, ccache: T.List[str], exelist: T.List[str], version: str, for_machine: MachineChoice,
                  is_cross: bool, info: 'MachineInfo',
                  defines: T.Optional[T.Dict[str, str]] = None,
@@ -73,6 +73,13 @@ class GnuObjCPPCompiler(GnuCompiler, ObjCPPCompiler):
                           'everything': (default_warn_args + ['-Wextra', '-Wpedantic'] +
                                          self.supported_warn_args(gnu_common_warning_args) +
                                          self.supported_warn_args(gnu_objc_warning_args))}
+
+    def get_option_compile_args(self, options: 'coredata.KeyedOptionDictType') -> T.List[str]:
+        args = []
+        std = options.get_value(self.form_compileropt_key('std'))
+        if std != 'none':
+            args.append('-std=' + std)
+        return args
 
 
 class ClangObjCPPCompiler(ClangCPPStds, ClangCompiler, ObjCPPCompiler):
