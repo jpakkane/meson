@@ -11,7 +11,7 @@ from .c import ALL_STDS
 from .compilers import Compiler
 from .mixins.clang import ClangCompiler, ClangCStds
 from .mixins.clike import CLikeCompiler
-from .mixins.gnu import GnuCompiler, gnu_common_warning_args, gnu_objc_warning_args
+from .mixins.gnu import GnuCompiler, GnuCStds, gnu_common_warning_args, gnu_objc_warning_args
 
 if T.TYPE_CHECKING:
     from .. import coredata
@@ -56,7 +56,7 @@ class ObjCCompiler(CLikeCompiler, Compiler):
         return super().form_compileropt_key(basename)
 
 
-class GnuObjCCompiler(GnuCompiler, ObjCCompiler):
+class GnuObjCCompiler(GnuCStds, GnuCompiler, ObjCCompiler):
     def __init__(self, ccache: T.List[str], exelist: T.List[str], version: str, for_machine: MachineChoice,
                  is_cross: bool, info: 'MachineInfo',
                  defines: T.Optional[T.Dict[str, str]] = None,
@@ -73,6 +73,13 @@ class GnuObjCCompiler(GnuCompiler, ObjCCompiler):
                           'everything': (default_warn_args + ['-Wextra', '-Wpedantic'] +
                                          self.supported_warn_args(gnu_common_warning_args) +
                                          self.supported_warn_args(gnu_objc_warning_args))}
+
+    def get_option_compile_args(self, options: 'coredata.KeyedOptionDictType') -> T.List[str]:
+        args = []
+        std = options.get_value(self.form_compileropt_key('std'))
+        if std != 'none':
+            args.append('-std=' + std)
+        return args
 
 
 class ClangObjCCompiler(ClangCStds, ClangCompiler, ObjCCompiler):
