@@ -5,13 +5,13 @@ from __future__ import annotations
 
 import typing as T
 
-from .. import options
-from ..options import OptionKey
+from ..options import OptionKey, UserStdOption
 
-from .mixins.clike import CLikeCompiler
+from .cpp import ALL_STDS
 from .compilers import Compiler
 from .mixins.gnu import GnuCompiler, gnu_common_warning_args, gnu_objc_warning_args
-from .mixins.clang import ClangCompiler
+from .mixins.clang import ClangCompiler, ClangCPPStds
+from .mixins.clike import CLikeCompiler
 
 if T.TYPE_CHECKING:
     from .. import coredata
@@ -19,6 +19,7 @@ if T.TYPE_CHECKING:
     from ..environment import Environment
     from ..linkers.linkers import DynamicLinker
     from ..mesonlib import MachineChoice
+
 
 class ObjCPPCompiler(CLikeCompiler, Compiler):
 
@@ -41,6 +42,19 @@ class ObjCPPCompiler(CLikeCompiler, Compiler):
         code = '#import<stdio.h>\nclass MyClass;int main(void) { return 0; }\n'
         return self._sanity_check_impl(work_dir, environment, 'sanitycheckobjcpp.mm', code)
 
+    def form_compileropt_key(self, basename: str) -> OptionKey:
+        if basename == 'std':
+            return OptionKey(f'cpp_{basename}', machine=self.for_machine)
+        return super().form_compileropt_key(basename)
+
+    def get_options(self) -> coredata.MutableKeyedOptionDictType:
+        opts = super().get_options()
+        key = self.form_compileropt_key('std')
+        opts.update({
+            key: UserStdOption('cpp', ALL_STDS),
+        })
+        return opts
+
 
 class GnuObjCPPCompiler(GnuCompiler, ObjCPPCompiler):
     def __init__(self, ccache: T.List[str], exelist: T.List[str], version: str, for_machine: MachineChoice,
@@ -61,7 +75,7 @@ class GnuObjCPPCompiler(GnuCompiler, ObjCPPCompiler):
                                          self.supported_warn_args(gnu_objc_warning_args))}
 
 
-class ClangObjCPPCompiler(ClangCompiler, ObjCPPCompiler):
+class ClangObjCPPCompiler(ClangCPPStds, ClangCompiler, ObjCPPCompiler):
 
     def __init__(self, ccache: T.List[str], exelist: T.List[str], version: str, for_machine: MachineChoice,
                  is_cross: bool, info: 'MachineInfo',
@@ -78,21 +92,9 @@ class ClangObjCPPCompiler(ClangCompiler, ObjCPPCompiler):
                           '3': default_warn_args + ['-Wextra', '-Wpedantic'],
                           'everything': ['-Weverything']}
 
-    def get_options(self) -> coredata.MutableKeyedOptionDictType:
-        return self.update_options(
-            super().get_options(),
-            self.create_option(options.UserComboOption,
-                               OptionKey('cpp_std', machine=self.for_machine),
-                               'C++ language standard to use',
-                               ['none', 'c++98', 'c++11', 'c++14', 'c++17', 'c++20', 'c++2b',
-                                'gnu++98', 'gnu++11', 'gnu++14', 'gnu++17', 'gnu++20',
-                                'gnu++2b'],
-                               'none'),
-        )
-
     def get_option_compile_args(self, options: 'coredata.KeyedOptionDictType') -> T.List[str]:
         args = []
-        std = options.get_value(OptionKey('cpp_std', machine=self.for_machine))
+        std = options.get_value(self.form_compileropt_key('std'))
         if std != 'none':
             args.append('-std=' + std)
         return args

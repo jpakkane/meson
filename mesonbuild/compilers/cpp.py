@@ -45,9 +45,9 @@ if T.TYPE_CHECKING:
 else:
     CompilerMixinBase = object
 
-_ALL_STDS = ['c++98', 'c++0x', 'c++03', 'c++1y', 'c++1z', 'c++11', 'c++14', 'c++17', 'c++2a', 'c++20', 'c++23', 'c++26']
-_ALL_STDS += [f'gnu{std[1:]}' for std in _ALL_STDS]
-_ALL_STDS += ['vc++11', 'vc++14', 'vc++17', 'vc++20', 'vc++latest', 'c++latest']
+ALL_STDS = ['c++98', 'c++0x', 'c++03', 'c++1y', 'c++1z', 'c++11', 'c++14', 'c++17', 'c++2a', 'c++20', 'c++23', 'c++26']
+ALL_STDS += [f'gnu{std[1:]}' for std in ALL_STDS]
+ALL_STDS += ['vc++11', 'vc++14', 'vc++17', 'vc++20', 'vc++latest', 'c++latest']
 
 
 def non_msvc_eh_options(eh: str, args: T.List[str]) -> None:
@@ -175,7 +175,7 @@ class CPPCompiler(CLikeCompiler, Compiler):
         opts = super().get_options()
         key = self.form_compileropt_key('std')
         opts.update({
-            key: options.UserStdOption('C++', _ALL_STDS),
+            key: options.UserStdOption('C++', ALL_STDS),
         })
         return opts
 
