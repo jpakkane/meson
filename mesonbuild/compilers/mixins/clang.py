@@ -244,3 +244,30 @@ class ClangCStds(CompilerMixinBase):
         assert isinstance(std_opt, options.UserStdOption), 'for mypy'
         std_opt.set_versions(stds, gnu=True)
         return opts
+
+
+class ClangCPPStds(CompilerMixinBase):
+
+    """Mixin class for clang based compilers for setting C++ standards.
+
+    This is used by the ClangCPPCompiler
+    """
+
+    _CPP23_VERSION = '>=12.0.0'
+    _CPP26_VERSION = '>=17.0.0'
+
+    def get_options(self) -> MutableKeyedOptionDictType:
+        opts = super().get_options()
+        stds = [
+            'c++98', 'c++03', 'c++11', 'c++14', 'c++17', 'c++1z', 'c++2a',
+            'c++20',
+        ]
+        if mesonlib.version_compare(self.version, self._CPP23_VERSION):
+            stds.append('c++23')
+        if mesonlib.version_compare(self.version, self._CPP26_VERSION):
+            stds.append('c++26')
+        key = self.form_compileropt_key('std')
+        std_opt = opts[key]
+        assert isinstance(std_opt, options.UserStdOption), 'for mypy'
+        std_opt.set_versions(stds, gnu=True)
+        return opts
