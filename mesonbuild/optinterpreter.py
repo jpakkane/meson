@@ -69,7 +69,7 @@ class OptionInterpreter:
     def __init__(self, optionstore: 'OptionStore', subproject: 'SubProject') -> None:
         self.options: 'coredata.MutableKeyedOptionDictType' = {}
         self.subproject = subproject
-        self.option_types: T.Dict[str, T.Callable[..., options.UserOption]] = {
+        self.option_types: T.Dict[str, T.Callable[..., options.AnyOptionType]] = {
             'string': self.string_parser,
             'boolean': self.boolean_parser,
             'combo': self.combo_parser,

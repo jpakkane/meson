@@ -35,7 +35,6 @@ if T.TYPE_CHECKING:
     from ..dependencies import Dependency
 
     CompilerType = T.TypeVar('CompilerType', bound='Compiler')
-    UserOptionType = T.TypeVar('UserOptionType', bound=options.UserOption)
 
 _T = T.TypeVar('_T')
 
@@ -590,7 +589,7 @@ class Compiler(HoldableObject, metaclass=abc.ABCMeta):
         return f'{self.language}_{key.name}'
 
     @staticmethod
-    def update_options(options: MutableKeyedOptionDictType, *args: T.Tuple[OptionKey, UserOptionType]) -> MutableKeyedOptionDictType:
+    def update_options(options: MutableKeyedOptionDictType, *args: T.Tuple[OptionKey, options.AnyOptionType]) -> MutableKeyedOptionDictType:
         options.update(args)
         return options
 

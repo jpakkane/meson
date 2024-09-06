@@ -60,8 +60,8 @@ if T.TYPE_CHECKING:
         cross_file: T.List[str]
         native_file: T.List[str]
 
-    OptionDictType = T.Union[T.Dict[str, 'options.UserOption[T.Any]'], 'OptionsView']
-    MutableKeyedOptionDictType = T.Dict['OptionKey', 'options.UserOption[T.Any]']
+    OptionDictType = T.Union[T.Dict[str, options.AnyOptionType], 'OptionsView']
+    MutableKeyedOptionDictType = T.Dict['OptionKey', options.AnyOptionType]
     KeyedOptionDictType = T.Union['options.OptionStore', 'OptionsView']
     CompilerCheckCacheKey = T.Tuple[T.Tuple[str, ...], str, FileOrString, T.Tuple[str, ...], CompileCheckMode]
     # code, args

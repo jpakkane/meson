@@ -26,8 +26,6 @@ from .optinterpreter import OptionInterpreter
 
 if T.TYPE_CHECKING:
     from typing_extensions import Protocol
-    from typing import Any
-    from .options import UserOption
     import argparse
 
     class CMDOptions(coredata.SharedCMDOptions, Protocol):
@@ -189,7 +187,7 @@ class Conf:
                 items = [l[i] if l[i] else ' ' * four_column[i] for i in range(4)]
                 mlog.log(*items)
 
-    def split_options_per_subproject(self, options: 'T.Union[dict[OptionKey, UserOption[Any]], coredata.KeyedOptionDictType]') -> T.Dict[str, 'coredata.MutableKeyedOptionDictType']:
+    def split_options_per_subproject(self, options: T.Union[coredata.MutableKeyedOptionDictType, coredata.KeyedOptionDictType]) -> T.Dict[str, 'coredata.MutableKeyedOptionDictType']:
         result: T.Dict[str, 'coredata.MutableKeyedOptionDictType'] = {}
         for k, o in options.items():
             if k.subproject:
@@ -227,7 +225,7 @@ class Conf:
         self._add_line(mlog.normal_yellow(section + ':'), '', '', '')
         self.print_margin = 2
 
-    def print_options(self, title: str, opts: 'T.Union[dict[OptionKey, UserOption[Any]], coredata.KeyedOptionDictType]') -> None:
+    def print_options(self, title: str, opts: T.Union[coredata.MutableKeyedOptionDictType, coredata.KeyedOptionDictType]) -> None:
         if not opts:
             return
         if title:

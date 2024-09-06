@@ -32,6 +32,10 @@ if T.TYPE_CHECKING:
     from typing_extensions import Literal, TypeAlias, TypedDict
 
     DeprecatedType: TypeAlias = T.Union[bool, str, T.Dict[str, str], T.List[str]]
+    AnyOptionType: TypeAlias = T.Union[
+        'UserBooleanOption', 'UserComboOption', 'UserFeatureOption',
+        'UserIntegerOption', 'UserStdOption', 'UserStringArrayOption',
+        'UserStringOption', 'UserUmaskOption']
 
     class ArgparseKWs(TypedDict, total=False):
 
@@ -734,7 +738,7 @@ BUILTIN_DIR_NOPREFIX_OPTIONS: T.Dict[OptionKey, T.Dict[str, str]] = {
 
 class OptionStore:
     def __init__(self) -> None:
-        self.d: T.Dict['OptionKey', 'UserOption[T.Any]'] = {}
+        self.d: T.Dict['OptionKey', AnyOptionType] = {}
         self.project_options: T.Set[OptionKey] = set()
         self.module_options: T.Set[OptionKey] = set()
         from .compilers import all_languages
@@ -748,35 +752,35 @@ class OptionStore:
             return OptionKey(key)
         return key
 
-    def get_value_object(self, key: T.Union[OptionKey, str]) -> 'UserOption[T.Any]':
+    def get_value_object(self, key: T.Union[OptionKey, str]) -> AnyOptionType:
         return self.d[self.ensure_key(key)]
 
     def get_value(self, key: T.Union[OptionKey, str]) -> 'T.Any':
         return self.get_value_object(key).value
 
-    def add_system_option(self, key: T.Union[OptionKey, str], valobj: 'UserOption[T.Any]') -> None:
+    def add_system_option(self, key: T.Union[OptionKey, str], valobj: AnyOptionType) -> None:
         key = self.ensure_key(key)
         if '.' in key.name:
             raise MesonException(f'Internal error: non-module option has a period in its name {key.name}.')
         self.add_system_option_internal(key, valobj)
 
-    def add_system_option_internal(self, key: T.Union[OptionKey, str], valobj: 'UserOption[T.Any]') -> None:
+    def add_system_option_internal(self, key: T.Union[OptionKey, str], valobj: AnyOptionType) -> None:
         key = self.ensure_key(key)
         assert isinstance(valobj, UserOption)
         self.d[key] = valobj
 
-    def add_compiler_option(self, language: str, key: T.Union[OptionKey, str], valobj: 'UserOption[T.Any]') -> None:
+    def add_compiler_option(self, language: str, key: T.Union[OptionKey, str], valobj: AnyOptionType) -> None:
         key = self.ensure_key(key)
         if not key.name.startswith(language + '_'):
             raise MesonException(f'Internal error: all compiler option names must start with language prefix. ({key.name} vs {language}_)')
         self.add_system_option(key, valobj)
 
-    def add_project_option(self, key: T.Union[OptionKey, str], valobj: 'UserOption[T.Any]') -> None:
+    def add_project_option(self, key: T.Union[OptionKey, str], valobj: AnyOptionType) -> None:
         key = self.ensure_key(key)
         self.d[key] = valobj
         self.project_options.add(key)
 
-    def add_module_option(self, modulename: str, key: T.Union[OptionKey, str], valobj: 'UserOption[T.Any]') -> None:
+    def add_module_option(self, modulename: str, key: T.Union[OptionKey, str], valobj: AnyOptionType) -> None:
         key = self.ensure_key(key)
         if key.name.startswith('build.'):
             raise MesonException('FATAL internal error: somebody goofed option handling.')
@@ -790,7 +794,7 @@ class OptionStore:
         return self.d[key].set_value(new_value)
 
     # FIXME, this should be removed.or renamed to "change_type_of_existing_object" or something like that
-    def set_value_object(self, key: T.Union[OptionKey, str], new_object: 'UserOption[T.Any]') -> None:
+    def set_value_object(self, key: T.Union[OptionKey, str], new_object: AnyOptionType) -> None:
         key = self.ensure_key(key)
         self.d[key] = new_object
 
@@ -807,20 +811,20 @@ class OptionStore:
     def keys(self) -> T.KeysView[OptionKey]:
         return self.d.keys()
 
-    def values(self) -> T.ValuesView[UserOption[T.Any]]:
+    def values(self) -> T.ValuesView[AnyOptionType]:
         return self.d.values()
 
-    def items(self) -> T.ItemsView['OptionKey', 'UserOption[T.Any]']:
+    def items(self) -> T.ItemsView['OptionKey', AnyOptionType]:
         return self.d.items()
 
     # FIXME: this method must be deleted and users moved to use "add_xxx_option"s instead.
-    def update(self, **kwargs: UserOption[T.Any]) -> None:
+    def update(self, **kwargs: AnyOptionType) -> None:
         self.d.update(**kwargs)
 
-    def setdefault(self, k: OptionKey, o: UserOption[T.Any]) -> UserOption[T.Any]:
+    def setdefault(self, k: OptionKey, o: AnyOptionType) -> AnyOptionType:
         return self.d.setdefault(k, o)
 
-    def get(self, o: OptionKey, default: T.Optional[UserOption[T.Any]] = None) -> T.Optional[UserOption[T.Any]]:
+    def get(self, o: OptionKey, default: T.Optional[AnyOptionType] = None) -> T.Optional[AnyOptionType]:
         return self.d.get(o, default)
 
     def is_project_option(self, key: OptionKey) -> bool:
