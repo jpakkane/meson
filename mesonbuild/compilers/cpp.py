@@ -25,7 +25,7 @@ from .mixins.ccrx import CcrxCompiler
 from .mixins.ti import TICompiler
 from .mixins.arm import ArmCompiler, ArmclangCompiler
 from .mixins.visualstudio import MSVCCompiler, ClangClCompiler
-from .mixins.gnu import GnuCompiler, gnu_common_warning_args, gnu_cpp_warning_args
+from .mixins.gnu import GnuCompiler, GnuCPPStds, gnu_common_warning_args, gnu_cpp_warning_args
 from .mixins.intel import IntelGnuLikeCompiler, IntelVisualStudioLikeCompiler
 from .mixins.clang import ClangCompiler, ClangCPPStds
 from .mixins.elbrus import ElbrusCompiler
@@ -419,7 +419,7 @@ class ArmclangCPPCompiler(ArmclangCompiler, CPPCompiler):
         return []
 
 
-class GnuCPPCompiler(_StdCPPLibMixin, GnuCompiler, CPPCompiler):
+class GnuCPPCompiler(_StdCPPLibMixin, GnuCPPStds, GnuCompiler, CPPCompiler):
     def __init__(self, ccache: T.List[str], exelist: T.List[str], version: str, for_machine: MachineChoice, is_cross: bool,
                  info: 'MachineInfo',
                  linker: T.Optional['DynamicLinker'] = None,
@@ -439,7 +439,7 @@ class GnuCPPCompiler(_StdCPPLibMixin, GnuCompiler, CPPCompiler):
 
     def get_options(self) -> 'MutableKeyedOptionDictType':
         key = self.form_compileropt_key('std')
-        opts = CPPCompiler.get_options(self)
+        opts = super().get_options()
         self.update_options(
             opts,
             self.create_option(options.UserComboOption,
@@ -456,17 +456,6 @@ class GnuCPPCompiler(_StdCPPLibMixin, GnuCompiler, CPPCompiler):
                                'STL debug mode',
                                False),
         )
-        cppstd_choices = [
-            'c++98', 'c++03', 'c++11', 'c++14', 'c++17', 'c++1z',
-            'c++2a', 'c++20',
-        ]
-        if version_compare(self.version, '>=11.0.0'):
-            cppstd_choices.append('c++23')
-        if version_compare(self.version, '>=14.0.0'):
-            cppstd_choices.append('c++26')
-        std_opt = opts[key]
-        assert isinstance(std_opt, options.UserStdOption), 'for mypy'
-        std_opt.set_versions(cppstd_choices, gnu=True)
         if self.info.is_windows() or self.info.is_cygwin():
             self.update_options(
                 opts,
