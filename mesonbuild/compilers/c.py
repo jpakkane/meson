@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2012-2020 The Meson development team
+# Copyright © 2024 Intel Corporation
 
 from __future__ import annotations
 
@@ -47,9 +48,9 @@ if T.TYPE_CHECKING:
 else:
     CompilerMixinBase = object
 
-_ALL_STDS = ['c89', 'c9x', 'c90', 'c99', 'c1x', 'c11', 'c17', 'c18', 'c2x', 'c23']
-_ALL_STDS += [f'gnu{std[1:]}' for std in _ALL_STDS]
-_ALL_STDS += ['iso9899:1990', 'iso9899:199409', 'iso9899:1999', 'iso9899:2011', 'iso9899:2017', 'iso9899:2018']
+ALL_STDS = ['c89', 'c9x', 'c90', 'c99', 'c1x', 'c11', 'c17', 'c18', 'c2x', 'c23']
+ALL_STDS += [f'gnu{std[1:]}' for std in ALL_STDS]
+ALL_STDS += ['iso9899:1990', 'iso9899:199409', 'iso9899:1999', 'iso9899:2011', 'iso9899:2017', 'iso9899:2018']
 
 
 class CCompiler(CLikeCompiler, Compiler):
@@ -98,7 +99,7 @@ class CCompiler(CLikeCompiler, Compiler):
         opts = super().get_options()
         key = self.form_compileropt_key('std')
         opts.update({
-            key: options.UserStdOption('C', _ALL_STDS),
+            key: options.UserStdOption('C', ALL_STDS),
         })
         return opts
 
