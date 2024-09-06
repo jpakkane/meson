@@ -10,6 +10,7 @@ import shutil
 import typing as T
 
 from ... import mesonlib
+from ... import options
 from ...linkers.linkers import AppleDynamicLinker, ClangClDynamicLinker, LLVMDynamicLinker, GnuGoldDynamicLinker, \
     MoldDynamicLinker, MSVCDynamicLinker
 from ...options import OptionKey
@@ -17,8 +18,14 @@ from ..compilers import CompileCheckMode
 from .gnu import GnuLikeCompiler
 
 if T.TYPE_CHECKING:
+    from ...coredata import MutableKeyedOptionDictType
     from ...environment import Environment
     from ...dependencies import Dependency  # noqa: F401
+    from ..compilers import Compiler
+
+    CompilerMixinBase = Compiler
+else:
+    CompilerMixinBase = object
 
 clang_color_args: T.Dict[str, T.List[str]] = {
     'auto': ['-fdiagnostics-color=auto'],
@@ -204,3 +211,36 @@ class ClangCompiler(GnuLikeCompiler):
                 raise mesonlib.MesonException('clang support for LTO threads requires clang >=4.0')
             args.append(f'-flto-jobs={threads}')
         return args
+
+
+class ClangCStds(CompilerMixinBase):
+
+    """Mixin class for clang based compilers for setting C standards.
+
+    This is used by both ClangCCompiler and ClangClCompiler, as they share
+    the same versions
+    """
+
+    _C17_VERSION = '>=6.0.0'
+    _C18_VERSION = '>=8.0.0'
+    _C2X_VERSION = '>=9.0.0'
+    _C23_VERSION = '>=18.0.0'
+
+    def get_options(self) -> MutableKeyedOptionDictType:
+        opts = super().get_options()
+        stds = ['c89', 'c99', 'c11']
+        # https://releases.llvm.org/6.0.0/tools/clang/docs/ReleaseNotes.html
+        # https://en.wikipedia.org/wiki/Xcode#Latest_versions
+        if mesonlib.version_compare(self.version, self._C17_VERSION):
+            stds += ['c17']
+        if mesonlib.version_compare(self.version, self._C18_VERSION):
+            stds += ['c18']
+        if mesonlib.version_compare(self.version, self._C2X_VERSION):
+            stds += ['c2x']
+        if mesonlib.version_compare(self.version, self._C23_VERSION):
+            stds += ['c23']
+        key = self.form_compileropt_key('std')
+        std_opt = opts[key]
+        assert isinstance(std_opt, options.UserStdOption), 'for mypy'
+        std_opt.set_versions(stds, gnu=True)
+        return opts

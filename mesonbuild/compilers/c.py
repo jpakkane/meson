@@ -21,7 +21,7 @@ from .mixins.visualstudio import MSVCCompiler, ClangClCompiler
 from .mixins.gnu import GnuCompiler
 from .mixins.gnu import gnu_common_warning_args, gnu_c_warning_args
 from .mixins.intel import IntelGnuLikeCompiler, IntelVisualStudioLikeCompiler
-from .mixins.clang import ClangCompiler
+from .mixins.clang import ClangCompiler, ClangCStds
 from .mixins.elbrus import ElbrusCompiler
 from .mixins.pgi import PGICompiler
 from .mixins.emscripten import EmscriptenMixin
@@ -103,40 +103,7 @@ class CCompiler(CLikeCompiler, Compiler):
         return opts
 
 
-class _ClangCStds(CompilerMixinBase):
-
-    """Mixin class for clang based compilers for setting C standards.
-
-    This is used by both ClangCCompiler and ClangClCompiler, as they share
-    the same versions
-    """
-
-    _C17_VERSION = '>=6.0.0'
-    _C18_VERSION = '>=8.0.0'
-    _C2X_VERSION = '>=9.0.0'
-    _C23_VERSION = '>=18.0.0'
-
-    def get_options(self) -> 'MutableKeyedOptionDictType':
-        opts = super().get_options()
-        stds = ['c89', 'c99', 'c11']
-        # https://releases.llvm.org/6.0.0/tools/clang/docs/ReleaseNotes.html
-        # https://en.wikipedia.org/wiki/Xcode#Latest_versions
-        if version_compare(self.version, self._C17_VERSION):
-            stds += ['c17']
-        if version_compare(self.version, self._C18_VERSION):
-            stds += ['c18']
-        if version_compare(self.version, self._C2X_VERSION):
-            stds += ['c2x']
-        if version_compare(self.version, self._C23_VERSION):
-            stds += ['c23']
-        key = self.form_compileropt_key('std')
-        std_opt = opts[key]
-        assert isinstance(std_opt, options.UserStdOption), 'for mypy'
-        std_opt.set_versions(stds, gnu=True)
-        return opts
-
-
-class ClangCCompiler(_ClangCStds, ClangCompiler, CCompiler):
+class ClangCCompiler(ClangCStds, ClangCompiler, CCompiler):
 
     def __init__(self, ccache: T.List[str], exelist: T.List[str], version: str, for_machine: MachineChoice, is_cross: bool,
                  info: 'MachineInfo',
@@ -517,7 +484,7 @@ class VisualStudioCCompiler(MSVCCompiler, VisualStudioLikeCCompilerMixin, CCompi
         return args
 
 
-class ClangClCCompiler(_ClangCStds, ClangClCompiler, VisualStudioLikeCCompilerMixin, CCompiler):
+class ClangClCCompiler(ClangCStds, ClangClCompiler, VisualStudioLikeCCompilerMixin, CCompiler):
     def __init__(self, exelist: T.List[str], version: str, for_machine: MachineChoice,
                  is_cross: bool, info: 'MachineInfo', target: str,
                  linker: T.Optional['DynamicLinker'] = None,
