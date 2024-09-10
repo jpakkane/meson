@@ -1,4 +1,4 @@
-project('giotest', 'vala', 'c', default_options: ['c_legal_code=false'])
+project('giotest', 'vala', 'c', default_options: ['b_legal_code=false'])
 
 glib = dependency('glib-2.0')
 gobject = dependency('gobject-2.0')

@@ -234,6 +234,7 @@ BASE_OPTIONS: T.Mapping[OptionKey, BaseOption] = {
     OptionKey('b_thinlto_cache_dir'): BaseOption(options.UserStringOption, 'Directory to store ThinLTO cache objects', ''),
     OptionKey('b_sanitize'): BaseOption(options.UserComboOption, 'Code sanitizer to use', 'none',
                                         choices=['none', 'address', 'thread', 'undefined', 'memory', 'leak', 'address,undefined']),
+    OptionKey('b_legal_code'): BaseOption(options.UserBooleanOption, 'Whether to ban dangerous constructs in a language', True),
     OptionKey('b_lundef'): BaseOption(options.UserBooleanOption, 'Use -Wl,--no-undefined when linking', True),
     OptionKey('b_asneeded'): BaseOption(options.UserBooleanOption, 'Use -Wl,--as-needed when linking', True),
     OptionKey('b_pgo'): BaseOption(options.UserComboOption, 'Use profile guided optimization', 'off',
@@ -295,6 +296,10 @@ def get_base_compile_args(options: 'KeyedOptionDictType', compiler: 'Compiler', 
                 mode=get_option_value(options, OptionKey('b_lto_mode'), 'default')))
     except (KeyError, AttributeError):
         pass
+
+    if option_enabled(compiler.base_options, options, OptionKey('b_legal_code')):
+        args.extend(compiler.get_legal_code_compiler_args())
+
     try:
         args += compiler.get_colorout_args(options.get_value(OptionKey('b_colorout')))
     except (KeyError, AttributeError):
@@ -1003,6 +1008,9 @@ class Compiler(HoldableObject, metaclass=abc.ABCMeta):
                 continue
             ret.append(arg)
         return ret
+
+    def get_legal_code_compiler_args(self) -> T.List[str]:
+        return []
 
     def get_lto_compile_args(self, *, threads: int = 0, mode: str = 'default') -> T.List[str]:
         return []

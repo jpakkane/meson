@@ -51,7 +51,8 @@ class ClangCompiler(GnuLikeCompiler):
         super().__init__()
         self.defines = defines or {}
         self.base_options.update(
-            {OptionKey('b_colorout'), OptionKey('b_lto_threads'), OptionKey('b_lto_mode'), OptionKey('b_thinlto_cache'),
+            {OptionKey('b_colorout'), OptionKey('b_legal_code'),
+             OptionKey('b_lto_threads'), OptionKey('b_lto_mode'), OptionKey('b_thinlto_cache'),
              OptionKey('b_thinlto_cache_dir')})
 
         # TODO: this really should be part of the linker base_options, but
@@ -168,6 +169,18 @@ class ClangCompiler(GnuLikeCompiler):
 
     def get_coverage_link_args(self) -> T.List[str]:
         return ['--coverage']
+
+    def get_legal_code_compiler_args(self) -> T.List[str]:
+        args: T.List[str] = []
+
+        if self.language in {'c', 'objc'}:
+            if mesonlib.version_compare(self.version, '>=3.3.0') and ('c89', 'c90', 'gnu89', 'gnu90') not in self.get_options()[OptionKey('c_std')].choices:
+                args.extend(('-Werror=implicit',
+                             '-Werror=int-conversion',
+                             '-Werror=incompatible-pointer-types',
+                             '-Wno-error=incompatible-pointer-types-discards-qualifiers'))
+
+        return args
 
     def get_lto_compile_args(self, *, threads: int = 0, mode: str = 'default') -> T.List[str]:
         args: T.List[str] = []
