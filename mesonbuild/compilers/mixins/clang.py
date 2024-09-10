@@ -170,7 +170,7 @@ class ClangCompiler(GnuLikeCompiler):
     def get_coverage_link_args(self) -> T.List[str]:
         return ['--coverage']
 
-    def get_legal_code_compiler_args(self) -> T.List[str]:
+    def get_legal_code_compiler_args(self, lto: bool) -> T.List[str]:
         args: T.List[str] = []
 
         if self.language in {'c', 'objc'}:

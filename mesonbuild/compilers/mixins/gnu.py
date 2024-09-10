@@ -492,7 +492,7 @@ class GnuLikeCompiler(Compiler, metaclass=abc.ABCMeta):
                 return self._split_fetch_real_dirs(line.split('=', 1)[1])
         return []
 
-    def get_legal_code_compiler_args(self) -> T.List[str]:
+    def get_legal_code_compiler_args(self, lto: bool) -> T.List[str]:
         return []
 
     def get_lto_compile_args(self, *, threads: int = 0, mode: str = 'default') -> T.List[str]:
@@ -615,8 +615,12 @@ class GnuCompiler(GnuLikeCompiler):
     def get_prelink_args(self, prelink_name: str, obj_list: T.List[str]) -> T.List[str]:
         return ['-r', '-o', prelink_name] + obj_list
 
-    def get_legal_code_compiler_args(self) -> T.List[str]:
+    def get_legal_code_compiler_args(self, lto: bool) -> T.List[str]:
         args: T.List[str] = []
+
+        if lto:
+            # TODO: versions
+            args.extend(('-Werror=lto-type-mismatch', '-Werror=odr', '-Werror=strict-aliasing'))
 
         if self.language in {'c', 'objc'}:
             if ('c89', 'c90', 'gnu89', 'gnu90') not in self.get_options()[OptionKey('c_std')].choices:

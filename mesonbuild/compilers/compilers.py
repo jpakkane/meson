@@ -298,7 +298,7 @@ def get_base_compile_args(options: 'KeyedOptionDictType', compiler: 'Compiler', 
         pass
 
     if option_enabled(compiler.base_options, options, OptionKey('b_legal_code')):
-        args.extend(compiler.get_legal_code_compiler_args())
+        args.extend(compiler.get_legal_code_compiler_args(options.get_value(OptionKey('b_lto'))))
 
     try:
         args += compiler.get_colorout_args(options.get_value(OptionKey('b_colorout')))
@@ -1009,7 +1009,7 @@ class Compiler(HoldableObject, metaclass=abc.ABCMeta):
             ret.append(arg)
         return ret
 
-    def get_legal_code_compiler_args(self) -> T.List[str]:
+    def get_legal_code_compiler_args(self, lto: bool) -> T.List[str]:
         return []
 
     def get_lto_compile_args(self, *, threads: int = 0, mode: str = 'default') -> T.List[str]:
