@@ -5055,7 +5055,7 @@ class AllPlatformTests(BasePlatformTests):
             self.setconf('-Dc_std=c++11')
         env = get_fake_env()
         cc = detect_c_compiler(env, MachineChoice.HOST)
-        if cc.get_id() == 'msvc':
+        if cc.get_id() in {'msvc', 'clang-cl'}:
             # default_option should have selected those
             self.assertEqual(self.getconf('c_std'), 'c89')
             self.assertEqual(self.getconf('cpp_std'), 'vc++11')
@@ -5068,7 +5068,7 @@ class AllPlatformTests(BasePlatformTests):
             # The first supported std should be selected
             self.setconf('-Dcpp_std=gnu++11,vc++11,c++11')
             self.assertEqual(self.getconf('cpp_std'), 'vc++11')
-        elif cc.get_id() == 'gcc':
+        elif cc.get_id() == 'gcc' or (cc.get_id() == 'clang' and not is_windows()):
             # default_option should have selected those
             self.assertEqual(self.getconf('c_std'), 'gnu89')
             self.assertEqual(self.getconf('cpp_std'), 'gnu++98')
