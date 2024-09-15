@@ -748,14 +748,6 @@ class OptionStore:
     def get_value(self, key: T.Union[OptionKey, str]) -> 'T.Any':
         return self.get_value_object(key).value
 
-    def num_options(self):
-        basic = len(self.options)
-        build = len(self.build_options) if self.build_options else 0
-        return basic + build
-
-    def __len__(self) -> int:
-        return len(self.d)
-
     def get_value_object_for(self, key: 'T.Union[OptionKey, str]') -> 'UserOption[T.Any]':
         key = self.ensure_and_validate_key(key)
         potential = self.options.get(key, None)
@@ -779,6 +771,38 @@ class OptionStore:
                     raise KeyError(f'Tried to access nonexistant project parent option {parent_key}.')
                 return self.options[parent_key]
             return potential
+
+    def get_value_object(self, key: T.Union[OptionKey, str]) -> 'UserOption[T.Any]':
+        key = self.ensure_and_validate_key(key)
+        return self.options[key]
+
+    def get_value_object_and_value_for(self, key: OptionKey):
+        assert isinstance(key, OptionKey)
+        vobject = self.get_value_object_for(key)
+        computed_value = vobject.value
+        if key.subproject is not None:
+            keystr = str(key)
+            if keystr in self.augments:
+                computed_value = vobject.validate_value(self.augments[keystr])
+        return (vobject, computed_value)
+
+    def get_value_for(self, name: 'T.Union[OptionKey, str]', subproject: T.Optional[str] = None) -> 'OptionValueType':
+        if isinstance(name, str):
+            key = OptionKey(name, subproject)
+        else:
+            assert subproject is None
+            key = name
+        vobject, resolved_value = self.get_value_object_and_value_for(key)
+        return resolved_value
+
+
+    def num_options(self):
+        basic = len(self.options)
+        build = len(self.build_options) if self.build_options else 0
+        return basic + build
+
+    def __len__(self) -> int:
+        return len(self.d)
 
     def add_system_option(self, key: T.Union[OptionKey, str], valobj: 'UserOption[T.Any]') -> None:
         key = self.ensure_and_validate_key(key)
@@ -898,6 +922,11 @@ class OptionStore:
 
         return changed
 
+    # FIXME, this should be removed.or renamed to "change_type_of_existing_object" or something like that
+    def set_value_object(self, key: T.Union[OptionKey, str], new_object: 'UserOption[T.Any]') -> None:
+        key = self.ensure_and_validate_key(key)
+        self.options[key] = new_object
+
     def set_dependents(self, key: OptionKey, value: str):
         if key.name != 'buildtype':
             return
@@ -953,6 +982,47 @@ class OptionStore:
 
         return changed
 
+    def set_option_from_string(self, keystr, new_value):
+        if isinstance(keystr, OptionKey):
+            o = keystr
+        else:
+            o = OptionKey.from_string(keystr)
+        if o in self.options:
+            return self.set_value(o, new_value)
+        o = o.evolve(subproject='')
+        return self.set_value(o, new_value)
+
+    def set_subproject_options(self, subproject, spcall_default_options, project_default_options):
+        for o in itertools.chain(spcall_default_options, project_default_options):
+            keystr, valstr = o.split('=', 1)
+            assert ':' not in keystr
+            keystr = f'{subproject}:{keystr}'
+            if keystr not in self.augments:
+                self.augments[keystr] = valstr
+
+    def set_from_configure_command(self, D_args: T.List[str], U_args: T.List[str]) -> bool:
+        dirty = False
+        D_args = [] if D_args is None else D_args
+        (global_options, perproject_global_options, project_options) = self.classify_D_arguments(D_args)
+        U_args = [] if U_args is None else U_args
+        for key, valstr in global_options:
+            dirty |= self.set_option_from_string(key, valstr)
+        for key, valstr in project_options:
+            dirty |= self.set_option_from_string(key, valstr)
+        for keystr, valstr in perproject_global_options:
+            if keystr in self.augments:
+                if self.augments[keystr] != valstr:
+                    self.augments[keystr] = valstr
+                    dirty = True
+            else:
+                self.augments[keystr] = valstr
+                dirty = True
+        for delete in U_args:
+            if delete in self.augments:
+                del self.augments[delete]
+                dirty = True
+        return dirty
+
     def reset_prefixed_options(self, old_prefix, new_prefix):
         for optkey, prefix_mapping in BUILTIN_DIR_NOPREFIX_OPTIONS.items():
             valobj = self.options[optkey]
@@ -967,25 +1037,6 @@ class OptionStore:
                 else:
                     new_value = prefix_mapping[new_prefix]
             valobj.set_value(new_value)
-
-    # FIXME, this should be removed.or renamed to "change_type_of_existing_object" or something like that
-    def set_value_object(self, key: T.Union[OptionKey, str], new_object: 'UserOption[T.Any]') -> None:
-        key = self.ensure_and_validate_key(key)
-        self.options[key] = new_object
-
-    def get_value_object(self, key: T.Union[OptionKey, str]) -> 'UserOption[T.Any]':
-        key = self.ensure_and_validate_key(key)
-        return self.options[key]
-
-    def get_value_object_and_value_for(self, key: OptionKey):
-        assert isinstance(key, OptionKey)
-        vobject = self.get_value_object_for(key)
-        computed_value = vobject.value
-        if key.subproject is not None:
-            keystr = str(key)
-            if keystr in self.augments:
-                computed_value = vobject.validate_value(self.augments[keystr])
-        return (vobject, computed_value)
 
     def get_option_from_meson_file(self, key: OptionKey):
         assert isinstance(key, OptionKey)
@@ -1070,58 +1121,23 @@ class OptionStore:
     def is_module_option(self, key: OptionKey) -> bool:
         return key in self.module_options
 
-    def get_value_for(self, name: 'T.Union[OptionKey, str]', subproject: T.Optional[str] = None) -> 'OptionValueType':
-        if isinstance(name, str):
-            key = OptionKey(name, subproject)
-        else:
-            assert subproject is None
-            key = name
-        vobject, resolved_value = self.get_value_object_and_value_for(key)
-        return resolved_value
-
-    def set_option_from_string(self, keystr, new_value):
-        if isinstance(keystr, OptionKey):
-            o = keystr
-        else:
-            o = OptionKey.from_string(keystr)
-        if o in self.options:
-            return self.set_value(o, new_value)
-        o = o.evolve(subproject='')
-        return self.set_value(o, new_value)
-
-    def set_subproject_options(self, subproject, spcall_default_options, project_default_options):
-        for o in itertools.chain(spcall_default_options, project_default_options):
-            keystr, valstr = o.split('=', 1)
-            assert ':' not in keystr
-            keystr = f'{subproject}:{keystr}'
-            if keystr not in self.augments:
-                self.augments[keystr] = valstr
-
-    def set_from_configure_command(self, D: T.List[str], A: T.List[str], U: T.List[str]) -> bool:
-        dirty = False
-        D = [] if D is None else D
-        A = [] if A is None else A
-        U = [] if U is None else U
+    def classify_D_arguments(self, D: T.List[str]):
+        global_options = []
+        project_options = []
+        perproject_global_options = []
         for setval in D:
             keystr, valstr = setval.split('=', 1)
-            if keystr in self.augments:
-                if self.augments[keystr] != valstr:
-                    self.augments[keystr] = valstr
-                    dirty = True
+            key = OptionKey.from_string(keystr)
+            valuetuple = (key, valstr)
+            if self.is_project_option(key):
+                project_options.append(valuetuple)
+            elif key.subproject is None:
+                global_options.append(valuetuple)
             else:
-                dirty |= self.set_option_from_string(keystr, valstr)
-        for add in A:
-            keystr, valstr = add.split('=', 1)
-            assert ':' in keystr
-            if keystr in self.augments:
-                raise MesonException(f'Tried to add augment to option {keystr}, which already has an augment. Set it with -D instead.')
-            self.augments[keystr] = valstr
-            dirty = True
-        for delete in U:
-            if delete in self.augments:
-                del self.augments[delete]
-                dirty = True
-        return dirty
+                # FIXME, augments are currently stored as strings, not OptionKeys
+                valuetuple = (keystr, valstr)
+                perproject_global_options.append(valuetuple)
+        return (global_options, perproject_global_options, project_options)
 
     def optlist2optdict(self, optlist):
         optdict = {}
