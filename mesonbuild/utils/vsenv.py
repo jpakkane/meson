@@ -107,13 +107,22 @@ def _setup_vsenv(force: bool) -> bool:
             continue
         if not bat_line:
             continue
+        parts = bat_line.split('=', 1)
+        if len(parts) != 2:
+            continue
+        k, v = parts
+        # Some CI's include variables containing the issue description, like
+        # GitLab's CI_MERGE_REQUEST_DESCRIPTION. The description itself can
+        # have multiple lines and any kind of content.
+        # If one of these lines is '=========', it will leave k empty
+        # when it's split by '='
+        if k is None or v is None:
+            continue
         try:
-            k, v = bat_line.split('=', 1)
-        except ValueError:
-            # there is no "=", ignore junk data
-            pass
-        else:
             os.environ[k] = v
+        except ValueError:
+            # Ignore errors from junk data returning invalid environment variable names
+            pass
     return True
 
 def setup_vsenv(force: bool = False) -> bool:
