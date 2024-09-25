@@ -9,6 +9,7 @@ from ..options import OptionKey, UserStdOption
 
 from .c import ALL_STDS
 from .compilers import Compiler
+from .mixins.apple import AppleCStdsMixin
 from .mixins.clang import ClangCompiler, ClangCStds
 from .mixins.clike import CLikeCompiler
 from .mixins.gnu import GnuCompiler, GnuCStds, gnu_common_warning_args, gnu_objc_warning_args
@@ -105,10 +106,6 @@ class ClangObjCCompiler(ClangCStds, ClangCompiler, ObjCCompiler):
             args.append('-std=' + std)
         return args
 
-class AppleClangObjCCompiler(ClangObjCCompiler):
+class AppleClangObjCCompiler(AppleCStdsMixin, ClangObjCCompiler):
 
     """Handle the differences between Apple's clang and vanilla clang."""
-
-    _C17_VERSION = '>=10.0.0'
-    _C18_VERSION = '>=11.0.0'
-    _C2X_VERSION = '>=11.0.0'

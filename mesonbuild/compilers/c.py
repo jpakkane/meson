@@ -11,7 +11,7 @@ from .. import options
 from .. import mlog
 from ..mesonlib import MesonException, version_compare
 from .c_function_attributes import C_FUNC_ATTRIBUTES
-from .mixins.apple import AppleCompilerMixin
+from .mixins.apple import AppleCompilerMixin, AppleCStdsMixin
 from .mixins.clike import CLikeCompiler
 from .mixins.ccrx import CcrxCompiler
 from .mixins.xc16 import Xc16Compiler
@@ -157,17 +157,13 @@ class ArmLtdClangCCompiler(ClangCCompiler):
     id = 'armltdclang'
 
 
-class AppleClangCCompiler(AppleCompilerMixin, ClangCCompiler):
+class AppleClangCCompiler(AppleCompilerMixin, AppleCStdsMixin, ClangCCompiler):
 
     """Handle the differences between Apple Clang and Vanilla Clang.
 
     Right now this just handles the differences between the versions that new
     C standards were added.
     """
-
-    _C17_VERSION = '>=10.0.0'
-    _C18_VERSION = '>=11.0.0'
-    _C2X_VERSION = '>=11.0.0'
 
 
 class EmscriptenCCompiler(EmscriptenMixin, ClangCCompiler):
