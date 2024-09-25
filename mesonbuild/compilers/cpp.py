@@ -19,7 +19,7 @@ from .compilers import (
     CompileCheckMode,
 )
 from .c_function_attributes import CXX_FUNC_ATTRIBUTES, C_FUNC_ATTRIBUTES
-from .mixins.apple import AppleCompilerMixin
+from .mixins.apple import AppleCompilerMixin, AppleCPPStdsMixin
 from .mixins.clike import CLikeCompiler
 from .mixins.ccrx import CcrxCompiler
 from .mixins.ti import TICompiler
@@ -325,12 +325,8 @@ class ArmLtdClangCPPCompiler(ClangCPPCompiler):
     id = 'armltdclang'
 
 
-class AppleClangCPPCompiler(AppleCompilerMixin, ClangCPPCompiler):
-
-    _CPP23_VERSION = '>=13.0.0'
-    # TODO: We don't know which XCode version will include LLVM 17 yet, so
-    # use something absurd.
-    _CPP26_VERSION = '>=99.0.0'
+class AppleClangCPPCompiler(AppleCompilerMixin, AppleCPPStdsMixin, ClangCPPCompiler):
+    pass
 
 
 class EmscriptenCPPCompiler(EmscriptenMixin, ClangCPPCompiler):

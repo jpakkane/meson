@@ -9,6 +9,7 @@ from ..options import OptionKey, UserStdOption
 
 from .cpp import ALL_STDS
 from .compilers import Compiler
+from .mixins.apple import AppleCPPStdsMixin
 from .mixins.gnu import GnuCompiler, GnuCPPStds, gnu_common_warning_args, gnu_objc_warning_args
 from .mixins.clang import ClangCompiler, ClangCPPStds
 from .mixins.clike import CLikeCompiler
@@ -107,6 +108,6 @@ class ClangObjCPPCompiler(ClangCPPStds, ClangCompiler, ObjCPPCompiler):
         return args
 
 
-class AppleClangObjCPPCompiler(ClangObjCPPCompiler):
+class AppleClangObjCPPCompiler(AppleCPPStdsMixin, ClangObjCPPCompiler):
 
     """Handle the differences between Apple's clang and vanilla clang."""

@@ -68,3 +68,13 @@ class AppleCStdsMixin(Compiler):
     _C17_VERSION = '>=10.0.0'
     _C18_VERSION = '>=11.0.0'
     _C2X_VERSION = '>=11.0.0'
+
+
+class AppleCPPStdsMixin(Compiler):
+
+    """Provide version overrides for the Apple C++ Compilers."""
+
+    _CPP23_VERSION = '>=13.0.0'
+    # TODO: We don't know which XCode version will include LLVM 17 yet, so
+    # use something absurd.
+    _CPP26_VERSION = '>=99.0.0'
