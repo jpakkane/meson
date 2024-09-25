@@ -897,9 +897,13 @@ def _detect_objc_or_objcpp_compiler(env: 'Environment', lang: str, for_machine: 
             version = _get_gnu_version_from_defines(defines)
             comp = objc.GnuObjCCompiler if lang == 'objc' else objcpp.GnuObjCPPCompiler
             linker = guess_nix_linker(env, compiler, comp, version, for_machine)
-            return comp(
+            c = comp(
                 ccache, compiler, version, for_machine, is_cross, info,
                 defines, linker=linker)
+            if not c.compiles('int main(void) { return 0; }', env)[0]:
+                popen_exceptions[join_args(compiler)] = f'GCC was not built with support for {"objective-c" if lang == "objc" else "objective-c++"}'
+                continue
+            return c
         if 'clang' in out:
             linker = None
             defines = _get_clang_compiler_defines(compiler, lang)
