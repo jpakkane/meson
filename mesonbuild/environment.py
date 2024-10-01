@@ -28,6 +28,7 @@ from .envconfig import (
     BinaryTable, MachineInfo, Properties, known_cpu_families, CMakeVariables,
 )
 from . import compilers
+from .compilers.mixins.visualstudio import VisualStudioLikeCompiler
 from .compilers import (
     is_assembly,
     is_header,
@@ -50,6 +51,11 @@ if T.TYPE_CHECKING:
 
 
 build_filename = 'meson.build'
+
+
+def _as_str(val: object) -> str:
+    assert isinstance(val, str), 'for mypy'
+    return val
 
 
 def _get_env_var(for_machine: MachineChoice, is_cross: bool, var_name: str) -> T.Optional[str]:
@@ -337,6 +343,7 @@ def detect_windows_arch(compilers: CompilersDict) -> str:
     # 32-bit and pretend like we're running under WOW64. Else, return the
     # actual Windows architecture that we deduced above.
     for compiler in compilers.values():
+        assert isinstance(compiler, VisualStudioLikeCompiler), 'for mypy'
         if compiler.id == 'msvc' and (compiler.target in {'x86', '80x86'}):
             return 'x86'
         if compiler.id == 'clang-cl' and (compiler.target in {'x86', 'i686'}):
@@ -855,7 +862,12 @@ class Environment:
         # re-initialized with project options by the interpreter during
         # build file parsing.
         # meson_command is used by the regenchecker script, which runs meson
-        self.coredata = coredata.CoreData(options, self.scratch_dir, mesonlib.get_meson_command())
+        meson_command = mesonlib.get_meson_command()
+        if meson_command is None:
+            meson_command = []
+        else:
+            meson_command = meson_command.copy()
+        self.coredata = coredata.CoreData(options, self.scratch_dir, meson_command)
         self.first_invocation = True
 
     def is_cross_build(self, when_building_for: MachineChoice = MachineChoice.HOST) -> bool:
@@ -936,25 +948,25 @@ class Environment:
         return self.get_libdir()
 
     def get_prefix(self) -> str:
-        return self.coredata.get_option(OptionKey('prefix'))
+        return _as_str(self.coredata.get_option(OptionKey('prefix')))
 
     def get_libdir(self) -> str:
-        return self.coredata.get_option(OptionKey('libdir'))
+        return _as_str(self.coredata.get_option(OptionKey('libdir')))
 
     def get_libexecdir(self) -> str:
-        return self.coredata.get_option(OptionKey('libexecdir'))
+        return _as_str(self.coredata.get_option(OptionKey('libexecdir')))
 
     def get_bindir(self) -> str:
-        return self.coredata.get_option(OptionKey('bindir'))
+        return _as_str(self.coredata.get_option(OptionKey('bindir')))
 
     def get_includedir(self) -> str:
-        return self.coredata.get_option(OptionKey('includedir'))
+        return _as_str(self.coredata.get_option(OptionKey('includedir')))
 
     def get_mandir(self) -> str:
-        return self.coredata.get_option(OptionKey('mandir'))
+        return _as_str(self.coredata.get_option(OptionKey('mandir')))
 
     def get_datadir(self) -> str:
-        return self.coredata.get_option(OptionKey('datadir'))
+        return _as_str(self.coredata.get_option(OptionKey('datadir')))
 
     def get_compiler_system_lib_dirs(self, for_machine: MachineChoice) -> T.List[str]:
         for comp in self.coredata.compilers[for_machine].values():
@@ -972,8 +984,8 @@ class Environment:
         p, out, _ = Popen_safe(comp.get_exelist() + ['-print-search-dirs'])
         if p.returncode != 0:
             raise mesonlib.MesonException('Could not calculate system search dirs')
-        out = out.split('\n')[index].lstrip('libraries: =').split(':')
-        return [os.path.normpath(p) for p in out]
+        split = out.split('\n')[index].lstrip('libraries: =').split(':')
+        return [os.path.normpath(p) for p in split]
 
     def get_compiler_system_include_dirs(self, for_machine: MachineChoice) -> T.List[str]:
         for comp in self.coredata.compilers[for_machine].values():
@@ -1000,4 +1012,4 @@ class Environment:
         return self.exe_wrapper
 
     def has_exe_wrapper(self) -> bool:
-        return self.exe_wrapper and self.exe_wrapper.found()
+        return self.exe_wrapper is not None and self.exe_wrapper.found()
