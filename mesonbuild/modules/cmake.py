@@ -123,10 +123,13 @@ class CMakeSubproject(ModuleObject):
         assert all(x in res for x in ['inc', 'src', 'dep', 'tgt', 'func'])
         return res
 
+    def _get_variable(self, name: str, fallback: T.Optional[str] = None) -> T.Union[TYPE_var, InterpreterObject]:
+        return self.subp.get_variable((name, fallback), {})
+
     @noKwargs
     @typed_pos_args('cmake.subproject.get_variable', str, optargs=[str])
     def get_variable(self, state: ModuleState, args: T.Tuple[str, T.Optional[str]], kwargs: TYPE_kwargs) -> T.Union[TYPE_var, InterpreterObject]:
-        return self.subp.get_variable(args, kwargs)
+        return self._get_variable(*args)
 
     @typed_pos_args('cmake.subproject.dependency', str)
     @typed_kwargs(
@@ -156,13 +159,17 @@ class CMakeSubproject(ModuleObject):
     @typed_pos_args('cmake.subproject.include_directories', str)
     def include_directories(self, state: ModuleState, args: T.Tuple[str], kwargs: TYPE_kwargs) -> build.IncludeDirs:
         info = self._args_to_info(args[0])
-        return self.get_variable(state, [info['inc']], kwargs)
+        v = self._get_variable(info['inc'])
+        assert isinstance(v, build.IncludeDirs), 'for mypy'
+        return v
 
     @noKwargs
     @typed_pos_args('cmake.subproject.target', str)
     def target(self, state: ModuleState, args: T.Tuple[str], kwargs: TYPE_kwargs) -> build.Target:
         info = self._args_to_info(args[0])
-        return self.get_variable(state, [info['tgt']], kwargs)
+        v = self._get_variable(info['tgt'])
+        assert isinstance(v, build.Target), 'for mypy'
+        return v
 
     @noKwargs
     @typed_pos_args('cmake.subproject.target_type', str)
@@ -305,7 +312,9 @@ class CmakeModule(ExtensionModule):
 
         pkgroot = pkgroot_name = kwargs['install_dir']
         if pkgroot is None:
-            pkgroot = os.path.join(state.environment.coredata.get_option(OptionKey('libdir')), 'cmake', name)
+            libdir = state.environment.coredata.get_option(OptionKey('libdir'))
+            assert isinstance(libdir, str), 'for mypy'
+            pkgroot = os.path.join(libdir, 'cmake', name)
             pkgroot_name = os.path.join('{libdir}', 'cmake', name)
 
         template_file = os.path.join(self.cmake_root, 'Modules', f'BasicConfigVersion-{compatibility}.cmake.in')
@@ -376,7 +385,9 @@ class CmakeModule(ExtensionModule):
 
         install_dir = kwargs['install_dir']
         if install_dir is None:
-            install_dir = os.path.join(state.environment.coredata.get_option(OptionKey('libdir')), 'cmake', name)
+            libdir = state.environment.coredata.get_option(OptionKey('libdir'))
+            assert isinstance(libdir, str), 'for mypy'
+            install_dir = os.path.join(libdir, 'cmake', name)
 
         conf = kwargs['configuration']
         if isinstance(conf, dict):
@@ -384,6 +395,7 @@ class CmakeModule(ExtensionModule):
             conf = build.ConfigurationData(conf)
 
         prefix = state.environment.coredata.get_option(OptionKey('prefix'))
+        assert isinstance(prefix, str), 'for mypy'
         abs_install_dir = install_dir
         if not os.path.isabs(abs_install_dir):
             abs_install_dir = os.path.join(prefix, install_dir)
