@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2012-2020 The Meson development team
-# Copyright © 2023 Intel Corporation
+# Copyright © 2023-2024 Intel Corporation
 
 from __future__ import annotations
 
@@ -77,7 +77,8 @@ def _get_env_var(for_machine: MachineChoice, is_cross: bool, var_name: str) -> T
     return value
 
 
-def detect_gcovr(gcovr_exe: str = 'gcovr', min_version: str = '3.3', log: bool = False):
+def detect_gcovr(gcovr_exe: str = 'gcovr', min_version: str = '3.3', log: bool = False) \
+        -> T.Union[T.Tuple[None, None], T.Tuple[str, str]]:
     try:
         p, found = Popen_safe([gcovr_exe, '--version'])[0:2]
     except (FileNotFoundError, PermissionError):
@@ -90,7 +91,8 @@ def detect_gcovr(gcovr_exe: str = 'gcovr', min_version: str = '3.3', log: bool =
         return gcovr_exe, found
     return None, None
 
-def detect_lcov(lcov_exe: str = 'lcov', log: bool = False):
+def detect_lcov(lcov_exe: str = 'lcov', log: bool = False) \
+        -> T.Union[T.Tuple[None, None], T.Tuple[str, str]]:
     try:
         p, found = Popen_safe([lcov_exe, '--version'])[0:2]
     except (FileNotFoundError, PermissionError):
@@ -103,7 +105,7 @@ def detect_lcov(lcov_exe: str = 'lcov', log: bool = False):
         return lcov_exe, found
     return None, None
 
-def detect_llvm_cov(suffix: T.Optional[str] = None):
+def detect_llvm_cov(suffix: T.Optional[str] = None) -> T.Optional[str]:
     # If there's a known suffix or forced lack of suffix, use that
     if suffix is not None:
         if suffix == '':
@@ -120,7 +122,7 @@ def detect_llvm_cov(suffix: T.Optional[str] = None):
                 return tool
     return None
 
-def compute_llvm_suffix(coredata: coredata.CoreData):
+def compute_llvm_suffix(coredata: coredata.CoreData) -> T.Optional[str]:
     # Check to see if the user is trying to do coverage for either a C or C++ project
     compilers = coredata.compilers[MachineChoice.BUILD]
     cpp_compiler_is_clang = 'cpp' in compilers and compilers['cpp'].id == 'clang'
@@ -138,7 +140,8 @@ def compute_llvm_suffix(coredata: coredata.CoreData):
     # Neither compiler is a Clang, or no compilers are for C or C++
     return None
 
-def detect_lcov_genhtml(lcov_exe: str = 'lcov', genhtml_exe: str = 'genhtml'):
+def detect_lcov_genhtml(lcov_exe: str = 'lcov', genhtml_exe: str = 'genhtml') \
+        -> T.Tuple[str, T.Optional[str], str]:
     lcov_exe, lcov_version = detect_lcov(lcov_exe)
     if shutil.which(genhtml_exe) is None:
         genhtml_exe = None
@@ -161,7 +164,7 @@ def detect_ninja(version: str = '1.8.2', log: bool = False) -> T.Optional[T.List
     r = detect_ninja_command_and_version(version, log)
     return r[0] if r else None
 
-def detect_ninja_command_and_version(version: str = '1.8.2', log: bool = False) -> T.Tuple[T.List[str], str]:
+def detect_ninja_command_and_version(version: str = '1.8.2', log: bool = False) -> T.Optional[T.Tuple[T.List[str], str]]:
     env_ninja = os.environ.get('NINJA', None)
     for n in [env_ninja] if env_ninja else ['ninja', 'ninja-build', 'samu']:
         prog = ExternalProgram(n, silent=True)
@@ -187,6 +190,7 @@ def detect_ninja_command_and_version(version: str = '1.8.2', log: bool = False) 
                 mlog.log('Found {}-{} at {}'.format(name, found,
                          ' '.join([quote_arg(x) for x in prog.command])))
             return (prog.command, found)
+    return None
 
 def get_llvm_tool_names(tool: str) -> T.List[str]:
     # Ordered list of possible suffixes of LLVM executables to try. Start with
@@ -530,7 +534,7 @@ def detect_machine_info(compilers: T.Optional[CompilersDict] = None) -> MachineI
 
 # TODO make this compare two `MachineInfo`s purely. How important is the
 # `detect_cpu_family({})` distinction? It is the one impediment to that.
-def machine_info_can_run(machine_info: MachineInfo):
+def machine_info_can_run(machine_info: MachineInfo) -> bool:
     """Whether we can run binaries for this machine on the current machine.
 
     Can almost always run 32-bit binaries on 64-bit natively if the host
@@ -892,7 +896,7 @@ class Environment:
         return is_object(fname)
 
     @lru_cache(maxsize=None)
-    def is_library(self, fname: mesonlib.FileOrString):
+    def is_library(self, fname: mesonlib.FileOrString) -> bool:
         return is_library(fname)
 
     def lookup_binary_entry(self, for_machine: MachineChoice, name: str) -> T.Optional[T.List[str]]:
@@ -983,9 +987,10 @@ class Environment:
             return []
         return comp.get_default_include_dirs()
 
-    def need_exe_wrapper(self, for_machine: MachineChoice = MachineChoice.HOST):
+    def need_exe_wrapper(self, for_machine: MachineChoice = MachineChoice.HOST) -> bool:
         value = self.properties[for_machine].get('needs_exe_wrapper', None)
         if value is not None:
+            assert isinstance(value, bool), 'for mypy'
             return value
         return not machine_info_can_run(self.machines[for_machine])
 
