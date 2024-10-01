@@ -36,6 +36,7 @@ modules = [
     'mesonbuild/coredata.py',
     'mesonbuild/depfile.py',
     'mesonbuild/envconfig.py',
+    'mesonbuild/environment.py',
     'mesonbuild/interpreter/compiler.py',
     'mesonbuild/interpreter/mesonmain.py',
     'mesonbuild/interpreter/interpreterobjects.py',

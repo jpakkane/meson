@@ -13,6 +13,9 @@ from .mesonlib import EnvironmentException, HoldableObject
 from . import mlog
 from pathlib import Path
 
+if T.TYPE_CHECKING:
+    from .options import ElementaryOptionValues
+
 
 # These classes contains all the data pulled from configuration files (native
 # and cross file currently), and also assists with the reading environment
@@ -152,7 +155,7 @@ class CMakeSkipCompilerTest(Enum):
 class Properties:
     def __init__(
             self,
-            properties: T.Optional[T.Dict[str, T.Optional[T.Union[str, bool, int, T.List[str]]]]] = None,
+            properties: T.Optional[T.Dict[str, ElementaryOptionValues]] = None,
     ):
         self.properties = properties or {}
 
@@ -269,7 +272,9 @@ class MachineInfo(HoldableObject):
         return f'<MachineInfo: {self.system} {self.cpu_family} ({self.cpu})>'
 
     @classmethod
-    def from_literal(cls, literal: T.Dict[str, str]) -> 'MachineInfo':
+    def from_literal(cls, raw: T.Dict[str, ElementaryOptionValues]) -> 'MachineInfo':
+        assert all(isinstance(v, str) for v in raw.values()), 'for mypy'
+        literal = T.cast('T.Dict[str, str]', raw)
         minimum_literal = {'cpu', 'cpu_family', 'endian', 'system'}
         if set(literal) < minimum_literal:
             raise EnvironmentException(
@@ -388,7 +393,7 @@ class BinaryTable:
 
     def __init__(
             self,
-            binaries: T.Optional[T.Dict[str, T.Union[str, T.List[str]]]] = None,
+            binaries: T.Optional[T.Mapping[str, ElementaryOptionValues]] = None,
     ):
         self.binaries: T.Dict[str, T.List[str]] = {}
         if binaries:
