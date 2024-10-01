@@ -28,7 +28,6 @@ from .envconfig import (
     BinaryTable, MachineInfo, Properties, known_cpu_families, CMakeVariables,
 )
 from . import compilers
-from .compilers.mixins.visualstudio import VisualStudioLikeCompiler
 from .compilers import (
     is_assembly,
     is_header,
@@ -43,6 +42,7 @@ from mesonbuild import envconfig
 
 if T.TYPE_CHECKING:
     from .compilers import Compiler
+    from .compilers.mixins.visualstudio import VisualStudioLikeCompiler
     from .options import ElementaryOptionValues
     from .wrap.wrap import Resolver
 
@@ -342,7 +342,7 @@ def detect_windows_arch(compilers: CompilersDict) -> str:
     # 32-bit and pretend like we're running under WOW64. Else, return the
     # actual Windows architecture that we deduced above.
     for compiler in compilers.values():
-        assert isinstance(compiler, VisualStudioLikeCompiler), 'for mypy'
+        compiler = T.cast('VisualStudioLikeCompiler', compiler)
         if compiler.id == 'msvc' and (compiler.target in {'x86', '80x86'}):
             return 'x86'
         if compiler.id == 'clang-cl' and (compiler.target in {'x86', 'i686'}):
