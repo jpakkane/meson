@@ -250,6 +250,8 @@ class ConverterTarget:
 
         self.generated_raw: T.List[Path] = []
 
+        self.clib_compiler = None
+
         for i in target.files:
             languages: T.Set[str] = set()
             src_suffixes: T.Set[str] = set()
@@ -275,6 +277,10 @@ class ConverterTarget:
             # Register the new languages and initialize the compile opts array
             for lang in languages:
                 self.languages.add(lang)
+
+                if self.clib_compiler is None:
+                    self.clib_compiler = self.env.coredata.compilers[self.for_machine].get(lang)
+
                 if lang not in self.compile_opts:
                     self.compile_opts[lang] = []
 
@@ -345,7 +351,7 @@ class ConverterTarget:
         if tgt:
             self.depends_raw = trace.targets[self.cmake_name].depends
 
-            rtgt = resolve_cmake_trace_targets(self.cmake_name, trace, self.env)
+            rtgt = resolve_cmake_trace_targets(self.cmake_name, trace, self.env, clib_compiler=self.clib_compiler)
             self.includes += [Path(x) for x in rtgt.include_directories]
             self.link_flags += rtgt.link_flags
             self.public_link_flags += rtgt.public_link_flags
