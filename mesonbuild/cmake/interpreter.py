@@ -250,8 +250,6 @@ class ConverterTarget:
 
         self.generated_raw: T.List[Path] = []
 
-        self.clib_compiler = None
-
         for i in target.files:
             languages: T.Set[str] = set()
             src_suffixes: T.Set[str] = set()
@@ -277,10 +275,6 @@ class ConverterTarget:
             # Register the new languages and initialize the compile opts array
             for lang in languages:
                 self.languages.add(lang)
-
-                if self.clib_compiler is None:
-                    self.clib_compiler = self.env.coredata.compilers[self.for_machine].get(lang)
-
                 if lang not in self.compile_opts:
                     self.compile_opts[lang] = []
 
@@ -299,6 +293,17 @@ class ConverterTarget:
                 self.generated_raw += i.sources
             else:
                 self.sources += i.sources
+
+        self.clib_compiler = None
+        compilers = self.env.coredata.compilers[self.for_machine]
+
+        for lang in ['objcpp', 'cpp', 'objc', 'fortran', 'c']:
+            if lang in self.languages:
+                try:
+                    self.clib_compiler = compilers[lang]
+                    break
+                except KeyError:
+                    pass
 
     def __repr__(self) -> str:
         return f'<{self.__class__.__name__}: {self.name}>'
