@@ -158,7 +158,7 @@ class CPPCompiler(CLikeCompiler, Compiler):
         }
 
         # Currently, remapping is only supported for Clang, Elbrus and GCC
-        assert self.id in frozenset(['clang', 'lcc', 'gcc', 'emscripten', 'armltdclang', 'intel-llvm'])
+        assert self.id in frozenset(['clang', 'lcc', 'gcc', 'emscripten', 'armltdclang', 'intel-llvm', 'nvidia_hpc'])
 
         if cpp_std not in CPP_FALLBACKS:
             # 'c++03' and 'c++98' don't have fallback types
@@ -565,6 +565,23 @@ class NvidiaHPC_CPPCompiler(PGICompiler, CPPCompiler):
         CPPCompiler.__init__(self, ccache, exelist, version, for_machine, is_cross,
                              info, linker=linker, full_version=full_version)
         PGICompiler.__init__(self)
+
+    def get_options(self) -> 'MutableKeyedOptionDictType':
+        opts = CPPCompiler.get_options(self)
+        cpp_stds = ['none', 'c++98', 'gnu++98', 'c++03', 'gnu++98', 'c++11', 'gnu++11']
+        if version_compare(self.version, '>=22.9.0'):
+            cpp_stds += ['c++14', 'gnu++14', 'c++17', 'gnu++17', 'c++20', 'gnu+20']
+        key = OptionKey('std', lang=self.language, machine=self.for_machine)
+        opts[key].choices = cpp_stds
+        return opts
+
+    def get_option_compile_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
+        args = []
+        key = OptionKey('std', lang=self.language, machine=self.for_machine)
+        std = options[key]
+        if std.value != 'none':
+            args.append(self._find_best_cpp_std(std.value))
+        return args
 
 
 class ElbrusCPPCompiler(ElbrusCompiler, CPPCompiler):

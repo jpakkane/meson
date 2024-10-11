@@ -361,6 +361,21 @@ class NvidiaHPC_CCompiler(PGICompiler, CCompiler):
                            info, linker=linker, full_version=full_version)
         PGICompiler.__init__(self)
 
+    def get_options(self) -> 'MutableKeyedOptionDictType':
+        opts = CCompiler.get_options(self)
+        c_stds = ['none', 'c89', 'gnu89', 'c90', 'gnu90', 'c99', 'gnu99', 'c11', 'gnu11']
+        if version_compare(self.version, '>=22.9.0'):
+            c_stds += ['c17', 'gnu17', 'c18', 'gnu18']
+        key = OptionKey('std', lang=self.language, machine=self.for_machine)
+        opts[key].choices = c_stds
+        return opts
+
+    def get_option_compile_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
+        args = []
+        std = options[OptionKey('std', lang=self.language, machine=self.for_machine)]
+        if std.value != 'none':
+            args.append('-std=' + std.value)
+        return args
 
 class ElbrusCCompiler(ElbrusCompiler, CCompiler):
     def __init__(self, ccache: T.List[str], exelist: T.List[str], version: str, for_machine: MachineChoice, is_cross: bool,
