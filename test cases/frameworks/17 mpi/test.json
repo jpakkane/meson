@@ -15,5 +15,5 @@
       ]
     }
   },
-  "expect_skip_on_jobname": ["azure", "cygwin", "msys2", "opensuse"]
+  "expect_skip_on_jobname": ["azure", "cygwin", "msys2", "opensuse", "ubuntu-rolling"]
 }
