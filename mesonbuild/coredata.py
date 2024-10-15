@@ -60,8 +60,8 @@ if T.TYPE_CHECKING:
         cross_file: T.List[str]
         native_file: T.List[str]
 
-    OptionDictType = T.Union[T.Dict[str, 'options.UserOption[T.Any]'], 'OptionsView']
-    MutableKeyedOptionDictType = T.Dict['OptionKey', 'options.UserOption[T.Any]']
+    OptionDictType = T.Union[T.Dict[str, options.AnyOptionType], 'OptionsView']
+    MutableKeyedOptionDictType = T.Dict['OptionKey', options.AnyOptionType]
     KeyedOptionDictType = T.Union['options.OptionStore', 'OptionsView']
     CompilerCheckCacheKey = T.Tuple[T.Tuple[str, ...], str, FileOrString, T.Tuple[str, ...], CompileCheckMode]
     # code, args
@@ -434,7 +434,8 @@ class CoreData:
                 'backend_max_links',
                 'Maximum number of linker processes to run or 0 for no '
                 'limit',
-                (0, None, 0)))
+                0,
+                min_value=0))
         elif backend_name.startswith('vs'):
             self.optstore.add_system_option('backend_startup_project', options.UserStringOption(
                 'backend_startup_project',
@@ -598,7 +599,7 @@ class CoreData:
             oldval = self.optstore.get_value_object(key)
             if type(oldval) is not type(value):
                 self.optstore.set_value(key, value.value)
-            elif oldval.choices != value.choices:
+            elif options.choices_are_different(oldval, value):
                 # If the choices have changed, use the new value, but attempt
                 # to keep the old options. If they are not valid keep the new
                 # defaults but warn.
@@ -856,10 +857,10 @@ def save(obj: CoreData, build_dir: str) -> str:
 
 def register_builtin_arguments(parser: argparse.ArgumentParser) -> None:
     for n, b in options.BUILTIN_OPTIONS.items():
-        b.add_to_argparse(str(n), parser, '')
+        b.add_to_argparse(n, parser, '')
     for n, b in options.BUILTIN_OPTIONS_PER_MACHINE.items():
-        b.add_to_argparse(str(n), parser, ' (just for host machine)')
-        b.add_to_argparse(str(n.as_build()), parser, ' (just for build machine)')
+        b.add_to_argparse(n, parser, ' (just for host machine)')
+        b.add_to_argparse(n.as_build(), parser, ' (just for build machine)')
     parser.add_argument('-D', action='append', dest='projectoptions', default=[], metavar="option",
                         help='Set the value of an option, can be used several times to set multiple options.')
 

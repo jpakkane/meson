@@ -183,11 +183,16 @@ class RustCompiler(Compiler):
     # use_linker_args method instead.
 
     def get_options(self) -> MutableKeyedOptionDictType:
-        return dict((self.create_option(options.UserComboOption,
-                                        self.form_compileropt_key('std'),
-                                        'Rust edition to use',
-                                        ['none', '2015', '2018', '2021'],
-                                        'none'),))
+        opts = super().get_options()
+
+        key = self.form_compileropt_key('std')
+        opts[key] = options.UserComboOption(
+            self.make_option_name(key),
+            'Rust edition to use',
+            'none',
+            choices=['none', '2015', '2018', '2021'])
+
+        return opts
 
     def get_dependency_compile_args(self, dep: 'Dependency') -> T.List[str]:
         # Rust doesn't have dependency compile arguments so simply return

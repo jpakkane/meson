@@ -20,9 +20,7 @@ from ..mesonlib import (
     EnvironmentException, MesonException,
     Popen_safe_logged, LibType, TemporaryDirectoryWinProof,
 )
-
 from ..options import OptionKey
-
 from ..arglist import CompilerArgs
 
 if T.TYPE_CHECKING:
@@ -37,8 +35,8 @@ if T.TYPE_CHECKING:
     from ..dependencies import Dependency
 
     CompilerType = T.TypeVar('CompilerType', bound='Compiler')
-    _T = T.TypeVar('_T')
-    UserOptionType = T.TypeVar('UserOptionType', bound=options.UserOption)
+
+_T = T.TypeVar('_T')
 
 """This file contains the data files of all compilers Meson knows
 about. To support a new compiler, add its information below.
@@ -211,23 +209,25 @@ clike_debug_args: T.Dict[bool, T.List[str]] = {
 
 MSCRT_VALS = ['none', 'md', 'mdd', 'mt', 'mtd']
 
+
 @dataclass
-class BaseOption(T.Generic[options._T, options._U]):
-    opt_type: T.Type[options._U]
+class BaseOption(T.Generic[_T]):
+    opt_type: T.Type[options.UserOption[_T]]
     description: str
     default: T.Any = None
     choices: T.Any = None
 
-    def init_option(self, name: OptionKey) -> options._U:
-        keywords = {'value': self.default}
+    def init_option(self, name: OptionKey) -> options.UserOption[_T]:
+        keywords = {}
         if self.choices:
             keywords['choices'] = self.choices
-        return self.opt_type(name.name, self.description, **keywords)
+        return self.opt_type(name.name, self.description, self.default, **keywords)
+
 
 BASE_OPTIONS: T.Mapping[OptionKey, BaseOption] = {
     OptionKey('b_pch'): BaseOption(options.UserBooleanOption, 'Use precompiled headers', True),
     OptionKey('b_lto'): BaseOption(options.UserBooleanOption, 'Use link time optimization', False),
-    OptionKey('b_lto_threads'): BaseOption(options.UserIntegerOption, 'Use multiple threads for Link Time Optimization', (None, None, 0)),
+    OptionKey('b_lto_threads'): BaseOption(options.UserIntegerOption, 'Use multiple threads for Link Time Optimization', 0),
     OptionKey('b_lto_mode'): BaseOption(options.UserComboOption, 'Select between different LTO modes.', 'default',
                                         choices=['default', 'thin']),
     OptionKey('b_thinlto_cache'): BaseOption(options.UserBooleanOption, 'Use LLVM ThinLTO caching for faster incremental builds', False),
@@ -582,11 +582,11 @@ class Compiler(HoldableObject, metaclass=abc.ABCMeta):
         """
         return []
 
-    def create_option(self, option_type: T.Type[UserOptionType], option_key: OptionKey, *args: T.Any, **kwargs: T.Any) -> T.Tuple[OptionKey, UserOptionType]:
-        return option_key, option_type(f'{self.language}_{option_key.name}', *args, **kwargs)
+    def make_option_name(self, key: OptionKey) -> str:
+        return f'{self.language}_{key.name}'
 
     @staticmethod
-    def update_options(options: MutableKeyedOptionDictType, *args: T.Tuple[OptionKey, UserOptionType]) -> MutableKeyedOptionDictType:
+    def update_options(options: MutableKeyedOptionDictType, *args: T.Tuple[OptionKey, options.AnyOptionType]) -> MutableKeyedOptionDictType:
         options.update(args)
         return options
 
@@ -1349,6 +1349,15 @@ class Compiler(HoldableObject, metaclass=abc.ABCMeta):
     def form_compileropt_key(self, basename: str) -> OptionKey:
         return OptionKey(f'{self.language}_{basename}', machine=self.for_machine)
 
+    def _update_language_stds(self, opts: MutableKeyedOptionDictType, value: T.List[str]) -> None:
+        key = self.form_compileropt_key('std')
+        std = opts[key]
+        assert isinstance(std, (options.UserStdOption, options.UserComboOption)), 'for mypy'
+        if 'none' not in value:
+            value = ['none'] + value
+        std.choices = value
+
+
 def get_global_options(lang: str,
                        comp: T.Type[Compiler],
                        for_machine: MachineChoice,
@@ -1364,12 +1373,12 @@ def get_global_options(lang: str,
     comp_options = env.options.get(comp_key, [])
     link_options = env.options.get(largkey, [])
 
-    cargs = options.UserArrayOption(
+    cargs = options.UserStringArrayOption(
         f'{lang}_{argkey.name}',
         description + ' compiler',
         comp_options, split_args=True, allow_dups=True)
 
-    largs = options.UserArrayOption(
+    largs = options.UserStringArrayOption(
         f'{lang}_{largkey.name}',
         description + ' linker',
         link_options, split_args=True, allow_dups=True)

@@ -646,18 +646,22 @@ class CudaCompiler(Compiler):
         if version_compare(self.version, self._CPP20_VERSION):
             cpp_stds += ['c++20']
 
-        return self.update_options(
-            super().get_options(),
-            self.create_option(options.UserComboOption,
-                               self.form_compileropt_key('std'),
-                               'C++ language standard to use with CUDA',
-                               cpp_stds,
-                               'none'),
-            self.create_option(options.UserStringOption,
-                               self.form_compileropt_key('ccbindir'),
-                               'CUDA non-default toolchain directory to use (-ccbin)',
-                               ''),
-        )
+        opts = super().get_options()
+
+        key = self.form_compileropt_key('std')
+        opts[key] = options.UserComboOption(
+            self.make_option_name(key),
+            'C++ language standard to use with CUDA',
+            'none',
+            choices=cpp_stds)
+
+        key = self.form_compileropt_key('ccbindir')
+        opts[key] = options.UserStringOption(
+            self.make_option_name(key),
+            'CUDA non-default toolchain directory to use (-ccbin)',
+            '')
+
+        return opts
 
     def _to_host_compiler_options(self, master_options: 'KeyedOptionDictType') -> 'KeyedOptionDictType':
         """

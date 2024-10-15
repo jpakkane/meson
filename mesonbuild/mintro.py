@@ -30,8 +30,6 @@ from .mparser import FunctionNode, ArrayNode, ArgumentNode, StringNode
 
 if T.TYPE_CHECKING:
     import argparse
-    from typing import Any
-    from .options import UserOption
 
     from .interpreter import Interpreter
     from .mparser import BaseNode
@@ -305,7 +303,7 @@ def list_buildoptions(coredata: cdata.CoreData, subprojects: T.Optional[T.List[s
                 for s in subprojects:
                     core_options[k.evolve(subproject=s)] = v
 
-    def add_keys(opts: 'T.Union[dict[OptionKey, UserOption[Any]], cdata.KeyedOptionDictType]', section: str) -> None:
+    def add_keys(opts: T.Union[cdata.MutableKeyedOptionDictType, cdata.KeyedOptionDictType], section: str) -> None:
         for key, opt in sorted(opts.items()):
             optdict = {'name': str(key), 'value': opt.value, 'section': section,
                        'machine': key.machine.get_lower_case_name() if coredata.is_per_machine_option(key) else 'any'}
@@ -314,16 +312,17 @@ def list_buildoptions(coredata: cdata.CoreData, subprojects: T.Optional[T.List[s
             elif isinstance(opt, options.UserBooleanOption):
                 typestr = 'boolean'
             elif isinstance(opt, options.UserComboOption):
-                optdict['choices'] = opt.choices
+                optdict['choices'] = opt.printable_choices()
                 typestr = 'combo'
-            elif isinstance(opt, options.UserIntegerOption):
+            elif isinstance(opt, (options.UserIntegerOption, options.UserUmaskOption)):
                 typestr = 'integer'
-            elif isinstance(opt, options.UserArrayOption):
+            elif isinstance(opt, options.UserStringArrayOption):
                 typestr = 'array'
-                if opt.choices:
-                    optdict['choices'] = opt.choices
+                c = opt.printable_choices()
+                if c:
+                    optdict['choices'] = c
             else:
-                raise RuntimeError("Unknown option type")
+                raise RuntimeError('Unknown option type: ', type(opt))
             optdict['type'] = typestr
             optdict['description'] = opt.description
             optlist.append(optdict)

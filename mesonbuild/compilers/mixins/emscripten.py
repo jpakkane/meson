@@ -57,15 +57,16 @@ class EmscriptenMixin(Compiler):
         return args
 
     def get_options(self) -> coredata.MutableKeyedOptionDictType:
-        return self.update_options(
-            super().get_options(),
-            self.create_option(
-                options.UserIntegerOption,
-                OptionKey(f'{self.language}_thread_count', machine=self.for_machine),
-                'Number of threads to use in web assembly, set to 0 to disable',
-                (0, None, 4),  # Default was picked at random
-            ),
-        )
+        opts = super().get_options()
+
+        key = OptionKey(f'{self.language}_thread_count', machine=self.for_machine)
+        opts[key] = options.UserIntegerOption(
+            self.make_option_name(key),
+            'Number of threads to use in web assembly, set to 0 to disable',
+            4,  # Default was picked at random
+            min_value=0)
+
+        return opts
 
     @classmethod
     def native_args_to_unix(cls, args: T.List[str]) -> T.List[str]:

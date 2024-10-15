@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright © 2021 Intel Corporation
+# Copyright © 2021-2024 Intel Corporation
 from __future__ import annotations
 
 """Abstraction for Cython language compilers."""
@@ -67,19 +67,23 @@ class CythonCompiler(Compiler):
         return new
 
     def get_options(self) -> 'MutableKeyedOptionDictType':
-        return self.update_options(
-            super().get_options(),
-            self.create_option(options.UserComboOption,
-                               self.form_compileropt_key('version'),
-                               'Python version to target',
-                               ['2', '3'],
-                               '3'),
-            self.create_option(options.UserComboOption,
-                               self.form_compileropt_key('language'),
-                               'Output C or C++ files',
-                               ['c', 'cpp'],
-                               'c'),
-        )
+        opts = super().get_options()
+
+        key = self.form_compileropt_key('version')
+        opts[key] = options.UserComboOption(
+            self.make_option_name(key),
+            'Python version to target',
+            '3',
+            choices=['2', '3'])
+
+        key = self.form_compileropt_key('language')
+        opts[key] = options.UserComboOption(
+            self.make_option_name(key),
+            'Output C or C++ files',
+            'c',
+            choices=['c', 'cpp'])
+
+        return opts
 
     def get_option_compile_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
         args: T.List[str] = []
