@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2012-2020 The Meson development team
-# Copyright © 2023 Intel Corporation
+# Copyright © 2023-2024 Intel Corporation
 
 from __future__ import annotations
 
@@ -552,12 +552,12 @@ class Environment:
     log_dir = 'meson-logs'
     info_dir = 'meson-info'
 
-    def __init__(self, source_dir: str, build_dir: str, cmd_options: coredata.SharedCMDOptions) -> None:
+    def __init__(self, source_dir: str, build_dir: T.Optional[str], cmd_options: coredata.SharedCMDOptions) -> None:
         self.source_dir = source_dir
-        self.build_dir = build_dir
         # Do not try to create build directories when build_dir is none.
         # This reduced mode is used by the --buildoptions introspector
         if build_dir is not None:
+            self.build_dir = build_dir
             self.scratch_dir = os.path.join(build_dir, Environment.private_dir)
             self.log_dir = os.path.join(build_dir, Environment.log_dir)
             self.info_dir = os.path.join(build_dir, Environment.info_dir)
@@ -586,6 +586,7 @@ class Environment:
                     raise MesonException(f'{str(e)} Try regenerating using "meson setup --wipe".')
         else:
             # Just create a fresh coredata in this case
+            self.build_dir = ''
             self.scratch_dir = ''
             self.create_new_coredata(cmd_options)
 

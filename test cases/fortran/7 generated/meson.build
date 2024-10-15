@@ -8,20 +8,7 @@ conf_data = configuration_data()
 conf_data.set('ONE', 1)
 conf_data.set('TWO', 2)
 
-mod3_f = custom_target(
-  'mod3.f',
-  input : 'mod3.f90',
-  output : 'mod3.f90',
-  # We need a platform agnostic way to do a copy a file, using a custom_target
-  # and we need to use the @OUTDIR@, not @OUTPUT@ in order to exercise
-  # https://github.com/mesonbuild/meson/issues/9258
-  command : [
-    find_program('python', 'python3'), '-c',
-    'import sys, shutil; shutil.copy(sys.argv[1], sys.argv[2])',
-    '@INPUT@', '@OUTDIR@',
-  ],
-)
-
+mod3_f = import('fs').copyfile('mod3.f90', 'mod3.f90')
 three = library('mod3', mod3_f)
 
 templates_basenames = ['mod2', 'mod1']
@@ -35,5 +22,22 @@ foreach template_basename : templates_basenames
 endforeach
 
 sources = ['prog.f90'] + generated_sources
-exe = executable('generated', sources, link_with: three)
-test('generated', exe)
+exe = executable('configure_file', sources, link_with: three)
+test('configure_file', exe)
+
+gen = generator(
+  find_program('gen.py'),
+  arguments : [
+    '@INPUT@', '@OUTPUT@',
+    '--replace', '@ONE@=1',
+    '--replace', '@TWO@=2',
+  ],
+  output : ['@BASENAME@.f90'],
+)
+
+exe = executable(
+  'generator',
+  'prog.f90', gen.process('mod1.fpp', 'mod2.fpp'),
+  link_with: three,
+)
+test('generator', exe)

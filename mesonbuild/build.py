@@ -1085,9 +1085,10 @@ class BuildTarget(Target):
 
     @lru_cache(maxsize=None)
     def get_transitive_link_deps(self) -> ImmutableListProtocol[BuildTargetTypes]:
-        result: T.List[Target] = []
-        for i in self.link_targets:
-            result += i.get_all_link_deps()
+        result: T.List[BuildTargetTypes] = []
+        for i in itertools.chain(self.link_targets, self.link_whole_targets):
+            result.append(i)
+            result.extend(i.get_all_link_deps())
         return result
 
     def get_link_deps_mapping(self, prefix: str) -> T.Mapping[str, str]:
@@ -2424,7 +2425,7 @@ class SharedLibrary(BuildTarget):
         """
         return self.debug_filename
 
-    def get_all_link_deps(self):
+    def get_all_link_deps(self) -> ImmutableListProtocol[BuildTargetTypes]:
         return [self] + self.get_transitive_link_deps()
 
     def get_aliases(self) -> T.List[T.Tuple[str, str, str]]:
@@ -2758,7 +2759,7 @@ class CustomTarget(Target, CustomTargetBase, CommandBase):
     def get_link_dep_subdirs(self) -> T.AbstractSet[str]:
         return OrderedSet()
 
-    def get_all_link_deps(self):
+    def get_all_link_deps(self) -> ImmutableListProtocol[BuildTargetTypes]:
         return []
 
     def is_internal(self) -> bool:
@@ -3016,7 +3017,7 @@ class CustomTargetIndex(CustomTargetBase, HoldableObject):
     def get_id(self) -> str:
         return self.target.get_id()
 
-    def get_all_link_deps(self):
+    def get_all_link_deps(self) -> ImmutableListProtocol[BuildTargetTypes]:
         return self.target.get_all_link_deps()
 
     def get_link_deps_mapping(self, prefix: str) -> T.Mapping[str, str]:
