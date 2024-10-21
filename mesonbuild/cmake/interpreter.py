@@ -19,6 +19,7 @@ from .toolchain import CMakeToolchain, CMakeExecScope
 from .traceparser import CMakeTraceParser
 from .tracetargets import resolve_cmake_trace_targets
 from .. import mlog, mesonlib
+from .. import options
 from ..mesonlib import MachineChoice, OrderedSet, path_is_in_root, relative_to_if_possible
 from ..options import OptionKey
 from ..mesondata import DataFile
@@ -533,16 +534,11 @@ class ConverterTarget:
     @lru_cache(maxsize=None)
     def _all_lang_stds(self, lang: str) -> 'ImmutableListProtocol[str]':
         try:
-            res = self.env.coredata.optstore.get_value_object(OptionKey(f'{lang}_std', machine=MachineChoice.BUILD)).choices
+            opt = self.env.coredata.optstore.get_value_object(OptionKey(f'{lang}_std', machine=MachineChoice.BUILD))
+            assert isinstance(opt, (options.UserStdOption, options.UserComboOption)), 'for mypy'
+            return opt.choices or []
         except KeyError:
             return []
-
-        # TODO: Get rid of this once we have proper typing for options
-        assert isinstance(res, list)
-        for i in res:
-            assert isinstance(i, str)
-
-        return res
 
     def process_inter_target_dependencies(self) -> None:
         # Move the dependencies from all TRANSFER_DEPENDENCIES_FROM to the target

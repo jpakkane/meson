@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2012-2020 The Meson development team
-# Copyright © 2023 Intel Corporation
+# Copyright © 2023-2024 Intel Corporation
 
 from __future__ import annotations
 
@@ -41,15 +41,20 @@ from functools import lru_cache
 from mesonbuild import envconfig
 
 if T.TYPE_CHECKING:
-    from configparser import ConfigParser
-
     from .compilers import Compiler
+    from .compilers.mixins.visualstudio import VisualStudioLikeCompiler
+    from .options import ElementaryOptionValues
     from .wrap.wrap import Resolver
 
     CompilersDict = T.Dict[str, Compiler]
 
 
 build_filename = 'meson.build'
+
+
+def _as_str(val: object) -> str:
+    assert isinstance(val, str), 'for mypy'
+    return val
 
 
 def _get_env_var(for_machine: MachineChoice, is_cross: bool, var_name: str) -> T.Optional[str]:
@@ -77,7 +82,8 @@ def _get_env_var(for_machine: MachineChoice, is_cross: bool, var_name: str) -> T
     return value
 
 
-def detect_gcovr(gcovr_exe: str = 'gcovr', min_version: str = '3.3', log: bool = False):
+def detect_gcovr(gcovr_exe: str = 'gcovr', min_version: str = '3.3', log: bool = False) \
+        -> T.Union[T.Tuple[None, None], T.Tuple[str, str]]:
     try:
         p, found = Popen_safe([gcovr_exe, '--version'])[0:2]
     except (FileNotFoundError, PermissionError):
@@ -90,7 +96,8 @@ def detect_gcovr(gcovr_exe: str = 'gcovr', min_version: str = '3.3', log: bool =
         return gcovr_exe, found
     return None, None
 
-def detect_lcov(lcov_exe: str = 'lcov', log: bool = False):
+def detect_lcov(lcov_exe: str = 'lcov', log: bool = False) \
+        -> T.Union[T.Tuple[None, None], T.Tuple[str, str]]:
     try:
         p, found = Popen_safe([lcov_exe, '--version'])[0:2]
     except (FileNotFoundError, PermissionError):
@@ -103,7 +110,7 @@ def detect_lcov(lcov_exe: str = 'lcov', log: bool = False):
         return lcov_exe, found
     return None, None
 
-def detect_llvm_cov(suffix: T.Optional[str] = None):
+def detect_llvm_cov(suffix: T.Optional[str] = None) -> T.Optional[str]:
     # If there's a known suffix or forced lack of suffix, use that
     if suffix is not None:
         if suffix == '':
@@ -120,7 +127,7 @@ def detect_llvm_cov(suffix: T.Optional[str] = None):
                 return tool
     return None
 
-def compute_llvm_suffix(coredata: coredata.CoreData):
+def compute_llvm_suffix(coredata: coredata.CoreData) -> T.Optional[str]:
     # Check to see if the user is trying to do coverage for either a C or C++ project
     compilers = coredata.compilers[MachineChoice.BUILD]
     cpp_compiler_is_clang = 'cpp' in compilers and compilers['cpp'].id == 'clang'
@@ -138,7 +145,8 @@ def compute_llvm_suffix(coredata: coredata.CoreData):
     # Neither compiler is a Clang, or no compilers are for C or C++
     return None
 
-def detect_lcov_genhtml(lcov_exe: str = 'lcov', genhtml_exe: str = 'genhtml'):
+def detect_lcov_genhtml(lcov_exe: str = 'lcov', genhtml_exe: str = 'genhtml') \
+        -> T.Tuple[str, T.Optional[str], str]:
     lcov_exe, lcov_version = detect_lcov(lcov_exe)
     if shutil.which(genhtml_exe) is None:
         genhtml_exe = None
@@ -161,7 +169,7 @@ def detect_ninja(version: str = '1.8.2', log: bool = False) -> T.Optional[T.List
     r = detect_ninja_command_and_version(version, log)
     return r[0] if r else None
 
-def detect_ninja_command_and_version(version: str = '1.8.2', log: bool = False) -> T.Tuple[T.List[str], str]:
+def detect_ninja_command_and_version(version: str = '1.8.2', log: bool = False) -> T.Optional[T.Tuple[T.List[str], str]]:
     env_ninja = os.environ.get('NINJA', None)
     for n in [env_ninja] if env_ninja else ['ninja', 'ninja-build', 'samu']:
         prog = ExternalProgram(n, silent=True)
@@ -187,6 +195,7 @@ def detect_ninja_command_and_version(version: str = '1.8.2', log: bool = False) 
                 mlog.log('Found {}-{} at {}'.format(name, found,
                          ' '.join([quote_arg(x) for x in prog.command])))
             return (prog.command, found)
+    return None
 
 def get_llvm_tool_names(tool: str) -> T.List[str]:
     # Ordered list of possible suffixes of LLVM executables to try. Start with
@@ -333,6 +342,7 @@ def detect_windows_arch(compilers: CompilersDict) -> str:
     # 32-bit and pretend like we're running under WOW64. Else, return the
     # actual Windows architecture that we deduced above.
     for compiler in compilers.values():
+        compiler = T.cast('VisualStudioLikeCompiler', compiler)
         if compiler.id == 'msvc' and (compiler.target in {'x86', '80x86'}):
             return 'x86'
         if compiler.id == 'clang-cl' and (compiler.target in {'x86', 'i686'}):
@@ -531,7 +541,7 @@ def detect_machine_info(compilers: T.Optional[CompilersDict] = None) -> MachineI
 
 # TODO make this compare two `MachineInfo`s purely. How important is the
 # `detect_cpu_family({})` distinction? It is the one impediment to that.
-def machine_info_can_run(machine_info: MachineInfo):
+def machine_info_can_run(machine_info: MachineInfo) -> bool:
     """Whether we can run binaries for this machine on the current machine.
 
     Can almost always run 32-bit binaries on 64-bit natively if the host
@@ -621,7 +631,7 @@ class Environment:
         #
         # Note that order matters because of 'buildtype', if it is after
         # 'optimization' and 'debug' keys, it override them.
-        self.options: T.MutableMapping[OptionKey, T.Union[str, T.List[str]]] = collections.OrderedDict()
+        self.options: T.MutableMapping[OptionKey, ElementaryOptionValues] = collections.OrderedDict()
 
         ## Read in native file(s) to override build machine configuration
 
@@ -688,7 +698,8 @@ class Environment:
         self.default_pkgconfig = ['pkg-config']
         self.wrap_resolver: T.Optional['Resolver'] = None
 
-    def _load_machine_file_options(self, config: 'ConfigParser', properties: Properties, machine: MachineChoice) -> None:
+    def _load_machine_file_options(self, config: T.Mapping[str, T.Mapping[str, ElementaryOptionValues]],
+                                   properties: Properties, machine: MachineChoice) -> None:
         """Read the contents of a Machine file and put it in the options store."""
 
         # Look for any options in the deprecated paths section, warn about
@@ -698,6 +709,7 @@ class Environment:
         if paths:
             mlog.deprecation('The [paths] section is deprecated, use the [built-in options] section instead.')
             for k, v in paths.items():
+                assert isinstance(v, (str, list)), 'for mypy'
                 self.options[OptionKey.from_string(k).evolve(machine=machine)] = v
 
         # Next look for compiler options in the "properties" section, this is
@@ -710,6 +722,7 @@ class Environment:
         for k, v in properties.properties.copy().items():
             if k in deprecated_properties:
                 mlog.deprecation(f'{k} in the [properties] section of the machine file is deprecated, use the [built-in options] section.')
+                assert isinstance(v, (str, list)), 'for mypy'
                 self.options[OptionKey.from_string(k).evolve(machine=machine)] = v
                 del properties.properties[k]
 
@@ -852,7 +865,12 @@ class Environment:
         # re-initialized with project options by the interpreter during
         # build file parsing.
         # meson_command is used by the regenchecker script, which runs meson
-        self.coredata = coredata.CoreData(options, self.scratch_dir, mesonlib.get_meson_command())
+        meson_command = mesonlib.get_meson_command()
+        if meson_command is None:
+            meson_command = []
+        else:
+            meson_command = meson_command.copy()
+        self.coredata = coredata.CoreData(options, self.scratch_dir, meson_command)
         self.first_invocation = True
 
     def is_cross_build(self, when_building_for: MachineChoice = MachineChoice.HOST) -> bool:
@@ -893,7 +911,7 @@ class Environment:
         return is_object(fname)
 
     @lru_cache(maxsize=None)
-    def is_library(self, fname: mesonlib.FileOrString):
+    def is_library(self, fname: mesonlib.FileOrString) -> bool:
         return is_library(fname)
 
     def lookup_binary_entry(self, for_machine: MachineChoice, name: str) -> T.Optional[T.List[str]]:
@@ -933,25 +951,25 @@ class Environment:
         return self.get_libdir()
 
     def get_prefix(self) -> str:
-        return self.coredata.get_option(OptionKey('prefix'))
+        return _as_str(self.coredata.get_option(OptionKey('prefix')))
 
     def get_libdir(self) -> str:
-        return self.coredata.get_option(OptionKey('libdir'))
+        return _as_str(self.coredata.get_option(OptionKey('libdir')))
 
     def get_libexecdir(self) -> str:
-        return self.coredata.get_option(OptionKey('libexecdir'))
+        return _as_str(self.coredata.get_option(OptionKey('libexecdir')))
 
     def get_bindir(self) -> str:
-        return self.coredata.get_option(OptionKey('bindir'))
+        return _as_str(self.coredata.get_option(OptionKey('bindir')))
 
     def get_includedir(self) -> str:
-        return self.coredata.get_option(OptionKey('includedir'))
+        return _as_str(self.coredata.get_option(OptionKey('includedir')))
 
     def get_mandir(self) -> str:
-        return self.coredata.get_option(OptionKey('mandir'))
+        return _as_str(self.coredata.get_option(OptionKey('mandir')))
 
     def get_datadir(self) -> str:
-        return self.coredata.get_option(OptionKey('datadir'))
+        return _as_str(self.coredata.get_option(OptionKey('datadir')))
 
     def get_compiler_system_lib_dirs(self, for_machine: MachineChoice) -> T.List[str]:
         for comp in self.coredata.compilers[for_machine].values():
@@ -969,8 +987,8 @@ class Environment:
         p, out, _ = Popen_safe(comp.get_exelist() + ['-print-search-dirs'])
         if p.returncode != 0:
             raise mesonlib.MesonException('Could not calculate system search dirs')
-        out = out.split('\n')[index].lstrip('libraries: =').split(':')
-        return [os.path.normpath(p) for p in out]
+        split = out.split('\n')[index].lstrip('libraries: =').split(':')
+        return [os.path.normpath(p) for p in split]
 
     def get_compiler_system_include_dirs(self, for_machine: MachineChoice) -> T.List[str]:
         for comp in self.coredata.compilers[for_machine].values():
@@ -984,9 +1002,10 @@ class Environment:
             return []
         return comp.get_default_include_dirs()
 
-    def need_exe_wrapper(self, for_machine: MachineChoice = MachineChoice.HOST):
+    def need_exe_wrapper(self, for_machine: MachineChoice = MachineChoice.HOST) -> bool:
         value = self.properties[for_machine].get('needs_exe_wrapper', None)
         if value is not None:
+            assert isinstance(value, bool), 'for mypy'
             return value
         return not machine_info_can_run(self.machines[for_machine])
 
@@ -996,4 +1015,4 @@ class Environment:
         return self.exe_wrapper
 
     def has_exe_wrapper(self) -> bool:
-        return self.exe_wrapper and self.exe_wrapper.found()
+        return self.exe_wrapper is not None and self.exe_wrapper.found()

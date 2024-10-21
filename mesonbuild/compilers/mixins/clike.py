@@ -377,7 +377,9 @@ class CLikeCompiler(Compiler):
             # us in that case and will error out asking us to pick one.
             try:
                 crt_val = env.coredata.optstore.get_value('b_vscrt')
+                assert isinstance(crt_val, str), 'for mypy'
                 buildtype = env.coredata.optstore.get_value('buildtype')
+                assert isinstance(buildtype, str), 'for mypy'
                 cargs += self.get_crt_compile_args(crt_val, buildtype)
             except (KeyError, AttributeError):
                 pass

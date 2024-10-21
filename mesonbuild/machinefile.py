@@ -12,12 +12,8 @@ from . import mparser
 from .mesonlib import MesonException
 
 if T.TYPE_CHECKING:
-    from typing_extensions import TypeAlias
-
     from .coredata import StrOrBytesPath
-
-    SectionT: TypeAlias = T.Union[str, int, bool, T.List[str], T.List['SectionT']]
-
+    from .options import ElementaryOptionValues
 
 class CmdLineFileParser(configparser.ConfigParser):
     def __init__(self) -> None:
@@ -36,8 +32,8 @@ class CmdLineFileParser(configparser.ConfigParser):
 class MachineFileParser():
     def __init__(self, filenames: T.List[str], sourcedir: str) -> None:
         self.parser = CmdLineFileParser()
-        self.constants: T.Dict[str, SectionT] = {'True': True, 'False': False}
-        self.sections: T.Dict[str, T.Dict[str, SectionT]] = {}
+        self.constants: T.Dict[str, ElementaryOptionValues] = {'True': True, 'False': False}
+        self.sections: T.Dict[str, T.Dict[str, ElementaryOptionValues]] = {}
 
         for fname in filenames:
             try:
@@ -62,9 +58,9 @@ class MachineFileParser():
                 continue
             self.sections[s] = self._parse_section(s)
 
-    def _parse_section(self, s: str) -> T.Dict[str, SectionT]:
+    def _parse_section(self, s: str) -> T.Dict[str, ElementaryOptionValues]:
         self.scope = self.constants.copy()
-        section: T.Dict[str, SectionT] = {}
+        section: T.Dict[str, ElementaryOptionValues] = {}
         for entry, value in self.parser.items(s):
             if ' ' in entry or '\t' in entry or "'" in entry or '"' in entry:
                 raise MesonException(f'Malformed variable name {entry!r} in machine file.')
@@ -83,7 +79,7 @@ class MachineFileParser():
             self.scope[entry] = res
         return section
 
-    def _evaluate_statement(self, node: mparser.BaseNode) -> SectionT:
+    def _evaluate_statement(self, node: mparser.BaseNode) -> ElementaryOptionValues:
         if isinstance(node, (mparser.StringNode)):
             return node.value
         elif isinstance(node, mparser.BooleanNode):
@@ -93,7 +89,9 @@ class MachineFileParser():
         elif isinstance(node, mparser.ParenthesizedNode):
             return self._evaluate_statement(node.inner)
         elif isinstance(node, mparser.ArrayNode):
-            return [self._evaluate_statement(arg) for arg in node.args.arguments]
+            a = [self._evaluate_statement(arg) for arg in node.args.arguments]
+            assert all(isinstance(s, str) for s in a), 'for mypy'
+            return T.cast('T.List[str]', a)
         elif isinstance(node, mparser.IdNode):
             return self.scope[node.value]
         elif isinstance(node, mparser.ArithmeticNode):
@@ -109,7 +107,7 @@ class MachineFileParser():
                     return os.path.join(l, r)
         raise MesonException('Unsupported node type')
 
-def parse_machine_files(filenames: T.List[str], sourcedir: str) -> T.Dict[str, T.Dict[str, SectionT]]:
+def parse_machine_files(filenames: T.List[str], sourcedir: str) -> T.Dict[str, T.Dict[str, ElementaryOptionValues]]:
     parser = MachineFileParser(filenames, sourcedir)
     return parser.sections
 

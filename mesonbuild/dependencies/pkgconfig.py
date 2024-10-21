@@ -256,7 +256,9 @@ class PkgConfigCLI(PkgConfigInterface):
     def _get_env(self, uninstalled: bool = False) -> EnvironmentVariables:
         env = EnvironmentVariables()
         key = OptionKey('pkg_config_path', machine=self.for_machine)
-        extra_paths: T.List[str] = self.env.coredata.optstore.get_value(key)[:]
+        extra_paths = self.env.coredata.optstore.get_value(key)
+        assert isinstance(extra_paths, list), 'for mypy'
+        extra_paths = extra_paths.copy()
         if uninstalled:
             uninstalled_path = Path(self.env.get_build_dir(), 'meson-uninstalled').as_posix()
             if uninstalled_path not in extra_paths:
@@ -416,7 +418,8 @@ class PkgConfigDependency(ExternalDependency):
         #
         # Only prefix_libpaths are reordered here because there should not be
         # too many system_libpaths to cause library version issues.
-        pkg_config_path: T.List[str] = self.env.coredata.optstore.get_value(OptionKey('pkg_config_path', machine=self.for_machine))
+        pkg_config_path = self.env.coredata.optstore.get_value(OptionKey('pkg_config_path', machine=self.for_machine))
+        assert isinstance(pkg_config_path, list), 'for mypy'
         pkg_config_path = self._convert_mingw_paths(pkg_config_path)
         prefix_libpaths = OrderedSet(sort_libpaths(list(prefix_libpaths), pkg_config_path))
         system_libpaths: OrderedSet[str] = OrderedSet()

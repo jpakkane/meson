@@ -86,6 +86,7 @@ class ElbrusCompiler(GnuLikeCompiler):
     def get_option_compile_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
         args: T.List[str] = []
         std = options.get_value(OptionKey(f'{self.language}_std', machine=self.for_machine))
+        assert isinstance(std, str), 'for mypy'
         if std != 'none':
             args.append('-std=' + std)
         return args

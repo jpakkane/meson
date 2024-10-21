@@ -154,19 +154,18 @@ class ClangCCompiler(_ClangCStds, ClangCompiler, CCompiler):
     def get_options(self) -> 'MutableKeyedOptionDictType':
         opts = super().get_options()
         if self.info.is_windows() or self.info.is_cygwin():
-            self.update_options(
-                opts,
-                self.create_option(options.UserArrayOption,
-                                   self.form_compileropt_key('winlibs'),
-                                   'Standard Win libraries to link against',
-                                   gnu_winlibs),
-            )
+            key = self.form_compileropt_key('winlibs')
+            opts[key] = options.UserStringArrayOption(
+                self.make_option_name(key),
+                'Standard Win libraries to link against',
+                gnu_winlibs)
         return opts
 
     def get_option_compile_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
         args = []
         key = self.form_compileropt_key('std')
         std = options.get_value(key)
+        assert isinstance(std, str), 'for mypy'
         if std != 'none':
             args.append('-std=' + std)
         return args
@@ -175,11 +174,9 @@ class ClangCCompiler(_ClangCStds, ClangCompiler, CCompiler):
         if self.info.is_windows() or self.info.is_cygwin():
             # without a typedict mypy can't understand this.
             key = self.form_compileropt_key('winlibs')
-            libs = options.get_value(key).copy()
-            assert isinstance(libs, list)
-            for l in libs:
-                assert isinstance(l, str)
-            return libs
+            libs = options.get_value(key)
+            assert isinstance(libs, list), 'for mypy'
+            return libs.copy()
         return []
 
 
@@ -260,6 +257,7 @@ class ArmclangCCompiler(ArmclangCompiler, CCompiler):
         args = []
         key = self.form_compileropt_key('std')
         std = options.get_value(key)
+        assert isinstance(std, str), 'for mypy'
         if std != 'none':
             args.append('-std=' + std)
         return args
@@ -307,19 +305,18 @@ class GnuCCompiler(GnuCompiler, CCompiler):
         assert isinstance(std_opt, options.UserStdOption), 'for mypy'
         std_opt.set_versions(stds, gnu=True)
         if self.info.is_windows() or self.info.is_cygwin():
-            self.update_options(
-                opts,
-                self.create_option(options.UserArrayOption,
-                                   key.evolve('c_winlibs'),
-                                   'Standard Win libraries to link against',
-                                   gnu_winlibs),
-            )
+            key = self.form_compileropt_key('winlibs')
+            opts[key] = options.UserStringArrayOption(
+                self.make_option_name(key),
+                'Standard Win libraries to link against',
+                gnu_winlibs)
         return opts
 
     def get_option_compile_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
         args = []
         key = self.form_compileropt_key('std')
         std = options.get_value(key)
+        assert isinstance(std, str), 'for mypy'
         if std != 'none':
             args.append('-std=' + std)
         return args
@@ -328,11 +325,9 @@ class GnuCCompiler(GnuCompiler, CCompiler):
         if self.info.is_windows() or self.info.is_cygwin():
             # without a typeddict mypy can't figure this out
             key = self.form_compileropt_key('winlibs')
-            libs: T.List[str] = options.get_value(key).copy()
-            assert isinstance(libs, list)
-            for l in libs:
-                assert isinstance(l, str)
-            return libs
+            libs = options.get_value(key)
+            assert isinstance(libs, list), 'fpr mypy'
+            return libs.copy()
         return []
 
     def get_pch_use_args(self, pch_dir: str, header: str) -> T.List[str]:
@@ -442,6 +437,7 @@ class IntelCCompiler(IntelGnuLikeCompiler, CCompiler):
         args = []
         key = self.form_compileropt_key('std')
         std = options.get_value(key)
+        assert isinstance(std, str), 'for mypy'
         if std != 'none':
             args.append('-std=' + std)
         return args
@@ -457,24 +453,20 @@ class VisualStudioLikeCCompilerMixin(CompilerMixinBase):
     """Shared methods that apply to MSVC-like C compilers."""
 
     def get_options(self) -> MutableKeyedOptionDictType:
-        return self.update_options(
-            super().get_options(),
-            self.create_option(
-                options.UserArrayOption,
-                self.form_compileropt_key('winlibs'),
-                'Windows libs to link against.',
-                msvc_winlibs,
-            ),
-        )
+        opts = super().get_options()
+        key = self.form_compileropt_key('winlibs')
+        opts[key] = options.UserStringArrayOption(
+            self.make_option_name(key),
+            'Standard Win libraries to link against',
+            msvc_winlibs)
+        return opts
 
     def get_option_link_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
         # need a TypeDict to make this work
         key = self.form_compileropt_key('winlibs')
-        libs = options.get_value(key).copy()
-        assert isinstance(libs, list)
-        for l in libs:
-            assert isinstance(l, str)
-        return libs
+        libs = options.get_value(key)
+        assert isinstance(libs, list), 'for mypy'
+        return libs.copy()
 
 
 class VisualStudioCCompiler(MSVCCompiler, VisualStudioLikeCCompilerMixin, CCompiler):
@@ -562,6 +554,7 @@ class IntelClCCompiler(IntelVisualStudioLikeCompiler, VisualStudioLikeCCompilerM
         args = []
         key = self.form_compileropt_key('std')
         std = options.get_value(key)
+        assert isinstance(std, str), 'for mypy'
         if std == 'c89':
             mlog.log("ICL doesn't explicitly implement c89, setting the standard to 'none', which is close.", once=True)
         elif std != 'none':
@@ -596,6 +589,7 @@ class ArmCCompiler(ArmCompiler, CCompiler):
         args = []
         key = self.form_compileropt_key('std')
         std = options.get_value(key)
+        assert isinstance(std, str), 'for mypy'
         if std != 'none':
             args.append('--' + std)
         return args
@@ -677,6 +671,7 @@ class Xc16CCompiler(Xc16Compiler, CCompiler):
         args = []
         key = self.form_compileropt_key('std')
         std = options.get_value(key)
+        assert isinstance(std, str), 'for mypy'
         if std != 'none':
             args.append('-ansi')
             args.append('-std=' + std)
@@ -761,6 +756,7 @@ class TICCompiler(TICompiler, CCompiler):
         args = []
         key = self.form_compileropt_key('std')
         std = options.get_value(key)
+        assert isinstance(std, str), 'for mypy'
         if std != 'none':
             args.append('--' + std)
         return args
@@ -788,15 +784,14 @@ class MetrowerksCCompilerARM(MetrowerksCompiler, CCompiler):
 
     def get_options(self) -> 'MutableKeyedOptionDictType':
         opts = CCompiler.get_options(self)
-        c_stds = ['c99']
-        key = self.form_compileropt_key('std')
-        opts[key].choices = ['none'] + c_stds
+        self._update_language_stds(opts, ['c99'])
         return opts
 
     def get_option_compile_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
         args = []
         key = self.form_compileropt_key('std')
         std = options.get_value(key)
+        assert isinstance(std, str), 'for mypy'
         if std != 'none':
             args.append('-lang')
             args.append(std)
@@ -818,15 +813,14 @@ class MetrowerksCCompilerEmbeddedPowerPC(MetrowerksCompiler, CCompiler):
 
     def get_options(self) -> 'MutableKeyedOptionDictType':
         opts = CCompiler.get_options(self)
-        c_stds = ['c99']
-        key = self.form_compileropt_key('std')
-        opts[key].choices = ['none'] + c_stds
+        self._update_language_stds(opts, ['c99'])
         return opts
 
     def get_option_compile_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
         args = []
         key = self.form_compileropt_key('std')
         std = options.get_value(key)
+        assert isinstance(std, str), 'for mypy'
         if std != 'none':
             args.append('-lang ' + std)
         return args

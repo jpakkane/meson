@@ -52,7 +52,9 @@ class CMakeExecutor:
             self.cmakebin = None
             return
 
-        self.prefix_paths = self.environment.coredata.optstore.get_value(OptionKey('cmake_prefix_path', machine=self.for_machine))
+        pp = self.environment.coredata.optstore.get_value(OptionKey('cmake_prefix_path', machine=self.for_machine))
+        assert isinstance(pp, list), 'for mypy'
+        self.prefix_paths = pp
         if self.prefix_paths:
             self.extra_cmake_args += ['-DCMAKE_PREFIX_PATH={}'.format(';'.join(self.prefix_paths))]
 
