@@ -618,7 +618,8 @@ class _ExternalProgramHolder(ObjectHolder[_EXTPROG]):
         self.methods.update({'found': self.found_method,
                              'path': self.path_method,
                              'version': self.version_method,
-                             'full_path': self.full_path_method})
+                             'full_path': self.full_path_method,
+                             'cmd_array': self.cmd_array_method})
 
     @noPosargs
     @noKwargs
@@ -644,6 +645,16 @@ class _ExternalProgramHolder(ObjectHolder[_EXTPROG]):
         path = self.held_object.get_path()
         assert path is not None
         return path
+
+    @noPosargs
+    @noKwargs
+    @FeatureNew('ExternalProgram.cmd_array', '1.7.0')
+    def cmd_array_method(self, args: T.List[TYPE_var], kwargs: TYPE_kwargs) -> T.List[str]:
+        if not self.found():
+            raise InterpreterException('Unable to get the path of a not-found external program')
+        cmd = self.held_object.get_command()
+        assert cmd is not None
+        return cmd
 
     @noPosargs
     @noKwargs

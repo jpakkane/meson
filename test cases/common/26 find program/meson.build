@@ -40,3 +40,16 @@ assert(not prog.found(), 'Program should not be found')
 
 prog = find_program('test_subdir.py', dirs : ['/nonexistent', meson.current_source_dir() / 'scripts'])
 assert(prog.found(), 'Program should be found')
+
+prog = find_program('print-version.py')
+if build_machine.system() != 'cygwin'
+  assert(prog.cmd_array() != [prog.full_path()])
+endif
+
+if build_machine.system() == 'windows'
+  prog = find_program('cmd.exe')
+  assert(prog.cmd_array() == [prog.full_path()])
+else
+  prog = find_program('ld')
+  assert(prog.cmd_array() == [prog.full_path()])
+endif

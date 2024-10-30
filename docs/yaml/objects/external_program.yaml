@@ -56,3 +56,8 @@ methods:
     ```meson
     run_command(find_program('foo'), 'arg1', 'arg2')
     ```
+
+- name: cmd_array
+  returns: list[str]
+  description: Returns an array containing the command(s) for the program.
+  since: 1.7.0
