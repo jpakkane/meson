@@ -22,6 +22,7 @@ __pycache__
 *~
 *.swp
 packagecache
+.wraplock
 /MANIFEST
 /build
 /dist

@@ -10,20 +10,35 @@ import msvcrt
 import typing as T
 
 from .core import MesonException
-from .platform import BuildDirLock as BuildDirLockBase
+from .platform import DirectoryLockBase, DirectoryLockAction
 
-__all__ = ['BuildDirLock']
+__all__ = ['DirectoryLock', 'DirectoryLockAction']
 
-class BuildDirLock(BuildDirLockBase):
+class DirectoryLock(DirectoryLockBase):
 
     def __enter__(self) -> None:
-        self.lockfile = open(self.lockfilename, 'w', encoding='utf-8')
         try:
-            msvcrt.locking(self.lockfile.fileno(), msvcrt.LK_NBLCK, 1)
-        except (BlockingIOError, PermissionError):
+            self.lockfile = open(self.lockpath, 'w+', encoding='utf-8')
+        except FileNotFoundError:
+            self.lockfile = None
+            return
+
+        try:
+            mode = msvcrt.LK_LOCK
+            if self.action != DirectoryLockAction.WAIT:
+                mode = msvcrt.LK_NBLCK
+            msvcrt.locking(self.lockfile.fileno(), mode, 1)
+        except BlockingIOError:
             self.lockfile.close()
-            raise MesonException('Some other Meson process is already using this build directory. Exiting.')
+            if self.action == DirectoryLockAction.IGNORE:
+                return
+            raise MesonException(self.err)
+        except PermissionError:
+            self.lockfile.close()
+            raise MesonException(self.err)
 
     def __exit__(self, *args: T.Any) -> None:
+        if self.lockfile is None or self.lockfile.closed:
+            return
         msvcrt.locking(self.lockfile.fileno(), msvcrt.LK_UNLCK, 1)
         self.lockfile.close()
