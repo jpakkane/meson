@@ -29,7 +29,10 @@ from functools import lru_cache
 
 from . import WrapMode
 from .. import coredata
-from ..mesonlib import quiet_git, GIT, ProgressBar, MesonException, windows_proof_rmtree, Popen_safe
+from ..mesonlib import (
+    DirectoryLock, DirectoryLockAction, quiet_git, GIT, ProgressBar, MesonException,
+    windows_proof_rmtree, Popen_safe
+)
 from ..interpreterbase import FeatureNew
 from ..interpreterbase import SubProject
 from .. import mesonlib
@@ -432,7 +435,7 @@ class Resolver:
                 return wrap_name
         return None
 
-    def resolve(self, packagename: str, force_method: T.Optional[Method] = None) -> T.Tuple[str, Method]:
+    def _resolve(self, packagename: str, force_method: T.Optional[Method] = None) -> T.Tuple[str, Method]:
         wrap = self.wraps.get(packagename)
         if wrap is None:
             wrap = self.get_from_wrapdb(packagename)
@@ -529,6 +532,12 @@ class Resolver:
         # reference.
         self.wrap.update_hash_cache(self.dirname)
         return rel_path, method
+
+    def resolve(self, packagename: str, force_method: T.Optional[Method] = None) -> T.Tuple[str, Method]:
+        with DirectoryLock(self.subdir_root, '.wraplock',
+                           DirectoryLockAction.WAIT,
+                           'Failed to lock subprojects directory'):
+            return self._resolve(packagename, force_method)
 
     def check_can_download(self) -> None:
         # Don't download subproject data based on wrap file if requested.
