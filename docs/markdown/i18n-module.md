@@ -74,3 +74,50 @@ for normal keywords. In addition it accepts these keywords:
 * `mo_targets` *required*: mo file generation targets as returned by `i18n.gettext()`.
 
 *Added 0.62.0*
+
+
+### i18n.xgettext()
+
+``` meson
+i18n.xgettext(name, sources..., args: [...], recursive: false)
+```
+
+Invokes the `xgettext` program on given sources, to generate a `.pot` file.
+This function is to be used when the `gettext` function workflow it not suitable
+for your project. For example, it can be used to produce separate `.pot` files
+for each executable.
+
+Positional arguments are the following:
+
+* name `str`: the name of the resulting pot file.
+* sources `list[str|File|build_tgt|custom_tgt]`:
+          source files or targets. May be a list of `string`, `File`, [[@build_tgt]],
+          or [[@custom_tgt]] returned from other calls to this function.
+
+Keyword arguments are the following:
+
+- recursive `bool`:
+        if `true`, will merge the resulting pot file with extracted pot files
+        related to dependencies of the given source targets. For instance,
+        if you build an executable, then you may want to merge the executable
+        translations with the translations from the dependent libraries.
+- install `bool`: if `true`, will add the resulting pot file to install targets.
+- install_tag `str`: install tag to use for the install target.
+- install_dir `str`: directory where to install the resulting pot file.
+
+The `i18n.xgettext()` function returns a [[@custom_tgt]].
+
+Usually, you want to pass one build target as sources, and the list of header files
+for that target. If the number of source files would result in a command line that
+is too long, the list of source files is written to a file at config time, to be
+used as input for the `xgettext` program.
+
+The `recursive: true` argument is to be given to targets that will actually read
+the resulting `.mo` file. Each time you call the `i18n.xgettext()` function,
+it maps the source targets to the resulting pot file. When `recursive: true` is
+given, all generated pot files from dependencies of the source targets are
+included to generate the final pot file. Therefore, adding a dependency to
+source target will automatically add the translations of that dependency to the
+needed translations for that source target.
+
+*Added 1.7.0*

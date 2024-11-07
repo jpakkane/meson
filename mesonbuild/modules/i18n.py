@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 from os import path
+from pathlib import Path
 import shlex
 import typing as T
 
@@ -13,7 +14,8 @@ from .. import mesonlib
 from ..options import OptionKey
 from .. import mlog
 from ..interpreter.type_checking import CT_BUILD_BY_DEFAULT, CT_INPUT_KW, INSTALL_TAG_KW, OUTPUT_KW, INSTALL_DIR_KW, INSTALL_KW, NoneType, in_set_validator
-from ..interpreterbase import FeatureNew, InvalidArguments
+from ..interpreterbase import FeatureNew
+from ..interpreterbase.exceptions import InvalidArguments
 from ..interpreterbase.decorators import ContainerTypeInfo, KwargInfo, noPosargs, typed_kwargs, typed_pos_args
 from ..programs import ExternalProgram
 from ..scripts.gettext import read_linguas
@@ -65,6 +67,16 @@ if T.TYPE_CHECKING:
         its_files: T.List[str]
         mo_targets: T.List[T.Union[build.BuildTarget, build.CustomTarget, build.CustomTargetIndex]]
 
+    class XgettextProgramT(TypedDict):
+
+        args: T.List[str]
+        recursive: bool
+        install: bool
+        install_dir: T.Optional[str]
+        install_tag: T.Optional[str]
+
+    SourcesType = T.Union[str, mesonlib.File, build.BuildTarget, build.BothLibraries, build.CustomTarget]
+
 
 _ARGS: KwargInfo[T.List[str]] = KwargInfo(
     'args',
@@ -115,6 +127,124 @@ PRESET_ARGS = {
 }
 
 
+class XgettextProgram:
+
+    pot_files: T.Dict[str, build.CustomTarget] = {}
+
+    def __init__(self, xgettext: ExternalProgram, interpreter: Interpreter):
+        self.xgettext = xgettext
+        self.interpreter = interpreter
+
+    def extract(self,
+                name: str,
+                sources: T.List[SourcesType],
+                args: T.List[str],
+                recursive: bool,
+                install: bool,
+                install_dir: T.Optional[str],
+                install_tag: T.Optional[str]) -> build.CustomTarget:
+
+        if not name.endswith('.pot'):
+            name += '.pot'
+
+        source_files = self._get_source_files(sources)
+
+        command = self.xgettext.command + args
+        command.append(f'--directory={self.interpreter.environment.get_source_dir()}')
+        command.append(f'--directory={self.interpreter.environment.get_build_dir()}')
+        command.append('--output=@OUTPUT@')
+
+        depends = list(self._get_depends(sources)) if recursive else []
+        rsp_file = self._get_rsp_file(name, source_files, depends, command)
+        inputs: T.List[T.Union[mesonlib.File, build.CustomTarget]]
+        if rsp_file:
+            inputs = [rsp_file]
+            depend_files = list(source_files)
+            command.append('--files-from=@INPUT@')
+        else:
+            inputs = list(source_files) + depends
+            depends = None
+            depend_files = None
+            command.append('@INPUT@')
+
+        ct = build.CustomTarget(
+            '',
+            self.interpreter.subdir,
+            self.interpreter.subproject,
+            self.interpreter.environment,
+            command,
+            inputs,
+            [name],
+            depend_files = depend_files,
+            extra_depends = depends,
+            install = install,
+            install_dir = [install_dir] if install_dir else None,
+            install_tag = [install_tag] if install_tag else None,
+            description = 'Extracting translations to {}',
+        )
+
+        for source_id in self._get_source_id(sources):
+            self.pot_files[source_id] = ct
+        self.pot_files[ct.get_id()] = ct
+
+        self.interpreter.add_target(ct.name, ct)
+        return ct
+
+    def _get_source_files(self, sources: T.Iterable[SourcesType]) -> T.Set[mesonlib.File]:
+        source_files = set()
+        for source in sources:
+            if isinstance(source, mesonlib.File):
+                source_files.add(source)
+            elif isinstance(source, str):
+                mesonlib.check_direntry_issues(source)
+                source_files.add(mesonlib.File.from_source_file(self.interpreter.source_root, self.interpreter.subdir, source))
+            elif isinstance(source, build.BuildTarget):
+                source_files.update(source.get_sources())
+            elif isinstance(source, build.BothLibraries):
+                source_files.update(source.get('shared').get_sources())
+        return source_files
+
+    def _get_depends(self, sources: T.Iterable[SourcesType]) -> T.Set[build.CustomTarget]:
+        depends = set()
+        for source in sources:
+            if isinstance(source, build.BuildTarget):
+                for source_id in self._get_source_id(source.get_dependencies()):
+                    if source_id in self.pot_files:
+                        depends.add(self.pot_files[source_id])
+            elif isinstance(source, build.CustomTarget):
+                # Dependency on another extracted pot file
+                source_id = source.get_id()
+                if source_id in self.pot_files:
+                    depends.add(self.pot_files[source_id])
+        return depends
+
+    def _get_rsp_file(self,
+                      name: str,
+                      source_files: T.Iterable[mesonlib.File],
+                      depends: T.Iterable[build.CustomTarget],
+                      arguments: T.List[str]) -> T.Optional[mesonlib.File]:
+        source_list = '\n'.join(source.relative_name() for source in source_files)
+        for dep in depends:
+            source_list += '\n' + path.join(dep.subdir, dep.get_filename())
+
+        estimated_cmdline_length = len(source_list) + sum(len(arg) + 1 for arg in arguments) + 1
+        if estimated_cmdline_length < mesonlib.get_rsp_threshold():
+            return None
+
+        rsp_file = Path(self.interpreter.environment.build_dir, self.interpreter.subdir, name+'.rsp')
+        rsp_file.write_text(source_list, encoding='utf-8')
+
+        return mesonlib.File.from_built_file(self.interpreter.subdir, rsp_file.name)
+
+    def _get_source_id(self, sources: T.Iterable[T.Union[SourcesType, build.CustomTargetIndex]]) -> T.Iterable[str]:
+        for source in sources:
+            if isinstance(source, build.Target):
+                yield source.get_id()
+            elif isinstance(source, build.BothLibraries):
+                yield source.get('static').get_id()
+                yield source.get('shared').get_id()
+
+
 class I18nModule(ExtensionModule):
 
     INFO = ModuleInfo('i18n')
@@ -125,6 +255,7 @@ class I18nModule(ExtensionModule):
             'merge_file': self.merge_file,
             'gettext': self.gettext,
             'itstool_join': self.itstool_join,
+            'xgettext': self.xgettext,
         })
         self.tools: T.Dict[str, T.Optional[T.Union[ExternalProgram, build.Executable]]] = {
             'itstool': None,
@@ -397,6 +528,27 @@ class I18nModule(ExtensionModule):
         )
 
         return ModuleReturnValue(ct, [ct])
+
+    @FeatureNew('i18n.xgettext', '1.7.0')
+    @typed_pos_args('i18n.xgettext', str, varargs=(str, mesonlib.File, build.BuildTarget, build.BothLibraries, build.CustomTarget), min_varargs=1)
+    @typed_kwargs(
+        'i18n.xgettext',
+        _ARGS,
+        KwargInfo('recursive', bool, default=False),
+        INSTALL_KW,
+        INSTALL_DIR_KW,
+        INSTALL_TAG_KW,
+    )
+    def xgettext(self, state: ModuleState, args: T.Tuple[str, T.List[SourcesType]], kwargs: XgettextProgramT) -> build.CustomTarget:
+        toolname = 'xgettext'
+        if self.tools[toolname] is None or not self.tools[toolname].found():
+            self.tools[toolname] = state.find_program(toolname, required=True, for_machine=mesonlib.MachineChoice.BUILD)
+
+        if kwargs['install'] and not kwargs['install_dir']:
+            raise InvalidArguments('XgettextProgram.extract: "install_dir" keyword argument must be set when "install" is true.')
+
+        xgettext_program = XgettextProgram(T.cast('ExternalProgram', self.tools[toolname]), self.interpreter)
+        return xgettext_program.extract(*args, **kwargs)
 
 
 def initialize(interp: 'Interpreter') -> I18nModule:
