@@ -97,6 +97,12 @@ class CompilerArgs(T.MutableSequence[str]):
     def __init__(self, compiler: T.Union['Compiler', 'StaticLinker'],
                  iterable: T.Optional[T.Iterable[str]] = None):
         self.compiler = compiler
+
+        if isinstance(iterable, CompilerArgs):
+            iterable.flush_pre_post()
+            # list(iter(x)) is over two times slower than list(x), so
+            # pass the underlying list to list() directly, instead of an iterator
+            iterable = iterable._container
         self._container: T.List[str] = list(iterable) if iterable is not None else []
         self.pre: T.Deque[str] = collections.deque()
         self.post: T.Deque[str] = collections.deque()
@@ -140,6 +146,7 @@ class CompilerArgs(T.MutableSequence[str]):
         self.post.clear()
 
     def __iter__(self) -> T.Iterator[str]:
+        # see also __init__, where this method is essentially inlined
         self.flush_pre_post()
         return iter(self._container)
 
