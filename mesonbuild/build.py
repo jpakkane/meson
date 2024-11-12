@@ -1323,7 +1323,7 @@ class BuildTarget(Target):
     def get_source_subdir(self):
         return self.subdir
 
-    def get_sources(self):
+    def get_sources(self) -> T.List[File]:
         return self.sources
 
     def get_objects(self) -> T.List[T.Union[str, 'File', 'ExtractedObjects']]:
@@ -2537,7 +2537,7 @@ class BothLibraries(SecondLevelHolder):
     def __repr__(self) -> str:
         return f'<BothLibraries: static={repr(self.static)}; shared={repr(self.shared)}>'
 
-    def get(self, lib_type: T.Literal['static', 'shared', 'auto']) -> LibTypes:
+    def get(self, lib_type: T.Literal['static', 'shared', 'auto']) -> T.Union[StaticLibrary, SharedLibrary]:
         if lib_type == 'static':
             return self.static
         if lib_type == 'shared':
