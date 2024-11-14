@@ -39,6 +39,7 @@ from unittests.pythontests import PythonTests
 from unittests.subprojectscommandtests import SubprojectsCommandTests
 from unittests.windowstests import WindowsTests
 from unittests.platformagnostictests import PlatformAgnosticTests
+from unittests.featurestests import FeaturesTests
 
 def unset_envs():
     # For unit tests we must fully control all command lines
@@ -108,7 +109,7 @@ def main():
              'TAPParserTests', 'SubprojectsCommandTests', 'PlatformAgnosticTests',
 
              'LinuxlikeTests', 'LinuxCrossArmTests', 'LinuxCrossMingwTests',
-             'WindowsTests', 'DarwinTests']
+             'WindowsTests', 'DarwinTests', 'FeaturesTests']
 
     try:
         import pytest # noqa: F401

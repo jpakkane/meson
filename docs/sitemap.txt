@@ -59,6 +59,7 @@ index.md
 			Windows-module.md
 			i18n-module.md
 			Wayland-module.md
+			Features-module.md
 		Java.md
 		Vala.md
 		D.md
