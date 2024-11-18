@@ -42,7 +42,6 @@ from run_tests import (
 # e.g. for assertXXX helpers.
 __unittest = True
 
-@mock.patch.dict(os.environ)
 class BasePlatformTests(TestCase):
     prefix = '/usr'
     libdir = 'lib'
@@ -87,8 +86,17 @@ class BasePlatformTests(TestCase):
             # VS doesn't have a stable output when no changes are done
             # XCode backend is untested with unit tests, help welcome!
             cls.no_rebuild_stdout = [f'UNKNOWN BACKEND {cls.backend.name!r}']
+
+        cls.env_patch = mock.patch.dict(os.environ)
+        cls.env_patch.start()
+
         os.environ['COLUMNS'] = '80'
         os.environ['PYTHONIOENCODING'] = 'utf8'
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        super().tearDownClass()
+        cls.env_patch.stop()
 
     def setUp(self):
         super().setUp()
