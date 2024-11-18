@@ -1,11 +1,13 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2016-2021 The Meson development team
 
+from __future__ import annotations
 import subprocess
 import tempfile
 import os
 import shutil
 import unittest
+import typing as T
 from contextlib import contextmanager
 
 from mesonbuild.mesonlib import (
@@ -75,12 +77,13 @@ class FailureTests(BasePlatformTests):
         super().tearDown()
         windows_proof_rmtree(self.srcdir)
 
-    def assertMesonRaises(self, contents, match, *,
-                          extra_args=None,
-                          langs=None,
-                          meson_version=None,
-                          options=None,
-                          override_envvars=None):
+    def assertMesonRaises(self, contents: str,
+                          match: T.Union[str, T.Pattern[str]], *,
+                          extra_args: T.Optional[T.List[str]] = None,
+                          langs: T.Optional[T.List[str]] = None,
+                          meson_version: T.Optional[str] = None,
+                          options: T.Optional[str] = None,
+                          override_envvars: T.Optional[T.MutableMapping[str, str]] = None) -> None:
         '''
         Assert that running meson configure on the specified @contents raises
         a error message matching regex @match.
