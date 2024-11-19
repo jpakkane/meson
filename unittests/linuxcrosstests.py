@@ -46,6 +46,15 @@ class LinuxCrossArmTests(BaseLinuxCrossTests):
         compdb = self.get_compdb()
         self.assertNotIn('-DBUILD_ENVIRONMENT_ONLY', compdb[0]['command'])
 
+    def test_cross_compute_int(self):
+        '''
+        Test that compute int works even in environments that that do not have
+        exe_wrapper to run built executables.
+        '''
+        testdir = os.path.join(self.common_test_dir, '134 compute int')
+        self.init(testdir)
+        self.build()
+
     def test_cross_file_overrides_always_args(self):
         '''
         Test that $lang_args in cross files always override get_always_args().
