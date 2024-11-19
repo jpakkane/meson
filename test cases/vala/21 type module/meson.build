@@ -1,4 +1,4 @@
-project('valatest', 'c', 'vala')
+project('valatest', 'c', 'vala', default_options: ['b_legal_code=false'])
 
 glib_dep = dependency('glib-2.0')
 gobject_dep = dependency('gobject-2.0')

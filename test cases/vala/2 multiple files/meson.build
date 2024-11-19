@@ -1,5 +1,5 @@
 # adding 'c' shouldn't be required
-project('multiple files')
+project('multiple files', default_options: ['b_legal_code=false'])
 add_languages('vala')
 
 glib = dependency('glib-2.0')

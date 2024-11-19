@@ -1,4 +1,4 @@
-project('valastatic', 'vala', 'c')
+project('valastatic', 'vala', 'c', default_options: ['b_legal_code=false'])
 
 valadeps = [dependency('glib-2.0'), dependency('gobject-2.0')]
 

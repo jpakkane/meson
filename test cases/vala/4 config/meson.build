@@ -1,4 +1,4 @@
-project('valatest', 'vala', 'c')
+project('valatest', 'vala', 'c', default_options: ['b_legal_code=false'])
 
 valac = meson.get_compiler('vala')
 # Try to find our library

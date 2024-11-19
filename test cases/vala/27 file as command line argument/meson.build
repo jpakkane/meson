@@ -1,4 +1,4 @@
-project('composite', 'vala', 'c')
+project('composite', 'vala', 'c', default_options: ['b_legal_code=false'])
 gnome = import('gnome')
 deps = [
   dependency('glib-2.0', version : '>=2.38'),

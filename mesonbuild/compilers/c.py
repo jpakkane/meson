@@ -153,6 +153,7 @@ class ClangCCompiler(_ClangCStds, ClangCompiler, CCompiler):
 
     def get_options(self) -> 'MutableKeyedOptionDictType':
         opts = super().get_options()
+
         if self.info.is_windows() or self.info.is_cygwin():
             self.update_options(
                 opts,
@@ -169,6 +170,7 @@ class ClangCCompiler(_ClangCStds, ClangCompiler, CCompiler):
         std = options.get_value(key)
         if std != 'none':
             args.append('-std=' + std)
+
         return args
 
     def get_option_link_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
@@ -306,6 +308,7 @@ class GnuCCompiler(GnuCompiler, CCompiler):
         std_opt = opts[key]
         assert isinstance(std_opt, options.UserStdOption), 'for mypy'
         std_opt.set_versions(stds, gnu=True)
+
         if self.info.is_windows() or self.info.is_cygwin():
             self.update_options(
                 opts,
@@ -322,6 +325,7 @@ class GnuCCompiler(GnuCompiler, CCompiler):
         std = options.get_value(key)
         if std != 'none':
             args.append('-std=' + std)
+
         return args
 
     def get_option_link_args(self, options: 'KeyedOptionDictType') -> T.List[str]:

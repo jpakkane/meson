@@ -1,4 +1,4 @@
-project('test glib target version and gresources', 'c', 'vala')
+project('test glib target version and gresources', 'c', 'vala', default_options: ['b_legal_code=false'])
 
 gnome = import('gnome')
 

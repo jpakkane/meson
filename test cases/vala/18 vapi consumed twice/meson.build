@@ -1,4 +1,4 @@
-project('vapi consumed twice', 'vala', 'c')
+project('vapi consumed twice', 'vala', 'c', default_options: ['b_legal_code=false'])
 
 base_deps = [dependency('glib-2.0'), dependency('gobject-2.0')]
 

@@ -1,4 +1,4 @@
-project( 'Genie multiple and mixed sources', 'vala', 'c' )
+project( 'Genie multiple and mixed sources', 'vala', 'c', default_options: ['b_legal_code=false'])
 
 genie_deps = [
     dependency( 'glib-2.0' ),

@@ -1,4 +1,4 @@
-project('vala and asm', 'vala', 'c')
+project('vala and asm', 'vala', 'c', default_options: ['b_legal_code=false'])
 
 cpu = host_machine.cpu_family()
 cc = meson.get_compiler('c')
