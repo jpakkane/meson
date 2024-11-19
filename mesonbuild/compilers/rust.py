@@ -196,6 +196,20 @@ class RustCompiler(Compiler):
     def get_optimization_args(self, optimization_level: str) -> T.List[str]:
         return rust_optimization_args[optimization_level]
 
+    def build_rpath_args(self, env: 'Environment', build_dir: str, from_dir: str,
+                         rpath_paths: T.Tuple[str, ...], build_rpath: str,
+                         install_rpath: str) -> T.Tuple[T.List[str], T.Set[bytes]]:
+        args, to_remove = super().build_rpath_args(env, build_dir, from_dir, rpath_paths,
+                                                   build_rpath, install_rpath)
+
+        # ... but then add rustc's sysroot to account for rustup
+        # installations
+        rustc_rpath_args = []
+        for arg in args:
+            rustc_rpath_args.append('-C')
+            rustc_rpath_args.append('link-arg=' + arg + ':' + self.get_target_libdir())
+        return rustc_rpath_args, to_remove
+
     def compute_parameters_with_absolute_paths(self, parameter_list: T.List[str],
                                                build_dir: str) -> T.List[str]:
         for idx, i in enumerate(parameter_list):

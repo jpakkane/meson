@@ -2109,29 +2109,7 @@ class NinjaBackend(backends.Backend):
             args += ['-C', 'prefer-dynamic']
 
         if isinstance(target, build.SharedLibrary) or has_shared_deps:
-            # build the usual rpath arguments as well...
-
-            # Set runtime-paths so we can run executables without needing to set
-            # LD_LIBRARY_PATH, etc in the environment. Doesn't work on Windows.
-            if has_path_sep(target.name):
-                # Target names really should not have slashes in them, but
-                # unfortunately we did not check for that and some downstream projects
-                # now have them. Once slashes are forbidden, remove this bit.
-                target_slashname_workaround_dir = os.path.join(os.path.dirname(target.name),
-                                                               self.get_target_dir(target))
-            else:
-                target_slashname_workaround_dir = self.get_target_dir(target)
-            rpath_args, target.rpath_dirs_to_remove = (
-                rustc.build_rpath_args(self.environment,
-                                       self.environment.get_build_dir(),
-                                       target_slashname_workaround_dir,
-                                       self.determine_rpath_dirs(target),
-                                       target.build_rpath,
-                                       target.install_rpath))
-            # ... but then add rustc's sysroot to account for rustup
-            # installations
-            for rpath_arg in rpath_args:
-                args += ['-C', 'link-arg=' + rpath_arg + ':' + rustc.get_target_libdir()]
+            args += self.get_build_rpath_args(target, rustc)
 
         proc_macro_dylib_path = None
         if cratetype == 'proc-macro':
@@ -3422,6 +3400,24 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
         self.add_build(elem)
         return [prelink_name]
 
+    def get_build_rpath_args(self, target: build.BuildTarget, linker: T.Union[Compiler, StaticLinker]) -> T.List[str]:
+        if has_path_sep(target.name):
+            # Target names really should not have slashes in them, but
+            # unfortunately we did not check for that and some downstream projects
+            # now have them. Once slashes are forbidden, remove this bit.
+            target_slashname_workaround_dir = os.path.join(os.path.dirname(target.name),
+                                                           self.get_target_dir(target))
+        else:
+            target_slashname_workaround_dir = self.get_target_dir(target)
+        (rpath_args, target.rpath_dirs_to_remove) = (
+            linker.build_rpath_args(self.environment,
+                                    self.environment.get_build_dir(),
+                                    target_slashname_workaround_dir,
+                                    self.determine_rpath_dirs(target),
+                                    target.build_rpath,
+                                    target.install_rpath))
+        return rpath_args
+
     def generate_link(self, target: build.BuildTarget, outname, obj_list, linker: T.Union['Compiler', 'StaticLinker'], extra_args=None, stdlib_args=None):
         extra_args = extra_args if extra_args is not None else []
         stdlib_args = stdlib_args if stdlib_args is not None else []
@@ -3487,23 +3483,7 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
 
         # Set runtime-paths so we can run executables without needing to set
         # LD_LIBRARY_PATH, etc in the environment. Doesn't work on Windows.
-        if has_path_sep(target.name):
-            # Target names really should not have slashes in them, but
-            # unfortunately we did not check for that and some downstream projects
-            # now have them. Once slashes are forbidden, remove this bit.
-            target_slashname_workaround_dir = os.path.join(
-                os.path.dirname(target.name),
-                self.get_target_dir(target))
-        else:
-            target_slashname_workaround_dir = self.get_target_dir(target)
-        (rpath_args, target.rpath_dirs_to_remove) = (
-            linker.build_rpath_args(self.environment,
-                                    self.environment.get_build_dir(),
-                                    target_slashname_workaround_dir,
-                                    self.determine_rpath_dirs(target),
-                                    target.build_rpath,
-                                    target.install_rpath))
-        commands += rpath_args
+        commands += self.get_build_rpath_args(target, linker)
 
         # Add link args to link to all internal libraries (link_with:) and
         # internal dependencies needed by this target.
