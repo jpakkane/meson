@@ -2134,8 +2134,8 @@ class NinjaBackend(backends.Backend):
                 args += ['-C', 'link-arg=' + rpath_arg + ':' + rustc.get_target_libdir()]
 
         proc_macro_dylib_path = None
-        if getattr(target, 'rust_crate_type', '') == 'proc-macro':
-            proc_macro_dylib_path = os.path.abspath(os.path.join(target.subdir, target.get_filename()))
+        if cratetype == 'proc-macro':
+            proc_macro_dylib_path = self.get_target_filename_abs(target)
 
         self._add_rust_project_entry(target.name,
                                      os.path.abspath(os.path.join(self.environment.build_dir, main_rust_file)),
