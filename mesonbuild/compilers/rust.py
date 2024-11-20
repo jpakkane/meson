@@ -270,6 +270,8 @@ class RustCompiler(Compiler):
 
     def get_linker_always_args(self) -> T.List[str]:
         args: T.List[str] = []
+        # Rust is super annoying, calling -C link-arg foo does not work, it has
+        # to be -C link-arg=foo
         for a in super().get_linker_always_args():
             args.extend(['-C', f'link-arg={a}'])
         return args
