@@ -34,13 +34,16 @@ if T.TYPE_CHECKING:
 
     from typing_extensions import TypedDict, Literal
 
-    class FuncTest(_kwargs.BaseTest):
+    ArgsType = T.TypeVar('ArgsType')
 
-        args: T.List[_kwargs.TestArgs]
+    class FuncRustTest(_kwargs.BaseTest, T.Generic[ArgsType]):
+        args: T.List[ArgsType]
         dependencies: T.List[T.Union[Dependency, ExternalLibrary]]
         is_parallel: bool
         link_with: T.List[LibTypes]
         rust_args: T.List[str]
+
+    FuncTest = FuncRustTest[_kwargs.TestArgs]
 
     class FuncBindgen(TypedDict):
 
@@ -53,6 +56,18 @@ if T.TYPE_CHECKING:
         dependencies: T.List[T.Union[Dependency, ExternalLibrary]]
         language: T.Optional[Literal['c', 'cpp']]
         bindgen_version: T.List[str]
+
+
+RUST_TEST_KWS: T.List[KwargInfo] = [
+     KwargInfo(
+         'rust_args',
+         ContainerTypeInfo(list, str),
+         listify=True,
+         default=[],
+         since='1.2.0',
+     ),
+     KwargInfo('is_parallel', bool, default=False),
+]
 
 
 class RustModule(ExtensionModule):
@@ -74,22 +89,7 @@ class RustModule(ExtensionModule):
             'proc_macro': self.proc_macro,
         })
 
-    @typed_pos_args('rust.test', str, BuildTarget)
-    @typed_kwargs(
-        'rust.test',
-        *TEST_KWS,
-        DEPENDENCIES_KW,
-        LINK_WITH_KW.evolve(since='1.2.0'),
-        KwargInfo(
-            'rust_args',
-            ContainerTypeInfo(list, str),
-            listify=True,
-            default=[],
-            since='1.2.0',
-        ),
-        KwargInfo('is_parallel', bool, default=False),
-    )
-    def test(self, state: ModuleState, args: T.Tuple[str, BuildTarget], kwargs: FuncTest) -> ModuleReturnValue:
+    def test_common(self, funcname: str, state: ModuleState, args: T.Tuple[str, BuildTarget], kwargs: FuncRustTest) -> T.Tuple[Executable, _kwargs.FuncTest]:
         """Generate a rust test target from a given rust target.
 
         Rust puts its unitests inside its main source files, unlike most
@@ -137,15 +137,15 @@ class RustModule(ExtensionModule):
         name = args[0]
         base_target: BuildTarget = args[1]
         if not base_target.uses_rust():
-            raise InterpreterException('Second positional argument to rustmod.test() must be a rust based target')
+            raise InterpreterException(f'Second positional argument to rustmod.{funcname}() must be a rust based target')
         extra_args = kwargs['args']
 
         # Delete any arguments we don't want passed
         if '--test' in extra_args:
-            mlog.warning('Do not add --test to rustmod.test arguments')
+            mlog.warning(f'Do not add --test to rustmod.{funcname}() arguments')
             extra_args.remove('--test')
         if '--format' in extra_args:
-            mlog.warning('Do not add --format to rustmod.test arguments')
+            mlog.warning(f'Do not add --format to rustmod.{funcname}() arguments')
             i = extra_args.index('--format')
             # Also delete the argument to --format
             del extra_args[i + 1]
@@ -185,7 +185,19 @@ class RustModule(ExtensionModule):
             base_target.objects, base_target.environment, base_target.compilers,
             new_target_kwargs
         )
+        return new_target, tkwargs
 
+    @typed_pos_args('rust.test', str, BuildTarget)
+    @typed_kwargs(
+        'rust.test',
+        *TEST_KWS,
+        DEPENDENCIES_KW,
+        LINK_WITH_KW.evolve(since='1.2.0'),
+        *RUST_TEST_KWS,
+    )
+    def test(self, state: ModuleState, args: T.Tuple[str, BuildTarget], kwargs: FuncTest) -> ModuleReturnValue:
+        name, _ = args
+        new_target, tkwargs = self.test_common('test', state, args, kwargs)
         test: Test = self.interpreter.make_test(
             self.interpreter.current_node, (name, new_target), tkwargs)
 
