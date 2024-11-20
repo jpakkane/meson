@@ -28,6 +28,7 @@ if T.TYPE_CHECKING:
     from ..interpreter import Interpreter
     from ..interpreter import kwargs as _kwargs
     from ..interpreter.interpreter import SourceInputs, SourceOutputs
+    from ..interpreter.interpreterobjects import Test
     from ..programs import OverrideProgram
     from ..interpreter.type_checking import SourcesVarargsType
 
@@ -184,7 +185,7 @@ class RustModule(ExtensionModule):
             new_target_kwargs
         )
 
-        test = self.interpreter.make_test(
+        test: Test = self.interpreter.make_test(
             self.interpreter.current_node, (name, new_target), tkwargs)
 
         return ModuleReturnValue(None, [new_target, test])

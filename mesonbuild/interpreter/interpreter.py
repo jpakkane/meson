@@ -131,6 +131,7 @@ if T.TYPE_CHECKING:
 
     ProgramVersionFunc = T.Callable[[T.Union[ExternalProgram, build.Executable, OverrideProgram]], str]
 
+    TestClass = T.TypeVar('TestClass', bound=Test)
 
 def _project_version_validator(value: T.Union[T.List, str, mesonlib.File, None]) -> T.Optional[str]:
     if isinstance(value, list):
@@ -2238,7 +2239,8 @@ class Interpreter(InterpreterBase, HoldableObject):
 
     def make_test(self, node: mparser.BaseNode,
                   args: T.Tuple[str, T.Union[build.Executable, build.Jar, ExternalProgram, mesonlib.File, build.CustomTarget, build.CustomTargetIndex]],
-                  kwargs: 'kwtypes.BaseTest') -> Test:
+                  kwargs: 'kwtypes.BaseTest',
+                  klass: T.Type[TestClass] = Test) -> TestClass:
         name = args[0]
         if ':' in name:
             mlog.deprecation(f'":" is not allowed in test name "{name}", it has been replaced with "_"',
@@ -2268,20 +2270,20 @@ class Interpreter(InterpreterBase, HoldableObject):
                 s = ':' + s
             suite.append(prj.replace(' ', '_').replace(':', '_') + s)
 
-        return Test(name,
-                    prj,
-                    suite,
-                    exe,
-                    kwargs['depends'],
-                    kwargs.get('is_parallel', False),
-                    kwargs['args'],
-                    env,
-                    kwargs['should_fail'],
-                    kwargs['timeout'],
-                    kwargs['workdir'],
-                    kwargs['protocol'],
-                    kwargs['priority'],
-                    kwargs['verbose'])
+        return klass(name,
+                     prj,
+                     suite,
+                     exe,
+                     kwargs['depends'],
+                     kwargs.get('is_parallel', False),
+                     kwargs['args'],
+                     env,
+                     kwargs['should_fail'],
+                     kwargs['timeout'],
+                     kwargs['workdir'],
+                     kwargs['protocol'],
+                     kwargs['priority'],
+                     kwargs['verbose'])
 
     def add_test(self, node: mparser.BaseNode,
                  args: T.Tuple[str, T.Union[build.Executable, build.Jar, ExternalProgram, mesonlib.File, build.CustomTarget, build.CustomTargetIndex]],
