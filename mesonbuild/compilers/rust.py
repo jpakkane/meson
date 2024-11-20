@@ -170,7 +170,10 @@ class RustCompiler(Compiler):
         self.native_static_libs = [i for i in match.group(1).split() if i not in exclude]
 
     def get_dependency_gen_args(self, outtarget: str, outfile: str) -> T.List[str]:
-        return ['--dep-info', outfile]
+        return ['--emit', f'dep-info={outfile}']
+
+    def get_output_args(self, outputname: str) -> T.List[str]:
+        return ['--emit', f'link={outputname}']
 
     @functools.lru_cache(maxsize=None)
     def get_sysroot(self) -> str:
@@ -221,9 +224,6 @@ class RustCompiler(Compiler):
                         break
 
         return parameter_list
-
-    def get_output_args(self, outputname: str) -> T.List[str]:
-        return ['-o', outputname]
 
     @classmethod
     def use_linker_args(cls, linker: str, version: str) -> T.List[str]:
@@ -324,3 +324,21 @@ class ClippyRustCompiler(RustCompiler):
     """
 
     id = 'clippy-driver rustc'
+
+
+class RustdocTestCompiler(RustCompiler):
+
+    """We invoke Rustdoc to run doctests.  Some of the flags
+       are different from rustc and some (e.g. --emit link) are
+       ignored."""
+
+    id = 'rustdoc --test'
+
+    def get_debug_args(self, is_debug: bool) -> T.List[str]:
+        return []
+
+    def get_dependency_gen_args(self, outtarget: str, outfile: str) -> T.List[str]:
+        return []
+
+    def get_output_args(self, outputname: str) -> T.List[str]:
+        return []
