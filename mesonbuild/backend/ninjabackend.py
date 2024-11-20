@@ -1993,9 +1993,9 @@ class NinjaBackend(backends.Backend):
         args += self.generate_basic_compiler_args(target, rustc)
         # Rustc replaces - with _. spaces or dots are not allowed, so we replace them with underscores
         args += ['--crate-name', target.name.replace('-', '_').replace(' ', '_').replace('.', '_')]
-        depfile = os.path.join(target.subdir, target.name + '.d')
-        args += ['--emit', f'dep-info={depfile}', '--emit', f'link={target_name}']
-        args += ['--out-dir', self.get_target_private_dir(target)]
+        depfile = os.path.join(self.get_target_private_dir(target), target.name + '.d')
+        args += ['--emit', f'dep-info={depfile}']
+        args += ['--emit', f'link'={target_name}']
         args += ['-C', 'metadata=' + target.get_id()]
         args += target.get_extra_args('rust')
 
