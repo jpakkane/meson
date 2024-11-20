@@ -106,7 +106,7 @@ class CompilerArgs(T.MutableSequence[str]):
         self._container: T.List[str] = list(iterable) if iterable is not None else []
 
         self.pre: T.Deque[str] = collections.deque()
-        self.post: T.Deque[str] = collections.deque()
+        self.post: T.List[str] = []
         self.needs_override_check: bool = False
 
     # Flush the saved pre and post list into the _container list
