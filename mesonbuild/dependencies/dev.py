@@ -56,7 +56,9 @@ class GTestDependencySystem(SystemDependency):
     def __init__(self, name: str, environment: 'Environment', kwargs: T.Dict[str, T.Any]) -> None:
         super().__init__(name, environment, kwargs, language='cpp')
         self.main = kwargs.get('main', False)
-        self.src_dirs = ['/usr/src/gtest/src', '/usr/src/googletest/googletest/src']
+
+        sysroot = environment.properties[self.for_machine].get_sys_root() or ""
+        self.src_dirs = [sysroot + '/usr/src/gtest/src', sysroot + '/usr/src/googletest/googletest/src']
         if not self._add_sub_dependency(threads_factory(environment, self.for_machine, {})):
             self.is_found = False
             return
