@@ -41,6 +41,31 @@ It also takes the following keyword arguments:
 This function  also accepts all of the keyword arguments accepted by the
 [[test]] function except `protocol`, it will set that automatically.
 
+### doctest()
+
+```meson
+rustmod.doctest(name, target, ...)
+```
+
+This function creates a new `test()` target from an existing rust
+based library target. The test will use `rustdoc` to extract and run
+the doctests that are included in `target`'s sources.
+
+This function takes two positional arguments, the first is the name of the
+test and the second is the library or executable that is the rust based target.
+It also takes the following keyword arguments:
+
+- `dependencies`: a list of test-only Dependencies
+- `link_with`: a list of additional build Targets to link with
+- `rust_args`: a list of extra arguments passed to the Rust compiler
+
+The target is linked automatically into the doctests.
+
+This function  also accepts all of the keyword arguments accepted by the
+[[test]] function except `protocol`, it will set that automatically.
+However, arguments are limited to strings that do not contain spaces
+due to limitations of `rustdoc`.
+
 ### bindgen()
 
 This function wraps bindgen to simplify creating rust bindings around C

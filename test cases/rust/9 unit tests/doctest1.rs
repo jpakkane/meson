@@ -7,6 +7,6 @@
 /// ```ignore
 /// this one will be skipped
 /// ```
-fn my_func()
+pub fn my_func()
 {
 }

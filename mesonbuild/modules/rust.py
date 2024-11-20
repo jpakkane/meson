@@ -4,6 +4,7 @@
 from __future__ import annotations
 import itertools
 import os
+import re
 import typing as T
 
 from mesonbuild.interpreterbase.decorators import FeatureNew
@@ -11,15 +12,17 @@ from mesonbuild.interpreterbase.decorators import FeatureNew
 from . import ExtensionModule, ModuleReturnValue, ModuleInfo
 from .. import mesonlib, mlog
 from ..build import (BothLibraries, BuildTarget, CustomTargetIndex, Executable, ExtractedObjects, GeneratedList,
-                     CustomTarget, InvalidArguments, Jar, StructuredSources, SharedLibrary)
+                     CustomTarget, InvalidArguments, Jar, StructuredSources, SharedLibrary, StaticLibrary)
 from ..compilers.compilers import are_asserts_disabled, lang_suffixes
+from ..compilers.rust import RustCompiler
 from ..interpreter.type_checking import (
-    DEPENDENCIES_KW, LINK_WITH_KW, SHARED_LIB_KWS, TEST_KWS, OUTPUT_KW,
+    DEPENDENCIES_KW, LINK_WITH_KW, SHARED_LIB_KWS, TEST_KWS, TEST_KWS_NO_ARGS, OUTPUT_KW,
     INCLUDE_DIRECTORIES, SOURCES_VARARGS, NoneType, in_set_validator
 )
 from ..interpreterbase import ContainerTypeInfo, InterpreterException, KwargInfo, typed_kwargs, typed_pos_args, noPosargs, permittedKwargs
-from ..mesonlib import File
-from ..programs import ExternalProgram
+from ..interpreter.interpreterobjects import Doctest
+from ..mesonlib import File, MesonException, PerMachine
+from ..programs import ExternalProgram, NonExistingExternalProgram
 
 if T.TYPE_CHECKING:
     from . import ModuleState
@@ -44,6 +47,7 @@ if T.TYPE_CHECKING:
         rust_args: T.List[str]
 
     FuncTest = FuncRustTest[_kwargs.TestArgs]
+    FuncDoctest = FuncRustTest[str]
 
     class FuncBindgen(TypedDict):
 
@@ -69,12 +73,18 @@ RUST_TEST_KWS: T.List[KwargInfo] = [
      KwargInfo('is_parallel', bool, default=False),
 ]
 
+def no_spaces_validator(arg: T.Optional[T.Union[str, T.List]]) -> T.Optional[str]:
+    if any(bool(re.search(r'\s', x)) for x in arg):
+        return 'must not contain spaces due to limitations of rustdoc'
+    return None
+
 
 class RustModule(ExtensionModule):
 
     """A module that holds helper functions for rust."""
 
     INFO = ModuleInfo('rust', '0.57.0', stabilized='1.0.0')
+    rustdoc: PerMachine[T.Optional[ExternalProgram]] = PerMachine(None, None)
 
     def __init__(self, interpreter: Interpreter) -> None:
         super().__init__(interpreter)
@@ -85,6 +95,7 @@ class RustModule(ExtensionModule):
             self._bindgen_rust_target = None
         self.methods.update({
             'test': self.test,
+            'doctest': self.doctest,
             'bindgen': self.bindgen,
             'proc_macro': self.proc_macro,
         })
@@ -202,6 +213,68 @@ class RustModule(ExtensionModule):
             self.interpreter.current_node, (name, new_target), tkwargs)
 
         return ModuleReturnValue(None, [new_target, test])
+
+    @FeatureNew('rust.doctest', '1.7.0')
+    @typed_pos_args('rust.doctest', str, BuildTarget)
+    @typed_kwargs(
+        'rust.doctest',
+        *TEST_KWS_NO_ARGS,
+        DEPENDENCIES_KW,
+        LINK_WITH_KW,
+        *RUST_TEST_KWS,
+        KwargInfo(
+            'args',
+            ContainerTypeInfo(list, str),
+            listify=True,
+            default=[],
+            validator=no_spaces_validator,
+        ),
+    )
+    def doctest(self, state: ModuleState, args: T.Tuple[str, T.Union[SharedLibrary, StaticLibrary]], kwargs: FuncDoctest) -> ModuleReturnValue:
+        name, base_target = args
+
+        # Link the base target's crate into the tests
+        kwargs['link_with'].append(base_target)
+        kwargs['depends'].append(base_target)
+        workdir = kwargs['workdir']
+        kwargs['workdir'] = None
+        new_target, tkwargs = self.test_common('doctest', state, args, kwargs)
+
+        # added automatically by rustdoc; keep things simple
+        tkwargs['args'].remove('--test')
+
+        # --test-args= is "parsed" simply via the Rust function split_whitespace().
+        # This means no quoting nightmares (pfew) but it also means no spaces.
+        # Unfortunately it's pretty hard at this point to accept e.g. CustomTarget,
+        # because their paths may not be known.  This is not a big deal because the
+        # user does not control the test harness, so make things easy and allow
+        # strings only.
+        if tkwargs['args']:
+            tkwargs['args'] = ['--test-args=' + ' '.join(T.cast('T.Sequence[str]', tkwargs['args']))]
+        if workdir:
+            tkwargs['args'].append('--test-run-directory=' + workdir)
+
+        if self.rustdoc[base_target.for_machine] is None:
+            rustc = base_target.compilers['rust']
+            assert isinstance(rustc, RustCompiler)
+            rustdoc = rustc.get_rustdoc(state.environment)
+            if rustdoc:
+                self.rustdoc[base_target.for_machine] = ExternalProgram(rustdoc.get_exe())
+            else:
+                self.rustdoc[base_target.for_machine] = NonExistingExternalProgram()
+
+        rustdoc_prog = self.rustdoc[base_target.for_machine]
+        if not rustdoc_prog.found():
+            raise MesonException(f'could not find rustdoc for {base_target.for_machine} machine')
+
+        doctests: Doctest = self.interpreter.make_test(
+            self.interpreter.current_node, (name, rustdoc_prog), tkwargs, Doctest)
+
+        # Note that the new_target is intentionally not returned, as it
+        # is only reached via the base_target and never built by "ninja"
+        doctests.target = new_target
+        base_target.doctests = doctests
+        return ModuleReturnValue(None, [doctests])
 
     @noPosargs
     @typed_kwargs(
