@@ -27,6 +27,9 @@ features = ["f1"]
 [dependencies.libname]
 version = "1"
 
+[target."cfg(unix)".dependencies.unixdep]
+version = "0.1"
+
 [features]
 default = ["f1"]
 f1 = ["f2", "f3"]
