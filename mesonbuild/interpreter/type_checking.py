@@ -484,9 +484,7 @@ VARIABLES_KW: KwargInfo[T.Dict[str, str]] = KwargInfo(
 
 PRESERVE_PATH_KW: KwargInfo[bool] = KwargInfo('preserve_path', bool, default=False, since='0.63.0')
 
-TEST_KWS: T.List[KwargInfo] = [
-    KwargInfo('args', ContainerTypeInfo(list, (str, File, BuildTarget, CustomTarget, CustomTargetIndex, ExternalProgram)),
-              listify=True, default=[]),
+TEST_KWS_NO_ARGS: T.List[KwargInfo] = [
     KwargInfo('should_fail', bool, default=False),
     KwargInfo('timeout', int, default=30),
     KwargInfo('workdir', (str, NoneType), default=None,
@@ -501,6 +499,11 @@ TEST_KWS: T.List[KwargInfo] = [
     DEPENDS_KW.evolve(since='0.46.0'),
     KwargInfo('suite', ContainerTypeInfo(list, str), listify=True, default=['']),  # yes, a list of empty string
     KwargInfo('verbose', bool, default=False, since='0.62.0'),
+]
+
+TEST_KWS: T.List[KwargInfo] = TEST_KWS_NO_ARGS + [
+    KwargInfo('args', ContainerTypeInfo(list, (str, File, BuildTarget, CustomTarget, CustomTargetIndex, ExternalProgram)),
+              listify=True, default=[]),
 ]
 
 # Cannot have a default value because we need to check that rust_crate_type and

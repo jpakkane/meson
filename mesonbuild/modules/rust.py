@@ -34,8 +34,9 @@ if T.TYPE_CHECKING:
 
     from typing_extensions import TypedDict, Literal
 
-    class FuncTest(_kwargs.BaseTest):
+    class FuncTest(TypedDict, _kwargs.BaseTest):
 
+        args: T.List[_kwargs.TestArgs]
         dependencies: T.List[T.Union[Dependency, ExternalLibrary]]
         is_parallel: bool
         link_with: T.List[LibTypes]
