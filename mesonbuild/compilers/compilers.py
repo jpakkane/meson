@@ -487,6 +487,12 @@ class Compiler(HoldableObject, metaclass=abc.ABCMeta):
     def get_modes(self) -> T.List[Compiler]:
         return self.modes
 
+    def get_exe(self) -> str:
+        return self.exelist[0]
+
+    def get_exe_args(self) -> T.List[str]:
+        return self.exelist[1:]
+
     def get_linker_id(self) -> str:
         # There is not guarantee that we have a dynamic linker instance, as
         # some languages don't have separate linkers and compilers. In those

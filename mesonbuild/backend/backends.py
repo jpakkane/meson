@@ -2055,9 +2055,8 @@ class Backend:
         Some backends don't support custom compilers. This is a convenience
         method to convert a Compiler to a Generator.
         '''
-        exelist = compiler.get_exelist()
-        exe = programs.ExternalProgram(exelist[0])
-        args = exelist[1:]
+        exe = programs.ExternalProgram(compiler.get_exe())
+        args = compiler.get_exe_args()
         commands = self.compiler_to_generator_args(target, compiler)
         generator = build.Generator(exe, args + commands.to_native(),
                                     [output_templ], depfile='@PLAINNAME@.d',

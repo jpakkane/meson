@@ -796,13 +796,12 @@ class Interpreter(InterpreterBase, HoldableObject):
             if not cmd.found():
                 raise InterpreterException(f'command {cmd.get_name()!r} not found or not executable')
         elif isinstance(cmd, compilers.Compiler):
-            exelist = cmd.get_exelist()
-            cmd = exelist[0]
+            expanded_args = cmd.get_exe_args()
+            cmd = cmd.get_exe()
             prog = ExternalProgram(cmd, silent=True)
             if not prog.found():
                 raise InterpreterException(f'Program {cmd!r} not found or not executable')
             cmd = prog
-            expanded_args = exelist[1:]
         else:
             if isinstance(cmd, mesonlib.File):
                 cmd = cmd.absolute_path(srcdir, builddir)
@@ -821,7 +820,7 @@ class Interpreter(InterpreterBase, HoldableObject):
                 expanded_args.append(a.get_path())
             elif isinstance(a, compilers.Compiler):
                 FeatureNew.single_use('Compiler object as a variadic argument to `run_command`', '0.61.0', self.subproject, location=self.current_node)
-                prog = ExternalProgram(a.exelist[0], silent=True)
+                prog = ExternalProgram(a.get_exe(), silent=True)
                 if not prog.found():
                     raise InterpreterException(f'Program {cmd!r} not found or not executable')
                 expanded_args.append(prog.get_path())

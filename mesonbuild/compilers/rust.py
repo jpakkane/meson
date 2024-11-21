@@ -305,7 +305,7 @@ class RustCompiler(Compiler):
             exelist = rustup_exelist + [name]
         else:
             exelist = [name]
-            args = self.exelist[1:]
+            args = self.get_exe_args()
 
         from ..programs import find_external_program
         for prog in find_external_program(env, self.for_machine, exelist[0], exelist[0],

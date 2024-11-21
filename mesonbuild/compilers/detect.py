@@ -1070,7 +1070,7 @@ def detect_rust_compiler(env: 'Environment', for_machine: MachineChoice) -> Rust
                 extra_args: T.Dict[str, T.Union[str, bool]] = {}
                 always_args: T.List[str] = []
                 if is_link_exe:
-                    compiler.extend(cls.use_linker_args(cc.linker.exelist[0], ''))
+                    compiler.extend(cls.use_linker_args(cc.linker.get_exe(), ''))
                     extra_args['direct'] = True
                     extra_args['machine'] = cc.linker.machine
                 else:
@@ -1102,7 +1102,7 @@ def detect_rust_compiler(env: 'Environment', for_machine: MachineChoice) -> Rust
                 # inserts the correct prefix itself.
                 assert isinstance(linker, linkers.VisualStudioLikeLinkerMixin)
                 linker.direct = True
-                compiler.extend(cls.use_linker_args(linker.exelist[0], ''))
+                compiler.extend(cls.use_linker_args(linker.get_exe(), ''))
             else:
                 # On linux and macos rust will invoke the c compiler for
                 # linking, on windows it will use lld-link or link.exe.
