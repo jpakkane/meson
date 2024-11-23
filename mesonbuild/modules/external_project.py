@@ -94,7 +94,7 @@ class ExternalProject(NewExtensionModule):
         # will install files into "c:/bar/c:/foo" which is an invalid path.
         # Work around that issue by removing the drive from prefix.
         if self.prefix.drive:
-            self.prefix = Path(relpath(self.prefix, self.prefix.drive))
+            self.prefix = Path('/' + relpath(self.prefix, self.prefix.drive + '/'))
 
         # self.prefix is an absolute path, so we cannot append it to another path.
         self.rel_prefix = Path(relpath(self.prefix, self.prefix.root))
