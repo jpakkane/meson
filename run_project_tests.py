@@ -158,6 +158,8 @@ class InstalledFile:
             'gcc': canonical_compiler != 'msvc',
             'cygwin': env.machines.host.is_cygwin(),
             '!cygwin': not env.machines.host.is_cygwin(),
+            'windows': env.machines.host.is_windows() or env.machines.host.is_cygwin(),
+            '!windows': not (env.machines.host.is_windows() or env.machines.host.is_cygwin()),
         }.get(self.platform or '', True)
         if not matches:
             return None
