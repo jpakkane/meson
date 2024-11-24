@@ -286,11 +286,20 @@ class DependenciesHelper:
             self.version_reqs[name].update(version_reqs)
 
     def split_version_req(self, s: str) -> T.Tuple[str, T.Optional[str]]:
+        stripped_str = s.strip()
+        if not stripped_str:
+            raise mesonlib.MesonException(f'required dependency must not be empty, "{s}" was provided.')
         for op in ['>=', '<=', '!=', '==', '=', '>', '<']:
-            pos = s.find(op)
-            if pos > 0:
-                return s[0:pos].strip(), s[pos:].strip()
-        return s, None
+            pos = stripped_str.find(op)
+            if pos < 0:
+                continue
+            if pos == 0:
+                raise mesonlib.MesonException(f'required versioned dependency "{s}" is missing the dependency\'s name.')
+            stripped_str, version = stripped_str[0:pos].strip(), stripped_str[pos:].strip()
+            if not stripped_str:
+                raise mesonlib.MesonException(f'required versioned dependency "{s}" is missing the dependency\'s name.')
+            return stripped_str, version
+        return stripped_str, None
 
     def format_vreq(self, vreq: str) -> str:
         # vreq are '>=1.0' and pkgconfig wants '>= 1.0'
