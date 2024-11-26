@@ -2054,6 +2054,7 @@ class Interpreter(InterpreterBase, HoldableObject):
         INSTALL_MODE_KW.evolve(since='0.47.0'),
         KwargInfo('feed', bool, default=False, since='0.59.0'),
         KwargInfo('capture', bool, default=False),
+        KwargInfo('rename', (ContainerTypeInfo(list, str), NoneType), default=None, listify=True, since='1.7.0'),
         KwargInfo('console', bool, default=False, since='0.48.0'),
     )
     def func_custom_target(self, node: mparser.FunctionNode, args: T.Tuple[str],
@@ -2119,7 +2120,11 @@ class Interpreter(InterpreterBase, HoldableObject):
                                    'or the same number of elements as the output keyword argument. '
                                    f'(there are {len(kwargs["install_tag"])} install_tags, '
                                    f'and {len(kwargs["output"])} outputs)')
-
+        if kwargs['rename'] and len(kwargs['rename']) != len(kwargs['output']):
+            raise InvalidArguments('custom_target: rename argument must either be empty or have '
+                                   'length equal to the number of outputs. '
+                                   f'(there are {len(kwargs["rename"])} rename, '
+                                   f'and {len(kwargs["output"])} outputs)')
         for t in kwargs['output']:
             self.validate_forbidden_targets(t)
         self._validate_custom_target_outputs(len(inputs) > 1, kwargs['output'], "custom_target")
@@ -2145,6 +2150,7 @@ class Interpreter(InterpreterBase, HoldableObject):
             install_dir=kwargs['install_dir'],
             install_mode=install_mode,
             install_tag=kwargs['install_tag'],
+            rename=kwargs['rename'],
             backend=self.backend)
         self.add_target(tg.name, tg)
         return tg
@@ -3488,6 +3494,11 @@ class Interpreter(InterpreterBase, HoldableObject):
         target = targetclass(name, self.subdir, self.subproject, for_machine, srcs, struct, objs,
                              self.environment, self.compilers[for_machine], kwargs)
 
+        if kwargs['rename'] and len(kwargs['rename']) != len(target.outputs):
+            raise InvalidArguments('build_target: rename argument must either be empty or have '
+                                   'length equal to the number of outputs. '
+                                   f'(there are {len(kwargs["rename"])} rename, '
+                                   f'and {len(target.outputs)} outputs)')
         self.add_target(name, target)
         self.project_args_frozen = True
         return target

@@ -393,6 +393,10 @@ class Installer:
                     makedirs: T.Optional[T.Tuple[T.Any, str]] = None,
                     follow_symlinks: T.Optional[bool] = None) -> bool:
         outdir = os.path.split(to_file)[0]
+        if os.path.basename(from_file) == os.path.basename(to_file):
+            outpath = outdir
+        else:
+            outpath = to_file
         if not os.path.isfile(from_file) and not os.path.islink(from_file):
             raise MesonException(f'Tried to install something that isn\'t a file: {from_file!r}')
         # copyfile fails if the target file already exists, so remove it to
@@ -405,10 +409,10 @@ class Installer:
                 append_to_log(self.lf, f'# Preserving old file {to_file}\n')
                 self.preserved_file_count += 1
                 return False
-            self.log(f'Installing {from_file} to {outdir}')
+            self.log(f'Installing {from_file} to {outpath}')
             self.remove(to_file)
         else:
-            self.log(f'Installing {from_file} to {outdir}')
+            self.log(f'Installing {from_file} to {outpath}')
             if makedirs:
                 # Unpack tuple
                 dirmaker, outdir = makedirs
@@ -734,9 +738,10 @@ class Installer:
                     raise MesonException(f'File {t.fname!r} could not be found')
             file_copied = False # not set when a directory is copied
             fname = check_for_stampfile(t.fname)
+            out_fname = t.out_fname
             outdir = get_destdir_path(destdir, fullprefix, t.outdir)
-            outname = os.path.join(outdir, os.path.basename(fname))
-            final_path = os.path.join(d.prefix, t.outdir, os.path.basename(fname))
+            outname = os.path.join(outdir, out_fname)
+            final_path = os.path.join(d.prefix, t.outdir, out_fname)
             should_strip = t.strip or (t.can_strip and self.options.strip)
             install_rpath = t.install_rpath
             install_name_mappings = t.install_name_mappings
@@ -744,10 +749,10 @@ class Installer:
             if not os.path.exists(fname):
                 raise MesonException(f'File {fname!r} could not be found')
             elif os.path.isfile(fname):
-                file_copied = self.do_copyfile(fname, outname, makedirs=(dm, outdir))
+                file_copied = self.do_copyfile(fname, outname, makedirs=(dm, os.path.dirname(outname)))
                 if should_strip and d.strip_bin is not None:
-                    if fname.endswith('.jar'):
-                        self.log('Not stripping jar target: {}'.format(os.path.basename(fname)))
+                    if out_fname.endswith('.jar'):
+                        self.log('Not stripping jar target: {}'.format(os.path.basename(out_fname)))
                         continue
                     self.do_strip(d.strip_bin, fname, outname)
                 if fname.endswith('.js'):
@@ -759,8 +764,8 @@ class Installer:
                         file_copied = self.do_copyfile(wasm_source, wasm_output)
             elif os.path.isdir(fname):
                 fname = os.path.join(d.build_dir, fname.rstrip('/'))
-                outname = os.path.join(outdir, os.path.basename(fname))
-                dm.makedirs(outdir, exist_ok=True)
+                outname = outname.rstrip('/')
+                dm.makedirs(os.path.dirname(outname), exist_ok=True)
                 self.do_copydir(d, fname, outname, None, install_mode, dm)
             else:
                 raise RuntimeError(f'Unknown file type for {fname!r}')

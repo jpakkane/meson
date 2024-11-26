@@ -97,6 +97,7 @@ buildtarget_kwargs = {
     'native',
     'objects',
     'override_options',
+    'rename',
     'sources',
     'gnu_symbol_visibility',
     'link_language',
@@ -1128,6 +1129,11 @@ class BuildTarget(Target):
     def get_custom_install_mode(self) -> T.Optional['FileMode']:
         return self.install_mode
 
+    def get_rename(self) -> T.List[str]:
+        if self.rename:
+            return self.rename
+        return [None] * len(self.outputs)
+
     def process_kwargs(self, kwargs):
         self.process_kwargs_base(kwargs)
         self.original_kwargs = kwargs
@@ -1165,6 +1171,7 @@ class BuildTarget(Target):
                                         (str, bool))
         self.install_mode = kwargs.get('install_mode', None)
         self.install_tag = stringlistify(kwargs.get('install_tag', [None]))
+        self.rename = kwargs.get('rename', None)
         if not isinstance(self, Executable):
             # build_target will always populate these as `None`, which is fine
             if kwargs.get('gui_app') is not None:
@@ -2642,6 +2649,7 @@ class CustomTarget(Target, CustomTargetBase, CommandBase):
                  feed: bool = False,
                  install: bool = False,
                  install_dir: T.Optional[T.List[T.Union[str, Literal[False]]]] = None,
+                 rename: T.Optional[T.List[str]] = None,
                  install_mode: T.Optional[FileMode] = None,
                  install_tag: T.Optional[T.List[T.Optional[str]]] = None,
                  absolute_paths: bool = False,
@@ -2668,6 +2676,7 @@ class CustomTarget(Target, CustomTargetBase, CommandBase):
         self.extra_depends = list(extra_depends or [])
         self.feed = feed
         self.install_dir = list(install_dir or [])
+        self.rename = rename
         self.install_mode = install_mode
         self.install_tag = _process_install_tag(install_tag, len(self.outputs))
         self.name = name if name else self.outputs[0]
@@ -2786,6 +2795,11 @@ class CustomTarget(Target, CustomTargetBase, CommandBase):
 
     def get_all_link_deps(self):
         return []
+
+    def get_rename(self) -> T.List[str]:
+        if self.rename:
+            return self.rename
+        return [None] * len(self.outputs)
 
     def is_internal(self) -> bool:
         '''

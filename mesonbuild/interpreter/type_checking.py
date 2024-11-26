@@ -584,6 +584,13 @@ _ALL_TARGET_KWS: T.List[KwargInfo] = [
                 ('1.1.0', 'generated sources as positional "objects" arguments')
         },
     ),
+    KwargInfo(
+        'rename',
+        (ContainerTypeInfo(list, str), NoneType),
+        listify=True,
+        default=None,
+        since='1.7.0',
+    ),
 ]
 
 
