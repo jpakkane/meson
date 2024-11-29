@@ -48,7 +48,7 @@ def add_arguments(parser: 'argparse.ArgumentParser') -> None:
                         help='Clear cached state (e.g. found dependencies)')
     parser.add_argument('--no-pager', action='store_false', dest='pager',
                         help='Do not redirect output to a pager')
-    parser.add_argument('-U', action='append', dest='U',
+    parser.add_argument('-U', action='append', dest='unset_opts', default=[],
                         help='Remove a subproject option.')
 
 def stringify(val: T.Any) -> str:
@@ -355,7 +355,7 @@ class Conf:
 def has_option_flags(options: T.Any) -> bool:
     if options.cmd_line_options:
         return True
-    if options.U:
+    if options.unset_opts:
         return True
     return False
 
@@ -379,14 +379,11 @@ def run_impl(options: CMDOptions, builddir: str) -> int:
 
         save = False
         if has_option_flags(options):
-            if hasattr(options, 'U'):
-                U = options.U
-            else:
-                U = []
+            unset_opts = getattr(options, 'unset_opts', [])
             all_D = options.projectoptions[:]
             for keystr, valstr in options.cmd_line_options.items():
                 all_D.append(f'{keystr}={valstr}')
-            save |= c.coredata.optstore.set_from_configure_command(all_D, U)
+            save |= c.coredata.optstore.set_from_configure_command(all_D, unset_opts)
             coredata.update_cmd_line_file(builddir, options)
         if options.clearcache:
             c.clear_cache()
