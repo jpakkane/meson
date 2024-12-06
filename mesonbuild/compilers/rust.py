@@ -142,8 +142,15 @@ class RustCompiler(Compiler):
     def get_dependency_gen_args(self, outtarget: str, outfile: str) -> T.List[str]:
         return ['--dep-info', outfile]
 
+    @functools.lru_cache(maxsize=None)
     def get_sysroot(self) -> str:
         cmd = self.get_exelist(ccache=False) + ['--print', 'sysroot']
+        p, stdo, stde = Popen_safe_logged(cmd)
+        return stdo.split('\n', maxsplit=1)[0]
+
+    @functools.lru_cache(maxsize=None)
+    def get_target_libdir(self) -> str:
+        cmd = self.get_exelist(ccache=False) + ['--print', 'target-libdir']
         p, stdo, stde = Popen_safe_logged(cmd)
         return stdo.split('\n', maxsplit=1)[0]
 

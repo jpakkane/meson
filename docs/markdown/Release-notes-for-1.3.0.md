@@ -6,7 +6,7 @@ short-description: Release notes for 1.3.0
 # New features
 
 Meson 1.3.0 was released on 19 November 2023
-## Clarify of implicitly-included headers in C-like compiler checks
+## Clarify implicitly-included headers in C-like compiler checks
 
 Compiler check methods `compiler.compute_int()`, `compiler.alignment()`
 and `compiler.sizeof()` now have their implicitly-included headers

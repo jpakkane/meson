@@ -20,6 +20,13 @@ version = "1.0"
 [dependencies]
 mybar = { version = "0.1", package = "bar", default-features = false }
 
+[dependencies.common]
+version = "0.0.1"
+features = ["f1"]
+
+[dependencies.libname]
+version = "1"
+
 [features]
 default = ["f1"]
 f1 = ["f2", "f3"]

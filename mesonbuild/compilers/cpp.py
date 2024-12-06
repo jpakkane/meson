@@ -244,7 +244,7 @@ class ClangCPPCompiler(_StdCPPLibMixin, ClangCompiler, CPPCompiler):
             opts,
             self.create_option(options.UserComboOption,
                                self.form_compileropt_key('eh'),
-                               'C++ exception handling type.',
+                               'C++ exception handling type',
                                ['none', 'default', 'a', 's', 'sc'],
                                'default'),
             self.create_option(options.UserBooleanOption,
@@ -271,7 +271,7 @@ class ClangCPPCompiler(_StdCPPLibMixin, ClangCompiler, CPPCompiler):
                 opts,
                 self.create_option(options.UserArrayOption,
                                    self.form_compileropt_key('winlibs'),
-                                   'Standard Win libraries to link against',
+                                   'Standard Windows libs to link against',
                                    gnu_winlibs),
             )
         return opts
@@ -407,7 +407,7 @@ class ArmclangCPPCompiler(ArmclangCompiler, CPPCompiler):
             opts,
             self.create_option(options.UserComboOption,
                                key.evolve('eh'),
-                               'C++ exception handling type.',
+                               'C++ exception handling type',
                                ['none', 'default', 'a', 's', 'sc'],
                                'default'),
         )
@@ -457,7 +457,7 @@ class GnuCPPCompiler(_StdCPPLibMixin, GnuCompiler, CPPCompiler):
             opts,
             self.create_option(options.UserComboOption,
                                self.form_compileropt_key('eh'),
-                               'C++ exception handling type.',
+                               'C++ exception handling type',
                                ['none', 'default', 'a', 's', 'sc'],
                                'default'),
             self.create_option(options.UserBooleanOption,
@@ -485,7 +485,7 @@ class GnuCPPCompiler(_StdCPPLibMixin, GnuCompiler, CPPCompiler):
                 opts,
                 self.create_option(options.UserArrayOption,
                                    key.evolve('cpp_winlibs'),
-                                   'Standard Win libraries to link against',
+                                   'Standard Windows libs to link against',
                                    gnu_winlibs),
             )
         return opts
@@ -612,7 +612,7 @@ class ElbrusCPPCompiler(ElbrusCompiler, CPPCompiler):
             opts,
             self.create_option(options.UserComboOption,
                                self.form_compileropt_key('eh'),
-                               'C++ exception handling type.',
+                               'C++ exception handling type',
                                ['none', 'default', 'a', 's', 'sc'],
                                'default'),
             self.create_option(options.UserBooleanOption,
@@ -693,7 +693,7 @@ class IntelCPPCompiler(IntelGnuLikeCompiler, CPPCompiler):
             opts,
             self.create_option(options.UserComboOption,
                                self.form_compileropt_key('eh'),
-                               'C++ exception handling type.',
+                               'C++ exception handling type',
                                ['none', 'default', 'a', 's', 'sc'],
                                'default'),
             self.create_option(options.UserBooleanOption,
@@ -766,7 +766,7 @@ class VisualStudioLikeCPPCompilerMixin(CompilerMixinBase):
             opts,
             self.create_option(options.UserComboOption,
                                self.form_compileropt_key('eh'),
-                               'C++ exception handling type.',
+                               'C++ exception handling type',
                                ['none', 'default', 'a', 's', 'sc'],
                                'default'),
             self.create_option(options.UserBooleanOption,
@@ -775,7 +775,7 @@ class VisualStudioLikeCPPCompilerMixin(CompilerMixinBase):
                                True),
             self.create_option(options.UserArrayOption,
                                self.form_compileropt_key('winlibs'),
-                               'Windows libs to link against.',
+                               'Standard Windows libs to link against',
                                msvc_winlibs),
         )
         std_opt = opts[key]

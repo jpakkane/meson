@@ -550,16 +550,19 @@ class GnuCompiler(GnuLikeCompiler):
         super().__init__()
         self.defines = defines or {}
         self.base_options.update({OptionKey('b_colorout'), OptionKey('b_lto_threads')})
+        self._has_color_support = mesonlib.version_compare(self.version, '>=4.9.0')
+        self._has_wpedantic_support = mesonlib.version_compare(self.version, '>=4.8.0')
+        self._has_lto_auto_support = mesonlib.version_compare(self.version, '>=10.0')
 
     def get_colorout_args(self, colortype: str) -> T.List[str]:
-        if mesonlib.version_compare(self.version, '>=4.9.0'):
+        if self._has_color_support:
             return gnu_color_args[colortype][:]
         return []
 
     def get_warn_args(self, level: str) -> T.List[str]:
         # Mypy doesn't understand cooperative inheritance
         args = super().get_warn_args(level)
-        if mesonlib.version_compare(self.version, '<4.8.0') and '-Wpedantic' in args:
+        if not self._has_wpedantic_support and '-Wpedantic' in args:
             # -Wpedantic was added in 4.8.0
             # https://gcc.gnu.org/gcc-4.8/changes.html
             args[args.index('-Wpedantic')] = '-pedantic'
@@ -612,7 +615,7 @@ class GnuCompiler(GnuLikeCompiler):
 
     def get_lto_compile_args(self, *, threads: int = 0, mode: str = 'default') -> T.List[str]:
         if threads == 0:
-            if mesonlib.version_compare(self.version, '>= 10.0'):
+            if self._has_lto_auto_support:
                 return ['-flto=auto']
             # This matches clang's behavior of using the number of cpus
             return [f'-flto={multiprocessing.cpu_count()}']

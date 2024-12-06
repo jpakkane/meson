@@ -32,7 +32,9 @@ tagprog = executable('tagprog', 'tagprog.c', version_src)
 
 version_src_executable = vcs_tag(input : 'vcstag.c.in',
 output : 'vcstag-executable.c',
-command : [tagprog])
+command : [tagprog],
+install: true,
+install_dir: get_option('includedir'))
 
 executable('tagprog-custom', 'tagprog.c', version_src_custom)
 executable('tagprog-fallback', 'tagprog.c', version_src_fallback)

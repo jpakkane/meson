@@ -158,7 +158,7 @@ class ClangCCompiler(_ClangCStds, ClangCompiler, CCompiler):
                 opts,
                 self.create_option(options.UserArrayOption,
                                    self.form_compileropt_key('winlibs'),
-                                   'Standard Win libraries to link against',
+                                   'Standard Windows libs to link against',
                                    gnu_winlibs),
             )
         return opts
@@ -311,7 +311,7 @@ class GnuCCompiler(GnuCompiler, CCompiler):
                 opts,
                 self.create_option(options.UserArrayOption,
                                    key.evolve('c_winlibs'),
-                                   'Standard Win libraries to link against',
+                                   'Standard Windows libs to link against',
                                    gnu_winlibs),
             )
         return opts
@@ -462,7 +462,7 @@ class VisualStudioLikeCCompilerMixin(CompilerMixinBase):
             self.create_option(
                 options.UserArrayOption,
                 self.form_compileropt_key('winlibs'),
-                'Windows libs to link against.',
+                'Standard Windows libs to link against',
                 msvc_winlibs,
             ),
         )

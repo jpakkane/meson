@@ -4,9 +4,11 @@
 from __future__ import annotations
 
 import typing as T
+import functools
 import os
 
 from .. import options
+from .. import mesonlib
 from .compilers import (
     clike_debug_args,
     Compiler,
@@ -120,6 +122,136 @@ class FortranCompiler(CLikeCompiler, Compiler):
                                ['none'],
                                'none'),
         )
+
+    def _compile_int(self, expression: str, prefix: str, env: 'Environment',
+                     extra_args: T.Union[None, T.List[str], T.Callable[[CompileCheckMode], T.List[str]]],
+                     dependencies: T.Optional[T.List['Dependency']]) -> bool:
+        # Use a trick for emulating a static assert
+        # Taken from https://github.com/j3-fortran/fortran_proposals/issues/70
+        t = f'''program test
+            {prefix}
+            real(merge(kind(1.),-1,({expression}))), parameter :: fail = 1.
+        end program test'''
+        return self.compiles(t, env, extra_args=extra_args,
+                             dependencies=dependencies)[0]
+
+    def cross_compute_int(self, expression: str, low: T.Optional[int], high: T.Optional[int],
+                          guess: T.Optional[int], prefix: str, env: 'Environment',
+                          extra_args: T.Union[None, T.List[str], T.Callable[[CompileCheckMode], T.List[str]]] = None,
+                          dependencies: T.Optional[T.List['Dependency']] = None) -> int:
+        # This only difference between this implementation and that of CLikeCompiler
+        # is a change in logical conjunction operator (.and. instead of &&)
+
+        # Try user's guess first
+        if isinstance(guess, int):
+            if self._compile_int(f'{expression} == {guess}', prefix, env, extra_args, dependencies):
+                return guess
+
+        # If no bounds are given, compute them in the limit of int32
+        maxint = 0x7fffffff
+        minint = -0x80000000
+        if not isinstance(low, int) or not isinstance(high, int):
+            if self._compile_int(f'{expression} >= 0', prefix, env, extra_args, dependencies):
+                low = cur = 0
+                while self._compile_int(f'{expression} > {cur}', prefix, env, extra_args, dependencies):
+                    low = cur + 1
+                    if low > maxint:
+                        raise mesonlib.EnvironmentException('Cross-compile check overflowed')
+                    cur = min(cur * 2 + 1, maxint)
+                high = cur
+            else:
+                high = cur = -1
+                while self._compile_int(f'{expression} < {cur}', prefix, env, extra_args, dependencies):
+                    high = cur - 1
+                    if high < minint:
+                        raise mesonlib.EnvironmentException('Cross-compile check overflowed')
+                    cur = max(cur * 2, minint)
+                low = cur
+        else:
+            # Sanity check limits given by user
+            if high < low:
+                raise mesonlib.EnvironmentException('high limit smaller than low limit')
+            condition = f'{expression} <= {high} .and. {expression} >= {low}'
+            if not self._compile_int(condition, prefix, env, extra_args, dependencies):
+                raise mesonlib.EnvironmentException('Value out of given range')
+
+        # Binary search
+        while low != high:
+            cur = low + int((high - low) / 2)
+            if self._compile_int(f'{expression} <= {cur}', prefix, env, extra_args, dependencies):
+                high = cur
+            else:
+                low = cur + 1
+
+        return low
+
+    def compute_int(self, expression: str, low: T.Optional[int], high: T.Optional[int],
+                    guess: T.Optional[int], prefix: str, env: 'Environment', *,
+                    extra_args: T.Union[None, T.List[str], T.Callable[[CompileCheckMode], T.List[str]]],
+                    dependencies: T.Optional[T.List['Dependency']] = None) -> int:
+        if extra_args is None:
+            extra_args = []
+        if self.is_cross:
+            return self.cross_compute_int(expression, low, high, guess, prefix, env, extra_args, dependencies)
+        t = f'''program test
+            {prefix}
+            print '(i0)', {expression}
+        end program test
+        '''
+        res = self.run(t, env, extra_args=extra_args,
+                       dependencies=dependencies)
+        if not res.compiled:
+            return -1
+        if res.returncode != 0:
+            raise mesonlib.EnvironmentException('Could not run compute_int test binary.')
+        return int(res.stdout)
+
+    def cross_sizeof(self, typename: str, prefix: str, env: 'Environment', *,
+                     extra_args: T.Union[None, T.List[str], T.Callable[[CompileCheckMode], T.List[str]]] = None,
+                     dependencies: T.Optional[T.List['Dependency']] = None) -> int:
+        if extra_args is None:
+            extra_args = []
+        t = f'''program test
+            use iso_c_binding
+            {prefix}
+            {typename} :: something
+        end program test
+        '''
+        if not self.compiles(t, env, extra_args=extra_args,
+                             dependencies=dependencies)[0]:
+            return -1
+        return self.cross_compute_int('c_sizeof(x)', None, None, None, prefix + '\nuse iso_c_binding\n' + typename + ' :: x', env, extra_args, dependencies)
+
+    def sizeof(self, typename: str, prefix: str, env: 'Environment', *,
+               extra_args: T.Union[None, T.List[str], T.Callable[[CompileCheckMode], T.List[str]]] = None,
+               dependencies: T.Optional[T.List['Dependency']] = None) -> T.Tuple[int, bool]:
+        if extra_args is None:
+            extra_args = []
+        if self.is_cross:
+            r = self.cross_sizeof(typename, prefix, env, extra_args=extra_args,
+                                  dependencies=dependencies)
+            return r, False
+        t = f'''program test
+            use iso_c_binding
+            {prefix}
+            {typename} :: x
+            print '(i0)', c_sizeof(x)
+        end program test
+        '''
+        res = self.cached_run(t, env, extra_args=extra_args,
+                              dependencies=dependencies)
+        if not res.compiled:
+            return -1, False
+        if res.returncode != 0:
+            raise mesonlib.EnvironmentException('Could not run sizeof test binary.')
+        return int(res.stdout), res.cached
+
+    @functools.lru_cache()
+    def output_is_64bit(self, env: 'Environment') -> bool:
+        '''
+        returns true if the output produced is 64-bit, false if 32-bit
+        '''
+        return self.sizeof('type(c_ptr)', '', env)[0] == 8
 
 
 class GnuFortranCompiler(GnuCompiler, FortranCompiler):

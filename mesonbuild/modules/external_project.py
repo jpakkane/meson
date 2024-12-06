@@ -19,7 +19,7 @@ from ..interpreterbase import FeatureNew
 from ..interpreter.type_checking import ENV_KW, DEPENDS_KW
 from ..interpreterbase.decorators import ContainerTypeInfo, KwargInfo, typed_kwargs, typed_pos_args
 from ..mesonlib import (EnvironmentException, MesonException, Popen_safe, MachineChoice,
-                        get_variable_regex, do_replacement, join_args)
+                        get_variable_regex, do_replacement, join_args, relpath)
 from ..options import OptionKey
 
 if T.TYPE_CHECKING:
@@ -81,6 +81,9 @@ class ExternalProject(NewExtensionModule):
         _l = self.env.coredata.get_option(OptionKey('libdir'))
         assert isinstance(_l, str), 'for mypy'
         self.libdir = Path(_l)
+        _l = self.env.coredata.get_option(OptionKey('bindir'))
+        assert isinstance(_l, str), 'for mypy'
+        self.bindir = Path(_l)
         _i = self.env.coredata.get_option(OptionKey('includedir'))
         assert isinstance(_i, str), 'for mypy'
         self.includedir = Path(_i)
@@ -90,10 +93,10 @@ class ExternalProject(NewExtensionModule):
         # will install files into "c:/bar/c:/foo" which is an invalid path.
         # Work around that issue by removing the drive from prefix.
         if self.prefix.drive:
-            self.prefix = self.prefix.relative_to(self.prefix.drive)
+            self.prefix = Path(relpath(self.prefix, self.prefix.drive))
 
         # self.prefix is an absolute path, so we cannot append it to another path.
-        self.rel_prefix = self.prefix.relative_to(self.prefix.root)
+        self.rel_prefix = Path(relpath(self.prefix, self.prefix.root))
 
         self._configure(state)
 
@@ -118,6 +121,7 @@ class ExternalProject(NewExtensionModule):
 
         d = [('PREFIX', '--prefix=@PREFIX@', self.prefix.as_posix()),
              ('LIBDIR', '--libdir=@PREFIX@/@LIBDIR@', self.libdir.as_posix()),
+             ('BINDIR', '--bindir=@PREFIX@/@BINDIR@', self.bindir.as_posix()),
              ('INCLUDEDIR', None, self.includedir.as_posix()),
              ]
         self._validate_configure_options(d, state)
@@ -278,6 +282,7 @@ class ExternalProjectModule(ExtensionModule):
 
     def __init__(self, interpreter: 'Interpreter'):
         super().__init__(interpreter)
+        self.devenv: T.Optional[EnvironmentVariables] = None
         self.methods.update({'add_project': self.add_project,
                              })
 
@@ -299,7 +304,18 @@ class ExternalProjectModule(ExtensionModule):
                                   kwargs['env'],
                                   kwargs['verbose'],
                                   kwargs['depends'])
+        abs_libdir = Path(project.install_dir, project.rel_prefix, project.libdir).as_posix()
+        abs_bindir = Path(project.install_dir, project.rel_prefix, project.bindir).as_posix()
+        env = state.environment.get_env_for_paths({abs_libdir}, {abs_bindir})
+        if self.devenv is None:
+            self.devenv = env
+        else:
+            self.devenv.merge(env)
         return ModuleReturnValue(project, project.targets)
+
+    def postconf_hook(self, b: build.Build) -> None:
+        if self.devenv is not None:
+            b.devenv.append(self.devenv)
 
 
 def initialize(interp: 'Interpreter') -> ExternalProjectModule:

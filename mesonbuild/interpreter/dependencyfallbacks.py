@@ -1,3 +1,7 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2021-2024 The Meson Developers
+# Copyright © 2021-2024 Intel Corporation
+
 from __future__ import annotations
 
 from .interpreterobjects import extract_required_kwarg

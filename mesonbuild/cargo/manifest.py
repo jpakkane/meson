@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright © 2022-2023 Intel Corporation
+# Copyright © 2022-2024 Intel Corporation
 
 """Type definitions for cargo manifest files."""
 
@@ -33,6 +33,7 @@ Package = TypedDict(
         'publish': bool,
         'metadata': T.Dict[str, T.Dict[str, str]],
         'default-run': str,
+        'autolib': bool,
         'autobins': bool,
         'autoexamples': bool,
         'autotests': bool,
@@ -65,6 +66,7 @@ class FixedPackage(TypedDict, total=False):
     publish: bool
     metadata: T.Dict[str, T.Dict[str, str]]
     default_run: str
+    autolib: bool
     autobins: bool
     autoexamples: bool
     autotests: bool
@@ -193,7 +195,7 @@ class Workspace(TypedDict):
 Manifest = TypedDict(
     'Manifest',
     {
-        'package': Package,
+        'package': Required[Package],
         'badges': T.Dict[str, Badge],
         'dependencies': T.Dict[str, DependencyV],
         'dev-dependencies': T.Dict[str, DependencyV],

@@ -1,0 +1,8 @@
+{
+  "stdout": [
+    {
+      "line": "foo-0-rs| WARNING: Package entry bar has unexpected keys \"flooob\". This may (unlikely) be an error in the cargo manifest, or may be a missing implementation in Meson. If this issue can be reproduced with the latest version of Meson, please help us by opening an issue at https://github.com/mesonbuild/meson/issues. Please include the crate and version that is generating this warning if possible."
+    }
+  ]
+}
+

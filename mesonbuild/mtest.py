@@ -856,7 +856,7 @@ class JunitBuilder(TestLogger):
                     et.SubElement(testcase, 'failure')
                 elif subtest.result is TestResult.UNEXPECTEDPASS:
                     fail = et.SubElement(testcase, 'failure')
-                    fail.text = 'Test unexpected passed.'
+                    fail.text = 'Test unexpectedly passed.'
                 elif subtest.result is TestResult.INTERRUPT:
                     fail = et.SubElement(testcase, 'error')
                     fail.text = 'Test was interrupted by user.'
@@ -891,6 +891,18 @@ class JunitBuilder(TestLogger):
             elif test.res is TestResult.FAIL:
                 et.SubElement(testcase, 'failure')
                 suite.attrib['failures'] = str(int(suite.attrib['failures']) + 1)
+            elif test.res is TestResult.UNEXPECTEDPASS:
+                fail = et.SubElement(testcase, 'failure')
+                fail.text = 'Test unexpectedly passed.'
+                suite.attrib['failures'] = str(int(suite.attrib['failures']) + 1)
+            elif test.res is TestResult.INTERRUPT:
+                fail = et.SubElement(testcase, 'error')
+                fail.text = 'Test was interrupted by user.'
+                suite.attrib['errors'] = str(int(suite.attrib['errors']) + 1)
+            elif test.res is TestResult.TIMEOUT:
+                fail = et.SubElement(testcase, 'error')
+                fail.text = 'Test did not finish before configured timeout.'
+                suite.attrib['errors'] = str(int(suite.attrib['errors']) + 1)
             if test.stdo:
                 out = et.SubElement(testcase, 'system-out')
                 out.text = replace_unencodable_xml_chars(test.stdo.rstrip())

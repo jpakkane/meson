@@ -33,11 +33,18 @@ Generates documentation using [hotdoc] and installs it into `$prefix/share/doc/h
 
 * `sitemap` ([[@str]] or [[@file]]) (**required**): The hotdoc sitemap file
 * `index` ([[@str]] or [[@file]]) (**required**): Location of the index file
-* `dependencies`([[@build_tgt]]): Targets on which the documentation generation depends on.
+* `dependencies`([[@build_tgt]]): Build targets to use when generating documentation.
+* `depends`([[@custom_tgt]]): Custom targets on which this documentation target depends.
 * `subprojects`: A list of `HotdocTarget` that are used as subprojects for hotdoc to generate
   the documentation.
 * ... Any argument of `hotdoc` can be used replacing dashes (`-`) with underscores (`_`).
   For a full list of available parameters, just have a look at `hotdoc help`.
+
+*Changed in 0.64.1:* `depends:` added.
+Previously, all types of targets were accepted by `dependencies:`.
+This is now deprecated.
+Use `dependencies:` only with build targets, to pass their configuration to hotdoc.
+Use `depends:` to set up dependency relationships on custom targets.
 
 **Returns:**
 

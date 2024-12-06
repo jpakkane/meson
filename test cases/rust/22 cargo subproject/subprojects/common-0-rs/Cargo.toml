@@ -1,0 +1,12 @@
+[package]
+name = "common"
+version = "0.0.1"
+edition = "2021"
+
+[lib]
+crate-type = ["rlib"]
+path = "lib.rs"
+
+[features]
+f1 = []
+f2 = []

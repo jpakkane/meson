@@ -16,12 +16,6 @@ from ..compilers.detect import defaults as compiler_names
 if T.TYPE_CHECKING:
     import argparse
 
-def has_for_build() -> bool:
-    for cenv in envconfig.ENV_VAR_COMPILER_MAP.values():
-        if os.environ.get(cenv + '_FOR_BUILD'):
-            return True
-    return False
-
 # Note: when adding arguments, please also add them to the completion
 # scripts in $MESONSRC/data/shell-completions/
 def add_arguments(parser: 'argparse.ArgumentParser') -> None:
@@ -35,6 +29,8 @@ def add_arguments(parser: 'argparse.ArgumentParser') -> None:
                         help='Generate a cross compilation file.')
     parser.add_argument('--native', default=False, action='store_true',
                         help='Generate a native compilation file.')
+    parser.add_argument('--use-for-build', default=False, action='store_true',
+                        help='Use _FOR_BUILD envvars.')
     parser.add_argument('--system', default=None,
                         help='Define system for cross compilation.')
     parser.add_argument('--subsystem', default=None,
@@ -156,6 +152,7 @@ deb_os_map = {
 # map from DEB_HOST_ARCH_OS to Meson machine.kernel()
 deb_kernel_map = {
     'kfreebsd': 'freebsd',
+    'hurd': 'gnu',
 }
 
 def replace_special_cases(special_cases: T.Mapping[str, str], name: str) -> str:
@@ -229,10 +226,33 @@ def dpkg_architecture_to_machine_info(output: str, options: T.Any) -> MachineInf
         deb_detect_cmake(infos, data)
     except ValueError:
         pass
-    try:
-        infos.binaries['pkg-config'] = locate_path("%s-pkg-config" % host_arch)
-    except ValueError:
-        pass # pkg-config is optional
+    for tool in [
+        'g-ir-annotation-tool',
+        'g-ir-compiler',
+        'g-ir-doc-tool',
+        'g-ir-generate',
+        'g-ir-inspect',
+        'g-ir-scanner',
+        'pkg-config',
+    ]:
+        try:
+            infos.binaries[tool] = locate_path("%s-%s" % (host_arch, tool))
+        except ValueError:
+            pass    # optional
+    for tool, exe in [
+        ('exe_wrapper', 'cross-exe-wrapper'),
+    ]:
+        try:
+            infos.binaries[tool] = locate_path("%s-%s" % (host_arch, exe))
+        except ValueError:
+            pass
+    for tool, exe in [
+        ('vala', 'valac'),
+    ]:
+        try:
+            infos.compilers[tool] = locate_path("%s-%s" % (host_arch, exe))
+        except ValueError:
+            pass
     try:
         infos.binaries['cups-config'] = locate_path("cups-config")
     except ValueError:
@@ -397,12 +417,10 @@ def detect_missing_native_binaries(infos: MachineInfo) -> None:
             infos.binaries[toolname] = [exe]
 
 def detect_native_env(options: T.Any) -> MachineInfo:
-    use_for_build = has_for_build()
-    if use_for_build:
-        mlog.log('Using FOR_BUILD envvars for detection')
+    if options.use_for_build:
+        mlog.log('Using _FOR_BUILD envvars for detection (native file for use during cross compilation)')
         esuffix = '_FOR_BUILD'
     else:
-        mlog.log('Using regular envvars for detection.')
         esuffix = ''
     infos = detect_compilers_from_envvars(esuffix)
     detect_missing_native_compilers(infos)
@@ -419,6 +437,8 @@ def run(options: T.Any) -> None:
     mlog.notice('This functionality is experimental and subject to change.')
     detect_cross = options.cross
     if detect_cross:
+        if options.use_for_build:
+            sys.exit('--use-for-build only makes sense for --native, not --cross')
         infos = detect_cross_env(options)
         write_system_info = True
     else:

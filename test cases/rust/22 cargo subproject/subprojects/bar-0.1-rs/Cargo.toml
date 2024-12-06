@@ -1,12 +1,17 @@
 [package]
 name = "bar"
 version = "0.1"
+flooob = "lolz"
 
 # This dependency does not exist, it is required by default but this subproject
 # is called with default-features=false.
 [dependencies.notfound]
 optional = true
 version = "1.0"
+
+[dependencies.common]
+version = "0.0.1"
+features = ["f2"]
 
 [features]
 default = ["f2"]

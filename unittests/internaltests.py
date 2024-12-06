@@ -1739,6 +1739,7 @@ class InternalTests(unittest.TestCase):
                 'cpp': [f'/usr/bin/{gnu_tuple}-g++{gcc_suffix}'],
                 'objc': [f'/usr/bin/{gnu_tuple}-gobjc{gcc_suffix}'],
                 'objcpp': [f'/usr/bin/{gnu_tuple}-gobjc++{gcc_suffix}'],
+                'vala': [f'/usr/bin/{gnu_tuple}-valac'],
             }
 
         def expected_binaries(gnu_tuple: str) -> T.Dict[str, T.List[str]]:
@@ -1750,6 +1751,13 @@ class InternalTests(unittest.TestCase):
                 'cmake': ['/usr/bin/cmake'],
                 'pkg-config': [f'/usr/bin/{gnu_tuple}-pkg-config'],
                 'cups-config': ['/usr/bin/cups-config'],
+                'exe_wrapper': [f'/usr/bin/{gnu_tuple}-cross-exe-wrapper'],
+                'g-ir-annotation-tool': [f'/usr/bin/{gnu_tuple}-g-ir-annotation-tool'],
+                'g-ir-compiler': [f'/usr/bin/{gnu_tuple}-g-ir-compiler'],
+                'g-ir-doc-tool': [f'/usr/bin/{gnu_tuple}-g-ir-doc-tool'],
+                'g-ir-generate': [f'/usr/bin/{gnu_tuple}-g-ir-generate'],
+                'g-ir-inspect': [f'/usr/bin/{gnu_tuple}-g-ir-inspect'],
+                'g-ir-scanner': [f'/usr/bin/{gnu_tuple}-g-ir-scanner'],
             }
 
         for title, dpkg_arch, gccsuffix, env, expected in [
@@ -1933,11 +1941,7 @@ class InternalTests(unittest.TestCase):
                     },
                     system='gnu',
                     subsystem='gnu',
-                    # TODO: Currently hurd; should match whatever happens
-                    # during native builds, but at the moment native builds
-                    # fail when kernel() is called.
-                    # https://github.com/mesonbuild/meson/issues/13740
-                    kernel='TODO',
+                    kernel='gnu',
                     cpu='i686',
                     cpu_family='x86',
                     endian='little',

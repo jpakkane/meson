@@ -1,0 +1,5 @@
+[wrap-file]
+directory = pkg-config
+
+[provide]
+program_names = pkg-config

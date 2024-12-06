@@ -26,6 +26,9 @@ class StaticLinker:
     def __init__(self, exelist: T.List[str]):
         self.exelist = exelist
 
+    def get_id(self) -> str:
+        return self.id
+
     def compiler_args(self, args: T.Optional[T.Iterable[str]] = None) -> CompilerArgs:
         return CompilerArgs(self, args)
 

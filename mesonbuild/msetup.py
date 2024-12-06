@@ -165,7 +165,7 @@ class MesonApp:
             if not self.options.reconfigure and not self.options.wipe:
                 print('Directory already configured.\n\n'
                       'Just run your build command (e.g. ninja) and Meson will regenerate as necessary.\n'
-                      'Run "meson setup --reconfigure to force Meson to regenerate.\n\n'
+                      'Run "meson setup --reconfigure" to force Meson to regenerate.\n\n'
                       'If build failures persist, run "meson setup --wipe" to rebuild from scratch\n'
                       'using the same options as passed when configuring the build.')
                 if self.options.cmd_line_options:

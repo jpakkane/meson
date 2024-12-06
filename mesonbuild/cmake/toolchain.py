@@ -232,10 +232,15 @@ class CMakeToolchain:
         cmake_args += trace.trace_args()
         cmake_args += cmake_get_generator_args(self.env)
         cmake_args += [f'-DCMAKE_TOOLCHAIN_FILE={temp_toolchain_file.as_posix()}', '.']
-        rc, _, raw_trace = self.cmakebin.call(cmake_args, build_dir=build_dir, disable_cache=True)
+        rc, raw_stdout, raw_trace = self.cmakebin.call(cmake_args, build_dir=build_dir, disable_cache=True)
 
         if rc != 0:
             mlog.warning('CMake Toolchain: Failed to determine CMake compilers state')
+            mlog.debug(f' -- return code: {rc}')
+            for line in raw_stdout.split('\n'):
+                mlog.debug(f' -- stdout: {line.rstrip()}')
+            for line in raw_trace.split('\n'):
+                mlog.debug(f' -- stderr: {line.rstrip()}')
             return
 
         # Parse output

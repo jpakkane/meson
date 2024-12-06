@@ -9,7 +9,7 @@ import typing as T
 
 from pathlib import Path
 from . import build, minstall
-from .mesonlib import (EnvironmentVariables, MesonException, is_windows, setup_vsenv,
+from .mesonlib import (EnvironmentVariables, MesonException, join_args, is_windows, setup_vsenv,
                        get_wine_shortpath, MachineChoice, relpath)
 from .options import OptionKey
 from . import mlog
@@ -226,10 +226,9 @@ def run(options: argparse.Namespace) -> int:
         args[0] = abs_path or args[0]
 
     try:
-        return subprocess.call(args, close_fds=False,
-                               env=devenv,
-                               cwd=workdir)
-    except subprocess.CalledProcessError as e:
-        return e.returncode
+        os.chdir(workdir)
+        os.execvpe(args[0], args, env=devenv)
     except FileNotFoundError:
         raise MesonException(f'Command not found: {args[0]}')
+    except OSError as e:
+        raise MesonException(f'Command `{join_args(args)}` failed to execute: {e}')

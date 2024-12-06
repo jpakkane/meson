@@ -324,7 +324,8 @@ class Runner:
                 self.log('  -> Not a git repository.')
                 self.log('Pass --reset option to delete directory and redownload.')
                 return False
-        revision = self.wrap.values.get('revision')
+        revision_val = self.wrap.values.get('revision')
+        revision = revision_val if revision_val.upper() != 'HEAD' else 'HEAD'
         url = self.wrap.values.get('url')
         push_url = self.wrap.values.get('push-url')
         if not revision or not url:

@@ -1141,6 +1141,42 @@ class LinuxlikeTests(BasePlatformTests):
         pkg_config_path = env.coredata.optstore.get_value('pkg_config_path')
         self.assertEqual(pkg_config_path, [pkg_dir])
 
+    def test_pkgconfig_uninstalled_env_added(self):
+        '''
+        Checks that the meson-uninstalled dir is added to PKG_CONFIG_PATH
+        '''
+        testdir = os.path.join(self.unit_test_dir, '111 pkgconfig duplicate path entries')
+        meson_uninstalled_dir = os.path.join(self.builddir, 'meson-uninstalled')
+
+        env = get_fake_env(testdir, self.builddir, self.prefix)
+
+        newEnv = PkgConfigInterface.setup_env({}, env, MachineChoice.HOST, uninstalled=True)
+
+        pkg_config_path_dirs = newEnv['PKG_CONFIG_PATH'].split(os.pathsep)
+
+        self.assertEqual(len(pkg_config_path_dirs), 1)
+        self.assertEqual(pkg_config_path_dirs[0], meson_uninstalled_dir)
+
+    def test_pkgconfig_uninstalled_env_prepended(self):
+        '''
+        Checks that the meson-uninstalled dir is prepended to PKG_CONFIG_PATH
+        '''
+        testdir = os.path.join(self.unit_test_dir, '111 pkgconfig duplicate path entries')
+        meson_uninstalled_dir = os.path.join(self.builddir, 'meson-uninstalled')
+        external_pkg_config_path_dir = os.path.join('usr', 'local', 'lib', 'pkgconfig')
+
+        env = get_fake_env(testdir, self.builddir, self.prefix)
+
+        env.coredata.set_options({OptionKey('pkg_config_path'): external_pkg_config_path_dir},
+                                 subproject='')
+
+        newEnv = PkgConfigInterface.setup_env({}, env, MachineChoice.HOST, uninstalled=True)
+
+        pkg_config_path_dirs = newEnv['PKG_CONFIG_PATH'].split(os.pathsep)
+
+        self.assertEqual(pkg_config_path_dirs[0], meson_uninstalled_dir)
+        self.assertEqual(pkg_config_path_dirs[1], external_pkg_config_path_dir)
+
     @skipIfNoPkgconfig
     def test_pkgconfig_internal_libraries(self):
         '''
@@ -1333,7 +1369,7 @@ class LinuxlikeTests(BasePlatformTests):
         see: https://github.com/mesonbuild/meson/issues/9000
              https://stackoverflow.com/questions/48532868/gcc-library-option-with-a-colon-llibevent-a
         '''
-        testdir = os.path.join(self.unit_test_dir, '98 link full name','libtestprovider')
+        testdir = os.path.join(self.unit_test_dir, '97 link full name','libtestprovider')
         oldprefix = self.prefix
         # install into installdir without using DESTDIR
         installdir = self.installdir
@@ -1346,7 +1382,7 @@ class LinuxlikeTests(BasePlatformTests):
         self.new_builddir()
         env = {'LIBRARY_PATH': os.path.join(installdir, self.libdir),
                'PKG_CONFIG_PATH': _prepend_pkg_config_path(os.path.join(installdir, self.libdir, 'pkgconfig'))}
-        testdir = os.path.join(self.unit_test_dir, '98 link full name','proguser')
+        testdir = os.path.join(self.unit_test_dir, '97 link full name','proguser')
         self.init(testdir,override_envvars=env)
 
         # test for link with full path
@@ -1752,7 +1788,7 @@ class LinuxlikeTests(BasePlatformTests):
 
     @skipUnless(is_linux() or is_osx(), 'Test only applicable to Linux and macOS')
     def test_install_strip(self):
-        testdir = os.path.join(self.unit_test_dir, '104 strip')
+        testdir = os.path.join(self.unit_test_dir, '103 strip')
         self.init(testdir)
         self.build()
 

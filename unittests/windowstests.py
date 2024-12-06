@@ -54,20 +54,20 @@ class WindowsTests(BasePlatformTests):
         PATH to point to a directory with Python scripts.
         '''
         testdir = os.path.join(self.platform_test_dir, '8 find program')
-        # Find `cmd` and `cmd.exe`
-        prog1 = ExternalProgram('cmd')
-        self.assertTrue(prog1.found(), msg='cmd not found')
-        prog2 = ExternalProgram('cmd.exe')
-        self.assertTrue(prog2.found(), msg='cmd.exe not found')
+        # Find `xcopy` and `xcopy.exe`
+        prog1 = ExternalProgram('xcopy')
+        self.assertTrue(prog1.found(), msg='xcopy not found')
+        prog2 = ExternalProgram('xcopy.exe')
+        self.assertTrue(prog2.found(), msg='xcopy.exe not found')
         self.assertPathEqual(prog1.get_path(), prog2.get_path())
-        # Find cmd.exe with args without searching
-        prog = ExternalProgram('cmd', command=['cmd', '/C'])
-        self.assertTrue(prog.found(), msg='cmd not found with args')
-        self.assertPathEqual(prog.get_command()[0], 'cmd')
-        # Find cmd with an absolute path that's missing the extension
-        cmd_path = prog2.get_path()[:-4]
-        prog = ExternalProgram(cmd_path)
-        self.assertTrue(prog.found(), msg=f'{cmd_path!r} not found')
+        # Find xcopy.exe with args without searching
+        prog = ExternalProgram('xcopy', command=['xcopy', '/?'])
+        self.assertTrue(prog.found(), msg='xcopy not found with args')
+        self.assertPathEqual(prog.get_command()[0], 'xcopy')
+        # Find xcopy with an absolute path that's missing the extension
+        xcopy_path = prog2.get_path()[:-4]
+        prog = ExternalProgram(xcopy_path)
+        self.assertTrue(prog.found(), msg=f'{xcopy_path!r} not found')
         # Finding a script with no extension inside a directory works
         prog = ExternalProgram(os.path.join(testdir, 'test-script'))
         self.assertTrue(prog.found(), msg='test-script not found')

@@ -55,3 +55,34 @@ kwargs:
     type: str
     default: "'@VCS_TAG@'"
     description: String in the input file to substitute with the commit information.
+
+  install:
+    type: bool
+    default: false
+    since: 1.7.0
+    description: |
+      When true, this generated file is installed during
+      the install step, and `install_dir` must be set and not empty.
+
+  install_dir:
+    type: str
+    since: 1.7.0
+    description: |
+      The subdirectory to install the generated file to (e.g. `share/myproject`).
+
+  install_mode:
+    type: list[str | int]
+    since: 1.7.0
+    description: |
+      Specify the file mode in symbolic format
+      and optionally the owner/uid and group/gid for the installed files.
+
+      See the `install_mode` kwarg of [[install_data]] for more information.
+
+  install_tag:
+    type: str
+    since: 1.7.0
+    description: |
+      A string used by the `meson install --tags` command
+      to install only a subset of the files. By default the file has no install
+      tag which means it is not being installed when `--tags` argument is specified.

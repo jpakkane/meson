@@ -82,7 +82,7 @@ class InterpreterBase:
         self.current_lineno = -1
         # Current node set during a function call. This can be used as location
         # when printing a warning message during a method call.
-        self.current_node: mparser.BaseNode = None
+        self.current_node = mparser.BaseNode(-1, -1, 'sentinel')
         # This is set to `version_string` when this statement is evaluated:
         # meson.version().compare_version(version_string)
         # If it was part of a if-clause, it is used to temporally override the
@@ -183,7 +183,6 @@ class InterpreterBase:
         while i < len(statements):
             cur = statements[i]
             try:
-                self.current_lineno = cur.lineno
                 self.evaluate_statement(cur)
             except Exception as e:
                 if getattr(e, 'lineno', None) is None:

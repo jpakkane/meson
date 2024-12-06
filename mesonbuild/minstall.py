@@ -74,11 +74,11 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
                         help='Do not rebuild before installing.')
     parser.add_argument('--only-changed', default=False, action='store_true',
                         help='Only overwrite files that are older than the copied file.')
-    parser.add_argument('--quiet', default=False, action='store_true',
+    parser.add_argument('-q', '--quiet', default=False, action='store_true',
                         help='Do not print every file that was installed.')
     parser.add_argument('--destdir', default=None,
                         help='Sets or overrides DESTDIR environment. (Since 0.57.0)')
-    parser.add_argument('--dry-run', '-n', action='store_true',
+    parser.add_argument('-n', '--dry-run', action='store_true',
                         help='Doesn\'t actually install, but print logs. (Since 0.57.0)')
     parser.add_argument('--skip-subprojects', nargs='?', const='*', default='',
                         help='Do not install files from given subprojects. (Since 0.58.0)')

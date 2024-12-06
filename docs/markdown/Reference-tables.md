@@ -182,6 +182,7 @@ Native names as returned by the `.kernel()` method.
 | freebsd | |
 | openbsd | |
 | netbsd  | |
+| gnu     | GNU Hurd |
 | nt      | |
 | xnu                 | Kernel of various Apple OSes    |
 | illumos             | Kernel derived from OpenSolaris by community efforts |
@@ -385,6 +386,7 @@ machine](#Environment-variables-per-machine) section for details.
 | C#            | CSC      | CSC       | The linker is the compiler                  |
 | Cython        | CYTHON   |           |                                             |
 | nasm          | NASM     |           | Uses the C linker                           |
+| archiver      |          | AR        |                                             |
 
 *The old environment variables are still supported, but are deprecated
 and will be removed in a future version of Meson.

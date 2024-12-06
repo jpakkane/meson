@@ -408,6 +408,7 @@ _meson-install() {
   shortopts=(
     h
     n
+    q
     C
   )
 

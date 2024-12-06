@@ -229,7 +229,10 @@ class _PythonDependencyBase(_Base):
                     elif imp_lower == 'pypy':
                         libpath = Path(f'libpypy{verdot}-c.dll')
                     else:
-                        libpath = Path(f'python{vernum}.dll')
+                        if self.is_freethreaded:
+                            libpath = Path(f'python{vernum}t.dll')
+                        else:
+                            libpath = Path(f'python{vernum}.dll')
                 else:
                     if self.is_freethreaded:
                         libpath = Path('libs') / f'python{vernum}t.lib'

@@ -5,6 +5,8 @@
 
 *This is an experimental module, API could change.*
 
+*Added 0.56.0*
+
 This module allows building code that uses build systems other than
 Meson. This module is intended to be used to build Autotools
 subprojects as fallback if the dependency couldn't be found on the
@@ -47,7 +49,8 @@ Known limitations:
   from `-uninstalled.pc` files. This is arguably a bug that could be fixed in
   future version of pkg-config/pkgconf.
 
-*Added 0.56.0*
+*Since 1.7.0* [Meson devenv][Commands.md#devenv] setup `PATH` and
+`LD_LIBRARY_PATH` to be able to run programs.
 
 ## Functions
 
@@ -78,7 +81,8 @@ Keyword arguments:
   added in case some tags are not found in `configure_options`:
   `'--prefix=@PREFIX@'`, `'--libdir=@PREFIX@/@LIBDIR@'`, and
   `'--includedir=@PREFIX@/@INCLUDEDIR@'`. It was previously considered a fatal
-  error to not specify them.
+  error to not specify them. *Since 1.7.0* `@BINDIR@` and `'--bindir=@PREFIX@/@BINDIR@'`
+  default argument have been added.
 - `cross_configure_options`: Extra options appended to `configure_options` only
   when cross compiling. special tag `@HOST@` will be replaced by
   `'{}-{}-{}'.format(host_machine.cpu_family(), build_machine.system(), host_machine.system()`.

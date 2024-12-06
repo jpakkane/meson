@@ -1,4 +1,4 @@
-project('rust unit tests', 'rust')
+project('rust unit tests', 'rust', meson_version: '>=1.2.0')
 
 t = executable(
   'rust_test',
@@ -33,7 +33,7 @@ test(
 
 exe = executable('rust_exe', ['test2.rs', 'test.rs'], build_by_default : false)
 
-rust = import('unstable-rust')
+rust = import('rust')
 rust.test('rust_test_from_exe', exe, should_fail : true)
 
 lib = static_library('rust_static', ['test.rs'], build_by_default : false, rust_crate_type : 'lib')

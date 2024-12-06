@@ -55,7 +55,6 @@ class IntrospectionInterpreter(AstInterpreter):
                  subproject: SubProject = SubProject(''),
                  subproject_dir: str = 'subprojects',
                  env: T.Optional[environment.Environment] = None):
-        visitors = visitors if visitors is not None else []
         super().__init__(source_root, subdir, subproject, visitors=visitors)
 
         options = IntrospectionHelper(cross_file)

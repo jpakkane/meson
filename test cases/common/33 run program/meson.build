@@ -1,6 +1,9 @@
 project('run command', version : run_command('get-version.py', check : true).stdout().strip(), meson_version: '>=0.1.0')
 
-if build_machine.system() == 'windows'
+check_mingw = run_command('check-mingw.py', check : true).stdout().strip()
+is_mingw = not (check_mingw == '' or check_mingw == 'MSYS')
+
+if build_machine.system() == 'windows' and not is_mingw
   c = run_command('cmd', '/c', 'echo', 'hello', check: false)
 else
   c = run_command('echo', 'hello', check: false)
@@ -45,7 +48,7 @@ endif
 # We should be able to have files() in argument
 f = files('meson.build')
 
-if build_machine.system() == 'windows'
+if build_machine.system() == 'windows' and not is_mingw
   c = run_command('cmd', '/c', 'echo', f, check: false)
 else
   c = run_command('echo', f, check: false)

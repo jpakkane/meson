@@ -159,9 +159,14 @@ def coverage(outputs: T.List[str], source_root: str, subproject_root: str, build
             htmloutdir = os.path.join(log_dir, 'coveragereport')
             if not os.path.isdir(htmloutdir):
                 os.mkdir(htmloutdir)
+            # Use `--html-details` if gcovr version < 6.0, otherwise
+            # use `--html-nested`.
+            html_arg = '--html-details'
+            if mesonlib.version_compare(gcovr_version, '>=6.0'):
+                html_arg = '--html-nested'
             subprocess.check_call(gcovr_base_cmd + gcovr_config +
                                   ['--html',
-                                   '--html-nested',
+                                   html_arg,
                                    '--print-summary',
                                    '-o', os.path.join(htmloutdir, 'index.html'),
                                    ] + gcov_exe_args)
