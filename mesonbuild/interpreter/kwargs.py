@@ -303,6 +303,7 @@ class ConfigureFile(TypedDict):
     install_dir: T.Union[str, T.Literal[False]]
     install_mode: FileMode
     install_tag: T.Optional[str]
+    rename: T.List[str]
     encoding: str
     command: T.Optional[T.List[T.Union[build.Executable, ExternalProgram, Compiler, File, str]]]
     input: T.List[FileOrString]

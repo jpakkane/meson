@@ -2649,6 +2649,7 @@ class Interpreter(InterpreterBase, HoldableObject):
         KwargInfo('output_format', str, default='c', since='0.47.0', since_values={'json': '1.3.0'},
                   validator=in_set_validator({'c', 'json', 'nasm'})),
         KwargInfo('macro_name', (str, NoneType), default=None, since='1.3.0'),
+        KwargInfo('rename', (ContainerTypeInfo(list, str), NoneType), default=None, listify=True, since='1.7.0'),
     )
     def func_configure_file(self, node: mparser.BaseNode, args: T.List[TYPE_var],
                             kwargs: kwtypes.ConfigureFile):
@@ -2706,6 +2707,11 @@ class Interpreter(InterpreterBase, HoldableObject):
             self.configure_file_outputs[ofile_rpath] = self.current_node.lineno
         (ofile_path, ofile_fname) = os.path.split(os.path.join(self.subdir, output))
         ofile_abs = os.path.join(self.environment.build_dir, ofile_path, ofile_fname)
+
+        # Validate rename
+        rename = kwargs['rename']
+        if rename and len(rename) != 1:
+            raise InterpreterException('rename must either be an empty list or a single string')
 
         # Perform the appropriate action
         if kwargs['configuration'] is not None:
@@ -2801,7 +2807,7 @@ class Interpreter(InterpreterBase, HoldableObject):
             cfile = mesonlib.File.from_built_file(ofile_path, ofile_fname)
             install_tag = kwargs['install_tag']
             self.build.data.append(build.Data([cfile], idir, idir_name, install_mode, self.subproject,
-                                              install_tag=install_tag, data_type='configure'))
+                                              install_tag=install_tag, data_type='configure', rename=rename))
         return mesonlib.File.from_built_file(self.subdir, output)
 
     def extract_incdirs(self, kwargs, key: str = 'include_directories') -> T.List[build.IncludeDirs]:
