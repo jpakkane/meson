@@ -4,7 +4,7 @@
     {"type": "implibempty", "file": "usr/lib/modules/libnosyms"},
     {"type": "pdb", "file": "usr/lib/modules/nosyms"},
     {"type": "expr", "file": "usr/lib/modules/subdir/libmymodule?so"},
-    {"type": "implib", "file": "usr/lib/modules/libmymodule3"},
-    {"type": "pdb", "file": "usr/lib/modules/mymodule3"}
+    {"type": "implib", "file": "usr/lib/modules/subdir/libmymodule"},
+    {"type": "pdb", "file": "usr/lib/modules/subdir/mymodule"}
   ]
 }

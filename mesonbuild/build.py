@@ -112,9 +112,9 @@ known_build_target_kwargs = (
     rust_kwargs |
     cs_kwargs)
 
-known_exe_kwargs = known_build_target_kwargs | {'implib', 'export_dynamic', 'pie', 'vs_module_defs'}
-known_shlib_kwargs = known_build_target_kwargs | {'version', 'soversion', 'vs_module_defs', 'darwin_versions', 'rust_abi'}
-known_shmod_kwargs = known_build_target_kwargs | {'vs_module_defs', 'rust_abi'}
+known_exe_kwargs = known_build_target_kwargs | {'implib', 'export_dynamic', 'pie', 'vs_module_defs', 'import_rename', 'debug_rename'}
+known_shlib_kwargs = known_build_target_kwargs | {'version', 'soversion', 'vs_module_defs', 'darwin_versions', 'rust_abi', 'import_rename', 'debug_rename'}
+known_shmod_kwargs = known_build_target_kwargs | {'vs_module_defs', 'rust_abi', 'import_rename', 'debug_rename'}
 known_stlib_kwargs = known_build_target_kwargs | {'pic', 'prelink', 'rust_abi'}
 known_jar_kwargs = known_exe_kwargs | {'main_class', 'java_resources'}
 
@@ -1995,6 +1995,10 @@ class Executable(BuildTarget):
         # Remember that this exe was returned by `find_program()` through an override
         self.was_returned_by_find_program = False
 
+        # Get renames for import library and debuginfo file
+        self.import_rename = kwargs.get('import_rename')
+        self.debug_rename = kwargs.get('debug_rename')
+
         self.vs_module_defs: T.Optional[File] = None
         self.process_vs_module_defs_kw(kwargs)
 
@@ -2096,6 +2100,26 @@ class Executable(BuildTarget):
         Returns None if the build won't create any debuginfo file
         """
         return self.debug_filename
+
+    def get_import_rename(self) -> T.Optional[str]:
+        """
+        The filename to be used while installing the import library
+
+        Returns None if no value was provided
+        """
+        if self.import_rename:
+            return self.import_rename
+        return None
+
+    def get_debug_rename(self) -> T.Optional[str]:
+        """
+        The filename to be used while installing the debug info
+
+        Returns None if no value was provided
+        """
+        if self.debug_rename:
+            return self.debug_rename
+        return None
 
     def is_linkable_target(self):
         return self.is_linkwithable
@@ -2419,6 +2443,10 @@ class SharedLibrary(BuildTarget):
         # Visual Studio module-definitions file
         self.process_vs_module_defs_kw(kwargs)
 
+        # Get renames for import library and debuginfo file
+        self.import_rename = kwargs.get('import_rename')
+        self.debug_rename = kwargs.get('debug_rename')
+
         rust_abi = kwargs.get('rust_abi')
         rust_crate_type = kwargs.get('rust_crate_type')
         if rust_crate_type:
@@ -2483,6 +2511,26 @@ class SharedLibrary(BuildTarget):
         tag = self.install_tag[0] or 'devel'
         aliases.append((self.basic_filename_tpl.format(self), ltversion_filename, tag))
         return aliases
+
+    def get_import_rename(self) -> T.Optional[str]:
+        """
+        The filename to be used while installing the import library
+
+        Returns None if no value was provided
+        """
+        if self.import_rename:
+            return self.import_rename
+        return None
+
+    def get_debug_rename(self) -> T.Optional[str]:
+        """
+        The filename to be used while installing the debug info
+
+        Returns None if no value was provided
+        """
+        if self.debug_rename:
+            return self.debug_rename
+        return None
 
     def type_suffix(self):
         return "@sha"
