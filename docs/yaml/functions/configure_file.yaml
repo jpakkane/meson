@@ -153,3 +153,20 @@ kwargs:
     description: |
       When specified, macro guards will be used instead of '#pragma once'. The
       macro guard name will be the specified name.
+
+  build_subdir:
+    type: str
+    since: 1.7.0
+    description:
+      Places the build results in a subdirectory of the given name
+      rather than directly into the build directory. This does not
+      affect the install directory, which uses install_dir.
+
+      This allows inserting a directory name into the build path,
+      either when needed to use the build result while building other
+      targets or as a way to support multiple targets with the same
+      basename by using unique build_subdir values for each one.
+
+      build_subdir may not match a file or directory in the source
+      directory, nor may it include '..' to refer to the parent of the
+      build directory.

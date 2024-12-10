@@ -78,6 +78,7 @@ cs_kwargs = {'resources', 'cs_args'}
 buildtarget_kwargs = {
     'build_by_default',
     'build_rpath',
+    'build_subdir',
     'dependencies',
     'extra_files',
     'gui_app',
@@ -525,6 +526,7 @@ class Target(HoldableObject, metaclass=abc.ABCMeta):
     build_always_stale: bool = False
     extra_files: T.List[File] = field(default_factory=list)
     override_options: InitVar[T.Optional[T.Dict[OptionKey, str]]] = None
+    build_subdir: str = ''
 
     @abc.abstractproperty
     def typename(self) -> str:
@@ -548,6 +550,9 @@ class Target(HoldableObject, metaclass=abc.ABCMeta):
                 Target "{self.name}" has a path separator in its name.
                 This is not supported, it can cause unexpected failures and will become
                 a hard error in the future.'''))
+        self.builddir = self.subdir
+        if self.build_subdir:
+            self.builddir = os.path.join(self.subdir, self.build_subdir)
 
     # dataclass comparators?
     def __lt__(self, other: object) -> bool:
@@ -608,6 +613,12 @@ class Target(HoldableObject, metaclass=abc.ABCMeta):
     def get_typename(self) -> str:
         return self.typename
 
+    def get_build_subdir(self) -> str:
+        return self.build_subdir
+
+    def get_builddir(self) -> str:
+        return self.builddir
+
     @staticmethod
     def _get_id_hash(target_id: str) -> str:
         # We don't really need cryptographic security here.
@@ -642,7 +653,7 @@ class Target(HoldableObject, metaclass=abc.ABCMeta):
         if getattr(self, 'name_suffix_set', False):
             name += '.' + self.suffix
         return self.construct_id_from_path(
-            self.subdir, name, self.type_suffix())
+            self.builddir, name, self.type_suffix())
 
     def process_kwargs_base(self, kwargs: T.Dict[str, T.Any]) -> None:
         if 'build_by_default' in kwargs:
@@ -738,7 +749,7 @@ class BuildTarget(Target):
             environment: environment.Environment,
             compilers: T.Dict[str, 'Compiler'],
             kwargs: T.Dict[str, T.Any]):
-        super().__init__(name, subdir, subproject, True, for_machine, environment, install=kwargs.get('install', False))
+        super().__init__(name, subdir, subproject, True, for_machine, environment, install=kwargs.get('install', False), build_subdir=kwargs.get('build_subdir', ''))
         self.all_compilers = compilers
         self.compilers: OrderedDict[str, Compiler] = OrderedDict()
         self.objects: T.List[ObjectTypes] = []
@@ -2647,10 +2658,11 @@ class CustomTarget(Target, CustomTargetBase, CommandBase):
                  absolute_paths: bool = False,
                  backend: T.Optional['Backend'] = None,
                  description: str = 'Generating {} with a custom command',
+                 build_subdir: str = '',
                  ):
         # TODO expose keyword arg to make MachineChoice.HOST configurable
         super().__init__(name, subdir, subproject, False, MachineChoice.HOST, environment,
-                         install, build_always_stale)
+                         install, build_always_stale, build_subdir = build_subdir)
         self.sources = list(sources)
         self.outputs = substitute_values(
             outputs, get_filenames_templates_dict(
@@ -3026,6 +3038,12 @@ class CustomTargetIndex(CustomTargetBase, HoldableObject):
 
     def get_subdir(self) -> str:
         return self.target.get_subdir()
+
+    def get_build_subdir(self) -> str:
+        return self.target.get_build_subdir()
+
+    def get_builddir(self) -> str:
+        return self.target.get_builddir()
 
     def get_filename(self) -> str:
         return self.output
