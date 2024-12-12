@@ -35,6 +35,7 @@ if T.TYPE_CHECKING:
         builddir: str
         clearcache: bool
         pager: bool
+        unset_opts: T.List[str]
 
     # cannot be TV_Loggable, because non-ansidecorators do direct string concat
     LOGLINE = T.Union[str, mlog.AnsiDecorator]
@@ -352,14 +353,14 @@ class Conf:
         else:
             mlog.log('\nThere are no option augments.')
 
-def has_option_flags(options: T.Any) -> bool:
+def has_option_flags(options: CMDOptions) -> bool:
     if options.cmd_line_options:
         return True
     if options.unset_opts:
         return True
     return False
 
-def is_print_only(options: T.Any) -> bool:
+def is_print_only(options: CMDOptions) -> bool:
     if has_option_flags(options):
         return False
     if options.clearcache:
