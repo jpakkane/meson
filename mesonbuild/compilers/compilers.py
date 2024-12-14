@@ -1038,6 +1038,9 @@ class Compiler(HoldableObject, metaclass=abc.ABCMeta):
     def get_target_link_args(self, target: 'BuildTarget') -> T.List[str]:
         return target.link_args
 
+    def get_target_link_syms(self, target: 'BuildTarget') -> T.List[str]:
+        return target.link_syms
+
     def get_dependency_compile_args(self, dep: 'Dependency') -> T.List[str]:
         return dep.get_compile_args()
 
