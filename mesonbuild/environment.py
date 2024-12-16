@@ -46,6 +46,7 @@ if T.TYPE_CHECKING:
     from .compilers import Compiler
     from .wrap.wrap import Resolver
     from . import cargo
+    from .build import BuildTarget
 
     CompilersDict = T.Dict[str, Compiler]
 
@@ -624,6 +625,8 @@ class Environment:
         # 'optimization' and 'debug' keys, it override them.
         self.options: T.MutableMapping[OptionKey, T.Union[str, T.List[str]]] = collections.OrderedDict()
 
+        self.machinestore = machinefile.MachineFileStore(self.coredata.config_files, self.coredata.cross_files, self.source_dir)
+
         ## Read in native file(s) to override build machine configuration
 
         if self.coredata.config_files is not None:
@@ -660,9 +663,6 @@ class Environment:
         self.properties = properties.default_missing()
         self.cmakevars = cmakevars.default_missing()
 
-        # Command line options override those from cross/native files
-        self.options.update(cmd_options.cmd_line_options)
-
         # Take default value from env if not set in cross/native files or command line.
         self._set_default_options_from_env()
         self._set_default_binaries_from_env()
@@ -691,6 +691,17 @@ class Environment:
         # Store a global state of Cargo dependencies
         self.cargo: T.Optional[cargo.Interpreter] = None
 
+    def mfilestr2key(self, machine_file_string: str, section_subproject: str, machine: MachineChoice):
+        key = OptionKey.from_string(machine_file_string)
+        assert key.machine == MachineChoice.HOST
+        if key.subproject:
+            raise MesonException('Do not set subproject options in [built-in options] section, use [subproject:built-in options] instead.')
+        if section_subproject:
+            key = key.evolve(subproject=section_subproject)
+        if machine == MachineChoice.BUILD:
+            return key.evolve(machine=machine)
+        return key
+
     def _load_machine_file_options(self, config: 'ConfigParser', properties: Properties, machine: MachineChoice) -> None:
         """Read the contents of a Machine file and put it in the options store."""
 
@@ -700,8 +711,9 @@ class Environment:
         paths = config.get('paths')
         if paths:
             mlog.deprecation('The [paths] section is deprecated, use the [built-in options] section instead.')
-            for k, v in paths.items():
-                self.options[OptionKey.from_string(k).evolve(machine=machine)] = v
+            for strk, v in paths.items():
+                k = self.mfilestr2key(strk, None, machine)
+                self.options[k] = v
 
         # Next look for compiler options in the "properties" section, this is
         # also deprecated, and these will also be overwritten by the "built-in
@@ -710,35 +722,34 @@ class Environment:
         for lang in compilers.all_languages:
             deprecated_properties.add(lang + '_args')
             deprecated_properties.add(lang + '_link_args')
-        for k, v in properties.properties.copy().items():
-            if k in deprecated_properties:
-                mlog.deprecation(f'{k} in the [properties] section of the machine file is deprecated, use the [built-in options] section.')
-                self.options[OptionKey.from_string(k).evolve(machine=machine)] = v
-                del properties.properties[k]
+        for strk, v in properties.properties.copy().items():
+            if strk in deprecated_properties:
+                mlog.deprecation(f'{strk} in the [properties] section of the machine file is deprecated, use the [built-in options] section.')
+                k = self.mfilestr2key(strk, None, machine)
+                self.options[k] = v
+                del properties.properties[strk]
 
         for section, values in config.items():
             if ':' in section:
-                subproject, section = section.split(':')
+                section_subproject, section = section.split(':')
             else:
-                subproject = ''
+                section_subproject = ''
             if section == 'built-in options':
-                for k, v in values.items():
-                    key = OptionKey.from_string(k)
+                for strk, v in values.items():
+                    key = self.mfilestr2key(strk, section_subproject, machine)
                     # If we're in the cross file, and there is a `build.foo` warn about that. Later we'll remove it.
                     if machine is MachineChoice.HOST and key.machine is not machine:
                         mlog.deprecation('Setting build machine options in cross files, please use a native file instead, this will be removed in meson 2.0', once=True)
-                    if key.subproject:
-                        raise MesonException('Do not set subproject options in [built-in options] section, use [subproject:built-in options] instead.')
-                    self.options[key.evolve(subproject=subproject, machine=machine)] = v
+                    self.options[key] = v
             elif section == 'project options' and machine is MachineChoice.HOST:
                 # Project options are only for the host machine, we don't want
                 # to read these from the native file
-                for k, v in values.items():
+                for strk, v in values.items():
                     # Project options are always for the host machine
-                    key = OptionKey.from_string(k)
+                    key = self.mfilestr2key(strk, section_subproject, machine)
                     if key.subproject:
                         raise MesonException('Do not set subproject options in [built-in options] section, use [subproject:built-in options] instead.')
-                    self.options[key.evolve(subproject=subproject)] = v
+                    self.options[key] = v
 
     def _set_default_options_from_env(self) -> None:
         opts: T.List[T.Tuple[str, str]] = (
@@ -1024,3 +1035,13 @@ class Environment:
         if extra_paths:
             env.prepend('PATH', list(extra_paths))
         return env
+
+    def determine_option_value(self, key: T.Union[str, 'OptionKey'], target: T.Optional['BuildTarget'], subproject: T.Optional[str]) -> T.List[str]:
+        if target is None and subproject is None:
+            raise RuntimeError('Internal error, option value determination is missing arguments.')
+        if isinstance(key, str):
+            key = OptionKey(key)
+        if target:
+            return self.coredata.get_option_for_target(target, key)
+        else:
+            return self.coredata.get_option_for_subproject(key, subproject)

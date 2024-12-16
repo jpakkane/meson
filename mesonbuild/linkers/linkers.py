@@ -14,9 +14,10 @@ from ..mesonlib import EnvironmentException, MesonException
 from ..arglist import CompilerArgs
 
 if T.TYPE_CHECKING:
-    from ..coredata import KeyedOptionDictType
     from ..environment import Environment
     from ..mesonlib import MachineChoice
+    from ..build import BuildTarget
+    from ..compilers import Compiler
 
 
 class StaticLinker:
@@ -38,7 +39,10 @@ class StaticLinker:
         """
         return mesonlib.is_windows()
 
-    def get_base_link_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
+    def get_base_link_args(self,
+                           target: 'BuildTarget',
+                           linker: 'Compiler',
+                           env: 'Environment') -> T.List[str]:
         """Like compilers.get_base_link_args, but for the static linker."""
         return []
 
@@ -68,7 +72,7 @@ class StaticLinker:
     def openmp_flags(self, env: Environment) -> T.List[str]:
         return []
 
-    def get_option_link_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
+    def get_option_link_args(self, target: 'BuildTarget', env: 'Environment', subproject: T.Optional[str] = None) -> T.List[str]:
         return []
 
     @classmethod
@@ -174,7 +178,10 @@ class DynamicLinker(metaclass=abc.ABCMeta):
 
     # XXX: is use_ldflags a compiler or a linker attribute?
 
-    def get_option_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
+    def get_option_args(self, target: 'BuildTarget', env: 'Environment', subproject: T.Optional[str] = None) -> T.List[str]:
+        return []
+
+    def get_option_link_args(self, target: 'BuildTarget', env: 'Environment', subproject: T.Optional[str] = None) -> T.List[str]:
         return []
 
     def has_multi_arguments(self, args: T.List[str], env: 'Environment') -> T.Tuple[bool, bool]:
@@ -201,7 +208,7 @@ class DynamicLinker(metaclass=abc.ABCMeta):
     def get_std_shared_lib_args(self) -> T.List[str]:
         return []
 
-    def get_std_shared_module_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
+    def get_std_shared_module_args(self, Target: 'BuildTarget') -> T.List[str]:
         return self.get_std_shared_lib_args()
 
     def get_pie_args(self) -> T.List[str]:
@@ -768,7 +775,7 @@ class AppleDynamicLinker(PosixDynamicLinkerMixin, DynamicLinker):
     def get_allow_undefined_args(self) -> T.List[str]:
         return self._apply_prefix('-undefined,dynamic_lookup')
 
-    def get_std_shared_module_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
+    def get_std_shared_module_args(self, target: 'BuildTarget') -> T.List[str]:
         return ['-bundle'] + self._apply_prefix('-undefined,dynamic_lookup')
 
     def get_pie_args(self) -> T.List[str]:

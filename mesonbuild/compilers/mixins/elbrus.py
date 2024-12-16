@@ -18,7 +18,7 @@ from ...options import OptionKey
 
 if T.TYPE_CHECKING:
     from ...environment import Environment
-    from ...coredata import KeyedOptionDictType
+    from ...build import BuildTarget
 
 
 class ElbrusCompiler(GnuLikeCompiler):
@@ -83,9 +83,14 @@ class ElbrusCompiler(GnuLikeCompiler):
         # Actually it's not supported for now, but probably will be supported in future
         return 'pch'
 
-    def get_option_compile_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
+    def get_option_compile_args(self, target: 'BuildTarget', env: 'Environment', subproject: T.Optional[str] = None) -> T.List[str]:
         args: T.List[str] = []
-        std = options.get_value(OptionKey(f'{self.language}_std', machine=self.for_machine))
+        key = OptionKey(f'{self.language}_std', machine=self.for_machine)
+        if target:
+            std = env.coredata.get_option_for_target(target, key)
+        else:
+            std = env.coredata.get_option_for_subproject(key, subproject)
+        assert isinstance(std, str)
         if std != 'none':
             args.append('-std=' + std)
         return args

@@ -10,9 +10,9 @@ from . import mlog, options
 import pickle, os, uuid
 import sys
 from itertools import chain
-from pathlib import PurePath
 from collections import OrderedDict, abc
 import dataclasses
+import textwrap
 
 from .mesonlib import (
     MesonBugException,
@@ -44,6 +44,7 @@ if T.TYPE_CHECKING:
     from .cmake.traceparser import CMakeCacheEntry
     from .interpreterbase import SubProject
     from .options import UserOption
+    from .build import BuildTarget
 
     class SharedCMDOptions(Protocol):
 
@@ -149,13 +150,13 @@ class DependencyCache:
     def __init__(self, builtins: 'KeyedOptionDictType', for_machine: MachineChoice):
         self.__cache: T.MutableMapping[TV_DepID, DependencySubCache] = OrderedDict()
         self.__builtins = builtins
-        self.__pkg_conf_key = OptionKey('pkg_config_path', machine=for_machine)
-        self.__cmake_key = OptionKey('cmake_prefix_path', machine=for_machine)
+        self.__pkg_conf_key = options.OptionKey('pkg_config_path')
+        self.__cmake_key = options.OptionKey('cmake_prefix_path')
 
     def __calculate_subkey(self, type_: DependencyCacheType) -> T.Tuple[str, ...]:
         data: T.Dict[DependencyCacheType, T.List[str]] = {
-            DependencyCacheType.PKG_CONFIG: stringlistify(self.__builtins.get_value(self.__pkg_conf_key)),
-            DependencyCacheType.CMAKE: stringlistify(self.__builtins.get_value(self.__cmake_key)),
+            DependencyCacheType.PKG_CONFIG: stringlistify(self.__builtins.get_value_for(self.__pkg_conf_key)),
+            DependencyCacheType.CMAKE: stringlistify(self.__builtins.get_value_for(self.__cmake_key)),
             DependencyCacheType.OTHER: [],
         }
         assert type_ in data, 'Someone forgot to update subkey calculations for a new type'
@@ -259,9 +260,10 @@ class CoreData:
         self.meson_command = meson_command
         self.target_guids = {}
         self.version = version
-        self.optstore = options.OptionStore()
+        self.sp_option_overrides: T.Dict[str, str] = {}
         self.cross_files = self.__load_config_files(cmd_options, scratch_dir, 'cross')
         self.compilers: PerMachine[T.Dict[str, Compiler]] = PerMachine(OrderedDict(), OrderedDict())
+        self.optstore = options.OptionStore(self.is_cross_build())
 
         # Stores the (name, hash) of the options file, The name will be either
         # "meson_options.txt" or "meson.options".
@@ -288,7 +290,7 @@ class CoreData:
         # Only to print a warning if it changes between Meson invocations.
         self.config_files = self.__load_config_files(cmd_options, scratch_dir, 'native')
         self.builtin_options_libdir_cross_fixup()
-        self.init_builtins('')
+        self.init_builtins()
 
     @staticmethod
     def __load_config_files(cmd_options: SharedCMDOptions, scratch_dir: str, ftype: str) -> T.List[str]:
@@ -317,15 +319,15 @@ class CoreData:
                     # in this case we've been passed some kind of pipe, copy
                     # the contents of that file into the meson private (scratch)
                     # directory so that it can be re-read when wiping/reconfiguring
-                    copy = os.path.join(scratch_dir, f'{uuid.uuid4()}.{ftype}.ini')
+                    fcopy = os.path.join(scratch_dir, f'{uuid.uuid4()}.{ftype}.ini')
                     with open(f, encoding='utf-8') as rf:
-                        with open(copy, 'w', encoding='utf-8') as wf:
+                        with open(fcopy, 'w', encoding='utf-8') as wf:
                             wf.write(rf.read())
-                    real.append(copy)
+                    real.append(fcopy)
 
                     # Also replace the command line argument, as the pipe
                     # probably won't exist on reconfigure
-                    filenames[i] = copy
+                    filenames[i] = fcopy
                     continue
             if sys.platform != 'win32':
                 paths = [
@@ -355,62 +357,13 @@ class CoreData:
         if self.cross_files:
             options.BUILTIN_OPTIONS[OptionKey('libdir')].default = 'lib'
 
-    def sanitize_prefix(self, prefix: str) -> str:
-        prefix = os.path.expanduser(prefix)
-        if not os.path.isabs(prefix):
-            raise MesonException(f'prefix value {prefix!r} must be an absolute path')
-        if prefix.endswith('/') or prefix.endswith('\\'):
-            # On Windows we need to preserve the trailing slash if the
-            # string is of type 'C:\' because 'C:' is not an absolute path.
-            if len(prefix) == 3 and prefix[1] == ':':
-                pass
-            # If prefix is a single character, preserve it since it is
-            # the root directory.
-            elif len(prefix) == 1:
-                pass
-            else:
-                prefix = prefix[:-1]
-        return prefix
-
-    def sanitize_dir_option_value(self, prefix: str, option: OptionKey, value: T.Any) -> T.Any:
-        '''
-        If the option is an installation directory option, the value is an
-        absolute path and resides within prefix, return the value
-        as a path relative to the prefix. Otherwise, return it as is.
-
-        This way everyone can do f.ex, get_option('libdir') and usually get
-        the library directory relative to prefix, even though it really
-        should not be relied upon.
-        '''
-        try:
-            value = PurePath(value)
-        except TypeError:
-            return value
-        if option.name.endswith('dir') and value.is_absolute() and \
-           option not in options.BUILTIN_DIR_NOPREFIX_OPTIONS:
-            try:
-                # Try to relativize the path.
-                value = value.relative_to(prefix)
-            except ValueError:
-                # Path is not relative, let’s keep it as is.
-                pass
-            if '..' in value.parts:
-                raise MesonException(
-                    f'The value of the \'{option}\' option is \'{value}\' but '
-                    'directory options are not allowed to contain \'..\'.\n'
-                    f'If you need a path outside of the {prefix!r} prefix, '
-                    'please use an absolute path.'
-                )
-        # .as_posix() keeps the posix-like file separators Meson uses.
-        return value.as_posix()
-
-    def init_builtins(self, subproject: str) -> None:
+    def init_builtins(self) -> None:
         # Create builtin options with default values
         for key, opt in options.BUILTIN_OPTIONS.items():
-            self.add_builtin_option(self.optstore, key.evolve(subproject=subproject), opt)
+            self.add_builtin_option(self.optstore, key, opt)
         for for_machine in iter(MachineChoice):
             for key, opt in options.BUILTIN_OPTIONS_PER_MACHINE.items():
-                self.add_builtin_option(self.optstore, key.evolve(subproject=subproject, machine=for_machine), opt)
+                self.add_builtin_option(self.optstore, key.evolve(machine=for_machine), opt)
 
     @staticmethod
     def add_builtin_option(opts_map: 'MutableKeyedOptionDictType', key: OptionKey,
@@ -442,67 +395,49 @@ class CoreData:
                 ''))
 
     def get_option(self, key: OptionKey) -> T.Union[T.List[str], str, int, bool]:
-        try:
-            v = self.optstore.get_value(key)
-            return v
-        except KeyError:
-            pass
+        return self.optstore.get_value_for(key.name, key.subproject)
 
-        try:
-            v = self.optstore.get_value_object(key.as_root())
-            if v.yielding:
-                return v.value
-        except KeyError:
-            pass
+    def get_option_object_for_target(self, target: 'BuildTarget', key: T.Union[str, OptionKey]) -> 'UserOption[T.Any]':
+        return self.get_option_for_subproject(key, target.subproject)
 
-        raise MesonException(f'Tried to get unknown builtin option {str(key)}')
+    def get_option_for_target(self, target: 'BuildTarget', key: T.Union[str, OptionKey]) -> T.Union[T.List[str], str, int, bool]:
+        if isinstance(key, str):
+            assert ':' not in key
+            newkey = OptionKey(key, target.subproject)
+        else:
+            newkey = key
+        if newkey.subproject != target.subproject:
+            # FIXME: this should be an error. The caller needs to ensure that
+            # key and target have the same subproject for consistency.
+            # Now just do this to get things going.
+            newkey = newkey.evolve(subproject=target.subproject)
+        (option_object, value) = self.optstore.get_value_object_and_value_for(newkey)
+        override = target.get_override(newkey.name)
+        if override is not None:
+            return option_object.validate_value(override)
+        return value
+
+    def get_option_for_subproject(self, key: T.Union[str, OptionKey], subproject) -> T.Union[T.List[str], str, int, bool]:
+        if isinstance(key, str):
+            key = OptionKey(key, subproject=subproject)
+        if key.subproject != subproject:
+            # This should be an error, fix before merging.
+            key = key.evolve(subproject=subproject)
+        return self.optstore.get_value_for(key)
+
+    def get_option_object_for_subproject(self, key: T.Union[str, OptionKey], subproject) -> UserOption[T.Any]:
+        #keyname = key.name
+        if key.subproject != subproject:
+            # This should be an error, fix before merging.
+            key = key.evolve(subproject=subproject)
+        return self.optstore.get_value_object_for(key)
 
     def set_option(self, key: OptionKey, value, first_invocation: bool = False) -> bool:
         dirty = False
-        if self.optstore.is_builtin_option(key):
-            if key.name == 'prefix':
-                value = self.sanitize_prefix(value)
-            else:
-                prefix = self.optstore.get_value('prefix')
-                value = self.sanitize_dir_option_value(prefix, key, value)
-
         try:
-            opt = self.optstore.get_value_object(key)
+            changed = self.optstore.set_value(key, value, first_invocation)
         except KeyError:
             raise MesonException(f'Tried to set unknown builtin option {str(key)}')
-
-        if opt.deprecated is True:
-            mlog.deprecation(f'Option {key.name!r} is deprecated')
-        elif isinstance(opt.deprecated, list):
-            for v in opt.listify(value):
-                if v in opt.deprecated:
-                    mlog.deprecation(f'Option {key.name!r} value {v!r} is deprecated')
-        elif isinstance(opt.deprecated, dict):
-            def replace(v):
-                newvalue = opt.deprecated.get(v)
-                if newvalue is not None:
-                    mlog.deprecation(f'Option {key.name!r} value {v!r} is replaced by {newvalue!r}')
-                    return newvalue
-                return v
-            newvalue = [replace(v) for v in opt.listify(value)]
-            value = ','.join(newvalue)
-        elif isinstance(opt.deprecated, str):
-            # Option is deprecated and replaced by another. Note that a project
-            # option could be replaced by a built-in or module option, which is
-            # why we use OptionKey.from_string(newname) instead of
-            # key.evolve(newname). We set the value on both the old and new names,
-            # assuming they accept the same value. That could for example be
-            # achieved by adding the values from old option as deprecated on the
-            # new option, for example in the case of boolean option is replaced
-            # by a feature option with a different name.
-            newname = opt.deprecated
-            newkey = OptionKey.from_string(newname).evolve(subproject=key.subproject)
-            mlog.deprecation(f'Option {key.name!r} is replaced by {newname!r}')
-            dirty |= self.set_option(newkey, value, first_invocation)
-
-        changed = opt.set_value(value)
-        if changed and opt.readonly and not first_invocation:
-            raise MesonException(f'Tried modify read only option {str(key)!r}')
         dirty |= changed
 
         if key.name == 'buildtype':
@@ -518,7 +453,7 @@ class CoreData:
 
     def get_nondefault_buildtype_args(self) -> T.List[T.Union[T.Tuple[str, str, str], T.Tuple[str, bool, bool]]]:
         result: T.List[T.Union[T.Tuple[str, str, str], T.Tuple[str, bool, bool]]] = []
-        value = self.optstore.get_value('buildtype')
+        value = self.optstore.get_value_for('buildtype')
         if value == 'plain':
             opt = 'plain'
             debug = False
@@ -537,8 +472,8 @@ class CoreData:
         else:
             assert value == 'custom'
             return []
-        actual_opt = self.optstore.get_value('optimization')
-        actual_debug = self.optstore.get_value('debug')
+        actual_opt = self.optstore.get_value_for('optimization')
+        actual_debug = self.optstore.get_value_for('debug')
         if actual_opt != opt:
             result.append(('optimization', actual_opt, opt))
         if actual_debug != debug:
@@ -573,6 +508,8 @@ class CoreData:
         return dirty
 
     def is_per_machine_option(self, optname: OptionKey) -> bool:
+        if isinstance(optname, str):
+            optname = OptionKey.from_string(optname)
         if optname.as_host() in options.BUILTIN_OPTIONS_PER_MACHINE:
             return True
         return self.optstore.is_compiler_option(optname)
@@ -584,8 +521,8 @@ class CoreData:
 
     def get_external_link_args(self, for_machine: MachineChoice, lang: str) -> T.List[str]:
         # mypy cannot analyze type of OptionKey
-        key = OptionKey(f'{lang}_link_args', machine=for_machine)
-        return T.cast('T.List[str]', self.optstore.get_value(key))
+        linkkey = OptionKey(f'{lang}_link_args', machine=for_machine)
+        return T.cast('T.List[str]', self.optstore.get_value_for(linkkey))
 
     def update_project_options(self, project_options: 'MutableKeyedOptionDictType', subproject: SubProject) -> None:
         for key, value in project_options.items():
@@ -610,7 +547,8 @@ class CoreData:
                                  fatal=False)
 
         # Find any extranious keys for this project and remove them
-        for key in self.optstore.keys() - project_options.keys():
+        potential_removed_keys = self.optstore.keys() - project_options.keys()
+        for key in potential_removed_keys:
             if self.optstore.is_project_option(key) and key.subproject == subproject:
                 self.optstore.remove(key)
 
@@ -619,12 +557,15 @@ class CoreData:
             return False
         return len(self.cross_files) > 0
 
-    def copy_build_options_from_regular_ones(self) -> bool:
+    def copy_build_options_from_regular_ones(self, shut_up_pylint: bool = True) -> bool:
+        # FIXME, needs cross compilation support.
+        if shut_up_pylint:
+            return False
         dirty = False
         assert not self.is_cross_build()
         for k in options.BUILTIN_OPTIONS_PER_MACHINE:
-            o = self.optstore.get_value_object(k)
-            dirty |= self.optstore.set_value(k.as_build(), o.value)
+            o = self.optstore.get_value_object_for(k.name)
+            dirty |= self.optstore.set_value(k, True, o.value)
         for bk, bv in self.optstore.items():
             if bk.machine is MachineChoice.BUILD:
                 hk = bk.as_host()
@@ -644,16 +585,17 @@ class CoreData:
         pfk = OptionKey('prefix')
         if pfk in opts_to_set:
             prefix = self.sanitize_prefix(opts_to_set[pfk])
-            dirty |= self.optstore.set_value('prefix', prefix)
             for key in options.BUILTIN_DIR_NOPREFIX_OPTIONS:
                 if key not in opts_to_set:
-                    dirty |= self.optstore.set_value(key, options.BUILTIN_OPTIONS[key].prefixed_default(key, prefix))
+                    val = options.BUILTIN_OPTIONS[key].prefixed_default(key, prefix)
+                    tmpkey = options.convert_oldkey(key)
+                    dirty |= self.optstore.set_option(tmpkey, val)
 
         unknown_options: T.List[OptionKey] = []
         for k, v in opts_to_set.items():
             if k == pfk:
                 continue
-            elif k in self.optstore:
+            elif k.evolve(subproject=None) in self.optstore:
                 dirty |= self.set_option(k, v, first_invocation)
             elif k.machine != MachineChoice.BUILD and not self.optstore.is_compiler_option(k):
                 unknown_options.append(k)
@@ -667,6 +609,54 @@ class CoreData:
 
         return dirty
 
+    def can_set_per_sb(self, keystr):
+        return True
+
+    def set_options_from_configure_strings(self, D_args) -> bool:
+        dirty = False
+        for entry in D_args:
+            if '=' not in entry:
+                raise MesonException(f'A -D argument must be of form "name=value" instead of {entry}')
+            key, val = entry.split('=', 1)
+            if key in self.sp_option_overrides:
+                self.sp_option_overrides[key] = val
+                dirty = True
+            else:
+                dirty |= self.set_options({OptionKey(key): val})
+        return dirty
+
+    def create_sp_options(self, A_args) -> bool:
+        if A_args is None:
+            return False
+        dirty = False
+        for entry in A_args:
+            keystr, valstr = entry.split('=', 1)
+            if ':' not in keystr:
+                raise MesonException(f'Option to add override has no subproject: {entry}')
+            if not self.can_set_per_sb(keystr):
+                raise MesonException(f'Option {keystr} can not be set per subproject.')
+            if keystr in self.sp_option_overrides:
+                raise MesonException(f'Override {keystr} already exists.')
+            key = self.optstore.split_keystring(keystr)
+            original_key = key.copy_with(subproject=None)
+            if not self.optstore.has_option(original_key):
+                raise MesonException('Tried to override a nonexisting key.')
+            self.sp_option_overrides[keystr] = valstr
+            dirty = True
+        return dirty
+
+    def remove_sp_options(self, U_args) -> bool:
+        dirty = False
+        if U_args is None:
+            return False
+        for entry in U_args:
+            if entry in self.sp_option_overrides:
+                del self.sp_option_overrides[entry]
+                dirty = True
+            else:
+                pass # Deleting a non-existing key ok, I guess?
+        return dirty
+
     def set_default_options(self, default_options: T.MutableMapping[OptionKey, str], subproject: str, env: 'Environment') -> None:
         from .compilers import base_options
 
@@ -676,6 +666,8 @@ class CoreData:
         # 'optimization' if it is in default_options.
         options: T.MutableMapping[OptionKey, T.Any] = OrderedDict()
         for k, v in default_options.items():
+            if isinstance(k, str):
+                k = OptionKey.from_string(k)
             if not subproject or k.subproject == subproject:
                 options[k] = v
         options.update(env.options)
@@ -689,6 +681,8 @@ class CoreData:
         options = OrderedDict()
 
         for k, v in env.options.items():
+            if isinstance(k, str):
+                k = OptionKey.from_string(k)
             # If this is a subproject, don't use other subproject options
             if k.subproject and k.subproject != subproject:
                 continue
@@ -697,7 +691,7 @@ class CoreData:
             # Always test this using the HOST machine, as many builtin options
             # are not valid for the BUILD machine, but the yielding value does
             # not differ between them even when they are valid for both.
-            if subproject and self.optstore.is_builtin_option(k) and self.optstore.get_value_object(k.evolve(subproject='', machine=MachineChoice.HOST)).yielding:
+            if subproject and self.optstore.is_builtin_option(k) and self.optstore.get_value_object(k.evolve(subproject=None, machine=MachineChoice.HOST)).yielding:
                 continue
             # Skip base, compiler, and backend options, they are handled when
             # adding languages and setting backend.
@@ -717,16 +711,18 @@ class CoreData:
             if value is not None:
                 o.set_value(value)
                 if not subproject:
-                    self.optstore.set_value_object(k, o)  # override compiler option on reconfigure
-            self.optstore.setdefault(k, o)
+                    # FIXME, add augment
+                    #self.optstore[k] = o  # override compiler option on reconfigure
+                    pass
 
-            if subproject:
-                sk = k.evolve(subproject=subproject)
-                value = env.options.get(sk) or value
-                if value is not None:
-                    o.set_value(value)
-                    self.optstore.set_value_object(sk, o)  # override compiler option on reconfigure
-                self.optstore.setdefault(sk, o)
+            comp_key = OptionKey(f'{k.name}', None, for_machine)
+            if lang == 'objc' and k.name == 'c_std':
+                # For objective C, always fall back to c_std.
+                self.optstore.add_compiler_option('c', comp_key, o)
+            elif lang == 'objcpp' and k.name == 'cpp_std':
+                self.optstore.add_compiler_option('cpp', comp_key, o)
+            else:
+                self.optstore.add_compiler_option(lang, comp_key, o)
 
     def add_lang_args(self, lang: str, comp: T.Type['Compiler'],
                       for_machine: MachineChoice, env: 'Environment') -> None:
@@ -743,32 +739,33 @@ class CoreData:
 
         self.add_compiler_options(comp.get_options(), lang, comp.for_machine, env, subproject)
 
-        enabled_opts: T.List[OptionKey] = []
         for key in comp.base_options:
             if subproject:
                 skey = key.evolve(subproject=subproject)
             else:
                 skey = key
             if skey not in self.optstore:
-                self.optstore.add_system_option(skey, copy.deepcopy(compilers.base_options[key]))
+                self.optstore.add_system_option(skey.name, copy.deepcopy(compilers.base_options[key]))
                 if skey in env.options:
                     self.optstore.set_value(skey, env.options[skey])
-                    enabled_opts.append(skey)
                 elif subproject and key in env.options:
                     self.optstore.set_value(skey, env.options[key])
-                    enabled_opts.append(skey)
-                if subproject and key not in self.optstore:
-                    self.optstore.add_system_option(key, copy.deepcopy(self.optstore.get_value_object(skey)))
+                # FIXME
+                #if subproject and not self.optstore.has_option(key):
+                #    self.optstore[key] = copy.deepcopy(self.optstore[skey])
             elif skey in env.options:
                 self.optstore.set_value(skey, env.options[skey])
             elif subproject and key in env.options:
                 self.optstore.set_value(skey, env.options[key])
-        self.emit_base_options_warnings(enabled_opts)
+        self.emit_base_options_warnings()
 
-    def emit_base_options_warnings(self, enabled_opts: T.List[OptionKey]) -> None:
-        if OptionKey('b_bitcode') in enabled_opts:
-            mlog.warning('Base option \'b_bitcode\' is enabled, which is incompatible with many linker options. Incompatible options such as \'b_asneeded\' have been disabled.', fatal=False)
-            mlog.warning('Please see https://mesonbuild.com/Builtin-options.html#Notes_about_Apple_Bitcode_support for more details.', fatal=False)
+    def emit_base_options_warnings(self) -> None:
+        bcodekey = OptionKey('b_bitcode')
+        if bcodekey in self.optstore and self.optstore.get_value(bcodekey):
+            msg = textwrap.dedent('''Base option 'b_bitcode' is enabled, which is incompatible with many linker options.
+                                     Incompatible options such as \'b_asneeded\' have been disabled.'
+                                     Please see https://mesonbuild.com/Builtin-options.html#Notes_about_Apple_Bitcode_support for more details.''')
+            mlog.warning(msg, once=True, fatal=False)
 
 def get_cmd_line_file(build_dir: str) -> str:
     return os.path.join(build_dir, 'meson-private', 'cmd_line.txt')
@@ -863,17 +860,14 @@ def register_builtin_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument('-D', action='append', dest='projectoptions', default=[], metavar="option",
                         help='Set the value of an option, can be used several times to set multiple options.')
 
-def create_options_dict(options: T.List[str], subproject: str = '') -> T.Dict[OptionKey, str]:
+def create_options_dict(options: T.List[str], subproject: str = '') -> T.Dict[str, str]:
     result: T.OrderedDict[OptionKey, str] = OrderedDict()
     for o in options:
         try:
             (key, value) = o.split('=', 1)
         except ValueError:
             raise MesonException(f'Option {o!r} must have a value separated by equals sign.')
-        k = OptionKey.from_string(key)
-        if subproject:
-            k = k.evolve(subproject=subproject)
-        result[k] = value
+        result[key] = value
     return result
 
 def parse_cmd_line_options(args: SharedCMDOptions) -> None:
@@ -892,7 +886,7 @@ def parse_cmd_line_options(args: SharedCMDOptions) -> None:
                 cmdline_name = options.BuiltinOption.argparse_name_to_arg(name)
                 raise MesonException(
                     f'Got argument {name} as both -D{name} and {cmdline_name}. Pick one.')
-            args.cmd_line_options[key] = value
+            args.cmd_line_options[key.name] = value
             delattr(args, name)
 
 @dataclasses.dataclass

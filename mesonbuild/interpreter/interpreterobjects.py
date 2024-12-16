@@ -94,7 +94,7 @@ class FeatureOptionHolder(ObjectHolder[options.UserFeatureOption]):
         super().__init__(option, interpreter)
         if option and option.is_auto():
             # TODO: we need to cast here because options is not a TypedDict
-            auto = T.cast('options.UserFeatureOption', self.env.coredata.optstore.get_value_object('auto_features'))
+            auto = T.cast('options.UserFeatureOption', self.env.coredata.optstore.get_value_object_for('auto_features'))
             self.held_object = copy.copy(auto)
             self.held_object.name = option.name
         self.methods.update({'enabled': self.enabled_method,
@@ -958,7 +958,10 @@ class BuildTargetHolder(ObjectHolder[_BuildTarget]):
     @noKwargs
     @typed_pos_args('extract_objects', varargs=(mesonlib.File, str, build.CustomTarget, build.CustomTargetIndex, build.GeneratedList))
     def extract_objects_method(self, args: T.Tuple[T.List[T.Union[mesonlib.FileOrString, 'build.GeneratedTypes']]], kwargs: TYPE_nkwargs) -> build.ExtractedObjects:
-        return self._target_object.extract_objects(args[0])
+        tobj = self._target_object
+        unity_value = self.interpreter.coredata.get_option_for_target(tobj, "unity")
+        is_unity = (unity_value == 'on' or (unity_value == 'subprojects' and tobj.subproject != ''))
+        return tobj.extract_objects(args[0], is_unity)
 
     @noPosargs
     @typed_kwargs(

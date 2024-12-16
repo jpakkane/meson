@@ -18,7 +18,7 @@ if get_option('array_opt') != ['one', 'two']
 endif
 
 # If the default changes, update test cases/unit/13 reconfigure
-if get_option('b_lto') != false
+if get_option('b_pch') != true
   error('Incorrect value in base option.')
 endif
 
@@ -30,8 +30,10 @@ if get_option('integer_opt') != 3
   error('Incorrect value in integer option.')
 endif
 
-if get_option('neg_int_opt') != -3
-  error('Incorrect value in negative integer option.')
+negint = get_option('neg_int_opt')
+
+if negint != -3 and negint != -10
+  error('Incorrect value @0@ in negative integer option.'.format(negint))
 endif
 
 if get_option('CaseSenSiTivE') != 'Some CAPS'

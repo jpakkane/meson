@@ -27,12 +27,13 @@ from mesonbuild.mesonlib import (
 )
 
 if T.TYPE_CHECKING:
-    from ..coredata import MutableKeyedOptionDictType, KeyedOptionDictType
+    from ..coredata import MutableKeyedOptionDictType
     from ..dependencies import Dependency
     from ..envconfig import MachineInfo
     from ..environment import Environment
     from ..linkers.linkers import DynamicLinker
     from ..mesonlib import MachineChoice
+    from ..build import BuildTarget
 
 
 class FortranCompiler(CLikeCompiler, Compiler):
@@ -283,10 +284,10 @@ class GnuFortranCompiler(GnuCompiler, FortranCompiler):
         opts[key].choices = ['none'] + fortran_stds
         return opts
 
-    def get_option_compile_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
+    def get_option_compile_args(self, target: 'BuildTarget', env: 'Environment', subproject: T.Optional[str] = None) -> T.List[str]:
         args: T.List[str] = []
-        key = self.form_compileropt_key('std')
-        std = options.get_value(key)
+        std = self.get_compileropt_value('std', env, target, subproject)
+        assert isinstance(std, str)
         if std != 'none':
             args.append('-std=' + std)
         return args
@@ -420,11 +421,11 @@ class IntelFortranCompiler(IntelGnuLikeCompiler, FortranCompiler):
         opts[key].choices = ['none', 'legacy', 'f95', 'f2003', 'f2008', 'f2018']
         return opts
 
-    def get_option_compile_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
+    def get_option_compile_args(self, target: 'BuildTarget', env: 'Environment', subproject: T.Optional[str] = None) -> T.List[str]:
         args: T.List[str] = []
-        key = self.form_compileropt_key('std')
-        std = options.get_value(key)
+        std = self.get_compileropt_value('std', env, target, subproject)
         stds = {'legacy': 'none', 'f95': 'f95', 'f2003': 'f03', 'f2008': 'f08', 'f2018': 'f18'}
+        assert isinstance(std, str)
         if std != 'none':
             args.append('-stand=' + stds[std])
         return args
@@ -475,11 +476,11 @@ class IntelClFortranCompiler(IntelVisualStudioLikeCompiler, FortranCompiler):
         opts[key].choices = ['none', 'legacy', 'f95', 'f2003', 'f2008', 'f2018']
         return opts
 
-    def get_option_compile_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
+    def get_option_compile_args(self, target: 'BuildTarget', env: 'Environment', subproject: T.Optional[str] = None) -> T.List[str]:
         args: T.List[str] = []
-        key = self.form_compileropt_key('std')
-        std = options.get_value(key)
+        std = self.get_compileropt_value('std', env, target, subproject)
         stds = {'legacy': 'none', 'f95': 'f95', 'f2003': 'f03', 'f2008': 'f08', 'f2018': 'f18'}
+        assert isinstance(std, str)
         if std != 'none':
             args.append('/stand:' + stds[std])
         return args

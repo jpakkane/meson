@@ -632,7 +632,7 @@ class NinjaBackend(backends.Backend):
             outfile.write('# Do not edit by hand.\n\n')
             outfile.write('ninja_required_version = 1.8.2\n\n')
 
-            num_pools = self.environment.coredata.optstore.get_value('backend_max_links')
+            num_pools = self.environment.coredata.optstore.get_value_for('backend_max_links')
             if num_pools > 0:
                 outfile.write(f'''pool link_pool
   depth = {num_pools}
@@ -665,8 +665,8 @@ class NinjaBackend(backends.Backend):
             self.generate_dist()
             mlog.log_timestamp("Dist generated")
             key = OptionKey('b_coverage')
-            if (key in self.environment.coredata.optstore and
-                    self.environment.coredata.optstore.get_value(key)):
+            if key in self.environment.coredata.optstore and\
+                    self.environment.coredata.optstore.get_value_for('b_coverage'):
                 gcovr_exe, gcovr_version, lcov_exe, lcov_version, genhtml_exe, llvm_cov_exe = environment.find_coverage_tools(self.environment.coredata)
                 mlog.debug(f'Using {gcovr_exe} ({gcovr_version}), {lcov_exe} and {llvm_cov_exe} for code coverage')
                 if gcovr_exe or (lcov_exe and genhtml_exe):
@@ -945,7 +945,7 @@ class NinjaBackend(backends.Backend):
         # Generate rules for building the remaining source files in this target
         outname = self.get_target_filename(target)
         obj_list = []
-        is_unity = target.is_unity
+        is_unity = self.is_unity(target)
         header_deps = []
         unity_src = []
         unity_deps = [] # Generated sources that must be built before compiling a Unity target.
@@ -1102,7 +1102,9 @@ class NinjaBackend(backends.Backend):
         cpp = target.compilers['cpp']
         if cpp.get_id() != 'msvc':
             return False
-        cppversion = target.get_option(OptionKey('cpp_std', machine=target.for_machine))
+        cppversion = self.get_target_option(target, OptionKey('cpp_std',
+                                                              machine=target.for_machine,
+                                                              subproject=target.subproject))
         if cppversion not in ('latest', 'c++latest', 'vc++latest'):
             return False
         if not mesonlib.current_vs_supports_modules():
@@ -1710,7 +1712,7 @@ class NinjaBackend(backends.Backend):
             valac_outputs.append(vala_c_file)
 
         args = self.generate_basic_compiler_args(target, valac)
-        args += valac.get_colorout_args(target.get_option(OptionKey('b_colorout')))
+        args += valac.get_colorout_args(self.get_target_option(target, 'b_colorout'))
         # Tell Valac to output everything in our private directory. Sadly this
         # means it will also preserve the directory components of Vala sources
         # found inside the build tree (generated sources).
@@ -1722,7 +1724,7 @@ class NinjaBackend(backends.Backend):
             # Outputted header
             hname = os.path.join(self.get_target_dir(target), target.vala_header)
             args += ['--header', hname]
-            if target.is_unity:
+            if self.is_unity(target):
                 # Without this the declarations will get duplicated in the .c
                 # files and cause a build failure when all of them are
                 # #include-d in one .c file.
@@ -1788,14 +1790,14 @@ class NinjaBackend(backends.Backend):
 
         args: T.List[str] = []
         args += cython.get_always_args()
-        args += cython.get_debug_args(target.get_option(OptionKey('debug')))
-        args += cython.get_optimization_args(target.get_option(OptionKey('optimization')))
-        args += cython.get_option_compile_args(target.get_options())
+        args += cython.get_debug_args(self.get_target_option(target, 'debug'))
+        args += cython.get_optimization_args(self.get_target_option(target, 'optimization'))
+        args += cython.get_option_compile_args(target, self.environment, target.subproject)
         args += self.build.get_global_args(cython, target.for_machine)
         args += self.build.get_project_args(cython, target.subproject, target.for_machine)
         args += target.get_extra_args('cython')
 
-        ext = target.get_option(OptionKey('cython_language', machine=target.for_machine))
+        ext = self.get_target_option(target, OptionKey('cython_language', machine=target.for_machine))
 
         pyx_sources = []  # Keep track of sources we're adding to build
 
@@ -1915,10 +1917,9 @@ class NinjaBackend(backends.Backend):
         # Rust compiler takes only the main file as input and
         # figures out what other files are needed via import
         # statements and magic.
-        base_proxy = target.get_options()
         args = rustc.compiler_args()
         # Compiler args for compiling this target
-        args += compilers.get_base_compile_args(base_proxy, rustc, self.environment)
+        args += compilers.get_base_compile_args(target, rustc, self.environment)
         self.generate_generator_list_rules(target)
 
         # dependencies need to cause a relink, they're not just for ordering
@@ -1998,8 +1999,8 @@ class NinjaBackend(backends.Backend):
         # https://github.com/rust-lang/rust/issues/39016
         if not isinstance(target, build.StaticLibrary):
             try:
-                buildtype = target.get_option(OptionKey('buildtype'))
-                crt = target.get_option(OptionKey('b_vscrt'))
+                buildtype = self.get_target_option(target, 'buildtype')
+                crt = self.get_target_option(target, 'b_vscrt')
                 args += rustc.get_crt_link_args(crt, buildtype)
             except (KeyError, AttributeError):
                 pass
@@ -2305,7 +2306,7 @@ class NinjaBackend(backends.Backend):
         return options
 
     def generate_static_link_rules(self) -> None:
-        num_pools = self.environment.coredata.optstore.get_value('backend_max_links')
+        num_pools = self.environment.coredata.optstore.get_value_for('backend_max_links')
         if 'java' in self.environment.coredata.compilers.host:
             self.generate_java_link()
         for for_machine in MachineChoice:
@@ -2353,7 +2354,7 @@ class NinjaBackend(backends.Backend):
             self.add_rule(NinjaRule(rule, cmdlist, args, description, **options, extra=pool))
 
     def generate_dynamic_link_rules(self) -> None:
-        num_pools = self.environment.coredata.optstore.get_value('backend_max_links')
+        num_pools = self.environment.coredata.optstore.get_value_for('backend_max_links')
         for for_machine in MachineChoice:
             complist = self.environment.coredata.compilers[for_machine]
             for langname, compiler in complist.items():
@@ -2801,11 +2802,10 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
         return []
 
     def generate_llvm_ir_compile(self, target, src: FileOrString):
-        base_proxy = target.get_options()
         compiler = get_compiler_for_source(target.compilers.values(), src)
         commands = compiler.compiler_args()
         # Compiler args for compiling this target
-        commands += compilers.get_base_compile_args(base_proxy, compiler, self.environment)
+        commands += compilers.get_base_compile_args(target, compiler, self.environment)
         if isinstance(src, File):
             if src.is_built:
                 src_filename = os.path.join(src.subdir, src.fname)
@@ -2861,7 +2861,6 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
         return commands
 
     def _generate_single_compile_base_args(self, target: build.BuildTarget, compiler: 'Compiler') -> 'CompilerArgs':
-        base_proxy = target.get_options()
         # Create an empty commands list, and start adding arguments from
         # various sources in the order in which they must override each other
         commands = compiler.compiler_args()
@@ -2870,7 +2869,7 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
         # Add compiler args for compiling this target derived from 'base' build
         # options passed on the command-line, in default_options, etc.
         # These have the lowest priority.
-        commands += compilers.get_base_compile_args(base_proxy,
+        commands += compilers.get_base_compile_args(target,
                                                     compiler, self.environment)
         return commands
 
@@ -3266,7 +3265,7 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
                 commands += linker.gen_vs_module_defs_args(target.vs_module_defs.rel_to_builddir(self.build_to_src))
         elif isinstance(target, build.SharedLibrary):
             if isinstance(target, build.SharedModule):
-                commands += linker.get_std_shared_module_link_args(target.get_options())
+                commands += linker.get_std_shared_module_link_args(target)
             else:
                 commands += linker.get_std_shared_lib_link_args()
             # All shared libraries are PIC
@@ -3441,20 +3440,19 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
         # options passed on the command-line, in default_options, etc.
         # These have the lowest priority.
         if isinstance(target, build.StaticLibrary):
-            commands += linker.get_base_link_args(target.get_options())
+            commands += linker.get_base_link_args(target, linker, self.environment)
         else:
-            commands += compilers.get_base_link_args(target.get_options(),
+            commands += compilers.get_base_link_args(target,
                                                      linker,
-                                                     isinstance(target, build.SharedModule),
-                                                     self.environment.get_build_dir())
+                                                     self.environment)
         # Add -nostdlib if needed; can't be overridden
         commands += self.get_no_stdlib_link_args(target, linker)
         # Add things like /NOLOGO; usually can't be overridden
         commands += linker.get_linker_always_args()
         # Add buildtype linker args: optimization level, etc.
-        commands += linker.get_optimization_link_args(target.get_option(OptionKey('optimization')))
+        commands += linker.get_optimization_link_args(self.get_target_option(target, 'optimization'))
         # Add /DEBUG and the pdb filename when using MSVC
-        if target.get_option(OptionKey('debug')):
+        if self.get_target_option(target, 'debug'):
             commands += self.get_link_debugfile_args(linker, target)
             debugfile = self.get_link_debugfile_name(linker, target)
             if debugfile is not None:
@@ -3541,7 +3539,7 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
             #
             # We shouldn't check whether we are making a static library, because
             # in the LTO case we do use a real compiler here.
-            commands += linker.get_option_link_args(target.get_options())
+            commands += linker.get_option_link_args(target, self.environment)
 
         dep_targets = []
         dep_targets.extend(self.guess_external_link_dependencies(linker, target, commands, internal))
@@ -3622,7 +3620,9 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
         gcda_elem.add_item('description', 'Deleting gcda files')
         self.add_build(gcda_elem)
 
-    def get_user_option_args(self) -> T.List[str]:
+    def get_user_option_args(self, shut_up_pylint: bool = True) -> T.List[str]:
+        if shut_up_pylint:
+            return []
         cmds = []
         for k, v in self.environment.coredata.optstore.items():
             if self.environment.coredata.optstore.is_project_option(k):
@@ -3755,7 +3755,7 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
             elem.add_dep(self.generate_custom_target_clean(ctlist))
 
         if OptionKey('b_coverage') in self.environment.coredata.optstore and \
-           self.environment.coredata.optstore.get_value('b_coverage'):
+           self.environment.coredata.optstore.get_value_for('b_coverage'):
             self.generate_gcov_clean()
             elem.add_dep('clean-gcda')
             elem.add_dep('clean-gcno')

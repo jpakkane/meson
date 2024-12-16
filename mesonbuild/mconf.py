@@ -35,6 +35,7 @@ if T.TYPE_CHECKING:
         builddir: str
         clearcache: bool
         pager: bool
+        unset_opts: T.List[str]
 
     # cannot be TV_Loggable, because non-ansidecorators do direct string concat
     LOGLINE = T.Union[str, mlog.AnsiDecorator]
@@ -48,6 +49,8 @@ def add_arguments(parser: 'argparse.ArgumentParser') -> None:
                         help='Clear cached state (e.g. found dependencies)')
     parser.add_argument('--no-pager', action='store_false', dest='pager',
                         help='Do not redirect output to a pager')
+    parser.add_argument('-U', action='append', dest='unset_opts', default=[],
+                        help='Remove a subproject option.')
 
 def stringify(val: T.Any) -> str:
     if isinstance(val, bool):
@@ -232,15 +235,15 @@ class Conf:
             return
         if title:
             self.add_title(title)
-        auto = T.cast('options.UserFeatureOption', self.coredata.optstore.get_value_object('auto_features'))
+        #auto = T.cast('options.UserFeatureOption', self.coredata.optstore.get_value_for('auto_features'))
         for k, o in sorted(opts.items()):
             printable_value = o.printable_value()
-            root = k.as_root()
-            if o.yielding and k.subproject and root in self.coredata.optstore:
-                printable_value = '<inherited from main project>'
-            if isinstance(o, options.UserFeatureOption) and o.is_auto():
-                printable_value = auto.printable_value()
-            self.add_option(str(root), o.description, printable_value, o.choices)
+            #root = k.as_root()
+            #if o.yielding and k.subproject and root in self.coredata.options:
+            #    printable_value = '<inherited from main project>'
+            #if isinstance(o, options.UserFeatureOption) and o.is_auto():
+            #    printable_value = auto.printable_value()
+            self.add_option(k.name, o.description, printable_value, o.choices)
 
     def print_conf(self, pager: bool) -> None:
         if pager:
@@ -267,7 +270,7 @@ class Conf:
         test_options: 'coredata.MutableKeyedOptionDictType' = {}
         core_options: 'coredata.MutableKeyedOptionDictType' = {}
         module_options: T.Dict[str, 'coredata.MutableKeyedOptionDictType'] = collections.defaultdict(dict)
-        for k, v in self.coredata.optstore.items():
+        for k, v in self.coredata.optstore.options.items():
             if k in dir_option_names:
                 dir_options[k] = v
             elif k in test_option_names:
@@ -290,9 +293,9 @@ class Conf:
         show_build_options = self.default_values_only or self.build.environment.is_cross_build()
 
         self.add_section('Main project options')
-        self.print_options('Core options', host_core_options[''])
-        if show_build_options:
-            self.print_options('', build_core_options[''])
+        self.print_options('Core options', host_core_options[None])
+        if show_build_options and build_core_options:
+            self.print_options('', build_core_options[None])
         self.print_options('Backend options', {k: v for k, v in self.coredata.optstore.items() if self.coredata.optstore.is_backend_option(k)})
         self.print_options('Base options', {k: v for k, v in self.coredata.optstore.items() if self.coredata.optstore.is_base_option(k)})
         self.print_options('Compiler options', host_compiler_options.get('', {}))
@@ -325,6 +328,7 @@ class Conf:
             print_default_values_warning()
 
         self.print_nondefault_buildtype_options()
+        self.print_augments()
 
     def print_nondefault_buildtype_options(self) -> None:
         mismatching = self.coredata.get_nondefault_buildtype_args()
@@ -335,8 +339,36 @@ class Conf:
         for m in mismatching:
             mlog.log(f'{m[0]:21}{m[1]:10}{m[2]:10}')
 
+    def print_sp_overrides(self) -> None:
+        if self.coredata.sp_option_overrides:
+            mlog.log('\nThe folowing options have per-subproject overrides:')
+            for k, v in self.coredata.sp_option_overrides.items():
+                mlog.log(f'{k:21}{v:10}')
+
+    def print_augments(self) -> None:
+        if self.coredata.optstore.augments:
+            mlog.log('\nCurrently set option augments:')
+            for k, v in self.coredata.optstore.augments.items():
+                mlog.log(f'{k:21}{v:10}')
+        else:
+            mlog.log('\nThere are no option augments.')
+
+def has_option_flags(options: CMDOptions) -> bool:
+    if options.cmd_line_options:
+        return True
+    if options.unset_opts:
+        return True
+    return False
+
+def is_print_only(options: CMDOptions) -> bool:
+    if has_option_flags(options):
+        return False
+    if options.clearcache:
+        return False
+    return True
+
 def run_impl(options: CMDOptions, builddir: str) -> int:
-    print_only = not options.cmd_line_options and not options.clearcache
+    print_only = is_print_only(options)
     c = None
     try:
         c = Conf(builddir)
@@ -347,8 +379,12 @@ def run_impl(options: CMDOptions, builddir: str) -> int:
             return 0
 
         save = False
-        if options.cmd_line_options:
-            save = c.set_options(options.cmd_line_options)
+        if has_option_flags(options):
+            unset_opts = getattr(options, 'unset_opts', [])
+            all_D = options.projectoptions[:]
+            for keystr, valstr in options.cmd_line_options.items():
+                all_D.append(f'{keystr}={valstr}')
+            save |= c.coredata.optstore.set_from_configure_command(all_D, unset_opts)
             coredata.update_cmd_line_file(builddir, options)
         if options.clearcache:
             c.clear_cache()

@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+import copy
+
 from .interpreterobjects import extract_required_kwarg
 from .. import mlog
 from .. import dependencies
@@ -23,8 +25,11 @@ if T.TYPE_CHECKING:
 
 
 class DependencyFallbacksHolder(MesonInterpreterObject):
-    def __init__(self, interpreter: 'Interpreter', names: T.List[str], allow_fallback: T.Optional[bool] = None,
-                 default_options: T.Optional[T.Dict[OptionKey, str]] = None) -> None:
+    def __init__(self,
+                 interpreter: 'Interpreter',
+                 names: T.List[str],
+                 allow_fallback: T.Optional[bool] = None,
+                 default_options: T.Optional[T.Dict[str, str]] = None) -> None:
         super().__init__(subproject=interpreter.subproject)
         self.interpreter = interpreter
         self.subproject = interpreter.subproject
@@ -123,7 +128,8 @@ class DependencyFallbacksHolder(MesonInterpreterObject):
         if static is not None and 'default_library' not in default_options:
             default_library = 'static' if static else 'shared'
             mlog.log(f'Building fallback subproject with default_library={default_library}')
-            default_options[OptionKey('default_library')] = default_library
+            default_options = copy.copy(default_options)
+            default_options['default_library'] = default_library
             func_kwargs['default_options'] = default_options
 
         # Configure the subproject

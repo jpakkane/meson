@@ -234,6 +234,25 @@ def set_meson_command(mainfile: str) -> None:
     from . import mesonlib
     mesonlib.set_meson_command(mainfile)
 
+def validate_original_args(args):
+    import mesonbuild.options
+    import itertools
+
+    def has_startswith(coll, target):
+        for entry in coll:
+            if entry.startswith(target):
+                return True
+        return False
+    #ds = [x for x in args if x.startswith('-D')]
+    #longs = [x for x in args if x.startswith('--')]
+    for optionkey in itertools.chain(mesonbuild.options.BUILTIN_DIR_OPTIONS, mesonbuild.options.BUILTIN_CORE_OPTIONS):
+        longarg = mesonbuild.options.BuiltinOption.argparse_name_to_arg(optionkey.name)
+        shortarg = f'-D{optionkey.name}'
+        if has_startswith(args, longarg) and has_startswith(args, shortarg):
+            sys.exit(
+                f'Got argument {optionkey.name} as both {shortarg} and {longarg}. Pick one.')
+
+
 def run(original_args: T.List[str], mainfile: str) -> int:
     if os.environ.get('MESON_SHOW_DEPRECATIONS'):
         # workaround for https://bugs.python.org/issue34624
@@ -281,6 +300,7 @@ def run(original_args: T.List[str], mainfile: str) -> int:
             return run_script_command(args[1], args[2:])
 
     set_meson_command(mainfile)
+    validate_original_args(args)
     return CommandLineParser().run(args)
 
 def main() -> int:

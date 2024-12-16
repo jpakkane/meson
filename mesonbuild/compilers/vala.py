@@ -14,11 +14,11 @@ from .compilers import CompileCheckMode, Compiler
 
 if T.TYPE_CHECKING:
     from ..arglist import CompilerArgs
-    from ..coredata import KeyedOptionDictType
     from ..envconfig import MachineInfo
     from ..environment import Environment
     from ..mesonlib import MachineChoice
     from ..dependencies import Dependency
+    from ..build import BuildTarget
 
 class ValaCompiler(Compiler):
 
@@ -141,7 +141,7 @@ class ValaCompiler(Compiler):
     def thread_link_flags(self, env: 'Environment') -> T.List[str]:
         return []
 
-    def get_option_link_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
+    def get_option_link_args(self, target: 'BuildTarget', env: 'Environment', subproject: T.Optional[str] = None) -> T.List[str]:
         return []
 
     def build_wrapper_args(self, env: 'Environment',

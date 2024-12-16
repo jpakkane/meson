@@ -420,10 +420,6 @@ class ExtractedObjects(HoldableObject):
     recursive: bool = True
     pch: bool = False
 
-    def __post_init__(self) -> None:
-        if self.target.is_unity:
-            self.check_unity_compatible()
-
     def __repr__(self) -> str:
         r = '<{0} {1!r}: {2}>'
         return r.format(self.__class__.__name__, self.target.name, self.srclist)
@@ -535,12 +531,6 @@ class Target(HoldableObject, metaclass=abc.ABCMeta):
         pass
 
     def __post_init__(self, overrides: T.Optional[T.Dict[OptionKey, str]]) -> None:
-        if overrides:
-            ovr = {k.evolve(machine=self.for_machine) if k.lang else k: v
-                   for k, v in overrides.items()}
-        else:
-            ovr = {}
-        self.options = coredata.OptionsView(self.environment.coredata.optstore, self.subproject, ovr)
         # XXX: this should happen in the interpreter
         if has_path_sep(self.name):
             # Fix failing test 53 when this becomes an error.
@@ -655,36 +645,13 @@ class Target(HoldableObject, metaclass=abc.ABCMeta):
             # set, use the value of 'install' if it's enabled.
             self.build_by_default = True
 
-        self.set_option_overrides(self.parse_overrides(kwargs))
+        self.raw_overrides = self.parse_overrides(kwargs)
 
-    def is_compiler_option_hack(self, key):
-        # FIXME this method must be deleted when OptionsView goes away.
-        # At that point the build target only stores the original string.
-        # The decision on how to use those pieces of data is done elsewhere.
-        from .compilers import all_languages
-        if '_' not in key.name:
-            return False
-        prefix = key.name.split('_')[0]
-        return prefix in all_languages
-
-    def set_option_overrides(self, option_overrides: T.Dict[OptionKey, str]) -> None:
-        self.options.overrides = {}
-        for k, v in option_overrides.items():
-            if self.is_compiler_option_hack(k):
-                self.options.overrides[k.evolve(machine=self.for_machine)] = v
-            else:
-                self.options.overrides[k] = v
-
-    def get_options(self) -> coredata.OptionsView:
-        return self.options
-
-    def get_option(self, key: 'OptionKey') -> T.Union[str, int, bool]:
-        # TODO: if it's possible to annotate get_option or validate_option_value
-        # in the future we might be able to remove the cast here
-        return T.cast('T.Union[str, int, bool]', self.options.get_value(key))
+    def get_override(self, name: str) -> T.Optional[str]:
+        return self.raw_overrides.get(name, None)
 
     @staticmethod
-    def parse_overrides(kwargs: T.Dict[str, T.Any]) -> T.Dict[OptionKey, str]:
+    def parse_overrides(kwargs: T.Dict[str, T.Any]) -> T.Dict[str, str]:
         opts = kwargs.get('override_options', [])
 
         # In this case we have an already parsed and ready to go dictionary
@@ -692,15 +659,13 @@ class Target(HoldableObject, metaclass=abc.ABCMeta):
         if isinstance(opts, dict):
             return T.cast('T.Dict[OptionKey, str]', opts)
 
-        result: T.Dict[OptionKey, str] = {}
+        result: T.Dict[str, str] = {}
         overrides = stringlistify(opts)
         for o in overrides:
             if '=' not in o:
                 raise InvalidArguments('Overrides must be of form "key=value"')
             k, v = o.split('=', 1)
-            key = OptionKey.from_string(k.strip())
-            v = v.strip()
-            result[key] = v
+            result[k] = v
         return result
 
     def is_linkable_target(self) -> bool:
@@ -831,11 +796,6 @@ class BuildTarget(Target):
 
     def __str__(self):
         return f"{self.name}"
-
-    @property
-    def is_unity(self) -> bool:
-        unity_opt = self.get_option(OptionKey('unity'))
-        return unity_opt == 'on' or (unity_opt == 'subprojects' and self.subproject != '')
 
     def validate_install(self):
         if self.for_machine is MachineChoice.BUILD and self.install:
@@ -1020,8 +980,7 @@ class BuildTarget(Target):
             self.compilers['c'] = self.all_compilers['c']
         if 'cython' in self.compilers:
             key = OptionKey('cython_language', machine=self.for_machine)
-            value = self.get_option(key)
-
+            value = self.environment.coredata.optstore.get_value_for(key)
             try:
                 self.compilers[value] = self.all_compilers[value]
             except KeyError:
@@ -1057,7 +1016,7 @@ class BuildTarget(Target):
                     'Link_depends arguments must be strings, Files, '
                     'or a Custom Target, or lists thereof.')
 
-    def extract_objects(self, srclist: T.List[T.Union['FileOrString', 'GeneratedTypes']]) -> ExtractedObjects:
+    def extract_objects(self, srclist: T.List[T.Union['FileOrString', 'GeneratedTypes']], is_unity: bool) -> ExtractedObjects:
         sources_set = set(self.sources)
         generated_set = set(self.generated)
 
@@ -1080,7 +1039,10 @@ class BuildTarget(Target):
                 obj_gen.append(src)
             else:
                 raise MesonException(f'Object extraction arguments must be strings, Files or targets (got {type(src).__name__}).')
-        return ExtractedObjects(self, obj_src, obj_gen)
+        eobjs = ExtractedObjects(self, obj_src, obj_gen)
+        if is_unity:
+            eobjs.check_unity_compatible()
+        return eobjs
 
     def extract_all_objects(self, recursive: bool = True) -> ExtractedObjects:
         return ExtractedObjects(self, self.sources, self.generated, self.objects,
@@ -1262,7 +1224,7 @@ class BuildTarget(Target):
         if kwargs.get(arg) is not None:
             val = T.cast('bool', kwargs[arg])
         elif k in self.environment.coredata.optstore:
-            val = self.environment.coredata.optstore.get_value(k)
+            val = self.environment.coredata.optstore.get_value_for(k.name, k.subproject)
         else:
             val = False
 
@@ -1972,7 +1934,7 @@ class Executable(BuildTarget):
             kwargs):
         key = OptionKey('b_pie')
         if 'pie' not in kwargs and key in environment.coredata.optstore:
-            kwargs['pie'] = environment.coredata.optstore.get_value(key)
+            kwargs['pie'] = environment.coredata.optstore.get_value_for(key)
         super().__init__(name, subdir, subproject, for_machine, sources, structured_sources, objects,
                          environment, compilers, kwargs)
         self.win_subsystem = kwargs.get('win_subsystem') or 'console'
@@ -2862,10 +2824,6 @@ class CompileTarget(BuildTarget):
 
     def type_suffix(self) -> str:
         return "@compile"
-
-    @property
-    def is_unity(self) -> bool:
-        return False
 
     def _add_output(self, f: File) -> None:
         plainname = os.path.basename(f.fname)

@@ -19,7 +19,6 @@ from .pkgconfig import PkgConfigDependency
 from .factory import DependencyFactory
 from .. import mlog
 from .. import mesonlib
-from ..options import OptionKey
 
 if T.TYPE_CHECKING:
     from ..compilers import Compiler
@@ -297,9 +296,9 @@ class QmakeQtDependency(_QtBase, ConfigToolDependency, metaclass=abc.ABCMeta):
 
         # Use the buildtype by default, but look at the b_vscrt option if the
         # compiler supports it.
-        is_debug = self.env.coredata.get_option(OptionKey('buildtype')) == 'debug'
-        if OptionKey('b_vscrt') in self.env.coredata.optstore:
-            if self.env.coredata.optstore.get_value('b_vscrt') in {'mdd', 'mtd'}:
+        is_debug = self.env.coredata.optstore.get_value_for('buildtype') == 'debug'
+        if 'b_vscrt' in self.env.coredata.optstore:
+            if self.env.coredata.optstore.get_value_for('b_vscrt') in {'mdd', 'mtd'}:
                 is_debug = True
         modules_lib_suffix = _get_modules_lib_suffix(self.version, self.env.machines[self.for_machine], is_debug)
 
