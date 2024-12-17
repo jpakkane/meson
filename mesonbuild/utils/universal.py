@@ -569,16 +569,14 @@ class PerMachineDefaultable(PerMachine[T.Optional[_T]]):
     def __init__(self, build: T.Optional[_T] = None, host: T.Optional[_T] = None) -> None:
         super().__init__(build, host)
 
-    def default_missing(self) -> "PerMachine[_T]":
+    def default_missing(self) -> PerMachine[_T]:
         """Default host to build
 
         This allows just specifying nothing in the native case, and just host in the
         cross non-compiler case.
         """
-        freeze = PerMachine(self.build, self.host)
-        if freeze.host is None:
-            freeze.host = freeze.build
-        return freeze
+        assert self.build is not None, 'Cannot fill in missing when all fields are empty'
+        return PerMachine(self.build, self.host if self.host is not None else self.build)
 
     def __repr__(self) -> str:
         return f'PerMachineDefaultable({self.build!r}, {self.host!r})'
@@ -604,19 +602,17 @@ class PerThreeMachineDefaultable(PerMachineDefaultable[T.Optional[_T]], PerThree
     def __init__(self) -> None:
         PerThreeMachine.__init__(self, None, None, None)
 
-    def default_missing(self) -> "PerThreeMachine[T.Optional[_T]]":
+    def default_missing(self) -> PerThreeMachine[_T]:
         """Default host to build and target to host.
 
         This allows just specifying nothing in the native case, just host in the
         cross non-compiler case, and just target in the native-built
         cross-compiler case.
         """
-        freeze = PerThreeMachine(self.build, self.host, self.target)
-        if freeze.host is None:
-            freeze.host = freeze.build
-        if freeze.target is None:
-            freeze.target = freeze.host
-        return freeze
+        assert self.build is not None, 'Cannot default a PerMachine when all values are None'
+        host = self.host if self.host is not None else self.build
+        target = self.target if self.target is not None else host
+        return PerThreeMachine(self.build, host, target)
 
     def __repr__(self) -> str:
         return f'PerThreeMachineDefaultable({self.build!r}, {self.host!r}, {self.target!r})'
