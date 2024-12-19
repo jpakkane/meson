@@ -34,7 +34,7 @@ if T.TYPE_CHECKING:
 
     from typing_extensions import TypedDict, Literal
 
-    class FuncTest(TypedDict, _kwargs.BaseTest):
+    class FuncTest(_kwargs.BaseTest):
 
         args: T.List[_kwargs.TestArgs]
         dependencies: T.List[T.Union[Dependency, ExternalLibrary]]

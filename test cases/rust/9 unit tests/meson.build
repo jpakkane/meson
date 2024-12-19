@@ -49,7 +49,7 @@ exe = executable('rust_exe', ['test2.rs', 'test.rs'], build_by_default : false)
 rust = import('rust')
 rust.test('rust_test_from_exe', exe, should_fail : true)
 
-lib = static_library('rust_static', ['test.rs'], build_by_default : false, rust_crate_type : 'lib')
+lib = static_library('rust_static', ['test.rs'], build_by_default : false, rust_abi: 'c')
 rust.test('rust_test_from_static', lib, args: ['--skip', 'test_add_intentional_fail'])
 
 lib = shared_library('rust_shared', ['test.rs'], build_by_default : false)
