@@ -16,8 +16,8 @@ from ..build import (BothLibraries, BuildTarget, CustomTargetIndex, Executable, 
 from ..compilers.compilers import are_asserts_disabled, lang_suffixes
 from ..compilers.rust import RustCompiler
 from ..interpreter.type_checking import (
-    DEPENDENCIES_KW, LINK_WITH_KW, SHARED_LIB_KWS, TEST_KWS, TEST_KWS_NO_ARGS, OUTPUT_KW,
-    INCLUDE_DIRECTORIES, SOURCES_VARARGS, NoneType, in_set_validator
+    DEPENDENCIES_KW, LINK_WITH_KW, LINK_WHOLE_KW, SHARED_LIB_KWS, TEST_KWS, TEST_KWS_NO_ARGS,
+    OUTPUT_KW, INCLUDE_DIRECTORIES, SOURCES_VARARGS, NoneType, in_set_validator
 )
 from ..interpreterbase import ContainerTypeInfo, InterpreterException, KwargInfo, typed_kwargs, typed_pos_args, noPosargs, permittedKwargs
 from ..interpreter.interpreterobjects import Doctest
@@ -44,6 +44,7 @@ if T.TYPE_CHECKING:
         dependencies: T.List[T.Union[Dependency, ExternalLibrary]]
         is_parallel: bool
         link_with: T.List[LibTypes]
+        link_whole: T.List[LibTypes]
         rust_args: T.List[str]
 
     FuncTest = FuncRustTest[_kwargs.TestArgs]
@@ -144,6 +145,8 @@ class RustModule(ExtensionModule):
         """
         if any(isinstance(t, Jar) for t in kwargs.get('link_with', [])):
             raise InvalidArguments('Rust tests cannot link with Jar targets')
+        if any(isinstance(t, Jar) for t in kwargs.get('link_whole', [])):
+            raise InvalidArguments('Rust tests cannot link with Jar targets')
 
         name = args[0]
         base_target: BuildTarget = args[1]
@@ -178,6 +181,7 @@ class RustModule(ExtensionModule):
         new_target_kwargs['install'] = False
         new_target_kwargs['dependencies'] = new_target_kwargs.get('dependencies', []) + kwargs['dependencies']
         new_target_kwargs['link_with'] = new_target_kwargs.get('link_with', []) + kwargs['link_with']
+        new_target_kwargs['link_whole'] = new_target_kwargs.get('link_whole', []) + kwargs['link_whole']
         del new_target_kwargs['rust_crate_type']
         for kw in ['pic', 'prelink', 'rust_abi', 'version', 'soversion', 'darwin_versions']:
             if kw in new_target_kwargs:
@@ -204,6 +208,7 @@ class RustModule(ExtensionModule):
         *TEST_KWS,
         DEPENDENCIES_KW,
         LINK_WITH_KW.evolve(since='1.2.0'),
+        LINK_WHOLE_KW.evolve(since='1.7.0'),
         *RUST_TEST_KWS,
     )
     def test(self, state: ModuleState, args: T.Tuple[str, BuildTarget], kwargs: FuncTest) -> ModuleReturnValue:
@@ -221,6 +226,7 @@ class RustModule(ExtensionModule):
         *TEST_KWS_NO_ARGS,
         DEPENDENCIES_KW,
         LINK_WITH_KW,
+        LINK_WHOLE_KW,
         *RUST_TEST_KWS,
         KwargInfo(
             'args',
