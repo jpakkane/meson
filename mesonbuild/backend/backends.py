@@ -466,6 +466,16 @@ class Backend:
         return os.path.relpath(os.path.join('dummyprefixdir', todir),
                                os.path.join('dummyprefixdir', fromdir))
 
+    def get_compiler_order_deps(self, target: build.BuildTarget, compiler: Compiler) -> T.List[str]:
+        return [
+            os.path.join(self.get_target_dir(lt), lt.get_filename())
+            for lt in compiler.get_extra_order_deps(target)
+        ]
+
+    def get_fortran_order_deps(self, deps: T.List[build.BuildTarget]) -> T.List[File]:
+        return [File(True, *os.path.split(self.get_target_filename(t))) for t in deps
+                if t.uses_fortran()]
+
     def flatten_object_list(self, target: build.BuildTarget, proj_dir_to_build_root: str = ''
                             ) -> T.Tuple[T.List[str], T.List[build.BuildTargetTypes]]:
         obj_list, deps = self._flatten_object_list(target, target.get_objects(), proj_dir_to_build_root)
