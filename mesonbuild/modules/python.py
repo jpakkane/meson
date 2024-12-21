@@ -117,7 +117,7 @@ class PythonInstallation(_ExternalProgramHolder['PythonExternalProgram']):
         assert isinstance(prefix, str), 'for mypy'
 
         if python.build_config:
-            self.version = python.build_config['version']
+            self.version = python.build_config['language']['version']
             self.platform = python.build_config['platform']
             self.suffix = python.build_config['abi']['extension_suffix']
             self.limited_api_suffix = python.build_config['abi']['stable_abi_suffix']
