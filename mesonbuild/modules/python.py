@@ -455,11 +455,13 @@ class PythonModule(ExtensionModule):
             return None
 
     def _find_installation_impl(self, state: 'ModuleState', display_name: str, name_or_path: str, required: bool) -> MaybePythonProg:
+        build_config = self.interpreter.environment.coredata.get_option(OptionKey('python.build_config'))
+
         if not name_or_path:
-            python = PythonExternalProgram('python3', mesonlib.python_command)
+            python = PythonExternalProgram('python3', mesonlib.python_command, build_config_path=build_config)
         else:
             tmp_python = ExternalProgram.from_entry(display_name, name_or_path)
-            python = PythonExternalProgram(display_name, ext_prog=tmp_python)
+            python = PythonExternalProgram(display_name, ext_prog=tmp_python, build_config_path=build_config)
 
             if not python.found() and mesonlib.is_windows():
                 pythonpath = self._get_win_pythonpath(name_or_path)
@@ -473,7 +475,7 @@ class PythonModule(ExtensionModule):
             # it
             if not python.found() and name_or_path in {'python2', 'python3'}:
                 tmp_python = ExternalProgram.from_entry(display_name, 'python')
-                python = PythonExternalProgram(name_or_path, ext_prog=tmp_python)
+                python = PythonExternalProgram(name_or_path, ext_prog=tmp_python, build_config_path=build_config)
 
         if python.found():
             if python.sanity(state):
