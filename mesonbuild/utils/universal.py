@@ -773,6 +773,14 @@ def detect_vcs(source_dir: T.Union[str, Path]) -> T.Optional[T.Dict[str, str]]:
             'dep': '.hg/dirstate'
         },
         {
+            'name': 'mercurial',
+            'cmd': 'cat',
+            'repo_dir': '.',
+            'get_rev': 'cat .hg_archival.txt',
+            'rev_regex': 'node: (.*)\n',
+            'dep': '.hg_archival.txt'
+        },
+        {
             'name': 'subversion',
             'cmd': 'svn',
             'repo_dir': '.svn',
