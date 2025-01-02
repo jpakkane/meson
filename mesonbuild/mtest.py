@@ -242,6 +242,7 @@ class TestResult(enum.Enum):
     EXPECTEDFAIL = 'EXPECTEDFAIL'
     UNEXPECTEDPASS = 'UNEXPECTEDPASS'
     ERROR = 'ERROR'
+    IGNORED = 'IGNORED'
 
     @staticmethod
     def maxlen() -> int:
@@ -263,7 +264,7 @@ class TestResult(enum.Enum):
     def colorize(self, s: str) -> mlog.AnsiDecorator:
         if self.is_bad():
             decorator = mlog.red
-        elif self in (TestResult.SKIP, TestResult.EXPECTEDFAIL):
+        elif self in (TestResult.SKIP, TestResult.IGNORED, TestResult.EXPECTEDFAIL):
             decorator = mlog.yellow
         elif self.is_finished():
             decorator = mlog.green
@@ -833,7 +834,8 @@ class JunitBuilder(TestLogger):
                                {TestResult.INTERRUPT, TestResult.ERROR})),
                 failures=str(sum(1 for r in test.results if r.result in
                                  {TestResult.FAIL, TestResult.UNEXPECTEDPASS, TestResult.TIMEOUT})),
-                skipped=str(sum(1 for r in test.results if r.result is TestResult.SKIP)),
+                skipped=str(sum(1 for r in test.results if r.result in
+                                {TestResult.SKIP, TestResult.IGNORED})),
                 time=str(test.duration),
             )
 
@@ -843,6 +845,9 @@ class JunitBuilder(TestLogger):
                 testcase = et.SubElement(suite, 'testcase', name=str(subtest), classname=suitename)
                 if subtest.result is TestResult.SKIP:
                     et.SubElement(testcase, 'skipped')
+                elif subtest.result is TestResult.IGNORED:
+                    skip = et.SubElement(testcase, 'skipped')
+                    skip.text = 'Test output was not parsed.'
                 elif subtest.result is TestResult.ERROR:
                     et.SubElement(testcase, 'error')
                 elif subtest.result is TestResult.FAIL:
@@ -877,6 +882,10 @@ class JunitBuilder(TestLogger):
                                      classname=test.project, time=str(test.duration))
             if test.res is TestResult.SKIP:
                 et.SubElement(testcase, 'skipped')
+                suite.attrib['skipped'] = str(int(suite.attrib['skipped']) + 1)
+            elif test.res is TestResult.IGNORED:
+                skip = et.SubElement(testcase, 'skipped')
+                skip.text = 'Test output was not parsed.'
                 suite.attrib['skipped'] = str(int(suite.attrib['skipped']) + 1)
             elif test.res is TestResult.ERROR:
                 et.SubElement(testcase, 'error')
@@ -977,7 +986,7 @@ class TestRun:
         if self.results:
             # running or succeeded
             passed = sum(x.result.is_ok() for x in self.results)
-            ran = sum(x.result is not TestResult.SKIP for x in self.results)
+            ran = sum(x.result not in {TestResult.SKIP, TestResult.IGNORED} for x in self.results)
             if passed == ran:
                 return f'{passed} subtests passed'
             else:
@@ -997,6 +1006,8 @@ class TestRun:
     def _complete(self) -> None:
         if self.res == TestResult.RUNNING:
             self.res = TestResult.OK
+        if self.needs_parsing and self.console_mode is ConsoleUser.INTERACTIVE:
+            self.res = TestResult.IGNORED
         assert isinstance(self.res, TestResult)
         if self.should_fail and self.res in (TestResult.OK, TestResult.FAIL):
             self.res = TestResult.UNEXPECTEDPASS if self.res is TestResult.OK else TestResult.EXPECTEDFAIL
@@ -1613,6 +1624,7 @@ class TestHarness:
         self.unexpectedpass_count = 0
         self.success_count = 0
         self.skip_count = 0
+        self.ignored_count = 0
         self.timeout_count = 0
         self.test_count = 0
         self.name_max_len = 0
@@ -1756,6 +1768,8 @@ class TestHarness:
             self.timeout_count += 1
         elif result.res is TestResult.SKIP:
             self.skip_count += 1
+        elif result.res is TestResult.IGNORED:
+            self.ignored_count += 1
         elif result.res is TestResult.OK:
             self.success_count += 1
         elif result.res in {TestResult.FAIL, TestResult.ERROR, TestResult.INTERRUPT}:
@@ -1820,6 +1834,7 @@ class TestHarness:
           'Fail:              ': self.fail_count,
           'Unexpected Pass:   ': self.unexpectedpass_count,
           'Skipped:           ': self.skip_count,
+          'Ignored:           ': self.ignored_count,
           'Timeout:           ': self.timeout_count,
         }
 
