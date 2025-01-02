@@ -1377,6 +1377,8 @@ class NinjaBackend(backends.Backend):
                                 extra='restat = 1'))
         self.add_rule(NinjaRule('COPY_FILE', self.environment.get_build_command() + ['--internal', 'copy'],
                                 ['$in', '$out'], 'Copying $in to $out'))
+        self.add_rule(NinjaRule('MERGE_PLIST', self.environment.get_build_command() + ['--internal', 'merge-plist'],
+                                ['$out', '$in'], 'Merging plist $inputs to $out'))
 
         c = self.environment.get_build_command() + \
             ['--internal',
@@ -3300,6 +3302,18 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
         if self.environment.is_cross_build():
             elem.add_item('CROSS', '--cross-host=' + self.environment.machines[target.for_machine].system)
         self.add_build(elem)
+
+    def generate_merge_plist(self, target: build.BuildTarget, out_name: str, in_files: T.List[File]) -> File:
+        out_path = os.path.join(self.get_target_private_dir(target), out_name)
+        elem = NinjaBuildElement(
+            self.all_outputs,
+            out_path,
+            'MERGE_PLIST',
+            [f.rel_to_builddir(self.build_to_src) for f in in_files],
+        )
+        self.add_build(elem)
+
+        return File(True, self.get_target_private_dir(target), out_name)
 
     def get_import_filename(self, target) -> str:
         return os.path.join(self.get_target_dir(target), target.import_filename)
