@@ -924,7 +924,8 @@ class TestRun:
         return super().__new__(TestRun.PROTOCOL_TO_CLASS[test.protocol])
 
     def __init__(self, test: TestSerialisation, test_env: T.Dict[str, str],
-                 name: str, timeout: T.Optional[int], is_parallel: bool, verbose: bool):
+                 name: str, timeout: T.Optional[int], is_parallel: bool, verbose: bool,
+                 interactive: bool):
         self.res = TestResult.PENDING
         self.test = test
         self._num: T.Optional[int] = None
@@ -944,6 +945,7 @@ class TestRun:
         self.junit: T.Optional[et.ElementTree] = None
         self.is_parallel = is_parallel
         self.verbose = verbose
+        self.interactive = interactive
         self.warnings: T.List[str] = []
 
     def start(self, cmd: T.List[str]) -> None:
@@ -957,6 +959,15 @@ class TestRun:
             TestRun.TEST_NUM += 1
             self._num = TestRun.TEST_NUM
         return self._num
+
+    @property
+    def console_mode(self) -> ConsoleUser:
+        if self.interactive:
+            return ConsoleUser.INTERACTIVE
+        elif self.direct_stdout:
+            return ConsoleUser.STDOUT
+        else:
+            return ConsoleUser.LOGGER
 
     @property
     def direct_stdout(self) -> bool:
@@ -1449,14 +1460,11 @@ class SingleTestRunner:
 
         is_parallel = test.is_parallel and self.options.num_processes > 1 and not self.options.interactive
         verbose = (test.verbose or self.options.verbose) and not self.options.quiet
-        self.runobj = TestRun(test, env, name, timeout, is_parallel, verbose)
+        self.runobj = TestRun(test, env, name, timeout, is_parallel, verbose, self.options.interactive)
 
-        if self.options.interactive:
-            self.console_mode = ConsoleUser.INTERACTIVE
-        elif self.runobj.direct_stdout:
-            self.console_mode = ConsoleUser.STDOUT
-        else:
-            self.console_mode = ConsoleUser.LOGGER
+    @property
+    def console_mode(self) -> ConsoleUser:
+        return self.runobj.console_mode
 
     def _get_test_cmd(self) -> T.Optional[T.List[str]]:
         testentry = self.test.fname[0]
