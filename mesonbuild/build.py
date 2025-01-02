@@ -116,6 +116,7 @@ known_shlib_kwargs = known_build_target_kwargs | {'version', 'soversion', 'vs_mo
 known_shmod_kwargs = known_build_target_kwargs | {'vs_module_defs', 'rust_abi'}
 known_stlib_kwargs = known_build_target_kwargs | {'pic', 'prelink', 'rust_abi'}
 known_jar_kwargs = known_exe_kwargs | {'main_class', 'java_resources'}
+known_nsapp_kwargs = known_exe_kwargs | {'bundle_layout', 'bundle_resources', 'bundle_contents', 'bundle_extra_binaries', 'bundle_exe_dir_name', 'info_plist'}
 
 def _process_install_tag(install_tag: T.Optional[T.List[T.Optional[str]]],
                          num_outputs: int) -> T.List[T.Optional[str]]:
@@ -3008,6 +3009,145 @@ class Jar(BuildTarget):
 
     def get_default_install_dir(self) -> T.Union[T.Tuple[str, str], T.Tuple[None, None]]:
         return self.environment.get_jar_dir(), '{jardir}'
+
+class AppBundle(Executable):
+    known_kwargs = known_nsapp_kwargs
+
+    typename = 'bundle'
+
+    def __init__(self, name: str, subdir: str, subproject: SubProject, for_machine: MachineChoice,
+                 sources: T.List[SourceOutputs], structured_sources: T.Optional[StructuredSources],
+                 objects: T.List[ObjectTypes], environment: environment.Environment, compilers: T.Dict[str, Compiler],
+                 kwargs):
+        self.bundle_layout: str
+        self.default_principal_class: str
+        self.info_plist: T.Optional[File] = None
+
+        self.bin_root: str
+        self.contents_root: str
+        self.info_root: str
+        self.resources_root: str
+
+        self.bundle_resources: T.Optional[StructuredSources] = kwargs['bundle_resources']
+        self.bundle_contents: T.Optional[StructuredSources] = kwargs['bundle_contents']
+        self.bundle_extra_binaries: T.Optional[T.List[BuildTargetTypes]] = kwargs['bundle_extra_binaries']
+        self.exe_dir_name: T.Optional[str] = kwargs['bundle_exe_dir_name']
+
+        super().__init__(name, subdir, subproject, for_machine, sources, structured_sources, objects, environment,
+                         compilers, kwargs)
+
+        m = self.environment.machines[self.for_machine]
+
+        if kwargs['bundle_layout'] is not None:
+            self.bundle_layout = kwargs['bundle_layout']
+        else:
+            if m.is_darwin() and not m.is_macos():
+                # iOS and derivatives use the flat bundle style.
+                self.bundle_layout = 'flat'
+            else:
+                self.bundle_layout = 'contents'
+
+        if m.is_darwin() and not m.is_macos():
+            self.default_principal_class = 'UIApplication'
+        else:
+            self.default_principal_class = 'NSApplication'
+
+        if kwargs['info_plist'] is not None:
+            self.info_plist = self._source_input_to_file('info_plist', kwargs['info_plist'])
+
+        self._fill_exe_dir_name()
+        self._update_bundle_dir_paths()
+
+    def _fill_exe_dir_name(self) -> None:
+        if self.exe_dir_name is not None:
+            return
+
+        m = self.environment.machines[self.for_machine]
+
+        # As in _CFBundleGetPlatformExecutablesSubdirectoryName (CoreFoundation)
+        if m.is_darwin():
+            self.exe_dir_name = 'MacOS'
+        elif m.is_windows():
+            self.exe_dir_name = 'Windows'
+        elif m.is_sunos():
+            self.exe_dir_name = 'Solaris'
+        elif m.is_cygwin():
+            self.exe_dir_name = 'Cygwin'
+        elif m.is_linux():
+            self.exe_dir_name = 'Linux'
+        elif m.is_freebsd():
+            self.exe_dir_name = 'FreeBSD'
+        elif m.system == 'emscripten':
+            self.exe_dir_name = 'WASI'
+
+    def _update_bundle_dir_paths(self) -> None:
+        # Names for these slightly named after their CoreFoundation names.
+        # 'oldstyle' is bundles with the executable in the top directory and a
+        # Resources folder, as used in Framework bundles and GNUstep,
+        # 'contents' is the standard macOS # application bundle layout with
+        # everything under a Contents directory, 'flat' is the iOS-style bundle
+        # with every file in the root directory of the bundle.
+
+        if self.bundle_layout == 'oldstyle':
+            self.bin_root = ''
+            self.contents_root = ''
+            self.info_root = 'Resources'
+            self.resources_root = 'Resources'
+        elif self.bundle_layout == 'contents':
+            self.bin_root = os.path.join(*[c for c in ['Contents', self.exe_dir_name] if c])
+            self.contents_root = 'Contents'
+            self.info_root = 'Contents'
+            self.resources_root = os.path.join('Contents', 'Resources')
+        elif self.bundle_layout == 'flat':
+            self.bin_root = ''
+            self.contents_root = ''
+            self.info_root = ''
+            self.resources_root = ''
+        else:
+            raise InvalidArguments('bundle_layout must be one of \'oldstyle\', \'contents\', or \'flat\'.')
+
+    def _source_input_to_file(self, kw: str, source: T.Union[str, File, CustomTarget, CustomTargetIndex]) -> File:
+        if isinstance(source, str):
+            if os.path.isabs(source):
+                return File.from_absolute_file(source)
+            else:
+                return File.from_source_file(self.environment.source_dir, self.subdir, source)
+        elif isinstance(source, File):
+            # When passing a generated file.
+            return source
+        elif isinstance(source, (CustomTarget, CustomTargetIndex)):
+            # When passing output of a Custom Target
+            return File.from_built_file(source.get_subdir(), source.get_filename())
+        else:
+            raise InvalidArguments(
+                f'{kw} must be either a string, '
+                'a file object, a Custom Target, or a Custom Target Index')
+
+    def type_suffix(self) -> str:
+        return '@app'
+
+    def post_init(self) -> None:
+        super().post_init()
+        m = self.environment.machines[self.for_machine]
+
+        self.bundle_name = self.name
+
+        if m.is_darwin() and not m.is_macos():
+            self.bundle_name += '.ipa'
+        else:
+            self.bundle_name += '.app'
+
+        self.outputs[0] = self.bundle_name
+
+    def get_filename(self) -> str:
+        return self.bundle_name
+
+    def get_binary_name(self) -> str:
+        return self.filename
+
+    def can_output_be_directory(self, output: str) -> bool:
+        return output == self.get_filename()
+
 
 @dataclass(eq=False)
 class CustomTargetIndex(CustomTargetBase, HoldableObject):

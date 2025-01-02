@@ -792,6 +792,20 @@ JAR_KWS = [
       for a in _LANGUAGE_KWS],
 ]
 
+_EXCLUSIVE_NSAPP_KWS: T.List[KwargInfo] = [
+    KwargInfo('bundle_layout', (str, NoneType)),
+    KwargInfo('bundle_resources', (StructuredSources, NoneType)),
+    KwargInfo('bundle_contents', (StructuredSources, NoneType)),
+    KwargInfo('bundle_extra_binaries', (StructuredSources, NoneType)),
+    KwargInfo('bundle_exe_dir_name', (StructuredSources, NoneType)),
+    KwargInfo('info_plist', (str, File, CustomTarget, CustomTargetIndex, NoneType)),
+]
+
+NSAPP_KWS: T.List[KwargInfo] = [
+    *EXECUTABLE_KWS,
+    *_EXCLUSIVE_NSAPP_KWS,
+]
+
 _SHARED_STATIC_ARGS: T.List[KwargInfo[T.List[str]]] = [
     *[l.evolve(name=l.name.replace('_', '_static_'), since='1.3.0')
       for l in _LANGUAGE_KWS],
@@ -818,6 +832,7 @@ BUILD_TARGET_KWS = [
     *_EXCLUSIVE_SHARED_MOD_KWS,
     *_EXCLUSIVE_STATIC_LIB_KWS,
     *_EXCLUSIVE_EXECUTABLE_KWS,
+    *_EXCLUSIVE_NSAPP_KWS,
     *_SHARED_STATIC_ARGS,
     *[a.evolve(deprecated='1.3.0', deprecated_message='The use of "jar" in "build_target()" is deprecated, and this argument is only used by jar()')
       for a in _EXCLUSIVE_JAR_KWS],

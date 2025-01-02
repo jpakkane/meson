@@ -429,6 +429,7 @@ class Interpreter(InterpreterBase, HoldableObject):
             build.SharedModule: OBJ.SharedModuleHolder,
             build.Executable: OBJ.ExecutableHolder,
             build.Jar: OBJ.JarHolder,
+            build.AppBundle: OBJ.AppBundleHolder,
             build.CustomTarget: OBJ.CustomTargetHolder,
             build.CustomTargetIndex: OBJ.CustomTargetIndexHolder,
             build.Generator: OBJ.GeneratorHolder,
@@ -3415,7 +3416,7 @@ class Interpreter(InterpreterBase, HoldableObject):
         kwargs['dependencies'] = extract_as_list(kwargs, 'dependencies')
         kwargs['extra_files'] = self.source_strings_to_files(kwargs['extra_files'])
         self.check_sources_exist(os.path.join(self.source_root, self.subdir), sources)
-        if targetclass not in {build.Executable, build.SharedLibrary, build.SharedModule, build.StaticLibrary, build.Jar}:
+        if targetclass not in {build.Executable, build.SharedLibrary, build.SharedModule, build.StaticLibrary, build.Jar, build.AppBundle}:
             mlog.debug('Unknown target type:', str(targetclass))
             raise RuntimeError('Unreachable code')
         self.__process_language_args(kwargs)
@@ -3469,7 +3470,7 @@ class Interpreter(InterpreterBase, HoldableObject):
 
         kwargs['include_directories'] = self.extract_incdirs(kwargs)
 
-        if targetclass is build.Executable:
+        if targetclass is build.Executable or targetclass is build.AppBundle:
             kwargs = T.cast('kwtypes.Executable', kwargs)
             if kwargs['gui_app'] is not None:
                 if kwargs['win_subsystem'] is not None:
