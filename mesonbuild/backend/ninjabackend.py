@@ -1865,7 +1865,7 @@ class NinjaBackend(backends.Backend):
     def _generate_copy_target(self, src: FileOrString, output: Path) -> None:
         """Create a target to copy a source file from one location to another."""
         if isinstance(src, File):
-            instr = src.absolute_path(self.environment.source_dir, self.environment.build_dir)
+            instr = src.rel_to_builddir(self.build_to_src)
         else:
             instr = src
         elem = NinjaBuildElement(self.all_outputs, [str(output)], 'COPY_FILE', [instr])
