@@ -23,7 +23,6 @@ import signal
 import subprocess
 import shlex
 import sys
-import textwrap
 import time
 import typing as T
 import unicodedata
@@ -1807,15 +1806,21 @@ class TestHarness:
         return prefix + left + middle + right
 
     def summary(self) -> str:
-        return textwrap.dedent('''
-            Ok:                 {:<4}
-            Expected Fail:      {:<4}
-            Fail:               {:<4}
-            Unexpected Pass:    {:<4}
-            Skipped:            {:<4}
-            Timeout:            {:<4}
-            ''').format(self.success_count, self.expectedfail_count, self.fail_count,
-                        self.unexpectedpass_count, self.skip_count, self.timeout_count)
+        results = {
+          'Ok:                ': self.success_count,
+          'Expected Fail:     ': self.expectedfail_count,
+          'Fail:              ': self.fail_count,
+          'Unexpected Pass:   ': self.unexpectedpass_count,
+          'Skipped:           ': self.skip_count,
+          'Timeout:           ': self.timeout_count,
+        }
+
+        summary = []
+        for result, count in results.items():
+            if count > 0 or result.startswith('Ok:') or result.startswith('Fail:'):
+                summary.append(result + '{:<4}'.format(count))
+
+        return '\n{}\n'.format('\n'.join(summary))
 
     def total_failure_count(self) -> int:
         return self.fail_count + self.unexpectedpass_count + self.timeout_count
