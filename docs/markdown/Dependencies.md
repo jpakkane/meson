@@ -862,9 +862,12 @@ version.
 ## DIA SDK
 
 *(added 1.6.0)*
+*(mstorsjo/msvc-wine environment supported since 1.7.0)*
 
 Microsoft's Debug Interface Access SDK (DIA SDK) is available only on Windows,
 when using msvc, clang-cl or clang compiler from Microsoft Visual Studio.
+You can also use it when cross-compiling for Windows using mstorsjo/msvc-wine
+build environment.
 
 The DIA SDK runtime is not statically linked to target. The default usage
 method requires the runtime DLL (msdiaXXX.dll) to be manually registered in the
@@ -882,7 +885,7 @@ fs = import('fs')
 fs.copyfile(dia.get_variable('dll'))
 
 conf = configuration_data()
-conf.set('msdia_dll_name', fs.name(dia_dll_name))
+conf.set('msdia_dll_name', fs.name(dia.get_variable('dll')))
 ```
 
 Only the major version is available (eg. version is `14` for msdia140.dll).
