@@ -755,6 +755,56 @@ class DiaSDKSystemDependency(SystemDependency):
         defval, _ = compiler.get_define(dname, '', env, [], [])
         return defval is not None
 
+    # mstorsjo/msvc-wine scripts provides DIA SDK on linux.
+    # DIA SDK directory is stored at the root of downloaded MSVC files.
+    # We can find this path from the build environment of msvc-wine.
+    # msvc-wine can be used in two different ways:
+    @staticmethod
+    def _find_msvc_wine_path(compiler: 'Compiler') -> T.Optional[str]:
+        mlog.debug('looking for msvc-wine')
+
+        # One way adds <msvc>/bin/x64 to PATH. From there user executes 'cl' script,
+        # which sets up VS dev environment and invokes the real cl.exe via wine.
+        if compiler.id == 'msvc':
+            mlog.debug('- compiler is cl')
+            clpath = pathlib.Path(shutil.which('cl'))
+            if clpath.parent.name not in {'arm', 'arm64', 'x86', 'x64'}:
+                mlog.debug(f'- cl path does not look like msvc-wine: {clpath}')
+                return None
+            if clpath.parents[1].name != 'bin':
+                mlog.debug(f'- cl path does not look like msvc-wine: {clpath}')
+                return None
+            mlog.debug(f'- msvc-wine found at: {clpath.parents[2]}')
+            return str(clpath.parents[2])
+
+        # Other way requires calling <msvc-wine>/msvcenv-native.sh, which
+        # adds bunch of directories into INCLUDE and LIB envvars, and then
+        # using native clang-cl. (Meson currently doesn't support clang-cl
+        # on linux for cross-compiling, only clang with explicit MS-compatibility
+        # parameters)
+        # We'll look for '<msvc>/kits/<number>/include/<kit version>/winrt'
+        # in INCLUDE.
+        elif compiler.id in {'clang', 'clang-cl'}:
+            mlog.debug('- compiler is clang')
+            includes = os.environ.get('INCLUDE')
+            if includes is None:
+                mlog.debug('- INCLUDES not defined')
+                return None
+            winrt_inc = next((i for i in includes.split(';') if i.endswith('/winrt')), None)
+            if winrt_inc is None:
+                mlog.debug(f'- winrt include not found in INCLUDES: {includes}')
+                return None
+            winrt = pathlib.Path(winrt_inc)
+            if winrt.parents[1].name != 'include' or winrt.parents[3].name != 'kits':
+                mlog.debug(f'- winrt path does not look like msvc-wine: {winrt}')
+                return None
+            mlog.debug(f'- msvc-wine found at: {winrt.parents[4]}')
+            return str(winrt.parents[4])
+
+        else:
+            mlog.debug(f'- unsupported compiler id: {compiler.id}')
+            return None
+
     def __init__(self, environment: 'Environment', kwargs: T.Dict[str, T.Any]) -> None:
         super().__init__('diasdk', environment, kwargs)
         self.is_found = False
@@ -777,16 +827,21 @@ class DiaSDKSystemDependency(SystemDependency):
         if cpu is None:
             raise DependencyException(f'DIA SDK is not supported for "{cpu_family}" architecture')
 
-        vsdir = os.environ.get('VSInstallDir')
-        if vsdir is None:
-            raise DependencyException("Environment variable VSInstallDir required for DIA SDK is not set")
+        if environment.machines[mesonlib.MachineChoice.BUILD].is_windows():
+            vsdir = os.environ.get('VSInstallDir')
+            if vsdir is None:
+                raise DependencyException('Environment variable VSInstallDir required for DIA SDK is not set')
+        else:
+            vsdir = self._find_msvc_wine_path(compiler)
+            if vsdir is None:
+                raise DependencyException('msvc-wine environment not found')
 
         diadir = os.path.join(vsdir, 'DIA SDK')
         if self._try_path(diadir, cpu):
-            mlog.debug('DIA SDK was found at default path: ', diadir)
+            mlog.debug('DIA SDK was found at: ', diadir)
             self.is_found = True
             return
-        mlog.debug('DIA SDK was not found at default path: ', diadir)
+        mlog.debug('DIA SDK was not found at: ', diadir)
 
         return
 
