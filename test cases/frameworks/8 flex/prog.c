@@ -24,7 +24,7 @@ int yywrap(void) {
      return 0;
 }
 
-int yyerror(void) {
-     printf("Parse error\n");
+int yyerror(char* s) {
+     printf("Parse error: %s\n", s);
      exit(1);
 }

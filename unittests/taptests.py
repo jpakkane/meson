@@ -163,10 +163,57 @@ class TAPParserTests(unittest.TestCase):
         self.assert_plan(events, num_tests=1, late=True)
         self.assert_last(events)
 
-    def test_out_of_order(self):
-        events = self.parse_tap('ok 2')
-        self.assert_error(events)
+    def test_low_max_early_plan(self):
+        events = self.parse_tap('1..2\nok 1\nok 1')
+        self.assert_plan(events, num_tests=2, late=False)
+        self.assert_test(events, number=1, name='', result=TestResult.OK)
+        self.assert_test(events, number=1, name='', result=TestResult.OK)
+        self.assert_error(events) # incorrect high test number
+        self.assert_last(events)
+
+    def test_low_max_late_plan(self):
+        events = self.parse_tap('ok 1\nok 1\n1..2')
+        self.assert_test(events, number=1, name='', result=TestResult.OK)
+        self.assert_test(events, number=1, name='', result=TestResult.OK)
+        self.assert_plan(events, num_tests=2, late=True)
+        self.assert_error(events) # incorrect high test number
+        self.assert_last(events)
+
+    def test_high_max_early_plan(self):
+        events = self.parse_tap('1..2\nok 2\nok 3')
+        self.assert_plan(events, num_tests=2, late=False)
         self.assert_test(events, number=2, name='', result=TestResult.OK)
+        self.assert_error(events) # high id
+        self.assert_test(events, number=3, name='', result=TestResult.OK)
+        self.assert_error(events) # incorrect high test number
+        self.assert_last(events)
+
+    def test_high_max_late_plan(self):
+        events = self.parse_tap('ok 2\nok 3\n1..2')
+        self.assert_test(events, number=2, name='', result=TestResult.OK)
+        self.assert_test(events, number=3, name='', result=TestResult.OK)
+        self.assert_plan(events, num_tests=2, late=True)
+        self.assert_error(events)
+        self.assert_last(events)
+
+    def test_out_of_order(self):
+        events = self.parse_tap('1..2\nok 2\nok 1')
+        self.assert_plan(events, num_tests=2, late=False)
+        self.assert_test(events, number=2, name='', result=TestResult.OK)
+        self.assert_test(events, number=1, name='', result=TestResult.OK)
+        self.assert_last(events)
+
+    def test_out_of_order_no_plan(self):
+        events = self.parse_tap('ok 2')
+        self.assert_test(events, number=2, name='', result=TestResult.OK)
+        self.assert_error(events)
+
+    def test_out_of_order_missing_numbers(self):
+        events = self.parse_tap('1..3\nok 2\nok\nok 1')
+        self.assert_plan(events, num_tests=3, late=False)
+        self.assert_test(events, number=2, name='', result=TestResult.OK)
+        self.assert_test(events, number=3, name='', result=TestResult.OK)
+        self.assert_test(events, number=1, name='', result=TestResult.OK)
         self.assert_last(events)
 
     def test_middle_plan(self):
@@ -184,7 +231,7 @@ class TAPParserTests(unittest.TestCase):
         self.assert_test(events, number=1, name='', result=TestResult.OK)
         self.assert_last(events)
 
-    def test_too_many(self):
+    def test_too_many_late_plan(self):
         events = self.parse_tap('ok 1\nnot ok 2\n1..1')
         self.assert_test(events, number=1, name='', result=TestResult.OK)
         self.assert_test(events, number=2, name='', result=TestResult.FAIL)
@@ -192,14 +239,16 @@ class TAPParserTests(unittest.TestCase):
         self.assert_error(events)
         self.assert_last(events)
 
+    def test_too_many_early_plan(self):
         events = self.parse_tap('1..1\nok 1\nnot ok 2')
         self.assert_plan(events, num_tests=1, late=False)
         self.assert_test(events, number=1, name='', result=TestResult.OK)
+        self.assert_error(events) # test number too high
         self.assert_test(events, number=2, name='', result=TestResult.FAIL)
-        self.assert_error(events)
+        self.assert_error(events) # too many tests run
         self.assert_last(events)
 
-    def test_too_few(self):
+    def test_too_few_late_plan(self):
         events = self.parse_tap('ok 1\nnot ok 2\n1..3')
         self.assert_test(events, number=1, name='', result=TestResult.OK)
         self.assert_test(events, number=2, name='', result=TestResult.FAIL)
@@ -207,6 +256,7 @@ class TAPParserTests(unittest.TestCase):
         self.assert_error(events)
         self.assert_last(events)
 
+    def test_too_few_early_plan(self):
         events = self.parse_tap('1..3\nok 1\nnot ok 2')
         self.assert_plan(events, num_tests=3, late=False)
         self.assert_test(events, number=1, name='', result=TestResult.OK)

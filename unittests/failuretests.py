@@ -381,3 +381,8 @@ class FailureTests(BasePlatformTests):
     def test_error_func(self):
         self.assertMesonRaises("error('a', 'b', ['c', ['d', {'e': 'f'}]], 'g')",
                                r"Problem encountered: a b \['c', \['d', {'e' : 'f'}\]\] g")
+
+    def test_compiler_cache_without_compiler(self):
+        self.assertMesonRaises('',
+                               'Compiler cache specified without compiler: ccache',
+                               override_envvars={'CC': 'ccache'})

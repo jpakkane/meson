@@ -41,13 +41,14 @@ if T.TYPE_CHECKING:
     from ..linkers.linkers import StaticLinker
     from ..mesonlib import FileMode, FileOrString
 
-    from typing_extensions import TypedDict
+    from typing_extensions import TypedDict, NotRequired
 
     _ALL_SOURCES_TYPE = T.List[T.Union[File, build.CustomTarget, build.CustomTargetIndex, build.GeneratedList]]
 
     class TargetIntrospectionData(TypedDict):
 
         language: str
+        machine: NotRequired[str]
         compiler: T.List[str]
         parameters: T.List[str]
         sources: T.List[str]
@@ -573,7 +574,7 @@ class Backend:
         is_cross_built = not self.environment.machines.matches_build_machine(exe_for_machine)
         if is_cross_built and self.environment.need_exe_wrapper():
             if not self.environment.has_exe_wrapper():
-                msg = 'An exe_wrapper is needed but was not found. Please define one ' \
+                msg = 'An exe_wrapper is needed for ' + exe_cmd[0] + ' but was not found. Please define one ' \
                       'in cross file and check the command and/or add it to PATH.'
                 raise MesonException(msg)
             exe_wrapper = self.environment.get_exe_wrapper()
@@ -882,8 +883,7 @@ class Backend:
         for gensrc in extobj.genlist:
             for r in gensrc.get_outputs():
                 path = self.get_target_generated_dir(extobj.target, gensrc, r)
-                dirpart, fnamepart = os.path.split(path)
-                raw_sources.append(File(True, dirpart, fnamepart))
+                raw_sources.append(File.from_built_relative(path))
 
         # Filter out headers and all non-source files
         sources: T.List['FileOrString'] = []
@@ -2038,6 +2038,12 @@ class Backend:
             commands += extras
         commands += [input]
         return commands
+
+    def have_language(self, langname: str) -> bool:
+        for for_machine in MachineChoice:
+            if langname in self.environment.coredata.compilers[for_machine]:
+                return True
+        return False
 
     def compiler_to_generator(self, target: build.BuildTarget,
                               compiler: 'Compiler',

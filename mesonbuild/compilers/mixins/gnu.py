@@ -8,7 +8,6 @@ from __future__ import annotations
 import abc
 import functools
 import os
-import multiprocessing
 import pathlib
 import re
 import subprocess
@@ -617,8 +616,9 @@ class GnuCompiler(GnuLikeCompiler):
         if threads == 0:
             if self._has_lto_auto_support:
                 return ['-flto=auto']
-            # This matches clang's behavior of using the number of cpus
-            return [f'-flto={multiprocessing.cpu_count()}']
+            # This matches clang's behavior of using the number of cpus, but
+            # obeying meson's MESON_NUM_PROCESSES convention.
+            return [f'-flto={mesonlib.determine_worker_count()}']
         elif threads > 0:
             return [f'-flto={threads}']
         return super().get_lto_compile_args(threads=threads)

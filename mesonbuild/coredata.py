@@ -658,9 +658,20 @@ class CoreData:
             elif k.machine != MachineChoice.BUILD and not self.optstore.is_compiler_option(k):
                 unknown_options.append(k)
         if unknown_options:
-            unknown_options_str = ', '.join(sorted(str(s) for s in unknown_options))
-            sub = f'In subproject {subproject}: ' if subproject else ''
-            raise MesonException(f'{sub}Unknown options: "{unknown_options_str}"')
+            if subproject:
+                # The subproject may have top-level options that should be used
+                # when it is not a subproject. Ignore those for now. With option
+                # refactor they will get per-subproject values.
+                really_unknown = []
+                for uo in unknown_options:
+                    topkey = uo.evolve(subproject='')
+                    if topkey not in self.optstore:
+                        really_unknown.append(uo)
+                unknown_options = really_unknown
+            if unknown_options:
+                unknown_options_str = ', '.join(sorted(str(s) for s in unknown_options))
+                sub = f'In subproject {subproject}: ' if subproject else ''
+                raise MesonException(f'{sub}Unknown options: "{unknown_options_str}"')
 
         if not self.is_cross_build():
             dirty |= self.copy_build_options_from_regular_ones()

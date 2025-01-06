@@ -189,7 +189,7 @@ class VulkanDependencySystem(SystemDependency):
         super().__init__(name, environment, kwargs, language=language)
 
         try:
-            self.vulkan_sdk = os.environ['VULKAN_SDK']
+            self.vulkan_sdk = os.environ.get('VULKAN_SDK', os.environ['VK_SDK_PATH'])
             if not os.path.isabs(self.vulkan_sdk):
                 raise DependencyException('VULKAN_SDK must be an absolute path.')
         except KeyError:

@@ -20,25 +20,28 @@ fn internal_function() -> i32 {{
 pub fn {function_name}() -> i32 {{
     return internal_function();
 }}
-'''
 
-lib_rust_test_template = '''extern crate {crate_file};
+#[cfg(test)]
+mod tests {{
+    use super::*;
 
-fn main() {{
-    println!("printing: {{}}", {crate_file}::{function_name}());
+    #[test]
+    fn test_function() {{
+        assert_eq!({function_name}(), 0);
+    }}
 }}
 '''
 
 
 lib_rust_meson_template = '''project('{project_name}', 'rust',
-  version : '{version}',
-  default_options : ['warning_level=3'])
+  version : '{version}', meson_version: '>=1.3.0',
+  default_options : ['rust_std=2021', 'warning_level=3'])
+
+rust = import('rust')
 
 shlib = static_library('{lib_name}', '{source_file}', install : true)
 
-test_exe = executable('{test_exe_name}', '{test_source_file}',
-  link_with : shlib)
-test('{test_name}', test_exe)
+rust.test('{test_name}', shlib)
 
 # Make this library usable as a Meson subproject.
 {ltoken}_dep = declare_dependency(
@@ -54,8 +57,8 @@ fn main() {{
 '''
 
 hello_rust_meson_template = '''project('{project_name}', 'rust',
-  version : '{version}',
-  default_options : ['warning_level=3'])
+  version : '{version}', meson_version: '>=1.3.0',
+  default_options : ['rust_std=2021', 'warning_level=3'])
 
 exe = executable('{exe_name}', '{source_name}',
   install : true)
@@ -70,7 +73,7 @@ class RustProject(FileImpl):
     exe_template = hello_rust_template
     exe_meson_template = hello_rust_meson_template
     lib_template = lib_rust_template
-    lib_test_template = lib_rust_test_template
+    lib_test_template = None
     lib_meson_template = lib_rust_meson_template
 
     def lib_kwargs(self) -> T.Dict[str, str]:

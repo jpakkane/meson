@@ -587,7 +587,7 @@ class CompilerHolder(ObjectHolder['Compiler']):
                     compiler = clist[SUFFIX_TO_LANG[suffix]]
 
         extra_args = functools.partial(self._determine_args, kwargs)
-        deps, msg = self._determine_dependencies(kwargs['dependencies'], compile_only=False)
+        deps, msg = self._determine_dependencies(kwargs['dependencies'], compile_only=False, endl=None)
         result, cached = self.compiler.links(code, self.environment,
                                              compiler=compiler,
                                              extra_args=extra_args,

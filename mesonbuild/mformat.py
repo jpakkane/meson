@@ -9,6 +9,7 @@ from configparser import ConfigParser, MissingSectionHeaderError, ParsingError
 from copy import deepcopy
 from dataclasses import dataclass, field, fields, asdict
 from pathlib import Path
+import sys
 
 from . import mparser
 from .mesonlib import MesonException
@@ -966,6 +967,12 @@ def run(options: argparse.Namespace) -> int:
     if options.recursive and not (options.inplace or options.check_only):
         raise MesonException('--recursive argument requires either --inplace or --check-only option')
 
+    from_stdin = len(options.sources) == 1 and options.sources[0].name == '-' and options.sources[0].parent == Path()
+    if options.recursive and from_stdin:
+        raise MesonException('--recursive argument is not compatible with stdin input')
+    if options.inplace and from_stdin:
+        raise MesonException('--inplace argument is not compatible with stdin input')
+
     sources: T.List[Path] = options.sources.copy() or [Path(build_filename)]
     if not options.configuration:
         default_config_path = sources[0].parent / 'meson.format'
@@ -979,7 +986,11 @@ def run(options: argparse.Namespace) -> int:
             src_file = src_file / build_filename
 
         try:
-            code = src_file.read_text(encoding='utf-8')
+            if from_stdin:
+                src_file = Path('STDIN')  # used for error messages and introspection
+                code = sys.stdin.read()
+            else:
+                code = src_file.read_text(encoding='utf-8')
         except IOError as e:
             raise MesonException(f'Unable to read from {src_file}') from e
 
@@ -1002,7 +1013,7 @@ def run(options: argparse.Namespace) -> int:
                 with options.output.open('w', encoding='utf-8', newline=formatter.current_config.newline) as of:
                     of.write(formatted)
             except IOError as e:
-                raise MesonException(f'Unable to write to {src_file}') from e
+                raise MesonException(f'Unable to write to {options.output}') from e
         else:
             print(formatted, end='')
 

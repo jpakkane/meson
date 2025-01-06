@@ -1,6 +1,6 @@
 %{
 extern int yylex(void);
-extern int yyerror();
+extern int yyerror(char *s);
 %}
 
 %token BOOLEAN

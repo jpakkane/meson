@@ -1703,12 +1703,12 @@ class XCodeBackend(backends.Backend):
                     for d in swift_dep_dirs:
                         args += compiler.get_include_args(d, False)
                 if args:
-                    lang_cargs = cargs
+                    cti_args = []
                     if compiler and target.implicit_include_directories:
                         # It is unclear what is the cwd when xcode runs. -I. does not seem to
                         # add the root build dir to the search path. So add an absolute path instead.
                         # This may break reproducible builds, in which case patches are welcome.
-                        lang_cargs += self.get_custom_target_dir_include_args(target, compiler, absolute_path=True)
+                        cti_args = self.get_custom_target_dir_include_args(target, compiler, absolute_path=True)
                     # Xcode cannot handle separate compilation flags for C and ObjectiveC. They are both
                     # put in OTHER_CFLAGS. Same with C++ and ObjectiveC++.
                     if lang == 'objc':
@@ -1716,12 +1716,9 @@ class XCodeBackend(backends.Backend):
                     elif lang == 'objcpp':
                         lang = 'cpp'
                     langname = LANGNAMEMAP[lang]
-                    if langname in langargs:
-                        langargs[langname] += args
-                    else:
-                        langargs[langname] = args
-                    langargs[langname] += lang_cargs
-            symroot = os.path.join(self.environment.get_build_dir(), target.subdir)
+                    langargs.setdefault(langname, [])
+                    langargs[langname] = cargs + cti_args + args
+            symroot = os.path.join(self.environment.get_build_dir(), target.subdir).rstrip('/')
             bt_dict = PbxDict()
             objects_dict.add_item(valid, bt_dict, buildtype)
             bt_dict.add_item('isa', 'XCBuildConfiguration')
@@ -1759,19 +1756,12 @@ class XCodeBackend(backends.Backend):
                     settings_dict.add_item('GCC_PREFIX_HEADER', f'$(PROJECT_DIR)/{relative_pch_path}')
             settings_dict.add_item('GCC_PREPROCESSOR_DEFINITIONS', '')
             settings_dict.add_item('GCC_SYMBOLS_PRIVATE_EXTERN', 'NO')
-            header_arr = PbxArray()
-            unquoted_headers = []
-            unquoted_headers.append(self.get_target_private_dir_abs(target))
+            unquoted_headers = [self.get_target_private_dir_abs(target)]
             if target.implicit_include_directories:
                 unquoted_headers.append(os.path.join(self.environment.get_build_dir(), target.get_subdir()))
                 unquoted_headers.append(os.path.join(self.environment.get_source_dir(), target.get_subdir()))
-            if headerdirs:
-                for i in headerdirs:
-                    i = os.path.normpath(i)
-                    unquoted_headers.append(i)
-            for i in unquoted_headers:
-                header_arr.add_item(f'"{i}"')
-            settings_dict.add_item('HEADER_SEARCH_PATHS', header_arr)
+            unquoted_headers += headerdirs
+            settings_dict.add_item('HEADER_SEARCH_PATHS', self.normalize_header_search_paths(unquoted_headers))
             settings_dict.add_item('INSTALL_PATH', install_path)
             settings_dict.add_item('LIBRARY_SEARCH_PATHS', '')
             if isinstance(target, build.SharedModule):
@@ -1798,6 +1788,15 @@ class XCodeBackend(backends.Backend):
             settings_dict.add_item('WARNING_CFLAGS', warn_array)
             warn_array.add_item('"$(inherited)"')
             bt_dict.add_item('name', buildtype)
+
+    def normalize_header_search_paths(self, header_dirs) -> PbxArray:
+        header_arr = PbxArray()
+        for i in header_dirs:
+            np = os.path.normpath(i)
+            # Make sure Xcode will not split single path into separate entries, escaping space with a slash is not enought
+            item = f'"\\\"{np}\\\""' if ' ' in np else f'"{np}"'
+            header_arr.add_item(item)
+        return header_arr
 
     def add_otherargs(self, settings_dict, langargs):
         for langname, args in langargs.items():

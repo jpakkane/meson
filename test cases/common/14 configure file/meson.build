@@ -331,6 +331,16 @@ configure_file(output : 'config9b.h',
 
 test('test9', executable('prog9', 'prog9.c'))
 
+# Test @ and curly braces at the same time with cmake format
+conf10 = configuration_data()
+conf10.set('var', 'foo')
+configure_file(
+  input : 'config10.h.in',
+  output : '@BASENAME@',
+  format : 'cmake',
+  configuration : conf10)
+test('test10', executable('prog10', 'prog10.c'))
+
 check_inputs = find_program('check_inputs.py')
 configure_file(output : 'check_inputs.txt',
   input : ['prog.c', files('prog2.c', 'prog4.c')],

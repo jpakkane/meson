@@ -211,6 +211,7 @@ def list_targets_from_source(intr: IntrospectionInterpreter) -> T.List[T.Dict[st
             'build_by_default': i['build_by_default'],
             'target_sources': [{
                 'language': 'unknown',
+                'machine': i['machine'],
                 'compiler': [],
                 'parameters': [],
                 'sources': [str(x) for x in sources],

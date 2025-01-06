@@ -774,6 +774,7 @@ class BuildTarget(Target):
         }
         self.pic = False
         self.pie = False
+        self.both_lib: T.Optional[T.Union[StaticLibrary, SharedLibrary]] = None
         # Track build_rpath entries so we can remove them at install time
         self.rpath_dirs_to_remove: T.Set[bytes] = set()
         self.process_sourcelist(sources)
@@ -1740,16 +1741,20 @@ class BuildTarget(Target):
     def extract_targets_as_list(self, kwargs: T.Dict[str, T.Union[LibTypes, T.Sequence[LibTypes]]], key: T.Literal['link_with', 'link_whole']) -> T.List[LibTypes]:
         bl_type = self.environment.coredata.get_option(OptionKey('default_both_libraries'))
         if bl_type == 'auto':
-            bl_type = 'static' if isinstance(self, StaticLibrary) else 'shared'
-
-        def _resolve_both_libs(lib: LibTypes) -> LibTypes:
-            if isinstance(lib, BothLibraries):
-                return lib.get(bl_type)
-            return lib
+            if isinstance(self, StaticLibrary):
+                bl_type = 'static'
+            elif isinstance(self, SharedLibrary):
+                bl_type = 'shared'
 
         self_libs: T.List[LibTypes] = self.link_targets if key == 'link_with' else self.link_whole_targets
-        lib_list = listify(kwargs.get(key, [])) + self_libs
-        return [_resolve_both_libs(t) for t in lib_list]
+
+        lib_list = []
+        for lib in listify(kwargs.get(key, [])) + self_libs:
+            if isinstance(lib, (Target, BothLibraries)):
+                lib_list.append(lib.get(bl_type))
+            else:
+                lib_list.append(lib)
+        return lib_list
 
     def get(self, lib_type: T.Literal['static', 'shared', 'auto']) -> LibTypes:
         """Base case used by BothLibraries"""
@@ -2204,6 +2209,14 @@ class StaticLibrary(BuildTarget):
     def is_internal(self) -> bool:
         return not self.install
 
+    def set_shared(self, shared_library: SharedLibrary) -> None:
+        self.both_lib = shared_library
+
+    def get(self, lib_type: T.Literal['static', 'shared', 'auto']) -> LibTypes:
+        if lib_type == 'shared':
+            return self.both_lib or self
+        return self
+
 class SharedLibrary(BuildTarget):
     known_kwargs = known_shlib_kwargs
 
@@ -2470,6 +2483,14 @@ class SharedLibrary(BuildTarget):
     def is_linkable_target(self):
         return True
 
+    def set_static(self, static_library: StaticLibrary) -> None:
+        self.both_lib = static_library
+
+    def get(self, lib_type: T.Literal['static', 'shared']) -> LibTypes:
+        if lib_type == 'static':
+            return self.both_lib or self
+        return self
+
 # A shared library that is meant to be used with dlopen rather than linking
 # into something else.
 class SharedModule(SharedLibrary):
@@ -2506,7 +2527,7 @@ class SharedModule(SharedLibrary):
         return self.environment.get_shared_module_dir(), '{moduledir_shared}'
 
 class BothLibraries(SecondLevelHolder):
-    def __init__(self, shared: SharedLibrary, static: StaticLibrary, preferred_library: Literal['shared', 'static', 'auto']) -> None:
+    def __init__(self, shared: SharedLibrary, static: StaticLibrary, preferred_library: Literal['shared', 'static']) -> None:
         self._preferred_library = preferred_library
         self.shared = shared
         self.static = static
@@ -2914,22 +2935,13 @@ class AliasTarget(RunTarget):
 
     typename = 'alias'
 
-    def __init__(self, name: str, dependencies: T.Sequence[T.Union[Target, BothLibraries]],
+    def __init__(self, name: str, dependencies: T.Sequence[Target],
                  subdir: str, subproject: str, environment: environment.Environment):
-        super().__init__(name, [], list(self._deps_generator(dependencies)), subdir, subproject, environment)
+        super().__init__(name, [], dependencies, subdir, subproject, environment)
 
     def __repr__(self):
         repr_str = "<{0} {1}>"
         return repr_str.format(self.__class__.__name__, self.get_id())
-
-    @staticmethod
-    def _deps_generator(dependencies: T.Sequence[T.Union[Target, BothLibraries]]) -> T.Iterator[Target]:
-        for dep in dependencies:
-            if isinstance(dep, BothLibraries):
-                yield dep.shared
-                yield dep.static
-            else:
-                yield dep
 
 class Jar(BuildTarget):
     known_kwargs = known_jar_kwargs

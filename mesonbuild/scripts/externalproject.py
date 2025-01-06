@@ -5,12 +5,11 @@ from __future__ import annotations
 
 import os
 import argparse
-import multiprocessing
 import subprocess
 from pathlib import Path
 import typing as T
 
-from ..mesonlib import Popen_safe, split_args
+from ..mesonlib import Popen_safe, split_args, determine_worker_count
 
 class ExternalProject:
     def __init__(self, options: argparse.Namespace):
@@ -48,7 +47,7 @@ class ExternalProject:
     def build(self) -> int:
         make_cmd = self.make.copy()
         if self.supports_jobs_flag():
-            make_cmd.append(f'-j{multiprocessing.cpu_count()}')
+            make_cmd.append(f'-j{determine_worker_count()}')
         rc = self._run('build', make_cmd)
         if rc != 0:
             return rc

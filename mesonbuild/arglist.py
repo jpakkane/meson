@@ -29,7 +29,7 @@ class Dedup(enum.Enum):
         same is true for include paths and library paths with -I and -L.
     UNIQUE - Arguments that once specified cannot be undone, such as `-c` or
         `-pipe`. New instances of these can be completely skipped.
-    NO_DEDUP - Whether it matters where or how many times on the command-line
+    NO_DEDUP - When it matters where or how many times on the command-line
         a particular argument is present. This can matter for symbol
         resolution in static or shared libraries, so we cannot de-dup or
         reorder them.
@@ -74,12 +74,12 @@ class CompilerArgs(T.MutableSequence[str]):
     # Arg prefixes that override by prepending instead of appending
     prepend_prefixes: T.Tuple[str, ...] = ()
 
-    # Arg prefixes and args that must be de-duped by returning 2
+    # Arg prefixes and standalone args that must be de-duped by returning 2
     dedup2_prefixes: T.Tuple[str, ...] = ()
     dedup2_suffixes: T.Tuple[str, ...] = ()
     dedup2_args: T.Tuple[str, ...] = ()
 
-    # Arg prefixes and args that must be de-duped by returning 1
+    # Arg prefixes and standalone args that must be de-duped by returning 1
     #
     # NOTE: not thorough. A list of potential corner cases can be found in
     # https://github.com/mesonbuild/meson/pull/4593#pullrequestreview-182016038
@@ -193,15 +193,16 @@ class CompilerArgs(T.MutableSequence[str]):
         with other linkers.
         """
 
-        # A standalone argument must never be deduplicated because it is
-        # defined by what comes _after_ it. Thus deduping this:
+        # Argument prefixes that are actually not used as a prefix must never
+        # be deduplicated because they are defined by what comes _after_ them.
+        # Thus deduping this:
         # -D FOO -D BAR
         # would yield either
         # -D FOO BAR
         # or
         # FOO -D BAR
         # both of which are invalid.
-        if arg in cls.dedup2_prefixes:
+        if arg in cls.dedup1_prefixes or arg in cls.dedup2_prefixes:
             return Dedup.NO_DEDUP
         if arg in cls.dedup2_args or \
            arg.startswith(cls.dedup2_prefixes) or \

@@ -317,6 +317,16 @@ dep = dependency('appleframeworks', modules : 'foundation')
 
 These dependencies can never be found for non-OSX hosts.
 
+## atomic (stdatomic)
+
+*(added 1.7.0)*
+
+Provides access to the atomic operations library. This first attempts
+to look for a valid atomic external library before trying to fallback
+to what is provided by the C runtime libraries.
+
+`method` may be `auto`, `builtin` or `system`.
+
 ## Blocks
 
 Enable support for Clang's blocks extension.

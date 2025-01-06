@@ -8,21 +8,20 @@ if ($LastExitCode -ne 0) {
 $env:Path = ($env:Path.Split(';') | Where-Object { $_ -notmatch 'mingw|Strawberry|Chocolatey|PostgreSQL' }) -join ';'
 
 if ($env:arch -eq 'x64') {
-    rustup default 1.77
     # Rust puts its shared stdlib in a secret place, but it is needed to run tests.
-    $env:Path += ";$HOME/.rustup/toolchains/1.77-x86_64-pc-windows-msvc/bin"
+    $env:Path += ";$HOME/.rustup/toolchains/stable-x86_64-pc-windows-msvc/bin"
 } elseif ($env:arch -eq 'x86') {
     # Switch to the x86 Rust toolchain
-    rustup default 1.77-i686-pc-windows-msvc
+    rustup default stable-i686-pc-windows-msvc
+
+    # Also install clippy
+    rustup component add clippy
 
     # Rust puts its shared stdlib in a secret place, but it is needed to run tests.
-    $env:Path += ";$HOME/.rustup/toolchains/1.77-i686-pc-windows-msvc/bin"
+    $env:Path += ";$HOME/.rustup/toolchains/stable-i686-pc-windows-msvc/bin"
     # Need 32-bit Python for tests that need the Python dependency
     $env:Path = "C:\hostedtoolcache\windows\Python\3.7.9\x86;C:\hostedtoolcache\windows\Python\3.7.9\x86\Scripts;$env:Path"
 }
-
-# Also install clippy
-rustup component add clippy
 
 # Set the CI env var for the meson test framework
 $env:CI = '1'

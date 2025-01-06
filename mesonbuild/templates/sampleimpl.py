@@ -41,7 +41,7 @@ class SampleImpl(metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractproperty
-    def lib_test_template(self) -> str:
+    def lib_test_template(self) -> T.Optional[str]:
         pass
 
     @abc.abstractproperty
@@ -85,8 +85,9 @@ class ClassImpl(SampleImpl):
                   }
         with open(lib_name, 'w', encoding='utf-8') as f:
             f.write(self.lib_template.format(**kwargs))
-        with open(test_name, 'w', encoding='utf-8') as f:
-            f.write(self.lib_test_template.format(**kwargs))
+        if self.lib_test_template:
+            with open(test_name, 'w', encoding='utf-8') as f:
+                f.write(self.lib_test_template.format(**kwargs))
         with open('meson.build', 'w', encoding='utf-8') as f:
             f.write(self.lib_meson_template.format(**kwargs))
 
@@ -132,8 +133,9 @@ class FileImpl(SampleImpl):
         kwargs = self.lib_kwargs()
         with open(lib_name, 'w', encoding='utf-8') as f:
             f.write(self.lib_template.format(**kwargs))
-        with open(test_name, 'w', encoding='utf-8') as f:
-            f.write(self.lib_test_template.format(**kwargs))
+        if self.lib_test_template:
+            with open(test_name, 'w', encoding='utf-8') as f:
+                f.write(self.lib_test_template.format(**kwargs))
         with open('meson.build', 'w', encoding='utf-8') as f:
             f.write(self.lib_meson_template.format(**kwargs))
 

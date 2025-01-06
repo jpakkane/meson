@@ -283,7 +283,7 @@ class IntrospectionInterpreter(AstInterpreter):
         kwargs_reduced = {k: v for k, v in kwargs.items() if k in targetclass.known_kwargs and k in {'install', 'build_by_default', 'build_always'}}
         kwargs_reduced = {k: v.value if isinstance(v, ElementaryNode) else v for k, v in kwargs_reduced.items()}
         kwargs_reduced = {k: v for k, v in kwargs_reduced.items() if not isinstance(v, BaseNode)}
-        for_machine = MachineChoice.HOST
+        for_machine = MachineChoice.BUILD if kwargs.get('native', False) else MachineChoice.HOST
         objects: T.List[T.Any] = []
         empty_sources: T.List[T.Any] = []
         # Passing the unresolved sources list causes errors
@@ -294,6 +294,7 @@ class IntrospectionInterpreter(AstInterpreter):
 
         new_target = {
             'name': target.get_basename(),
+            'machine': target.for_machine.get_lower_case_name(),
             'id': target.get_id(),
             'type': target.get_typename(),
             'defined_in': os.path.normpath(os.path.join(self.source_root, self.subdir, environment.build_filename)),

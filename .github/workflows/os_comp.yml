@@ -26,12 +26,6 @@ on:
       - ".github/workflows/os_comp.yml"
       - "run*tests.py"
 
-# make GHA actions use node16 which still works with bionic
-# See https://github.blog/changelog/2024-03-07-github-actions-all-actions-will-run-on-node20-instead-of-node16-by-default/
-# Unclear how long this will work though
-env:
-  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
-
 permissions:
   contents: read
 
@@ -49,13 +43,24 @@ jobs:
           - { name: Gentoo,           id: gentoo   }
           - { name: OpenSUSE,         id: opensuse }
           - { name: Ubuntu Bionic,    id: bionic   }
-    container: mesonbuild/${{ matrix.cfg.id }}:latest
+    container:
+      image: mesonbuild/${{ matrix.cfg.id }}:latest
+      volumes:
+        - ${{ matrix.cfg.id == 'bionic' && '/node20217:/node20217:rw,rshared' || ' ' }}
+        - ${{ matrix.cfg.id == 'bionic' && '/node20217:/__e/node20:ro,rshared' || ' ' }}
     env:
       MESON_CI_JOBNAME: linux-${{ matrix.cfg.id }}-gcc
 
     steps:
-      # Need v3 because of bionic
-    - uses: actions/checkout@v3
+    - name: install nodejs20glibc2.17
+      if: ${{ matrix.cfg.id == 'bionic' }}
+      run: |
+        apt install curl -y
+        curl -LO https://unofficial-builds.nodejs.org/download/release/v20.9.0/node-v20.9.0-linux-x64-glibc-217.tar.xz
+        tar -xf node-v20.9.0-linux-x64-glibc-217.tar.xz --strip-components 1 -C /node20217
+        ldd /__e/node20/bin/node
+    - uses: actions/checkout@v4
+
     - name: Run tests
       # All environment variables are stored inside the docker image in /ci/env_vars.sh
       # They are defined in the `env` section in each image.json. CI_ARGS should be set

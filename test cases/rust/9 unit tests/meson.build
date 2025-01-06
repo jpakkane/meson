@@ -31,6 +31,19 @@ test(
   suite : ['foo'],
 )
 
+rustdoc = find_program('rustdoc', required: false)
+if rustdoc.found()
+  # rustdoc is invoked mostly like rustc.  This is a simple example
+  # where it is easy enough to invoke it by hand.
+  test(
+    'rust doctest',
+    rustdoc,
+    args : ['--test', '--crate-name', 'doctest1', '--crate-type', 'lib', files('doctest1.rs')],
+    protocol : 'rust',
+    suite : ['doctests'],
+  )
+endif
+
 exe = executable('rust_exe', ['test2.rs', 'test.rs'], build_by_default : false)
 
 rust = import('rust')

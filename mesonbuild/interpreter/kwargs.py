@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright © 2021 The Meson Developers
-# Copyright © 2021 Intel Corporation
+# Copyright © 2021-2024 Intel Corporation
 from __future__ import annotations
 
 """Keyword Argument type annotations."""
@@ -286,6 +286,10 @@ class VcsTag(TypedDict):
                           build.ExtractedObjects, build.GeneratedList, ExternalProgram, File]]
     output: T.List[str]
     replace_string: str
+    install: bool
+    install_tag: T.Optional[str]
+    install_dir: T.Optional[str]
+    install_mode: FileMode
 
 
 class ConfigureFile(TypedDict):

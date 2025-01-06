@@ -123,13 +123,6 @@ NINJA_QUOTE_BUILD_PAT = re.compile(r"[$ :\n]")
 NINJA_QUOTE_VAR_PAT = re.compile(r"[$ \n]")
 
 def ninja_quote(text: str, is_build_line: bool = False) -> str:
-    if is_build_line:
-        quote_re = NINJA_QUOTE_BUILD_PAT
-    else:
-        quote_re = NINJA_QUOTE_VAR_PAT
-    # Fast path for when no quoting is necessary
-    if not quote_re.search(text):
-        return text
     if '\n' in text:
         errmsg = f'''Ninja does not support newlines in rules. The content was:
 
@@ -137,7 +130,12 @@ def ninja_quote(text: str, is_build_line: bool = False) -> str:
 
 Please report this error with a test case to the Meson bug tracker.'''
         raise MesonException(errmsg)
-    return quote_re.sub(r'$\g<0>', text)
+
+    quote_re = NINJA_QUOTE_BUILD_PAT if is_build_line else NINJA_QUOTE_VAR_PAT
+    if ' ' in text or '$' in text or (is_build_line and ':' in text):
+        return quote_re.sub(r'$\g<0>', text)
+
+    return text
 
 
 @dataclass
@@ -463,6 +461,8 @@ class RustCrate:
 
     display_name: str
     root_module: str
+    crate_type: str
+    target_name: str
     edition: RUST_EDITIONS
     deps: T.List[RustDep]
     cfg: T.List[str]
@@ -837,6 +837,7 @@ class NinjaBackend(backends.Backend):
             # The new entry
             src_block = {
                 'language': lang,
+                'machine': comp.for_machine.get_lower_case_name(),
                 'compiler': comp.get_exelist(),
                 'parameters': parameters,
                 'sources': [],
@@ -1877,6 +1878,7 @@ class NinjaBackend(backends.Backend):
         return orderdeps, first_file
 
     def _add_rust_project_entry(self, name: str, main_rust_file: str, args: CompilerArgs,
+                                crate_type: str, target_name: str,
                                 from_subproject: bool, proc_macro_dylib_path: T.Optional[str],
                                 deps: T.List[RustDep]) -> None:
         raw_edition: T.Optional[str] = mesonlib.first(reversed(args), lambda x: x.startswith('--edition'))
@@ -1894,6 +1896,8 @@ class NinjaBackend(backends.Backend):
             len(self.rust_crates),
             name,
             main_rust_file,
+            crate_type,
+            target_name,
             edition,
             deps,
             cfg,
@@ -2133,7 +2137,7 @@ class NinjaBackend(backends.Backend):
 
         self._add_rust_project_entry(target.name,
                                      os.path.abspath(os.path.join(self.environment.build_dir, main_rust_file)),
-                                     args,
+                                     args, cratetype, target_name,
                                      bool(target.subproject),
                                      proc_macro_dylib_path,
                                      project_deps)
@@ -3639,6 +3643,20 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
         elem.add_item('pool', 'console')
         self.add_build(elem)
 
+    def generate_clippy(self) -> None:
+        if 'clippy' in self.all_outputs or not self.have_language('rust'):
+            return
+
+        cmd = self.environment.get_build_command() + \
+            ['--internal', 'clippy', self.environment.build_dir]
+        elem = self.create_phony_target('clippy', 'CUSTOM_COMMAND', 'PHONY')
+        elem.add_item('COMMAND', cmd)
+        elem.add_item('pool', 'console')
+        for crate in self.rust_crates.values():
+            if crate.crate_type in {'rlib', 'dylib', 'proc-macro'}:
+                elem.add_dep(crate.target_name)
+        self.add_build(elem)
+
     def generate_scanbuild(self) -> None:
         if not environment.detect_scanbuild():
             return
@@ -3658,6 +3676,9 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
         if extra_arg:
             target_name += f'-{extra_arg}'
             extra_args.append(f'--{extra_arg}')
+        colorout = self.environment.coredata.optstore.get_value('b_colorout') \
+            if OptionKey('b_colorout') in self.environment.coredata.optstore else 'always'
+        extra_args.extend(['--color', colorout])
         if not os.path.exists(os.path.join(self.environment.source_dir, '.clang-' + name)) and \
                 not os.path.exists(os.path.join(self.environment.source_dir, '_clang-' + name)):
             return
@@ -3703,6 +3724,7 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
         self.generate_scanbuild()
         self.generate_clangformat()
         self.generate_clangtidy()
+        self.generate_clippy()
         self.generate_tags('etags', 'TAGS')
         self.generate_tags('ctags', 'ctags')
         self.generate_tags('cscope', 'cscope')

@@ -1042,6 +1042,10 @@ def detect_rust_compiler(env: 'Environment', for_machine: MachineChoice) -> Rust
             version = search_version(out)
 
             cls = rust.ClippyRustCompiler
+            mlog.deprecation(
+                'clippy-driver is not intended as a general purpose compiler. '
+                'You can use "ninja clippy" in order to run clippy on a '
+                'meson project.')
 
         if 'rustc' in out:
             # On Linux and mac rustc will invoke gcc (clang for mac

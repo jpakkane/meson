@@ -3333,13 +3333,17 @@ class AllPlatformTests(BasePlatformTests):
             ('win_subsystem', (str, None)),
         ]
 
-        targets_sources_typelist = [
+        targets_sources_unknown_lang_typelist = [
             ('language', str),
             ('compiler', list),
             ('parameters', list),
             ('sources', list),
             ('generated_sources', list),
             ('unity_sources', (list, None)),
+        ]
+
+        targets_sources_typelist = targets_sources_unknown_lang_typelist + [
+            ('machine', str),
         ]
 
         target_sources_linker_typelist = [
@@ -3456,7 +3460,10 @@ class AllPlatformTests(BasePlatformTests):
                 targets_to_find.pop(i['name'], None)
             for j in i['target_sources']:
                 if 'compiler' in j:
-                    assertKeyTypes(targets_sources_typelist, j)
+                    if j['language'] == 'unknown':
+                        assertKeyTypes(targets_sources_unknown_lang_typelist, j)
+                    else:
+                        assertKeyTypes(targets_sources_typelist, j)
                     self.assertEqual(j['sources'], [os.path.normpath(f) for f in tgt[4]])
                 else:
                     assertKeyTypes(target_sources_linker_typelist, j)
@@ -3558,6 +3565,7 @@ class AllPlatformTests(BasePlatformTests):
                 sources += j.get('sources', [])
             i['target_sources'] = [{
                 'language': 'unknown',
+                'machine': 'host',
                 'compiler': [],
                 'parameters': [],
                 'sources': sources,
@@ -4879,6 +4887,24 @@ class AllPlatformTests(BasePlatformTests):
     @skip_if_not_language('rust')
     @unittest.skipIf(not shutil.which('clippy-driver'), 'Test requires clippy-driver')
     def test_rust_clippy(self) -> None:
+        if self.backend is not Backend.ninja:
+            raise unittest.SkipTest('Rust is only supported with ninja currently')
+        # When clippy is used, we should get an exception since a variable named
+        # "foo" is used, but is on our denylist
+        testdir = os.path.join(self.rust_test_dir, '1 basic')
+        self.init(testdir)
+        self.build('clippy')
+
+        self.wipe()
+        self.init(testdir, extra_args=['--werror', '-Db_colorout=never'])
+        with self.assertRaises(subprocess.CalledProcessError) as cm:
+            self.build('clippy')
+        self.assertTrue('error: use of a blacklisted/placeholder name `foo`' in cm.exception.stdout or
+                        'error: use of a disallowed/placeholder name `foo`' in cm.exception.stdout)
+
+    @skip_if_not_language('rust')
+    @unittest.skipIf(not shutil.which('clippy-driver'), 'Test requires clippy-driver')
+    def test_rust_clippy_as_rustc(self) -> None:
         if self.backend is not Backend.ninja:
             raise unittest.SkipTest('Rust is only supported with ninja currently')
         # When clippy is used, we should get an exception since a variable named

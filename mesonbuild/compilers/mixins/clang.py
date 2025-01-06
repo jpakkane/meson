@@ -135,7 +135,7 @@ class ClangCompiler(GnuLikeCompiler):
             return []
 
     def gen_vs_module_defs_args(self, defsfile: str) -> T.List[str]:
-        if isinstance(self.linker, (MSVCDynamicLinker)):
+        if isinstance(self.linker, (ClangClDynamicLinker, MSVCDynamicLinker)):
             # With MSVC, DLLs only export symbols that are explicitly exported,
             # so if a module defs file is specified, we use that to export symbols
             return ['-Wl,/DEF:' + defsfile]
@@ -187,7 +187,7 @@ class ClangCompiler(GnuLikeCompiler):
 
     def linker_to_compiler_args(self, args: T.List[str]) -> T.List[str]:
         if isinstance(self.linker, (ClangClDynamicLinker, MSVCDynamicLinker)):
-            return [flag if flag.startswith('-Wl,') else f'-Wl,{flag}' for flag in args]
+            return [flag if flag.startswith('-Wl,') or flag.startswith('-fuse-ld=') else f'-Wl,{flag}' for flag in args]
         else:
             return args
 

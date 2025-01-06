@@ -489,6 +489,10 @@ When `--recursive` option is specified, `meson.build` files from
 `subdir` are also analyzed (must be used in conjunction with `--inplace`
 or `--check-only` option).
 
+*Since 1.7.0* You can use `-` as source file name to read source from standard
+input instead of reading it from a file. This cannot be used with `--recursive`
+or `--inline` arguments.
+
 
 #### Differences with `muon fmt`
 

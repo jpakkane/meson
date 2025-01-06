@@ -20,8 +20,7 @@ pkgs_stable=(
   dev-lang/vala
   dev-lang/python:2.7
   dev-java/openjdk-bin
-  # requires rustfmt, bin rebuild (TODO: file bug)
-  #dev-util/bindgen
+  dev-util/bindgen
 
   dev-libs/elfutils
   dev-util/gdbus-codegen
@@ -104,8 +103,16 @@ mkdir /etc/portage/binrepos.conf || true
 mkdir /etc/portage/profile || true
 cat <<-EOF > /etc/portage/package.use/ci
 	dev-cpp/gtkmm X
-
+	dev-lang/rust clippy rustfmt
+	dev-lang/rust-bin clippy rustfmt
 	dev-libs/boost python
+
+	# Some of these settings are needed just to get the binpkg but
+	# aren't negative to have anyway
+	sys-devel/gcc ada d
+	>=sys-devel/gcc-13 ada objc objc++
+	sys-devel/gcc pgo lto
+
 	sys-libs/zlib static-libs
 EOF
 

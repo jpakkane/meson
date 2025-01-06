@@ -1863,3 +1863,7 @@ class LinuxlikeTests(BasePlatformTests):
         self.assertIn('build t9-e1: c_LINKER t9-e1.p/main.c.o | libt9-s1.a libt9-s2.a libt9-s3.a\n', content)
         self.assertIn('build t12-e1: c_LINKER t12-e1.p/main.c.o | libt12-s1.a libt12-s2.a libt12-s3.a\n', content)
         self.assertIn('build t13-e1: c_LINKER t13-e1.p/main.c.o | libt12-s1.a libt13-s3.a\n', content)
+
+    def test_top_options_in_sp(self):
+        testdir = os.path.join(self.unit_test_dir, '123 pkgsubproj')
+        self.init(testdir)

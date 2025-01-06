@@ -1001,8 +1001,6 @@ class SharedLibraryHolder(BuildTargetHolder[build.SharedLibrary]):
 
 class BothLibrariesHolder(BuildTargetHolder[build.BothLibraries]):
     def __init__(self, libs: build.BothLibraries, interp: 'Interpreter'):
-        # FIXME: This build target always represents the shared library, but
-        # that should be configurable.
         super().__init__(libs, interp)
         self.methods.update({'get_shared_lib': self.get_shared_lib_method,
                              'get_static_lib': self.get_static_lib_method,
@@ -1017,12 +1015,16 @@ class BothLibrariesHolder(BuildTargetHolder[build.BothLibraries]):
     @noPosargs
     @noKwargs
     def get_shared_lib_method(self, args: T.List[TYPE_var], kwargs: TYPE_kwargs) -> build.SharedLibrary:
-        return self.held_object.shared
+        lib = copy.copy(self.held_object.shared)
+        lib.both_lib = None
+        return lib
 
     @noPosargs
     @noKwargs
     def get_static_lib_method(self, args: T.List[TYPE_var], kwargs: TYPE_kwargs) -> build.StaticLibrary:
-        return self.held_object.static
+        lib = copy.copy(self.held_object.static)
+        lib.both_lib = None
+        return lib
 
 class SharedModuleHolder(BuildTargetHolder[build.SharedModule]):
     pass
