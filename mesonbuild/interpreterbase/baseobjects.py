@@ -35,7 +35,7 @@ TYPE_key_resolver = T.Callable[[mparser.BaseNode], str]
 
 SubProject = T.NewType('SubProject', str)
 
-class InterpreterObject:
+class InterpreterObject(metaclass=ABCMeta):
     def __init__(self, *, subproject: T.Optional['SubProject'] = None) -> None:
         self.methods: T.Dict[
             str,
@@ -114,10 +114,10 @@ class InterpreterObject:
             self._throw_comp_exception(other, '!=')
         return self != other
 
-class MesonInterpreterObject(InterpreterObject):
+class MesonInterpreterObject(InterpreterObject, metaclass=ABCMeta):
     ''' All non-elementary objects and non-object-holders should be derived from this '''
 
-class MutableInterpreterObject:
+class MutableInterpreterObject(metaclass=ABCMeta):
     ''' Dummy class to mark the object type as mutable '''
 
 HoldableTypes = (HoldableObject, int, bool, str, list, dict)
