@@ -206,6 +206,11 @@ name(s), the test name(s) must be contained in the suite(s). This
 however is redundant-- it would be more useful to specify either
 specific test names or suite(s).
 
+Since version *1.7.0*, you can pass `--slice i/n` to split up the set of tests
+into `n` slices and execute the `ith` such slice. This allows you to distribute
+a set of long-running tests across multiple machines to decrease the overall
+runtime of tests.
+
 ### Other test options
 
 Sometimes you need to run the tests multiple times, which is done like this:

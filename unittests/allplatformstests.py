@@ -5076,6 +5076,35 @@ class AllPlatformTests(BasePlatformTests):
             self.setconf('-Dcpp_std=c++11,gnu++11,vc++11')
             self.assertEqual(self.getconf('cpp_std'), 'c++11')
 
+    def test_slice(self):
+        testdir = os.path.join(self.unit_test_dir, '124 test slice')
+        self.init(testdir)
+        self.build()
+
+        for arg, expectation in {'1/1': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+                                 '1/2': [1, 3, 5, 7, 9],
+                                 '2/2': [2, 4, 6, 8, 10],
+                                 '1/10': [1],
+                                 '2/10': [2],
+                                 '10/10': [10],
+                                 }.items():
+            output = self._run(self.mtest_command + ['--slice=' + arg])
+            tests = sorted([ int(x[5:]) for x in re.findall(r'test-[0-9]*', output) ])
+            self.assertEqual(tests, expectation)
+
+        for arg, expectation in {'': 'error: argument --slice: value does not conform to format \'SLICE/NUM_SLICES\'',
+                                 '0': 'error: argument --slice: value does not conform to format \'SLICE/NUM_SLICES\'',
+                                 '0/1': 'error: argument --slice: SLICE is not a positive integer',
+                                 'a/1': 'error: argument --slice: SLICE is not an integer',
+                                 '1/0': 'error: argument --slice: NUM_SLICES is not a positive integer',
+                                 '1/a': 'error: argument --slice: NUM_SLICES is not an integer',
+                                 '2/1': 'error: argument --slice: SLICE exceeds NUM_SLICES',
+                                 '1/11': 'ERROR: number of slices (11) exceeds number of tests (10)',
+                                 }.items():
+            with self.assertRaises(subprocess.CalledProcessError) as cm:
+                self._run(self.mtest_command + ['--slice=' + arg])
+            self.assertIn(expectation, cm.exception.output)
+
     def test_rsp_support(self):
         env = get_fake_env()
         cc = detect_c_compiler(env, MachineChoice.HOST)

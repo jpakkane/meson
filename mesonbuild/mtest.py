@@ -99,6 +99,29 @@ def uniwidth(s: str) -> int:
         result += UNIWIDTH_MAPPING[w]
     return result
 
+def test_slice(arg: str) -> T.Tuple[int, int]:
+    values = arg.split('/')
+    if len(values) != 2:
+        raise argparse.ArgumentTypeError("value does not conform to format 'SLICE/NUM_SLICES'")
+
+    try:
+        nrslices = int(values[1])
+    except ValueError:
+        raise argparse.ArgumentTypeError("NUM_SLICES is not an integer")
+    if nrslices <= 0:
+        raise argparse.ArgumentTypeError("NUM_SLICES is not a positive integer")
+
+    try:
+        subslice = int(values[0])
+    except ValueError:
+        raise argparse.ArgumentTypeError("SLICE is not an integer")
+    if subslice <= 0:
+        raise argparse.ArgumentTypeError("SLICE is not a positive integer")
+    if subslice > nrslices:
+        raise argparse.ArgumentTypeError("SLICE exceeds NUM_SLICES")
+
+    return subslice, nrslices
+
 # Note: when adding arguments, please also add them to the completion
 # scripts in $MESONSRC/data/shell-completions/
 def add_arguments(parser: argparse.ArgumentParser) -> None:
@@ -149,11 +172,12 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
                         help='Arguments to pass to the specified test(s) or all tests')
     parser.add_argument('--max-lines', default=100, dest='max_lines', type=int,
                         help='Maximum number of lines to show from a long test log. Since 1.5.0.')
+    parser.add_argument('--slice', default=None, type=test_slice, metavar='SLICE/NUM_SLICES',
+                        help='Split tests into NUM_SLICES slices and execute slice SLICE. Since 1.7.0.')
     parser.add_argument('args', nargs='*',
                         help='Optional list of test names to run. "testname" to run all tests with that name, '
                         '"subprojname:testname" to specifically run "testname" from "subprojname", '
                         '"subprojname:" to run all tests defined by "subprojname".')
-
 
 def print_safe(s: str) -> None:
     end = '' if s[-1] == '\n' else '\n'
@@ -1976,6 +2000,11 @@ class TestHarness:
         tests = [t for t in self.tests if self.test_suitable(t)]
         if self.options.args:
             tests = list(self.tests_from_args(tests))
+        if self.options.slice:
+            our_slice, nslices = self.options.slice
+            if nslices > len(tests):
+                raise MesonException(f'number of slices ({nslices}) exceeds number of tests ({len(tests)})')
+            tests = tests[our_slice - 1::nslices]
 
         if not tests:
             print('No suitable tests defined.', file=errorfile)
