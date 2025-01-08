@@ -20,18 +20,18 @@ if T.TYPE_CHECKING:
     from ...interpreterbase import TYPE_var, TYPE_kwargs
 
 class BooleanHolder(ObjectHolder[bool]):
+    TRIVIAL_OPERATORS = {
+        MesonOperator.BOOL: (None, lambda obj, x: obj.held_object),
+        MesonOperator.NOT: (None, lambda obj, x: not obj.held_object),
+        MesonOperator.EQUALS: (bool, lambda obj, x: obj.held_object == x),
+        MesonOperator.NOT_EQUALS: (bool, lambda obj, x: obj.held_object != x),
+    }
+
     def __init__(self, obj: bool, interpreter: 'Interpreter') -> None:
         super().__init__(obj, interpreter)
         self.methods.update({
             'to_int': self.to_int_method,
             'to_string': self.to_string_method,
-        })
-
-        self.trivial_operators.update({
-            MesonOperator.BOOL: (None, lambda obj, x: obj.held_object),
-            MesonOperator.NOT: (None, lambda obj, x: not obj.held_object),
-            MesonOperator.EQUALS: (bool, lambda obj, x: obj.held_object == x),
-            MesonOperator.NOT_EQUALS: (bool, lambda obj, x: obj.held_object != x),
         })
 
     def display_name(self) -> str:

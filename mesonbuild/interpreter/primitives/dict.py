@@ -25,23 +25,24 @@ if T.TYPE_CHECKING:
     from ...interpreterbase import TYPE_kwargs
 
 class DictHolder(ObjectHolder[T.Dict[str, TYPE_var]], IterableObject):
+    # Operators that only require type checks
+    TRIVIAL_OPERATORS = {
+        # Arithmetic
+        MesonOperator.PLUS: (dict, lambda obj, x: {**obj.held_object, **x}),
+
+        # Comparison
+        MesonOperator.EQUALS: (dict, lambda obj, x: obj.held_object == x),
+        MesonOperator.NOT_EQUALS: (dict, lambda obj, x: obj.held_object != x),
+        MesonOperator.IN: (str, lambda obj, x: x in obj.held_object),
+        MesonOperator.NOT_IN: (str, lambda obj, x: x not in obj.held_object),
+    }
+
     def __init__(self, obj: T.Dict[str, TYPE_var], interpreter: 'Interpreter') -> None:
         super().__init__(obj, interpreter)
         self.methods.update({
             'has_key': self.has_key_method,
             'keys': self.keys_method,
             'get': self.get_method,
-        })
-
-        self.trivial_operators.update({
-            # Arithmetic
-            MesonOperator.PLUS: (dict, lambda obj, x: {**obj.held_object, **x}),
-
-            # Comparison
-            MesonOperator.EQUALS: (dict, lambda obj, x: obj.held_object == x),
-            MesonOperator.NOT_EQUALS: (dict, lambda obj, x: obj.held_object != x),
-            MesonOperator.IN: (str, lambda obj, x: x in obj.held_object),
-            MesonOperator.NOT_IN: (str, lambda obj, x: x not in obj.held_object),
         })
 
         # Use actual methods for functions that require additional checks

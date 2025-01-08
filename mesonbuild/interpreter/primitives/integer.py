@@ -15,28 +15,29 @@ if T.TYPE_CHECKING:
     from ...interpreterbase import TYPE_var, TYPE_kwargs
 
 class IntegerHolder(ObjectHolder[int]):
+    # Operators that only require type checks
+    TRIVIAL_OPERATORS = {
+        # Arithmetic
+        MesonOperator.UMINUS: (None, lambda obj, x: -obj.held_object),
+        MesonOperator.PLUS: (int, lambda obj, x: obj.held_object + x),
+        MesonOperator.MINUS: (int, lambda obj, x: obj.held_object - x),
+        MesonOperator.TIMES: (int, lambda obj, x: obj.held_object * x),
+
+        # Comparison
+        MesonOperator.EQUALS: (int, lambda obj, x: obj.held_object == x),
+        MesonOperator.NOT_EQUALS: (int, lambda obj, x: obj.held_object != x),
+        MesonOperator.GREATER: (int, lambda obj, x: obj.held_object > x),
+        MesonOperator.LESS: (int, lambda obj, x: obj.held_object < x),
+        MesonOperator.GREATER_EQUALS: (int, lambda obj, x: obj.held_object >= x),
+        MesonOperator.LESS_EQUALS: (int, lambda obj, x: obj.held_object <= x),
+    }
+
     def __init__(self, obj: int, interpreter: 'Interpreter') -> None:
         super().__init__(obj, interpreter)
         self.methods.update({
             'is_even': self.is_even_method,
             'is_odd': self.is_odd_method,
             'to_string': self.to_string_method,
-        })
-
-        self.trivial_operators.update({
-            # Arithmetic
-            MesonOperator.UMINUS: (None, lambda obj, x: -obj.held_object),
-            MesonOperator.PLUS: (int, lambda obj, x: obj.held_object + x),
-            MesonOperator.MINUS: (int, lambda obj, x: obj.held_object - x),
-            MesonOperator.TIMES: (int, lambda obj, x: obj.held_object * x),
-
-            # Comparison
-            MesonOperator.EQUALS: (int, lambda obj, x: obj.held_object == x),
-            MesonOperator.NOT_EQUALS: (int, lambda obj, x: obj.held_object != x),
-            MesonOperator.GREATER: (int, lambda obj, x: obj.held_object > x),
-            MesonOperator.LESS: (int, lambda obj, x: obj.held_object < x),
-            MesonOperator.GREATER_EQUALS: (int, lambda obj, x: obj.held_object >= x),
-            MesonOperator.LESS_EQUALS: (int, lambda obj, x: obj.held_object <= x),
         })
 
         # Use actual methods for functions that require additional checks

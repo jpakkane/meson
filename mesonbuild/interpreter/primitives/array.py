@@ -27,19 +27,20 @@ if T.TYPE_CHECKING:
     from ...interpreterbase import TYPE_kwargs
 
 class ArrayHolder(ObjectHolder[T.List[TYPE_var]], IterableObject):
+    # Operators that only require type checks
+    TRIVIAL_OPERATORS = {
+        MesonOperator.EQUALS: (list, lambda obj, x: obj.held_object == x),
+        MesonOperator.NOT_EQUALS: (list, lambda obj, x: obj.held_object != x),
+        MesonOperator.IN: (object, lambda obj, x: x in obj.held_object),
+        MesonOperator.NOT_IN: (object, lambda obj, x: x not in obj.held_object),
+    }
+
     def __init__(self, obj: T.List[TYPE_var], interpreter: 'Interpreter') -> None:
         super().__init__(obj, interpreter)
         self.methods.update({
             'contains': self.contains_method,
             'length': self.length_method,
             'get': self.get_method,
-        })
-
-        self.trivial_operators.update({
-            MesonOperator.EQUALS: (list, lambda obj, x: obj.held_object == x),
-            MesonOperator.NOT_EQUALS: (list, lambda obj, x: obj.held_object != x),
-            MesonOperator.IN: (object, lambda obj, x: x in obj.held_object),
-            MesonOperator.NOT_IN: (object, lambda obj, x: x not in obj.held_object),
         })
 
         # Use actual methods for functions that require additional checks

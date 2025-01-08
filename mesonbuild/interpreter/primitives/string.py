@@ -29,6 +29,19 @@ if T.TYPE_CHECKING:
     from ...interpreterbase import TYPE_var, TYPE_kwargs
 
 class StringHolder(ObjectHolder[str]):
+    TRIVIAL_OPERATORS = {
+        # Arithmetic
+        MesonOperator.PLUS: (str, lambda obj, x: obj.held_object + x),
+
+        # Comparison
+        MesonOperator.EQUALS: (str, lambda obj, x: obj.held_object == x),
+        MesonOperator.NOT_EQUALS: (str, lambda obj, x: obj.held_object != x),
+        MesonOperator.GREATER: (str, lambda obj, x: obj.held_object > x),
+        MesonOperator.LESS: (str, lambda obj, x: obj.held_object < x),
+        MesonOperator.GREATER_EQUALS: (str, lambda obj, x: obj.held_object >= x),
+        MesonOperator.LESS_EQUALS: (str, lambda obj, x: obj.held_object <= x),
+    }
+
     def __init__(self, obj: str, interpreter: 'Interpreter') -> None:
         super().__init__(obj, interpreter)
         self.methods.update({
@@ -47,19 +60,6 @@ class StringHolder(ObjectHolder[str]):
             'to_upper': self.to_upper_method,
             'underscorify': self.underscorify_method,
             'version_compare': self.version_compare_method,
-        })
-
-        self.trivial_operators.update({
-            # Arithmetic
-            MesonOperator.PLUS: (str, lambda obj, x: obj.held_object + x),
-
-            # Comparison
-            MesonOperator.EQUALS: (str, lambda obj, x: obj.held_object == x),
-            MesonOperator.NOT_EQUALS: (str, lambda obj, x: obj.held_object != x),
-            MesonOperator.GREATER: (str, lambda obj, x: obj.held_object > x),
-            MesonOperator.LESS: (str, lambda obj, x: obj.held_object < x),
-            MesonOperator.GREATER_EQUALS: (str, lambda obj, x: obj.held_object >= x),
-            MesonOperator.LESS_EQUALS: (str, lambda obj, x: obj.held_object <= x),
         })
 
         # Use actual methods for functions that require additional checks

@@ -36,19 +36,36 @@ TYPE_key_resolver = T.Callable[[mparser.BaseNode], str]
 SubProject = T.NewType('SubProject', str)
 
 class InterpreterObject(metaclass=ABCMeta):
+    TRIVIAL_OPERATORS: T.Dict[
+        MesonOperator,
+        T.Tuple[
+            T.Union[T.Type, T.Tuple[T.Type, ...]],
+            'OperatorCall'
+        ]
+    ] = {}
+
+    OPERATORS: T.Dict[MesonOperator, 'OperatorCall'] = {}
+
+    def __init_subclass__(cls: T.Type[InterpreterObject], **kwargs) -> None:
+        super().__init_subclass__(**kwargs)
+        saved_trivial_operators = cls.TRIVIAL_OPERATORS
+        cls.TRIVIAL_OPERATORS = {}
+
+        # Compute the supported operators according to the Python resolution order
+        # Reverse the result of mro() because update() will overwrite operators
+        # that are set by the superclass with those that are set by the subclass
+        for superclass in reversed(cls.mro()[1:]):
+            if issubclass(superclass, InterpreterObject):
+                cls.TRIVIAL_OPERATORS.update(superclass.TRIVIAL_OPERATORS)
+
+        cls.TRIVIAL_OPERATORS.update(saved_trivial_operators)
+
     def __init__(self, *, subproject: T.Optional['SubProject'] = None) -> None:
         self.methods: T.Dict[
             str,
             T.Callable[[T.List[TYPE_var], TYPE_kwargs], TYPE_var]
         ] = {}
         self.operators: T.Dict[MesonOperator, 'OperatorCall'] = {}
-        self.trivial_operators: T.Dict[
-            MesonOperator,
-            T.Tuple[
-                T.Union[T.Type, T.Tuple[T.Type, ...]],
-                'OperatorCall'
-            ]
-        ] = {}
         # Current node set during a method call. This can be used as location
         # when printing a warning message during a method call.
         self.current_node:  mparser.BaseNode = None
@@ -80,8 +97,8 @@ class InterpreterObject(metaclass=ABCMeta):
         raise InvalidCode(f'Unknown method "{method_name}" in object {self} of type {type(self).__name__}.')
 
     def operator_call(self, operator: MesonOperator, other: TYPE_var) -> TYPE_var:
-        if operator in self.trivial_operators:
-            op = self.trivial_operators[operator]
+        if operator in self.TRIVIAL_OPERATORS:
+            op = self.TRIVIAL_OPERATORS[operator]
             if op[0] is None and other is not None:
                 raise MesonBugException(f'The unary operator `{operator.value}` of {self.display_name()} was passed the object {other} of type {type(other).__name__}')
             if op[0] is not None and not isinstance(other, op[0]):
