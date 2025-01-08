@@ -22,6 +22,7 @@ if T.TYPE_CHECKING:
 
     TYPE_op_arg = T.TypeVar('TYPE_op_arg', bound='TYPE_var', contravariant=True)
     OperatorCall = T.Callable[[TYPE_op_arg, TYPE_op_arg], TYPE_var]
+    MethodCall = T.Callable[[T.List[TYPE_var], TYPE_kwargs], TYPE_var]
 
 
 TV_func = T.TypeVar('TV_func', bound=T.Callable[..., T.Any])
@@ -46,10 +47,16 @@ class InterpreterObject(metaclass=ABCMeta):
 
     OPERATORS: T.Dict[MesonOperator, 'OperatorCall'] = {}
 
+    METHODS: T.Dict[
+        str,
+        MethodCall,
+    ] = {}
+
     def __init_subclass__(cls: T.Type[InterpreterObject], **kwargs) -> None:
         super().__init_subclass__(**kwargs)
         saved_trivial_operators = cls.TRIVIAL_OPERATORS
 
+        cls.METHODS = {}
         cls.OPERATORS = {}
         cls.TRIVIAL_OPERATORS = {}
 
@@ -66,13 +73,25 @@ class InterpreterObject(metaclass=ABCMeta):
                 })
 
             elif issubclass(superclass, InterpreterObject):
+                cls.METHODS.update(superclass.METHODS)
                 cls.OPERATORS.update(superclass.OPERATORS)
                 cls.TRIVIAL_OPERATORS.update(superclass.TRIVIAL_OPERATORS)
 
         for name, method in cls.__dict__.items():
+            if hasattr(method, "meson_method"):
+                cls.METHODS[method.meson_method] = method
             if hasattr(method, "meson_operator"):
                 cls.OPERATORS[method.meson_operator] = method
         cls.TRIVIAL_OPERATORS.update(saved_trivial_operators)
+
+    @staticmethod
+    def method(name: str) -> MethodCall:
+        '''Decorator that tags a Python method as the implementation of a method
+           for the Meson interpreter'''
+        def decorator(f: MethodCall) -> MethodCall:
+            f.meson_method = name
+            return f
+        return decorator
 
     @staticmethod
     def operator(op: MesonOperator) -> OperatorCall:
@@ -103,6 +122,13 @@ class InterpreterObject(metaclass=ABCMeta):
                 args: T.List[TYPE_var],
                 kwargs: TYPE_kwargs
             ) -> TYPE_var:
+        if method_name in self.METHODS:
+            method = self.METHODS[method_name]
+            if not getattr(method, 'no-args-flattening', False):
+                args = flatten(args)
+            if not getattr(method, 'no-second-level-holder-flattening', False):
+                args, kwargs = resolve_second_level_holders(args, kwargs)
+            return method(self, args, kwargs)
         if method_name in self.methods:
             method = self.methods[method_name]
             if not getattr(method, 'no-args-flattening', False):

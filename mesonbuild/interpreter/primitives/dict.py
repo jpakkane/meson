@@ -38,14 +38,6 @@ class DictHolder(ObjectHolder[T.Dict[str, TYPE_var]], IterableObject):
         MesonOperator.NOT_IN: (str, lambda obj, x: x not in obj.held_object),
     }
 
-    def __init__(self, obj: T.Dict[str, TYPE_var], interpreter: 'Interpreter') -> None:
-        super().__init__(obj, interpreter)
-        self.methods.update({
-            'has_key': self.has_key_method,
-            'keys': self.keys_method,
-            'get': self.get_method,
-        })
-
     def display_name(self) -> str:
         return 'dict'
 
@@ -60,17 +52,20 @@ class DictHolder(ObjectHolder[T.Dict[str, TYPE_var]], IterableObject):
 
     @noKwargs
     @typed_pos_args('dict.has_key', str)
+    @InterpreterObject.method('has_key')
     def has_key_method(self, args: T.Tuple[str], kwargs: TYPE_kwargs) -> bool:
         return args[0] in self.held_object
 
     @noKwargs
     @noPosargs
+    @InterpreterObject.method('keys')
     def keys_method(self, args: T.List[TYPE_var], kwargs: TYPE_kwargs) -> T.List[str]:
         return sorted(self.held_object)
 
     @noArgsFlattening
     @noKwargs
     @typed_pos_args('dict.get', str, optargs=[object])
+    @InterpreterObject.method('get')
     def get_method(self, args: T.Tuple[str, T.Optional[TYPE_var]], kwargs: TYPE_kwargs) -> TYPE_var:
         if args[0] in self.held_object:
             return self.held_object[args[0]]

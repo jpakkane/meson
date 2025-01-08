@@ -33,14 +33,6 @@ class IntegerHolder(ObjectHolder[int]):
         MesonOperator.LESS_EQUALS: (int, lambda obj, x: obj.held_object <= x),
     }
 
-    def __init__(self, obj: int, interpreter: 'Interpreter') -> None:
-        super().__init__(obj, interpreter)
-        self.methods.update({
-            'is_even': self.is_even_method,
-            'is_odd': self.is_odd_method,
-            'to_string': self.to_string_method,
-        })
-
     def display_name(self) -> str:
         return 'int'
 
@@ -53,11 +45,13 @@ class IntegerHolder(ObjectHolder[int]):
 
     @noKwargs
     @noPosargs
+    @InterpreterObject.method('is_even')
     def is_even_method(self, args: T.List[TYPE_var], kwargs: TYPE_kwargs) -> bool:
         return self.held_object % 2 == 0
 
     @noKwargs
     @noPosargs
+    @InterpreterObject.method('is_odd')
     def is_odd_method(self, args: T.List[TYPE_var], kwargs: TYPE_kwargs) -> bool:
         return self.held_object % 2 != 0
 
@@ -66,6 +60,7 @@ class IntegerHolder(ObjectHolder[int]):
         KwargInfo('fill', int, default=0, since='1.3.0')
     )
     @noPosargs
+    @InterpreterObject.method('to_string')
     def to_string_method(self, args: T.List[TYPE_var], kwargs: T.Dict[str, T.Any]) -> str:
         return str(self.held_object).zfill(kwargs['fill'])
 
