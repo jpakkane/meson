@@ -19,7 +19,7 @@ class RangeHolder(MesonInterpreterObject, IterableObject):
         super().__init__(subproject=subproject)
         self.range = range(start, stop, step)
         self.operators.update({
-            MesonOperator.INDEX: self.op_index,
+            MesonOperator.INDEX: RangeHolder.op_index,
         })
 
     def op_index(self, other: int) -> int:

@@ -1055,7 +1055,7 @@ class _CustomTargetHolder(ObjectHolder[_CT]):
                              })
 
         self.operators.update({
-            MesonOperator.INDEX: self.op_index,
+            MesonOperator.INDEX: _CustomTargetHolder.op_index,
         })
 
     def __repr__(self) -> str:

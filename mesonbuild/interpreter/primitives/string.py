@@ -51,23 +51,23 @@ class StringHolder(ObjectHolder[str]):
 
         self.trivial_operators.update({
             # Arithmetic
-            MesonOperator.PLUS: (str, lambda x: self.held_object + x),
+            MesonOperator.PLUS: (str, lambda obj, x: obj.held_object + x),
 
             # Comparison
-            MesonOperator.EQUALS: (str, lambda x: self.held_object == x),
-            MesonOperator.NOT_EQUALS: (str, lambda x: self.held_object != x),
-            MesonOperator.GREATER: (str, lambda x: self.held_object > x),
-            MesonOperator.LESS: (str, lambda x: self.held_object < x),
-            MesonOperator.GREATER_EQUALS: (str, lambda x: self.held_object >= x),
-            MesonOperator.LESS_EQUALS: (str, lambda x: self.held_object <= x),
+            MesonOperator.EQUALS: (str, lambda obj, x: obj.held_object == x),
+            MesonOperator.NOT_EQUALS: (str, lambda obj, x: obj.held_object != x),
+            MesonOperator.GREATER: (str, lambda obj, x: obj.held_object > x),
+            MesonOperator.LESS: (str, lambda obj, x: obj.held_object < x),
+            MesonOperator.GREATER_EQUALS: (str, lambda obj, x: obj.held_object >= x),
+            MesonOperator.LESS_EQUALS: (str, lambda obj, x: obj.held_object <= x),
         })
 
         # Use actual methods for functions that require additional checks
         self.operators.update({
-            MesonOperator.DIV: self.op_div,
-            MesonOperator.INDEX: self.op_index,
-            MesonOperator.IN: self.op_in,
-            MesonOperator.NOT_IN: self.op_notin,
+            MesonOperator.DIV: StringHolder.op_div,
+            MesonOperator.INDEX: StringHolder.op_index,
+            MesonOperator.IN: StringHolder.op_in,
+            MesonOperator.NOT_IN: StringHolder.op_notin,
         })
 
     def display_name(self) -> str:
@@ -219,6 +219,12 @@ class DependencyVariableString(str):
     pass
 
 class DependencyVariableStringHolder(StringHolder):
+    def __init__(self, obj: str, interpreter: 'Interpreter') -> None:
+        super().__init__(obj, interpreter)
+        self.operators.update({
+            MesonOperator.DIV: DependencyVariableStringHolder.op_div,
+        })
+
     def op_div(self, other: str) -> T.Union[str, DependencyVariableString]:
         ret = super().op_div(other)
         if '..' in other:
@@ -240,6 +246,12 @@ class OptionString(str):
 
 class OptionStringHolder(StringHolder):
     held_object: OptionString
+
+    def __init__(self, obj: str, interpreter: 'Interpreter') -> None:
+        super().__init__(obj, interpreter)
+        self.operators.update({
+            MesonOperator.DIV: OptionStringHolder.op_div,
+        })
 
     def op_div(self, other: str) -> T.Union[str, OptionString]:
         ret = super().op_div(other)

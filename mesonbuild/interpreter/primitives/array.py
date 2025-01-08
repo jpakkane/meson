@@ -36,16 +36,16 @@ class ArrayHolder(ObjectHolder[T.List[TYPE_var]], IterableObject):
         })
 
         self.trivial_operators.update({
-            MesonOperator.EQUALS: (list, lambda x: self.held_object == x),
-            MesonOperator.NOT_EQUALS: (list, lambda x: self.held_object != x),
-            MesonOperator.IN: (object, lambda x: x in self.held_object),
-            MesonOperator.NOT_IN: (object, lambda x: x not in self.held_object),
+            MesonOperator.EQUALS: (list, lambda obj, x: obj.held_object == x),
+            MesonOperator.NOT_EQUALS: (list, lambda obj, x: obj.held_object != x),
+            MesonOperator.IN: (object, lambda obj, x: x in obj.held_object),
+            MesonOperator.NOT_IN: (object, lambda obj, x: x not in obj.held_object),
         })
 
         # Use actual methods for functions that require additional checks
         self.operators.update({
-            MesonOperator.PLUS: self.op_plus,
-            MesonOperator.INDEX: self.op_index,
+            MesonOperator.PLUS: ArrayHolder.op_plus,
+            MesonOperator.INDEX: ArrayHolder.op_index,
         })
 
     def display_name(self) -> str:

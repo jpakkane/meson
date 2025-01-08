@@ -28,10 +28,10 @@ class BooleanHolder(ObjectHolder[bool]):
         })
 
         self.trivial_operators.update({
-            MesonOperator.BOOL: (None, lambda x: self.held_object),
-            MesonOperator.NOT: (None, lambda x: not self.held_object),
-            MesonOperator.EQUALS: (bool, lambda x: self.held_object == x),
-            MesonOperator.NOT_EQUALS: (bool, lambda x: self.held_object != x),
+            MesonOperator.BOOL: (None, lambda obj, x: obj.held_object),
+            MesonOperator.NOT: (None, lambda obj, x: not obj.held_object),
+            MesonOperator.EQUALS: (bool, lambda obj, x: obj.held_object == x),
+            MesonOperator.NOT_EQUALS: (bool, lambda obj, x: obj.held_object != x),
         })
 
     def display_name(self) -> str:

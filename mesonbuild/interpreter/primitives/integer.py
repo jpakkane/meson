@@ -25,24 +25,24 @@ class IntegerHolder(ObjectHolder[int]):
 
         self.trivial_operators.update({
             # Arithmetic
-            MesonOperator.UMINUS: (None, lambda x: -self.held_object),
-            MesonOperator.PLUS: (int, lambda x: self.held_object + x),
-            MesonOperator.MINUS: (int, lambda x: self.held_object - x),
-            MesonOperator.TIMES: (int, lambda x: self.held_object * x),
+            MesonOperator.UMINUS: (None, lambda obj, x: -obj.held_object),
+            MesonOperator.PLUS: (int, lambda obj, x: obj.held_object + x),
+            MesonOperator.MINUS: (int, lambda obj, x: obj.held_object - x),
+            MesonOperator.TIMES: (int, lambda obj, x: obj.held_object * x),
 
             # Comparison
-            MesonOperator.EQUALS: (int, lambda x: self.held_object == x),
-            MesonOperator.NOT_EQUALS: (int, lambda x: self.held_object != x),
-            MesonOperator.GREATER: (int, lambda x: self.held_object > x),
-            MesonOperator.LESS: (int, lambda x: self.held_object < x),
-            MesonOperator.GREATER_EQUALS: (int, lambda x: self.held_object >= x),
-            MesonOperator.LESS_EQUALS: (int, lambda x: self.held_object <= x),
+            MesonOperator.EQUALS: (int, lambda obj, x: obj.held_object == x),
+            MesonOperator.NOT_EQUALS: (int, lambda obj, x: obj.held_object != x),
+            MesonOperator.GREATER: (int, lambda obj, x: obj.held_object > x),
+            MesonOperator.LESS: (int, lambda obj, x: obj.held_object < x),
+            MesonOperator.GREATER_EQUALS: (int, lambda obj, x: obj.held_object >= x),
+            MesonOperator.LESS_EQUALS: (int, lambda obj, x: obj.held_object <= x),
         })
 
         # Use actual methods for functions that require additional checks
         self.operators.update({
-            MesonOperator.DIV: self.op_div,
-            MesonOperator.MOD: self.op_mod,
+            MesonOperator.DIV: IntegerHolder.op_div,
+            MesonOperator.MOD: IntegerHolder.op_mod,
         })
 
     def display_name(self) -> str:

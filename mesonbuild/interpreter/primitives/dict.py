@@ -35,18 +35,18 @@ class DictHolder(ObjectHolder[T.Dict[str, TYPE_var]], IterableObject):
 
         self.trivial_operators.update({
             # Arithmetic
-            MesonOperator.PLUS: (dict, lambda x: {**self.held_object, **x}),
+            MesonOperator.PLUS: (dict, lambda obj, x: {**obj.held_object, **x}),
 
             # Comparison
-            MesonOperator.EQUALS: (dict, lambda x: self.held_object == x),
-            MesonOperator.NOT_EQUALS: (dict, lambda x: self.held_object != x),
-            MesonOperator.IN: (str, lambda x: x in self.held_object),
-            MesonOperator.NOT_IN: (str, lambda x: x not in self.held_object),
+            MesonOperator.EQUALS: (dict, lambda obj, x: obj.held_object == x),
+            MesonOperator.NOT_EQUALS: (dict, lambda obj, x: obj.held_object != x),
+            MesonOperator.IN: (str, lambda obj, x: x in obj.held_object),
+            MesonOperator.NOT_IN: (str, lambda obj, x: x not in obj.held_object),
         })
 
         # Use actual methods for functions that require additional checks
         self.operators.update({
-            MesonOperator.INDEX: self.op_index,
+            MesonOperator.INDEX: DictHolder.op_index,
         })
 
     def display_name(self) -> str:
