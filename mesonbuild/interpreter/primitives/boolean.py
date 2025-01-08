@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from ...interpreterbase import (
-    ObjectHolder,
+    InterpreterObject,
     MesonOperator,
+    ObjectHolder,
     typed_pos_args,
     noKwargs,
     noPosargs,

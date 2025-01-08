@@ -49,33 +49,49 @@ class InterpreterObject(metaclass=ABCMeta):
     def __init_subclass__(cls: T.Type[InterpreterObject], **kwargs) -> None:
         super().__init_subclass__(**kwargs)
         saved_trivial_operators = cls.TRIVIAL_OPERATORS
+
+        cls.OPERATORS = {}
         cls.TRIVIAL_OPERATORS = {}
 
         # Compute the supported operators according to the Python resolution order
         # Reverse the result of mro() because update() will overwrite operators
         # that are set by the superclass with those that are set by the subclass
         for superclass in reversed(cls.mro()[1:]):
-            if issubclass(superclass, InterpreterObject):
+            if superclass is InterpreterObject:
+                # __init_subclass__ does not operate on InterpreterObject itself,
+                # so it cannot use @InterpreterObject.operator
+                cls.OPERATORS.update({
+                    MesonOperator.EQUALS: InterpreterObject.op_equals,
+                    MesonOperator.NOT_EQUALS: InterpreterObject.op_not_equals
+                })
+
+            elif issubclass(superclass, InterpreterObject):
+                cls.OPERATORS.update(superclass.OPERATORS)
                 cls.TRIVIAL_OPERATORS.update(superclass.TRIVIAL_OPERATORS)
 
+        for name, method in cls.__dict__.items():
+            if hasattr(method, "meson_operator"):
+                cls.OPERATORS[method.meson_operator] = method
         cls.TRIVIAL_OPERATORS.update(saved_trivial_operators)
+
+    @staticmethod
+    def operator(op: MesonOperator) -> OperatorCall:
+        '''Decorator that tags a method as the implementation of an operator
+           for the Meson interpreter'''
+        def decorator(f: OperatorCall) -> OperatorCall:
+            f.meson_operator = op
+            return f
+        return decorator
 
     def __init__(self, *, subproject: T.Optional['SubProject'] = None) -> None:
         self.methods: T.Dict[
             str,
             T.Callable[[T.List[TYPE_var], TYPE_kwargs], TYPE_var]
         ] = {}
-        self.operators: T.Dict[MesonOperator, 'OperatorCall'] = {}
         # Current node set during a method call. This can be used as location
         # when printing a warning message during a method call.
         self.current_node:  mparser.BaseNode = None
         self.subproject = subproject or SubProject('')
-
-        # Some default operators supported by all objects
-        self.operators.update({
-            MesonOperator.EQUALS: self.__class__.op_equals,
-            MesonOperator.NOT_EQUALS: self.__class__.op_not_equals,
-        })
 
     # The type of the object that can be printed to the user
     def display_name(self) -> str:
@@ -104,8 +120,8 @@ class InterpreterObject(metaclass=ABCMeta):
             if op[0] is not None and not isinstance(other, op[0]):
                 raise InvalidArguments(f'The `{operator.value}` operator of {self.display_name()} does not accept objects of type {type(other).__name__} ({other})')
             return op[1](self, other)
-        if operator in self.operators:
-            return self.operators[operator](self, other)
+        if operator in self.OPERATORS:
+            return self.OPERATORS[operator](self, other)
 
         raise InvalidCode(f'Object {self} of type {self.display_name()} does not support the `{operator.value}` operator.')
 
@@ -158,12 +174,14 @@ class ObjectHolder(InterpreterObject, T.Generic[InterpreterObjectTypeVar]):
         return type(self.held_object).__name__
 
     # Override default comparison operators for the held object
+    @InterpreterObject.operator(MesonOperator.EQUALS)
     def op_equals(self, other: TYPE_var) -> bool:
         # See the comment from InterpreterObject why we are using `type()` here.
         if type(self.held_object) is not type(other):
             self._throw_comp_exception(other, '==')
         return self.held_object == other
 
+    @InterpreterObject.operator(MesonOperator.NOT_EQUALS)
     def op_not_equals(self, other: TYPE_var) -> bool:
         if type(self.held_object) is not type(other):
             self._throw_comp_exception(other, '!=')

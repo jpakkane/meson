@@ -9,8 +9,9 @@ import typing as T
 
 from ...mesonlib import version_compare
 from ...interpreterbase import (
-    ObjectHolder,
+    InterpreterObject,
     MesonOperator,
+    ObjectHolder,
     FeatureNew,
     typed_operator,
     noArgsFlattening,
@@ -60,14 +61,6 @@ class StringHolder(ObjectHolder[str]):
             'to_upper': self.to_upper_method,
             'underscorify': self.underscorify_method,
             'version_compare': self.version_compare_method,
-        })
-
-        # Use actual methods for functions that require additional checks
-        self.operators.update({
-            MesonOperator.DIV: StringHolder.op_div,
-            MesonOperator.INDEX: StringHolder.op_index,
-            MesonOperator.IN: StringHolder.op_in,
-            MesonOperator.NOT_IN: StringHolder.op_notin,
         })
 
     def display_name(self) -> str:
@@ -179,10 +172,12 @@ class StringHolder(ObjectHolder[str]):
 
     @FeatureNew('/ with string arguments', '0.49.0')
     @typed_operator(MesonOperator.DIV, str)
+    @InterpreterObject.operator(MesonOperator.DIV)
     def op_div(self, other: str) -> str:
         return self._op_div(self.held_object, other)
 
     @typed_operator(MesonOperator.INDEX, int)
+    @InterpreterObject.operator(MesonOperator.INDEX)
     def op_index(self, other: int) -> str:
         try:
             return self.held_object[other]
@@ -191,11 +186,13 @@ class StringHolder(ObjectHolder[str]):
 
     @FeatureNew('"in" string operator', '1.0.0')
     @typed_operator(MesonOperator.IN, str)
+    @InterpreterObject.operator(MesonOperator.IN)
     def op_in(self, other: str) -> bool:
         return other in self.held_object
 
     @FeatureNew('"not in" string operator', '1.0.0')
     @typed_operator(MesonOperator.NOT_IN, str)
+    @InterpreterObject.operator(MesonOperator.NOT_IN)
     def op_notin(self, other: str) -> bool:
         return other not in self.held_object
 
@@ -219,12 +216,7 @@ class DependencyVariableString(str):
     pass
 
 class DependencyVariableStringHolder(StringHolder):
-    def __init__(self, obj: str, interpreter: 'Interpreter') -> None:
-        super().__init__(obj, interpreter)
-        self.operators.update({
-            MesonOperator.DIV: DependencyVariableStringHolder.op_div,
-        })
-
+    @InterpreterObject.operator(MesonOperator.DIV)
     def op_div(self, other: str) -> T.Union[str, DependencyVariableString]:
         ret = super().op_div(other)
         if '..' in other:
@@ -247,12 +239,7 @@ class OptionString(str):
 class OptionStringHolder(StringHolder):
     held_object: OptionString
 
-    def __init__(self, obj: str, interpreter: 'Interpreter') -> None:
-        super().__init__(obj, interpreter)
-        self.operators.update({
-            MesonOperator.DIV: OptionStringHolder.op_div,
-        })
-
+    @InterpreterObject.operator(MesonOperator.DIV)
     def op_div(self, other: str) -> T.Union[str, OptionString]:
         ret = super().op_div(other)
         name = self._op_div(self.held_object.optname, other)

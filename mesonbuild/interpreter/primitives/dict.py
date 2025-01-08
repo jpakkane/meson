@@ -5,9 +5,10 @@ from __future__ import annotations
 import typing as T
 
 from ...interpreterbase import (
-    ObjectHolder,
+    InterpreterObject,
     IterableObject,
     MesonOperator,
+    ObjectHolder,
     typed_operator,
     noKwargs,
     noPosargs,
@@ -45,11 +46,6 @@ class DictHolder(ObjectHolder[T.Dict[str, TYPE_var]], IterableObject):
             'get': self.get_method,
         })
 
-        # Use actual methods for functions that require additional checks
-        self.operators.update({
-            MesonOperator.INDEX: DictHolder.op_index,
-        })
-
     def display_name(self) -> str:
         return 'dict'
 
@@ -83,6 +79,7 @@ class DictHolder(ObjectHolder[T.Dict[str, TYPE_var]], IterableObject):
         raise InvalidArguments(f'Key {args[0]!r} is not in the dictionary.')
 
     @typed_operator(MesonOperator.INDEX, str)
+    @InterpreterObject.operator(MesonOperator.INDEX)
     def op_index(self, other: str) -> TYPE_var:
         if other not in self.held_object:
             raise InvalidArguments(f'Key {other} is not in the dictionary.')

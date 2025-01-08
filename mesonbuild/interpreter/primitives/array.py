@@ -5,9 +5,10 @@ from __future__ import annotations
 import typing as T
 
 from ...interpreterbase import (
-    ObjectHolder,
+    InterpreterObject,
     IterableObject,
     MesonOperator,
+    ObjectHolder,
     typed_operator,
     noKwargs,
     noPosargs,
@@ -41,12 +42,6 @@ class ArrayHolder(ObjectHolder[T.List[TYPE_var]], IterableObject):
             'contains': self.contains_method,
             'length': self.length_method,
             'get': self.get_method,
-        })
-
-        # Use actual methods for functions that require additional checks
-        self.operators.update({
-            MesonOperator.PLUS: ArrayHolder.op_plus,
-            MesonOperator.INDEX: ArrayHolder.op_index,
         })
 
     def display_name(self) -> str:
@@ -93,6 +88,7 @@ class ArrayHolder(ObjectHolder[T.List[TYPE_var]], IterableObject):
         return self.held_object[index]
 
     @typed_operator(MesonOperator.PLUS, object)
+    @InterpreterObject.operator(MesonOperator.PLUS)
     def op_plus(self, other: TYPE_var) -> T.List[TYPE_var]:
         if not isinstance(other, list):
             if not isinstance(self.current_node, PlusAssignmentNode):
@@ -102,6 +98,7 @@ class ArrayHolder(ObjectHolder[T.List[TYPE_var]], IterableObject):
         return self.held_object + other
 
     @typed_operator(MesonOperator.INDEX, int)
+    @InterpreterObject.operator(MesonOperator.INDEX)
     def op_index(self, other: int) -> TYPE_var:
         try:
             return self.held_object[other]

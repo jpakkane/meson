@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from ...interpreterbase import (
-    FeatureBroken, InvalidArguments, MesonOperator, ObjectHolder, KwargInfo,
+    InterpreterObject, MesonOperator, ObjectHolder,
+    FeatureBroken, InvalidArguments, KwargInfo,
     noKwargs, noPosargs, typed_operator, typed_kwargs
 )
 
@@ -40,12 +41,6 @@ class IntegerHolder(ObjectHolder[int]):
             'to_string': self.to_string_method,
         })
 
-        # Use actual methods for functions that require additional checks
-        self.operators.update({
-            MesonOperator.DIV: IntegerHolder.op_div,
-            MesonOperator.MOD: IntegerHolder.op_mod,
-        })
-
     def display_name(self) -> str:
         return 'int'
 
@@ -75,12 +70,14 @@ class IntegerHolder(ObjectHolder[int]):
         return str(self.held_object).zfill(kwargs['fill'])
 
     @typed_operator(MesonOperator.DIV, int)
+    @InterpreterObject.operator(MesonOperator.DIV)
     def op_div(self, other: int) -> int:
         if other == 0:
             raise InvalidArguments('Tried to divide by 0')
         return self.held_object // other
 
     @typed_operator(MesonOperator.MOD, int)
+    @InterpreterObject.operator(MesonOperator.MOD)
     def op_mod(self, other: int) -> int:
         if other == 0:
             raise InvalidArguments('Tried to divide by 0')
