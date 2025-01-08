@@ -2002,24 +2002,31 @@ class Backend:
         library_paths = set()
         host_machine = self.environment.machines[MachineChoice.HOST]
         for t in self.build.get_targets().values():
-            in_default_dir = t.should_install() and not t.get_install_dir()[2]
-            if t.for_machine != MachineChoice.HOST or not in_default_dir:
+            if t.for_machine is not MachineChoice.HOST or not t.should_install():
                 continue
+
+            if (host_machine.is_windows() or host_machine.is_cygwin()) and isinstance(t, (build.Executable, build.SharedModule)):
+                # On windows we cannot rely on rpath to run executables from build
+                # directory. We have to add in PATH the location of every DLL needed.
+                library_paths.update(self.determine_windows_extra_paths(t, []))
+
+            if t.get_install_dir()[2]:
+                # Do not update paths for target installed in non default location
+                continue
+
             tdir = os.path.join(self.environment.get_build_dir(), self.get_target_dir(t))
             if isinstance(t, build.Executable):
                 # Add binaries that are going to be installed in bindir into PATH
                 # so they get used by default instead of searching on system when
                 # in developer environment.
                 extra_paths.add(tdir)
-                if host_machine.is_windows() or host_machine.is_cygwin():
-                    # On windows we cannot rely on rpath to run executables from build
-                    # directory. We have to add in PATH the location of every DLL needed.
-                    library_paths.update(self.determine_windows_extra_paths(t, []))
+
             elif isinstance(t, build.SharedLibrary):
                 # Add libraries that are going to be installed in libdir into
                 # LD_LIBRARY_PATH. This allows running system applications using
                 # that library.
                 library_paths.add(tdir)
+
         return self.environment.get_env_for_paths(library_paths, extra_paths)
 
     def compiler_to_generator_args(self, target: build.BuildTarget,
