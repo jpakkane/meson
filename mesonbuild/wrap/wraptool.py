@@ -7,6 +7,7 @@ import sys, os
 import configparser
 import shutil
 import typing as T
+import json
 
 from glob import glob
 from .wrap import (open_wrapdburl, WrapException, get_releases, get_releases_data,
@@ -59,6 +60,11 @@ def add_arguments(parser: 'argparse.ArgumentParser') -> None:
     p.add_argument('project_path')
     p.set_defaults(wrap_func=promote)
 
+    p = subparsers.add_parser('set-sources', help='Set WrapDB source URLs')
+    p.add_argument('source', default=None, nargs='+',
+                   help='WrapDB source URL')
+    p.set_defaults(wrap_func=set_db_sources)
+
     p = subparsers.add_parser('update-db', help='Update list of projects available in WrapDB (Since 0.61.0)')
     p.add_argument('--allow-insecure', default=False, action='store_true',
                    help='Allow insecure server connections.')
@@ -99,7 +105,7 @@ def install(options: 'argparse.Namespace') -> None:
     if os.path.exists(wrapfile):
         raise SystemExit('Wrap file already exists.')
     (version, revision) = get_latest_version(name, options.allow_insecure)
-    url = open_wrapdburl(f'https://wrapdb.mesonbuild.com/v2/{name}_{version}-{revision}/{name}.wrap', options.allow_insecure, True)
+    url = open_wrapdburl(f'wrapdb:///v2/{name}_{version}-{revision}/{name}.wrap', options.allow_insecure, True)
     with open(wrapfile, 'wb') as f:
         f.write(url.read())
     print(f'Installed {name} version {version} revision {revision}')
@@ -186,6 +192,15 @@ def status(options: 'argparse.Namespace') -> None:
             print('', name, f'up to date. Branch {current_branch}, revision {current_revision}.')
         else:
             print('', name, f'not up to date. Have {current_branch} {current_revision}, but {latest_branch} {latest_revision} is available.')
+
+def set_db_sources(options: 'argparse.Namespace') -> None:
+    Path('subprojects').mkdir(exist_ok=True)
+    with Path('subprojects/wrapdb-sources.json').open('w', encoding='utf-8') as f:
+        json.dump({
+            # don't guess how to preserve compatibility if stored format changes
+            "version": 1,
+            "sources": options.source,
+        }, f)
 
 def update_db(options: 'argparse.Namespace') -> None:
     data = get_releases_data(options.allow_insecure)

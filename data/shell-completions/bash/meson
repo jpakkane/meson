@@ -715,6 +715,7 @@ _meson-wrap() {
     list
     promote
     search
+    set-sources
     status
     update
     update-db
@@ -863,6 +864,28 @@ _meson-wrap-search() {
 
   read -ra wraps < <(_wraps)
   COMPREPLY+=($(compgen -W '${wraps[*]}' -- "$cur"))
+}
+
+_meson-wrap-set-sources() {
+  shortopts=(
+    h
+  )
+
+  longopts=(
+    help
+  )
+
+  local cur prev
+  if ! _get_comp_words_by_ref cur prev &>/dev/null; then
+    cur="${COMP_WORDS[COMP_CWORD]}"
+  fi
+
+  if ! _meson_compgen_options "$cur"; then
+    if [[ -z $cur ]]; then
+      COMPREPLY+=($(compgen -P '--' -W '${longopts[*]}'))
+      COMPREPLY+=($(compgen -P '-' -W '${shortopts[*]}'))
+    fi
+  fi
 }
 
 _meson-wrap-status() {

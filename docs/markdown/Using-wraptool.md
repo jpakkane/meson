@@ -96,3 +96,17 @@ but available in WrapDB will automatically be downloaded.
 
 Automatic fetch of WrapDB subprojects can be disabled by removing the file
 `subprojects/wrapdb.json`, or by using `--wrap-mode=nodownload`.
+
+## Self-hosted Wrap database
+
+Should you wish to use a self-hosted, proxied, or an alternative Wrap database server (since version 1.7.0), you can configure server address for use with your project:
+
+```console
+$ meson wrap set-sources https://user:password@wrapdb.mydomain.invalid:8080/subdir/
+$ meson wrap update-db
+$ meson wrap install zlib
+```
+
+All of the following `search`, `install`, `info`, etc. wrap commands will use this address to get releases data and wrap files.
+You will be limited to the wraps available on the mirror as only one source can be used at a time.
+The address is stored in `subprojects/wrapdb-mirrors.json`, remove the file to use upstream server again.

@@ -49,21 +49,59 @@ except ImportError:
     has_ssl = False
 
 REQ_TIMEOUT = 30.0
-WHITELIST_SUBDOMAIN = 'wrapdb.mesonbuild.com'
+WRAPDB_UPSTREAM_HOSTNAME = 'wrapdb.mesonbuild.com'
+WRAPDB_UPSTREAM_ADDRESS = f'https://{WRAPDB_UPSTREAM_HOSTNAME}'
 
 ALL_TYPES = ['file', 'git', 'hg', 'svn', 'redirect']
 
 PATCH = shutil.which('patch')
 
-def whitelist_wrapdb(urlstr: str) -> urllib.parse.ParseResult:
-    """ raises WrapException if not whitelisted subdomain """
+@lru_cache(maxsize=None)
+def wrapdb_url() -> str:
+    try:
+        with Path('subprojects/wrapdb-sources.json').open('r', encoding='utf-8') as f:
+            config = json.load(f)
+            version = config['version']
+            if version > 1:
+                m = f'WrapDB sources file (v{version}) was created with a newer version of meson.'
+                raise WrapException(m)
+            source = str(config['sources'][0])
+            url = urllib.parse.urlparse(source)
+            if not url.scheme:
+                m = f'WrapDB source address requires a protocol scheme, like `{WRAPDB_UPSTREAM_ADDRESS}`.'
+                raise WrapException(m)
+            return source
+    except FileNotFoundError:
+        return WRAPDB_UPSTREAM_ADDRESS
+
+def is_wrapdb_subdomain(hostname: str) -> bool:
+    trusted_subdomains = {
+        WRAPDB_UPSTREAM_HOSTNAME,
+        urllib.parse.urlparse(wrapdb_url()).hostname,
+    }
+    for entry in trusted_subdomains:
+        if hostname.endswith(entry):
+            return True
+
+    return False
+
+def expand_wrapdburl(urlstr: str, allow_insecure: bool = False) -> urllib.parse.ParseResult:
     url = urllib.parse.urlparse(urlstr)
+    if url.scheme == 'wrapdb':
+        if url.netloc:
+            raise WrapException(f'{urlstr} with wrapdb: scheme should not have a netloc')
+        # append wrapdb path on top of the source address
+        rel_path = url.path.lstrip('/')
+        url = urllib.parse.urlparse(urllib.parse.urljoin(wrapdb_url(), rel_path))
+
     if not url.hostname:
-        raise WrapException(f'{urlstr} is not a valid URL')
-    if not url.hostname.endswith(WHITELIST_SUBDOMAIN):
-        raise WrapException(f'{urlstr} is not a whitelisted WrapDB URL')
-    if has_ssl and not url.scheme == 'https':
-        raise WrapException(f'WrapDB did not have expected SSL https url, instead got {urlstr}')
+        if url.scheme not in {'file'}:
+            raise WrapException(f'{urlstr} is not a valid URL')
+    else:
+        if not is_wrapdb_subdomain(url.hostname):
+            raise WrapException(f'{urlstr} is not a whitelisted WrapDB URL')
+        if has_ssl and not allow_insecure and url.scheme not in {'https', 'ftps'}:
+            raise WrapException(f'WrapDB did not have expected SSL url, instead got {urllib.parse.urlunparse(url)}')
     return url
 
 def open_wrapdburl(urlstring: str, allow_insecure: bool = False, have_opt: bool = False) -> 'http.client.HTTPResponse':
@@ -72,12 +110,13 @@ def open_wrapdburl(urlstring: str, allow_insecure: bool = False, have_opt: bool 
     else:
         insecure_msg = ''
 
-    url = whitelist_wrapdb(urlstring)
+    url = expand_wrapdburl(urlstring, allow_insecure)
     if has_ssl:
+        urlstring_ = urllib.parse.urlunparse(url)
         try:
-            return T.cast('http.client.HTTPResponse', urllib.request.urlopen(urllib.parse.urlunparse(url), timeout=REQ_TIMEOUT))
+            return T.cast('http.client.HTTPResponse', urllib.request.urlopen(urlstring_, timeout=REQ_TIMEOUT))
         except OSError as excp:
-            msg = f'WrapDB connection failed to {urlstring} with error {excp}.'
+            msg = f'WrapDB connection failed to {urlstring_} with error {excp}.'
             if isinstance(excp, urllib.error.URLError) and isinstance(excp.reason, ssl.SSLCertVerificationError):
                 if allow_insecure:
                     mlog.warning(f'{msg}\n\n    Proceeding without authentication.')
@@ -92,15 +131,21 @@ def open_wrapdburl(urlstring: str, allow_insecure: bool = False, have_opt: bool 
         mlog.warning(f'SSL module not available in {sys.executable}: WrapDB traffic not authenticated.', once=True)
 
     # If we got this far, allow_insecure was manually passed
-    nossl_url = url._replace(scheme='http')
+    if has_ssl:
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+    else:
+        msg = f'Fix python installation or change WrapDB source address to an insecure alternative, e.g. `meson wrap set-sources http://{WRAPDB_UPSTREAM_HOSTNAME}`'
+        raise WrapException(f'SSL protocol requested: {msg}')
     try:
-        return T.cast('http.client.HTTPResponse', urllib.request.urlopen(urllib.parse.urlunparse(nossl_url), timeout=REQ_TIMEOUT))
+        return T.cast('http.client.HTTPResponse', urllib.request.urlopen(urlstring_, timeout=REQ_TIMEOUT, context=ctx))
     except OSError as excp:
-        raise WrapException(f'WrapDB connection failed to {urlstring} with error {excp}')
+        raise WrapException(f'WrapDB connection failed to {urlstring_} with error {excp}')
 
 def get_releases_data(allow_insecure: bool) -> bytes:
-    url = open_wrapdburl('https://wrapdb.mesonbuild.com/v2/releases.json', allow_insecure, True)
-    return url.read()
+    resp = open_wrapdburl('wrapdb:///v2/releases.json', allow_insecure, True)
+    return resp.read()
 
 @lru_cache(maxsize=None)
 def get_releases(allow_insecure: bool) -> T.Dict[str, T.Any]:
@@ -108,14 +153,14 @@ def get_releases(allow_insecure: bool) -> T.Dict[str, T.Any]:
     return T.cast('T.Dict[str, T.Any]', json.loads(data.decode()))
 
 def update_wrap_file(wrapfile: str, name: str, new_version: str, new_revision: str, allow_insecure: bool) -> None:
-    url = open_wrapdburl(f'https://wrapdb.mesonbuild.com/v2/{name}_{new_version}-{new_revision}/{name}.wrap',
-                         allow_insecure, True)
+    resp = open_wrapdburl(f'wrapdb:///v2/{name}_{new_version}-{new_revision}/{name}.wrap',
+                          allow_insecure, True)
     with open(wrapfile, 'wb') as f:
-        f.write(url.read())
+        f.write(resp.read())
 
 def parse_patch_url(patch_url: str) -> T.Tuple[str, str]:
     u = urllib.parse.urlparse(patch_url)
-    if u.netloc != 'wrapdb.mesonbuild.com':
+    if not is_wrapdb_subdomain(u.hostname):
         raise WrapException(f'URL {patch_url} does not seems to be a wrapdb patch')
     arr = u.path.strip('/').split('/')
     if arr[0] == 'v1':
@@ -384,10 +429,10 @@ class Resolver:
         self.check_can_download()
         latest_version = info['versions'][0]
         version, revision = latest_version.rsplit('-', 1)
-        url = urllib.request.urlopen(f'https://wrapdb.mesonbuild.com/v2/{subp_name}_{version}-{revision}/{subp_name}.wrap')
+        resp = open_wrapdburl(f'wrapdb:///v2/{subp_name}_{version}-{revision}/{subp_name}.wrap')
         fname = Path(self.subdir_root, f'{subp_name}.wrap')
         with fname.open('wb') as f:
-            f.write(url.read())
+            f.write(resp.read())
         mlog.log(f'Installed {subp_name} version {version} revision {revision}')
         wrap = PackageDefinition.from_wrap_file(str(fname))
         self.wraps[wrap.name] = wrap
@@ -687,9 +732,9 @@ class Resolver:
         h = hashlib.sha256()
         tmpfile = tempfile.NamedTemporaryFile(mode='wb', dir=self.cachedir, delete=False)
         url = urllib.parse.urlparse(urlstring)
-        if url.hostname and url.hostname.endswith(WHITELIST_SUBDOMAIN):
+        if url.hostname and is_wrapdb_subdomain(url.hostname):
             resp = open_wrapdburl(urlstring, allow_insecure=self.allow_insecure, have_opt=self.wrap_frontend)
-        elif WHITELIST_SUBDOMAIN in urlstring:
+        elif WRAPDB_UPSTREAM_HOSTNAME in urlstring:
             raise WrapException(f'{urlstring} may be a WrapDB-impersonating URL')
         else:
             headers = {
