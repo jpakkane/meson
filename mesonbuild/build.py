@@ -24,7 +24,7 @@ from .mesonlib import (
     extract_as_list, typeslistify, stringlistify, classify_unity_sources,
     get_filenames_templates_dict, substitute_values, has_path_sep,
     PerMachineDefaultable,
-    MesonBugException, EnvironmentVariables, pickle_load,
+    MesonBugException, EnvironmentVariables, pickle_load, lazy_property,
 )
 from .options import OptionKey
 
@@ -637,12 +637,16 @@ class Target(HoldableObject, metaclass=abc.ABCMeta):
             return subdir_part + '@@' + my_id
         return my_id
 
-    def get_id(self) -> str:
+    @lazy_property
+    def id(self) -> str:
         name = self.name
         if getattr(self, 'name_suffix_set', False):
             name += '.' + self.suffix
         return self.construct_id_from_path(
             self.subdir, name, self.type_suffix())
+
+    def get_id(self) -> str:
+        return self.id
 
     def process_kwargs_base(self, kwargs: T.Dict[str, T.Any]) -> None:
         if 'build_by_default' in kwargs:
