@@ -2974,6 +2974,10 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
         # Finally add the private dir for the target to the include path. This
         # must override everything else and must be the final path added.
         commands += compiler.get_include_args(self.get_target_private_dir(target), False)
+
+        # Add Meson per-compiler defaults (like /utf-8 for MSVC)
+        compiler.add_default_build_args(commands)
+
         return commands
 
     # Returns a dictionary, mapping from each compiler src type (e.g. 'c', 'cpp', etc.) to a list of compiler arg strings

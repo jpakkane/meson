@@ -832,6 +832,7 @@ class XCodeBackend(backends.Backend):
                                                                 input='"$SCRIPT_INPUT_FILE"',
                                                                 depfile='"$(dirname "$SCRIPT_OUTPUT_FILE_0")/$(basename "$SCRIPT_OUTPUT_FILE_0" .o).d"',
                                                                 extras=['$OTHER_INPUT_FILE_FLAGS'])
+                compiler.add_default_build_args(commands)
                 buildrule.add_item('script', self.to_shell_script(commands))
                 objects_dict.add_item(idval, buildrule, 'PBXBuildRule')
 

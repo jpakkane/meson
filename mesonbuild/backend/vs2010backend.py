@@ -66,18 +66,23 @@ def autodetect_vs_version(build: T.Optional[build.Build], interpreter: T.Optiona
                          'Please specify the exact backend to use.'.format(vs_version, vs_install_dir))
 
 
-def split_o_flags_args(args: T.List[str]) -> T.List[str]:
+def split_o_flags_args(args: T.List[str], remove: bool) -> T.List[str]:
     """
     Splits any /O args and returns them. Does not take care of flags overriding
-    previous ones. Skips non-O flag arguments.
+    previous ones. Skips non-O flag arguments. If remove is true, found arguments
+    will be removed from the args list
 
     ['/Ox', '/Ob1'] returns ['/Ox', '/Ob1']
     ['/Oxj', '/MP'] returns ['/Ox', '/Oj']
     """
     o_flags = []
-    for arg in args:
+    indexes = []
+    for index, arg in enumerate(args):
         if not arg.startswith('/O'):
             continue
+
+        indexes.append(index)
+
         flags = list(arg[2:])
         # Assume that this one can't be clumped with the others since it takes
         # an argument itself
@@ -85,6 +90,11 @@ def split_o_flags_args(args: T.List[str]) -> T.List[str]:
             o_flags.append(arg)
         else:
             o_flags += ['/O' + f for f in flags]
+
+    if remove:
+        for index in reversed(indexes):
+            args.pop(index)
+
     return o_flags
 
 def generate_guid_from_path(path, path_type) -> str:
@@ -1013,6 +1023,10 @@ class Vs2010Backend(backends.Backend):
         # to override all the defaults, but not the per-target compile args.
         for lang in file_args.keys():
             file_args[lang] += target.get_option(OptionKey(f'{lang}_args', machine=target.for_machine))
+        # Meson default build arguments, which must added as last so that they're added only
+        # if not already set in other ways
+        for lang in file_args.keys():
+            target.compilers[lang].add_default_build_args(file_args[lang])
         for args in file_args.values():
             # This is where Visual Studio will insert target_args, target_defines,
             # etc, which are added later from external deps (see below).
@@ -1118,7 +1132,8 @@ class Vs2010Backend(backends.Backend):
 
     @staticmethod
     def get_build_args(compiler, optimization_level: str, debug: bool, sanitize: str) -> T.List[str]:
-        build_args = compiler.get_optimization_args(optimization_level)
+        build_args = compiler.get_always_args()
+        build_args += compiler.get_optimization_args(optimization_level)
         build_args += compiler.get_debug_args(debug)
         build_args += compiler.sanitizer_compile_args(sanitize)
 
@@ -1273,7 +1288,7 @@ class Vs2010Backend(backends.Backend):
             target,
             platform: str,
             subsystem,
-            build_args,
+            build_args_,
             target_args,
             target_defines,
             target_inc_dirs,
@@ -1281,6 +1296,24 @@ class Vs2010Backend(backends.Backend):
             ) -> None:
         compiler = self._get_cl_compiler(target)
         buildtype_link_args = compiler.get_optimization_link_args(self.optimization)
+
+        build_args = build_args_ + target_args
+
+        def check_build_arg(name, remove = True):
+            index = None
+            try:
+                index = build_args.index(name)
+            except ValueError:
+                pass
+            if index and remove:
+                build_args.pop(index)
+            return index is not None
+
+        def check_build_arg_prefix(prefix):
+            for a in build_args:
+                if a.startswith(prefix):
+                    return True
+            return False
 
         # Prefix to use to access the build root from the vcxproj dir
         down = self.target_to_build_root(target)
@@ -1301,6 +1334,7 @@ class Vs2010Backend(backends.Backend):
         clconf = ET.SubElement(compiles, 'ClCompile')
         if True in ((dep.name == 'openmp') for dep in target.get_external_deps()):
             ET.SubElement(clconf, 'OpenMPSupport').text = 'true'
+
         # CRT type; debug or release
         vscrt_type = target.get_option(OptionKey('b_vscrt'))
         vscrt_val = compiler.get_crt_val(vscrt_type, self.buildtype)
@@ -1318,25 +1352,31 @@ class Vs2010Backend(backends.Backend):
         else:
             ET.SubElement(type_config, 'UseDebugLibraries').text = 'false'
             ET.SubElement(clconf, 'RuntimeLibrary').text = 'MultiThreadedDLL'
+
         # Sanitizers
-        if '/fsanitize=address' in build_args:
+        if check_build_arg('/fsanitize=address', remove=True):
             ET.SubElement(type_config, 'EnableASAN').text = 'true'
+
         # Debug format
-        if '/ZI' in build_args:
+        if check_build_arg('/ZI', remove=True):
             ET.SubElement(clconf, 'DebugInformationFormat').text = 'EditAndContinue'
-        elif '/Zi' in build_args:
+        elif check_build_arg('/Zi', remove=True):
             ET.SubElement(clconf, 'DebugInformationFormat').text = 'ProgramDatabase'
-        elif '/Z7' in build_args:
+        elif check_build_arg('/Z7', remove=True):
             ET.SubElement(clconf, 'DebugInformationFormat').text = 'OldStyle'
         else:
             ET.SubElement(clconf, 'DebugInformationFormat').text = 'None'
+        assert not check_build_arg_prefix('/Z[:alnum:]') # TODO
+
         # Runtime checks
-        if '/RTC1' in build_args:
+        if check_build_arg('/RTC1', remove=True):
             ET.SubElement(clconf, 'BasicRuntimeChecks').text = 'EnableFastChecks'
-        elif '/RTCu' in build_args:
+        elif check_build_arg('/RTCu', remove=True):
             ET.SubElement(clconf, 'BasicRuntimeChecks').text = 'UninitializedLocalUsageCheck'
-        elif '/RTCs' in build_args:
+        elif check_build_arg('/RTCs', remove=True):
             ET.SubElement(clconf, 'BasicRuntimeChecks').text = 'StackFrameRuntimeCheck'
+        assert not check_build_arg_prefix('/RTC')
+
         # Exception handling has to be set in the xml in addition to the "AdditionalOptions" because otherwise
         # cl will give warning D9025: overriding '/Ehs' with cpp_eh value
         if 'cpp' in target.compilers:
@@ -1349,22 +1389,26 @@ class Vs2010Backend(backends.Backend):
                 ET.SubElement(clconf, 'ExceptionHandling').text = 'false'
             else:  # 'sc' or 'default'
                 ET.SubElement(clconf, 'ExceptionHandling').text = 'Sync'
+        assert not check_build_arg_prefix('/EH')
 
-        if len(target_args) > 0:
-            target_args.append('%(AdditionalOptions)')
-            ET.SubElement(clconf, "AdditionalOptions").text = ' '.join(target_args)
-        ET.SubElement(clconf, 'AdditionalIncludeDirectories').text = ';'.join(target_inc_dirs)
-        target_defines.append('%(PreprocessorDefinitions)')
-        ET.SubElement(clconf, 'PreprocessorDefinitions').text = ';'.join(target_defines)
+        if len(target_inc_dirs) > 0:
+            ET.SubElement(clconf, 'AdditionalIncludeDirectories').text = ';'.join(target_inc_dirs)
+
+        if len(target_defines) > 0:
+            target_defines.append('%(PreprocessorDefinitions)')
+            ET.SubElement(clconf, 'PreprocessorDefinitions').text = ';'.join(target_defines)
+
         ET.SubElement(clconf, 'FunctionLevelLinking').text = 'true'
+
         # Warning level
         warning_level = T.cast('str', target.get_option(OptionKey('warning_level')))
         warning_level = 'EnableAllWarnings' if warning_level == 'everything' else 'Level' + str(1 + int(warning_level))
         ET.SubElement(clconf, 'WarningLevel').text = warning_level
         if target.get_option(OptionKey('werror')):
             ET.SubElement(clconf, 'TreatWarningAsError').text = 'true'
+
         # Optimization flags
-        o_flags = split_o_flags_args(build_args)
+        o_flags = split_o_flags_args(build_args, remove=True)
         if '/Ox' in o_flags:
             ET.SubElement(clconf, 'Optimization').text = 'Full'
         elif '/O2' in o_flags:
@@ -1379,22 +1423,52 @@ class Vs2010Backend(backends.Backend):
             ET.SubElement(clconf, 'InlineFunctionExpansion').text = 'OnlyExplicitInline'
         elif '/Ob2' in o_flags:
             ET.SubElement(clconf, 'InlineFunctionExpansion').text = 'AnySuitable'
+        assert not check_build_arg_prefix('/O')
+
         # Size-preserving flags
         if '/Os' in o_flags or '/O1' in o_flags:
             ET.SubElement(clconf, 'FavorSizeOrSpeed').text = 'Size'
         # Note: setting FavorSizeOrSpeed with clang-cl conflicts with /Od and can make debugging difficult, so don't.
         elif '/Od' not in o_flags:
             ET.SubElement(clconf, 'FavorSizeOrSpeed').text = 'Speed'
-        # Note: SuppressStartupBanner is /NOLOGO and is 'true' by default
+
         self.generate_lang_standard_info(file_args, clconf)
+
+        # SuppressStartupBanner is a boolean prop and defaults to true
+        if not check_build_arg('/nologo', remove=True):
+            ET.SubElement(clconf, 'SuppressStartupBanner').text = 'false'
+
+        # Anything else goes in AdditionalOptions
+        if len(build_args) > 0:
+            build_args.append('%(AdditionalOptions)')
+            ET.SubElement(clconf, "AdditionalOptions").text = ' '.join(build_args)
 
         resourcecompile = ET.SubElement(compiles, 'ResourceCompile')
         ET.SubElement(resourcecompile, 'PreprocessorDefinitions')
 
         # Linker options
         link = ET.SubElement(compiles, 'Link')
-        extra_link_args = compiler.compiler_args()
+        extra_link_args = compiler.get_linker_always_args()
+        extra_link_args += compiler.compiler_args()
         extra_link_args += compiler.get_optimization_link_args(self.optimization)
+
+        # Note that cl.exe arguments are case sensitive, but link.exe arguments are not.
+        def check_link_arg(name, remove = True):
+            index = None
+            for i, value in enumerate(extra_link_args):
+                if value.upper() == name.upper():
+                    index = i
+                    break
+            if index and remove:
+                extra_link_args.pop(index)
+            return index is not None
+
+        def check_link_arg_prefix(prefix):
+            for a in extra_link_args:
+                if a.upper().startswith(prefix.upper()):
+                    return True
+            return False
+
         # Generate Debug info
         if self.debug:
             self.generate_debug_information(link)
@@ -1489,9 +1563,6 @@ class Vs2010Backend(backends.Backend):
         for lib in self.get_custom_target_provided_libraries(target):
             additional_links.append(self.relpath(lib, self.get_target_dir(target)))
 
-        if len(extra_link_args) > 0:
-            extra_link_args.append('%(AdditionalOptions)')
-            ET.SubElement(link, "AdditionalOptions").text = ' '.join(extra_link_args)
         if len(additional_libpaths) > 0:
             additional_libpaths.insert(0, '%(AdditionalLibraryDirectories)')
             ET.SubElement(link, 'AdditionalLibraryDirectories').text = ';'.join(additional_libpaths)
@@ -1531,11 +1602,17 @@ class Vs2010Backend(backends.Backend):
             targetmachine.text = 'MachineARM64EC'
         else:
             raise MesonException('Unsupported Visual Studio target machine: ' + targetplatform)
-        # /nologo
-        ET.SubElement(link, 'SuppressStartupBanner').text = 'true'
-        # /release
-        if not target.get_option(OptionKey('debug')):
+
+        if not check_link_arg('/NOLOGO', remove=True):
+            ET.SubElement(link, 'SuppressStartupBanner').text = 'false'
+
+        if check_link_arg('/RELEASE', remove=True):
             ET.SubElement(link, 'SetChecksum').text = 'true'
+
+        # Remaining arguments in AdditionalOptions
+        if len(extra_link_args) > 0:
+            extra_link_args.append('%(AdditionalOptions)')
+            ET.SubElement(link, "AdditionalOptions").text = ' '.join(extra_link_args)
 
     # Visual studio doesn't simply allow the src files of a project to be added with the 'Condition=...' attribute,
     # to allow us to point to the different debug/debugoptimized/release sets of generated src files for each of
@@ -2089,6 +2166,7 @@ class Vs2010Backend(backends.Backend):
             self.add_project_reference(root, regen_vcxproj, self.environment.coredata.regen_guid)
 
     def generate_lang_standard_info(self, file_args: T.Dict[str, CompilerArgs], clconf: ET.Element) -> None:
+        # virtual method implemented in vs20XXbackend subclass
         pass
 
     # Returns if a target generates a manifest or not.

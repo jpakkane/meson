@@ -787,6 +787,15 @@ class Compiler(HoldableObject, metaclass=abc.ABCMeta):
         """Return an appropriate CompilerArgs instance for this class."""
         return CompilerArgs(self, args)
 
+    def add_default_build_args(self, args: CompilerArgs) -> None:
+        """Append Meson default compiler arguments.
+
+        Because Meson default arguments can be overriden by the user, this method
+        must be called after building the complete arguments list. This method
+        checks all the previously added arguments.
+        """
+        pass
+
     @contextlib.contextmanager
     def compile(self, code: 'mesonlib.FileOrString',
                 extra_args: T.Union[None, CompilerArgs, T.List[str]] = None,
