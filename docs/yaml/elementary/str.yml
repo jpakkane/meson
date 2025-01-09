@@ -306,6 +306,12 @@ methods:
 
     It is best to be unambiguous and specify the full revision level to compare.
 
+    *Since 1.8.0* multiple version can be compared:
+
+    ```meson
+    '3.6'.version_compare('>=3', '<4.0') == true
+    ```
+
   posargs:
     compare_string:
       type: str
