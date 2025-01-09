@@ -288,8 +288,8 @@ class RunProcess(MesonInterpreterObject):
             for t in (stdout_thread, stderr_thread):
                 t.join()
 
-            o = b''.join(o_list).decode('utf-8', errors='replace')
-            e = b''.join(e_list).decode('utf-8', errors='replace')
+            o = b''.join(o_list).decode('utf-8', errors='replace').replace('\r\n', '\n')
+            e = b''.join(e_list).decode('utf-8', errors='replace').replace('\r\n', '\n')
 
             if self.capture:
                 mlog.debug('--- stdout ---')
