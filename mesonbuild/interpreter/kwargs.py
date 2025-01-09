@@ -390,6 +390,7 @@ class Executable(_BuildTarget):
     pie: T.Optional[bool]
     vs_module_defs: T.Optional[T.Union[str, File, build.CustomTarget, build.CustomTargetIndex]]
     win_subsystem: T.Optional[str]
+    android_usecase: T.Optional[str]
 
 
 class _StaticLibMixin(TypedDict):

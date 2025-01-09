@@ -3315,8 +3315,13 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
             # If implib, and that's significant on this platform (i.e. Windows using either GCC or Visual Studio)
             if target.import_filename:
                 commands += linker.gen_import_library_args(self.get_import_filename(target))
-            if target.pie:
-                commands += linker.get_pie_link_args()
+            m = self.environment.machines[target.for_machine]
+            if m.is_android() and target.android_usecase == 'application':
+                commands += linker.get_pic_args()
+                commands += linker.get_std_shared_module_link_args(target.get_options())
+            else:
+                if target.pie:
+                    commands += linker.get_pie_link_args()
             if target.vs_module_defs and hasattr(linker, 'gen_vs_module_defs_args'):
                 commands += linker.gen_vs_module_defs_args(target.vs_module_defs.rel_to_builddir(self.build_to_src))
         elif isinstance(target, build.SharedLibrary):

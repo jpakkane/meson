@@ -3461,14 +3461,17 @@ class Interpreter(InterpreterBase, HoldableObject):
         if targetclass is build.Executable:
             kwargs = T.cast('kwtypes.Executable', kwargs)
             if kwargs['gui_app'] is not None:
-                if kwargs['win_subsystem'] is not None:
+                if kwargs['win_subsystem'] is not None or kwargs['android_usecase']:
                     raise InvalidArguments.from_node(
-                        'Executable got both "gui_app", and "win_subsystem" arguments, which are mutually exclusive',
+                        'Executable got both "gui_app", and "win_subsystem"/"android_usecase" arguments, which are mutually exclusive',
                         node=node)
                 if kwargs['gui_app']:
                     kwargs['win_subsystem'] = 'windows'
+                    kwargs['android_usecase'] = 'application'
             if kwargs['win_subsystem'] is None:
                 kwargs['win_subsystem'] = 'console'
+            if kwargs['android_usecase'] is None:
+                kwargs['android_usecase'] = 'executable'
 
             if kwargs['implib']:
                 if kwargs['export_dynamic'] is False:

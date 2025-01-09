@@ -111,7 +111,7 @@ known_build_target_kwargs = (
     rust_kwargs |
     cs_kwargs)
 
-known_exe_kwargs = known_build_target_kwargs | {'implib', 'export_dynamic', 'pie', 'vs_module_defs'}
+known_exe_kwargs = known_build_target_kwargs | {'implib', 'export_dynamic', 'pie', 'vs_module_defs', 'android_usecase'}
 known_shlib_kwargs = known_build_target_kwargs | {'version', 'soversion', 'vs_module_defs', 'darwin_versions', 'rust_abi'}
 known_shmod_kwargs = known_build_target_kwargs | {'vs_module_defs', 'rust_abi'}
 known_stlib_kwargs = known_build_target_kwargs | {'pic', 'prelink', 'rust_abi'}
@@ -1977,6 +1977,9 @@ class Executable(BuildTarget):
         super().__init__(name, subdir, subproject, for_machine, sources, structured_sources, objects,
                          environment, compilers, kwargs)
         self.win_subsystem = kwargs.get('win_subsystem') or 'console'
+        self.android_usecase = kwargs.get('android_usecase', 'application' if kwargs.get('gui_app') else 'executable')
+        if (not isinstance(self.android_usecase, str)) or self.android_usecase not in ['executable', 'application']:
+            raise InvalidArguments('"android_usecase" keyword must be one of: executable, application')
         # Check for export_dynamic
         self.export_dynamic = kwargs.get('export_dynamic', False)
         if not isinstance(self.export_dynamic, bool):
@@ -1995,14 +1998,19 @@ class Executable(BuildTarget):
     def post_init(self) -> None:
         super().post_init()
         machine = self.environment.machines[self.for_machine]
-        # Unless overridden, executables have no suffix or prefix. Except on
-        # Windows and with C#/Mono executables where the suffix is 'exe'
+        # Unless overridden, Windows and C#/Mono executables have 'exe' as suffix and Android 'application'
+        # executables follow the shared library naming conventions (as they are shared libraries).
         if not hasattr(self, 'prefix'):
-            self.prefix = ''
+            if machine.is_android() and self.android_usecase == 'application':
+                self.prefix = 'lib'
+            else:
+                self.prefix = ''
         if not hasattr(self, 'suffix'):
             # Executable for Windows or C#/Mono
             if machine.is_windows() or machine.is_cygwin() or 'cs' in self.compilers:
                 self.suffix = 'exe'
+            elif machine.is_android() and self.android_usecase == 'application':
+                self.suffix = 'so'
             elif machine.system.startswith('wasm') or machine.system == 'emscripten':
                 self.suffix = 'js'
             elif ('c' in self.compilers and self.compilers['c'].get_id().startswith('armclang') or
@@ -2024,6 +2032,8 @@ class Executable(BuildTarget):
             else:
                 self.suffix = machine.get_exe_suffix()
         self.filename = self.name
+        if self.prefix:
+            self.filename = self.prefix + self.filename
         if self.suffix:
             self.filename += '.' + self.suffix
         self.outputs[0] = self.filename
@@ -2068,6 +2078,8 @@ class Executable(BuildTarget):
             raise InvalidArguments('Invalid rust_crate_type: must be "bin" for executables.')
 
     def get_default_install_dir(self) -> T.Union[T.Tuple[str, str], T.Tuple[None, None]]:
+        if self.android_usecase == 'application':
+            return self.environment.get_shared_lib_dir(), '{libdir_shared}'
         return self.environment.get_bindir(), '{bindir}'
 
     def description(self):

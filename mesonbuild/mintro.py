@@ -270,6 +270,9 @@ def list_targets(builddata: build.Build, installdata: backends.InstallData, back
         win_subsystem = getattr(target, 'win_subsystem', None)
         if win_subsystem is not None:
             t['win_subsystem'] = win_subsystem
+        android_usecase = getattr(target, 'android_usecase', None)
+        if android_usecase is not None:
+            t['android_usecase'] = android_usecase
 
         if installdata and target.should_install():
             t['installed'] = True

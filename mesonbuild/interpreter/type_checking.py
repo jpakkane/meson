@@ -655,6 +655,13 @@ def _validate_win_subsystem(value: T.Optional[str]) -> T.Optional[str]:
     return None
 
 
+def _validate_android_usecase(value: T.Optional[str]) -> T.Optional[str]:
+    if value is not None:
+        if value not in ['application', 'executable']:
+            return f'Invalid value for win_subsystem: {value}.'
+    return None
+
+
 def _validate_darwin_versions(darwin_versions: T.List[T.Union[str, int]]) -> T.Optional[str]:
     if len(darwin_versions) > 2:
         return f"Must contain between 0 and 2 elements, not {len(darwin_versions)}"
@@ -709,6 +716,11 @@ _EXCLUSIVE_EXECUTABLE_KWS: T.List[KwargInfo] = [
         (str, NoneType),
         convertor=lambda x: x.lower() if isinstance(x, str) else None,
         validator=_validate_win_subsystem,
+    ),
+    KwargInfo(
+        'android_usecase',
+        (str, NoneType),
+        validator=_validate_android_usecase,
     ),
 ]
 

@@ -3329,6 +3329,7 @@ class AllPlatformTests(BasePlatformTests):
             ('depends', list),
             ('install_filename', (list, None)),
             ('installed', bool),
+            ('android_usecase', (str, None)),
             ('vs_module_defs', (str, None)),
             ('win_subsystem', (str, None)),
         ]
@@ -3556,7 +3557,7 @@ class AllPlatformTests(BasePlatformTests):
         res_wb = [i for i in res_wb if i['type'] != 'custom']
         for i in res_wb:
             i['filename'] = [os.path.relpath(x, self.builddir) for x in i['filename']]
-            for k in ('install_filename', 'dependencies', 'win_subsystem'):
+            for k in ('install_filename', 'dependencies', 'android_usecase', 'win_subsystem'):
                 if k in i:
                     del i[k]
 
