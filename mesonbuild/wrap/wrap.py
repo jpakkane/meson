@@ -28,6 +28,7 @@ from pathlib import Path, PurePath
 from functools import lru_cache
 
 from . import WrapMode
+from .wraplock import WrapLock
 from .. import coredata
 from ..mesonlib import quiet_git, GIT, ProgressBar, MesonException, windows_proof_rmtree, Popen_safe
 from ..interpreterbase import FeatureNew
@@ -304,6 +305,7 @@ class Resolver:
     def __post_init__(self) -> None:
         self.subdir_root = os.path.join(self.source_dir, self.subdir)
         self.cachedir = os.environ.get('MESON_PACKAGE_CACHE_DIR') or os.path.join(self.subdir_root, 'packagecache')
+        self.wraplock = WrapLock(self.subdir_root)
         self.wraps: T.Dict[str, PackageDefinition] = {}
         self.netrc: T.Optional[netrc] = None
         self.provided_deps: T.Dict[str, PackageDefinition] = {}
@@ -432,7 +434,7 @@ class Resolver:
                 return wrap_name
         return None
 
-    def resolve(self, packagename: str, force_method: T.Optional[Method] = None) -> T.Tuple[str, Method]:
+    def _resolve(self, packagename: str, force_method: T.Optional[Method]) -> T.Tuple[str, Method]:
         wrap = self.wraps.get(packagename)
         if wrap is None:
             wrap = self.get_from_wrapdb(packagename)
@@ -529,6 +531,10 @@ class Resolver:
         # reference.
         self.wrap.update_hash_cache(self.dirname)
         return rel_path, method
+
+    def resolve(self, packagename: str, force_method: T.Optional[Method] = None) -> T.Tuple[str, Method]:
+        with self.wraplock:
+            return self._resolve(packagename, force_method)
 
     def check_can_download(self) -> None:
         # Don't download subproject data based on wrap file if requested.
