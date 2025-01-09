@@ -1,7 +1,7 @@
 {
   "installed": [
-    { "type": "shared_lib",  "file": "usr/lib/foo", "platform": "!cygwin" },
-    { "type": "file",  "file": "usr/lib/libfoo.dll", "platform": "cygwin" },
+    { "type": "shared_lib",  "file": "usr/lib/foo", "platform": "!windows" },
+    { "type": "file",  "file": "usr/lib/libfoo.dll", "platform": "windows" },
     { "type": "file",  "file": "usr/include/libfoo.h" },
     { "type": "file", "file": "usr/lib/pkgconfig/somelib.pc" }
   ]

@@ -2,6 +2,23 @@
 
 srcdir=$(dirname "$0")
 
+# some configure scripts seem to iterate over srcdir and other paths
+# with for-loop using path_separator (most cases colon.)
+PATH_SEPARATOR=:
+(PATH='/bin;/bin'; FPATH=$PATH; sh -c :) >/dev/null 2>&1 && {
+(PATH='/bin:/bin'; FPATH=$PATH; sh -c :) >/dev/null 2>&1 ||
+  PATH_SEPARATOR=';'
+}
+IFS=$PATH_SEPARATOR
+for i in $srcdir
+do
+if [ "$i" != "$srcdir" ]
+then
+    echo "failed to extract $srcdir using path separator $PATH_SEPARATOR"
+    exit 1
+fi
+done
+
 for i in "$@"
 do
 case $i in

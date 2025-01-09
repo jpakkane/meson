@@ -320,6 +320,8 @@ considered if the platform matches. The following values for
 | `gcc`      | Not `msvc`                                                           |
 | `cygwin`   | Matches when the platform is cygwin                                  |
 | `!cygwin`  | Not `cygwin`                                                         |
+| `windows`  | Matches when the platform is windows or cygwin                       |
+| `!windows` | Not `windows`                                                        |
 
 #### matrix
 

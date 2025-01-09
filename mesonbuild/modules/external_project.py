@@ -6,6 +6,7 @@ from __future__ import annotations
 from pathlib import Path
 import os
 import shlex
+import shutil
 import subprocess
 import typing as T
 
@@ -93,7 +94,7 @@ class ExternalProject(NewExtensionModule):
         # will install files into "c:/bar/c:/foo" which is an invalid path.
         # Work around that issue by removing the drive from prefix.
         if self.prefix.drive:
-            self.prefix = Path(relpath(self.prefix, self.prefix.drive))
+            self.prefix = Path('/' + relpath(self.prefix, self.prefix.drive + '/'))
 
         # self.prefix is an absolute path, so we cannot append it to another path.
         self.rel_prefix = Path(relpath(self.prefix, self.prefix.root))
@@ -116,6 +117,15 @@ class ExternalProject(NewExtensionModule):
             configure_path = Path(self.src_dir, self.configure_command)
             configure_prog = state.find_program(configure_path.as_posix())
             configure_cmd = configure_prog.get_command()
+            # On Cygwin, MSYS2 and GitBash the configure command should be
+            # converted to unix style path by cygpath command,
+            # because the colon in the drive letter breaks many configure scripts.
+            # Do nothing on other environment where cygpath is not available.
+            if (configure_path.drive and len(configure_cmd) >= 2
+                    and configure_cmd[-1] == configure_path.as_posix()
+                    and shutil.which('cygpath')):
+                _p, o, _e = Popen_safe(['cygpath', configure_cmd[-1]])
+                configure_cmd = configure_cmd[:-1] + [Path(o.strip('\n')).as_posix()]
             workdir = self.build_dir
             self.make = state.find_program('make').get_command()
 
