@@ -4,6 +4,8 @@ import shlex
 import subprocess
 import copy
 import textwrap
+import threading
+import sys
 
 from pathlib import Path, PurePath
 
@@ -24,7 +26,7 @@ from ..interpreterbase import (
 from ..interpreter.type_checking import NoneType, ENV_KW, ENV_SEPARATOR_KW, PKGCONFIG_DEFINE_KW
 from ..dependencies import Dependency, ExternalLibrary, InternalDependency
 from ..programs import ExternalProgram
-from ..mesonlib import HoldableObject, listify, Popen_safe
+from ..mesonlib import HoldableObject, listify
 
 import typing as T
 
@@ -214,11 +216,13 @@ class RunProcess(MesonInterpreterObject):
                  mesonintrospect: T.List[str],
                  in_builddir: bool = False,
                  check: bool = False,
-                 capture: bool = True) -> None:
+                 capture: bool = True,
+                 console: bool = False) -> None:
         super().__init__()
         if not isinstance(cmd, ExternalProgram):
             raise AssertionError('BUG: RunProcess must be passed an ExternalProgram')
         self.capture = capture
+        self.console = console
         self.returncode, self.stdout, self.stderr = self.run_command(cmd, args, env, source_dir, build_dir, subdir, mesonintrospect, in_builddir, check)
         self.methods.update({'returncode': self.returncode_method,
                              'stdout': self.stdout_method,
@@ -248,18 +252,52 @@ class RunProcess(MesonInterpreterObject):
         child_env = os.environ.copy()
         child_env.update(menv)
         child_env = env.get_env(child_env)
-        stdout = subprocess.PIPE if self.capture else subprocess.DEVNULL
+
+        def proc_output_thread(pipe: T.IO, capture_list: T.List, io_obj: T.TextIO) -> None:
+            while True:
+                line = pipe.readline()
+                if not line:
+                    break
+                if self.console:
+                    io_obj.write(line.decode('utf-8', errors='replace'))
+                    io_obj.flush()
+                if self.capture:
+                    capture_list.append(line)
+            pipe.close()
+
+        stdin: T.Union[T.TextIO, int] = sys.stdin if self.console else subprocess.DEVNULL
+        stdout = subprocess.PIPE
+        stderr = subprocess.PIPE
+
         mlog.debug('Running command:', mesonlib.join_args(command_array))
         try:
-            p, o, e = Popen_safe(command_array, stdout=stdout, env=child_env, cwd=cwd)
+            p = subprocess.Popen(command_array, stdin=stdin, stdout=stdout, stderr=stderr, env=child_env, cwd=cwd)
+
+            o_list: T.List = []
+            e_list: T.List = []
+            stdout_thread = threading.Thread(
+                target=proc_output_thread,
+                kwargs={'pipe': p.stdout, 'capture_list': o_list, 'io_obj': sys.stdout}, daemon=True)
+            stderr_thread = threading.Thread(
+                target=proc_output_thread,
+                kwargs={'pipe': p.stderr, 'capture_list': e_list, 'io_obj': sys.stderr}, daemon=True)
+            for t in (stdout_thread, stderr_thread):
+                t.start()
+
+            p.wait()
+            for t in (stdout_thread, stderr_thread):
+                t.join()
+
+            o = b''.join(o_list).decode('utf-8', errors='replace')
+            e = b''.join(e_list).decode('utf-8', errors='replace')
+
             if self.capture:
                 mlog.debug('--- stdout ---')
                 mlog.debug(o)
+                mlog.debug('--- stderr ---')
+                mlog.debug(e)
             else:
-                o = ''
-                mlog.debug('--- stdout disabled ---')
-            mlog.debug('--- stderr ---')
-            mlog.debug(e)
+                mlog.debug('--- capture output disabled ---')
             mlog.debug('')
 
             if check and p.returncode != 0:

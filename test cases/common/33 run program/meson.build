@@ -57,13 +57,57 @@ endif
 
 py3 = import('python3').find_python()
 
-ret = run_command(py3, '-c', 'print("some output")', check: false)
-assert(ret.returncode() == 0, 'failed to run python3: ' + ret.stderr())
-assert(ret.stdout() == 'some output\n', 'failed to run python3')
-
-ret = run_command(py3, '-c', 'print("some output")', check: false, capture: false)
+# No runtime output expected, not captured
+ret = run_command(
+    py3,
+    '-c',
+    'import sys; print("stdout|capture:false,console:false"); print("stderr|capture:false,console:false", file=sys.stderr)',
+    check: true,
+    capture: false,
+    console: false,
+)
 assert(ret.returncode() == 0, 'failed to run python3: ' + ret.stderr())
 assert(ret.stdout() == '', 'stdout is "@0@" instead of empty'.format(ret.stdout()))
+assert(ret.stderr() == '', 'stderr is "@0@" instead of empty'.format(ret.stderr()))
+
+# Expect runtime output, not captured
+ret = run_command(
+    py3,
+    '-c',
+    'import sys; print("stdout|capture:false,console:true"); print("stderr|capture:false,console:true", file=sys.stderr)',
+    check: true,
+    capture: false,
+    console: true,
+)
+assert(ret.returncode() == 0, 'failed to run python3: ' + ret.stderr())
+assert(ret.stdout() == '', 'stdout is "@0@" instead of empty'.format(ret.stdout()))
+assert(ret.stderr() == '', 'stderr is "@0@" instead of empty'.format(ret.stderr()))
+
+# No runtime output expected, but captured
+ret = run_command(
+    py3,
+    '-c',
+    'import sys; print("stdout|capture:true,console:false"); print("stderr|capture:true,console:false", file=sys.stderr)',
+    check: true,
+    capture: true,
+    console: false,
+)
+assert(ret.returncode() == 0, 'failed to run python3: ' + ret.stderr())
+assert(ret.stdout() == 'stdout|capture:true,console:false\n', 'failed to capture stdout:' + ret.stdout())
+assert(ret.stderr() == 'stderr|capture:true,console:false\n', 'failed to capture stderr:' + ret.stderr())
+
+# Expect runtime output, and captured
+ret = run_command(
+    py3,
+    '-c',
+    'import sys; print("stdout|capture:true,console:true"); print("stderr|capture:true,console:true", file=sys.stderr)',
+    check: true,
+    capture: true,
+    console: true,
+)
+assert(ret.returncode() == 0, 'failed to run python3: ' + ret.stderr())
+assert(ret.stdout() == 'stdout|capture:true,console:true\n', 'failed to capture stdout:' + ret.stdout())
+assert(ret.stderr() == 'stderr|capture:true,console:true\n', 'failed to capture stderr:' + ret.stderr())
 
 c_env = environment()
 c_env.append('CUSTOM_ENV_VAR', 'FOOBAR')
@@ -73,7 +117,7 @@ assert(ret.stdout() == 'FOOBAR\n', 'stdout is "@0@" instead of FOOBAR'.format(re
 
 dd = find_program('dd', required : false)
 if dd.found()
-  ret = run_command(dd, 'if=/dev/urandom', 'bs=10', 'count=1', check: false, capture: false)
+  ret = run_command(dd, 'if=/dev/urandom', 'bs=10', 'count=1', 'of=/dev/null', check: false, capture: false)
   assert(ret.returncode() == 0, 'failed to run dd: ' + ret.stderr())
   assert(ret.stdout() == '', 'stdout is "@0@" instead of empty'.format(ret.stdout()))
 endif
