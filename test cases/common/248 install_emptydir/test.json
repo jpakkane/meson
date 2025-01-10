@@ -1,7 +1,9 @@
 {
   "installed": [
     { "type": "dir", "file": "usr/share/new_directory" },
-    { "type": "dir", "file": "usr/share/new_directory/subdir" }
+    { "type": "dir", "file": "usr/share/new_directory/subdir" },
+    { "type": "dir", "file": "usr/share/dir1" },
+    { "type": "dir", "file": "usr/share/dir2" },
+    { "type": "dir", "file": "usr/share/dir3" }
   ]
 }
-

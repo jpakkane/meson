@@ -6,13 +6,16 @@ description: |
   argument. If the directory exists and is not empty, the contents are left in
   place.
 
+  (since 1.4.0) multiple directories are accepted and will be installed.
+
 warnings:
   - the `install_mode` kwarg ignored integer values before 1.1.0.
+  - second path and beyond passed as dirpath were ignored before 1.4.0.
 
 varargs:
   name: dirpath
   type: str
-  description: Directory to create during installation.
+  description: Directories to create during installation.
 
 kwargs:
   install_mode:

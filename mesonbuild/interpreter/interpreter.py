@@ -2370,16 +2370,18 @@ class Interpreter(InterpreterBase, HoldableObject):
         return m
 
     @FeatureNew('install_emptydir', '0.60.0')
+    @typed_pos_args('install_emptydir', varargs=str, min_varargs=1)
     @typed_kwargs(
         'install_emptydir',
         INSTALL_MODE_KW,
         KwargInfo('install_tag', (str, NoneType), since='0.62.0')
     )
-    def func_install_emptydir(self, node: mparser.BaseNode, args: T.Tuple[str], kwargs) -> None:
-        d = build.EmptyDir(args[0], kwargs['install_mode'], self.subproject, kwargs['install_tag'])
-        self.build.emptydir.append(d)
-
-        return d
+    def func_install_emptydir(self, node: mparser.BaseNode, args: T.Tuple[T.List[str]], kwargs) -> None:
+        if len(args[0]) > 1:
+            FeatureNew.single_use('install_emptydir with more than one path', '1.4.0', self.subproject, location=node)
+        for one_dir in args[0]:
+            d = build.EmptyDir(one_dir, kwargs['install_mode'], self.subproject, kwargs['install_tag'])
+            self.build.emptydir.append(d)
 
     @FeatureNew('install_symlink', '0.61.0')
     @typed_pos_args('symlink_name', str)
