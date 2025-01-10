@@ -507,6 +507,28 @@ class LLVMDependencyCMake(CMakeDependency):
             return orig_name[0]
         return module
 
+class PerlDependency(ConfigToolDependency):
+
+    tools = ['perl']
+    tool_name = 'perl'
+
+    def __init__(self, environment: 'Environment', kwargs):
+        nwargs = kwargs.copy()
+        nwargs['version_arg'] = '-e printf q(%vd), $^V;'
+        super().__init__('Perl', environment, nwargs)
+        if not self.is_found:
+            return
+
+        if self.language not in ['c', 'c++', None]:
+            mlog.debug('Only C/C++ languages are supported with Perl dependency.')
+            self.is_found = False
+            return
+
+        # perl seems to have cflags and ldflags for both C and C++
+        self.compile_args = self.get_config_value(['-MExtUtils::Embed', '-e', 'ccopts'], 'compile_args')
+        self.link_args = self.get_config_value(['-MExtUtils::Embed', '-e', 'ldopts'], 'link_args')
+
+packages['perl'] = PerlDependency
 
 class ValgrindDependency(PkgConfigDependency):
     '''

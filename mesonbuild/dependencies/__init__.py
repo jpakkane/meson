@@ -191,6 +191,7 @@ packages.defaults.update({
     'gtest': 'dev',
     'gmock': 'dev',
     'llvm': 'dev',
+    'perl': 'dev',
     'valgrind': 'dev',
     'zlib': 'dev',
     'jni': 'dev',
