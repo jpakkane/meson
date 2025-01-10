@@ -2,6 +2,7 @@
 #include "zlib.h"
 
 int main(void) {
-    printf("%s\n", zlibVersion());
-    return 0;
+    const char * const v = zlibVersion();
+    printf("%s\n", v ? v : "<NULL>");
+    return !v;
 }
