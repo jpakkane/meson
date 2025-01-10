@@ -848,10 +848,10 @@ class Vs2010Backend(backends.Backend):
         for arg in file_args[lang].to_native():
             if self.is_argument_with_msbuild_xml_entry(arg):
                 continue
-            if arg == '%(AdditionalOptions)':
-                args.append(arg)
-            else:
+            if " " in arg:
                 args.append(self.escape_additional_option(arg))
+            else:
+                args.append(arg)
         ET.SubElement(parent_node, "AdditionalOptions").text = ' '.join(args)
 
     # Set up each project's source file ('CLCompile') element with appropriate preprocessor, include dir, and compile option values for correct intellisense.
