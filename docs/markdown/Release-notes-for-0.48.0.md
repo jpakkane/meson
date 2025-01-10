@@ -310,7 +310,7 @@ files get exported.
 To enable this, the following needs to be added to the `.wrap` file:
 
 ```ini
-clone-recursive=true
+clone-recursive = true
 ```
 
 ## `subproject()` function now supports the `required:` kwarg

@@ -135,7 +135,7 @@ case, the directory will be copied into `subprojects/` before applying patches.
 - `push-url` - alternative url to configure as a git push-url. Useful if
   the subproject will be developed and changes pushed upstream.
   *(since 0.37.0)*
-- `clone-recursive` - also clone submodules of the repository
+- `clone-recursive = true` - also clone submodules of the repository
   *(since 0.48.0)*
 
 ## wrap-file with Meson build patch

@@ -600,6 +600,9 @@ class Resolver:
         if self.wrap.values.get('depth', '') != '':
             is_shallow = True
             depth_option = ['--depth', self.wrap.values.get('depth')]
+        clone_recursive_val = self.wrap.values.get('clone-recursive', '').lower()
+        if clone_recursive_val and clone_recursive_val not in ['false', 'true']:
+            raise WrapException(f"clone-recursive: invalid value '{clone_recursive_val}' (use 'true' or 'false')")
         # for some reason git only allows commit ids to be shallowly fetched by fetch not with clone
         if is_shallow and self.is_git_full_commit_id(revno):
             # git doesn't support directly cloning shallowly for commits,
@@ -622,7 +625,7 @@ class Resolver:
                     args += ['--branch', revno]
                 args += [self.wrap.get('url'), self.directory]
                 verbose_git(args, self.subdir_root, check=True)
-        if self.wrap.values.get('clone-recursive', '').lower() == 'true':
+        if clone_recursive_val == 'true':
             verbose_git(['submodule', 'update', '--init', '--checkout', '--recursive', *depth_option],
                         self.dirname, check=True)
         push_url = self.wrap.values.get('push-url')
