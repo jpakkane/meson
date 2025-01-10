@@ -294,6 +294,17 @@ class ConverterTarget:
             else:
                 self.sources += i.sources
 
+        self.clib_compiler = None
+        compilers = self.env.coredata.compilers[self.for_machine]
+
+        for lang in ['objcpp', 'cpp', 'objc', 'fortran', 'c']:
+            if lang in self.languages:
+                try:
+                    self.clib_compiler = compilers[lang]
+                    break
+                except KeyError:
+                    pass
+
     def __repr__(self) -> str:
         return f'<{self.__class__.__name__}: {self.name}>'
 
@@ -345,7 +356,7 @@ class ConverterTarget:
         if tgt:
             self.depends_raw = trace.targets[self.cmake_name].depends
 
-            rtgt = resolve_cmake_trace_targets(self.cmake_name, trace, self.env)
+            rtgt = resolve_cmake_trace_targets(self.cmake_name, trace, self.env, clib_compiler=self.clib_compiler)
             self.includes += [Path(x) for x in rtgt.include_directories]
             self.link_flags += rtgt.link_flags
             self.public_link_flags += rtgt.public_link_flags
