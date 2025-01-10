@@ -7,7 +7,10 @@ import sys, os
 import subprocess
 import shutil
 import argparse
-from ..mesonlib import MesonException, Popen_safe, is_windows, is_cygwin, split_args
+from ..mesonlib import (
+    MesonException, Popen_safe, is_windows, is_cygwin, is_parent_path,
+    split_args,
+)
 from . import destdir_join
 import typing as T
 
@@ -112,7 +115,7 @@ def build_gtkdoc(source_root: str, build_root: str, doc_subdir: str, src_subdirs
         # FIXME: Use mesonlib.File objects so we don't need to do this
         if not os.path.isabs(f):
             f = os.path.join(doc_src, f)
-        elif os.path.commonpath([f, build_root]) == build_root:
+        elif is_parent_path(build_root, f):
             continue
         shutil.copyfile(f, os.path.join(abs_out, os.path.basename(f)))
 
