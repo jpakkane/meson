@@ -114,6 +114,7 @@ format files
  - [Marker](https://github.com/fabiocolacio/Marker), a GTK-3 markdown editor
  - [mcfgthread](https://github.com/lhmouse/mcfgthread), cornerstone library for C++11 threading on mingw-w64
  - [Mesa](https://mesa3d.org/), an open source graphics driver project
+ - [meson-vcpkg](https://github.com/Neumann-A/meson-vcpkg), example project illustrating how to use meson with vcpkg
  - [Miniz](https://github.com/richgel999/miniz), a zlib replacement library
  - [MiracleCast](https://github.com/albfan/miraclecast), connect external monitors to your system via WiFi-Display specification aka Miracast
  - [mpv](https://github.com/mpv-player/mpv), a free, open source, and cross-platform media player
