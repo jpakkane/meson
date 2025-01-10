@@ -114,6 +114,7 @@ def coverage(outputs: T.List[str], source_root: str, subproject_root: str, build
                                    '--directory', build_root,
                                    '--capture',
                                    '--initial',
+                                   '--ignore-errors', 'inconsistent,mismatch',
                                    '--output-file',
                                    initial_tracefile] +
                                   lcov_config +
@@ -121,6 +122,7 @@ def coverage(outputs: T.List[str], source_root: str, subproject_root: str, build
             subprocess.check_call([lcov_exe,
                                    '--directory', build_root,
                                    '--capture',
+                                   '--ignore-errors', 'inconsistent,mismatch',
                                    '--output-file', run_tracefile,
                                    '--no-checksum',
                                    *lcov_exe_rc_branch_coverage] +
@@ -130,6 +132,7 @@ def coverage(outputs: T.List[str], source_root: str, subproject_root: str, build
             subprocess.check_call([lcov_exe,
                                    '-a', initial_tracefile,
                                    '-a', run_tracefile,
+                                   '--ignore-errors', 'unused',
                                    *lcov_exe_rc_branch_coverage,
                                    '-o', raw_tracefile] + lcov_config)
             # Remove all directories outside the source_root from the covinfo
@@ -137,6 +140,7 @@ def coverage(outputs: T.List[str], source_root: str, subproject_root: str, build
                                    '--extract', raw_tracefile,
                                    os.path.join(source_root, '*'),
                                    *lcov_exe_rc_branch_coverage,
+                                   '--ignore-errors', 'unused',
                                    '--output-file', covinfo] + lcov_config)
             # Remove all directories inside subproject dir
             subprocess.check_call([lcov_exe,
@@ -148,6 +152,7 @@ def coverage(outputs: T.List[str], source_root: str, subproject_root: str, build
             subprocess.check_call([genhtml_exe,
                                    '--prefix', build_root,
                                    '--prefix', source_root,
+                                   '--ignore-errors', 'unused',
                                    '--output-directory', htmloutdir,
                                    '--title', 'Code coverage',
                                    '--legend',
