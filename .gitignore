@@ -29,6 +29,8 @@ packagecache
 
 /docs/built_docs
 /docs/hotdoc-private*
+/devdocs/built_docs
+/devdocs/hotdoc-private*
 
 *.pyc
 /*venv*

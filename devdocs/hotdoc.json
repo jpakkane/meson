@@ -1,0 +1,14 @@
+{
+    "extra_assets": [
+        "images/"
+    ],
+    "html_extra_theme": "theme/extra/",
+    "include_paths": [
+        "markdown/"
+    ],
+    "output": "built_docs/",
+    "project_name": "Meson documentation",
+    "project_version": "1.0",
+    "default-license": "CC-BY-SAv4.0",
+    "sitemap": "sitemap.txt"
+}
