@@ -5,7 +5,9 @@ description: |
   to be searched for in `PATH` or other places inside the project.
   The search order is:
 
-  1. Program overrides set via [[meson.override_find_program]]
+  1. Program overrides set via [[meson.override_find_program]]. That is, a
+     subproject includes `meson.override_find_program('myprog')` in its Meson 
+     build file.
   1. [`[provide]` sections](Wrap-dependency-system-manual.md#provide-section)
     in subproject wrap files, if [`wrap_mode`](Builtin-options.md#core-options) is
     set to `forcefallback`

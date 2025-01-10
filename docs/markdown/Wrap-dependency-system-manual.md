@@ -292,8 +292,9 @@ program_names = myprog, otherprog
 ```
 
 With such wrap file, `find_program('myprog')` will automatically
-fallback to use the subproject, assuming it uses
-`meson.override_find_program('myprog')`.
+fallback to use the subproject, if
+`meson.override_find_program('myprog')` is set within the 
+subproject's `meson.build` file.
 
 ### CMake wraps
 
