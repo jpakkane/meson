@@ -13,7 +13,7 @@ from .ast import IntrospectionInterpreter, BUILD_TARGET_FUNCTIONS, AstConditionL
 from mesonbuild.mesonlib import MesonException, setup_vsenv
 from . import mlog, environment
 from functools import wraps
-from .mparser import Token, ArrayNode, ArgumentNode, AssignmentNode, StringNode, BooleanNode, ElementaryNode, IdNode, FunctionNode, SymbolNode
+from .mparser import MethodNode, Token, ArrayNode, ArgumentNode, AssignmentNode, StringNode, BooleanNode, ElementaryNode, IdNode, FunctionNode, SymbolNode
 import json, os, re, sys
 import typing as T
 
@@ -886,7 +886,7 @@ class Rewriter:
     def apply_changes(self):
         assert all(hasattr(x, 'lineno') and hasattr(x, 'colno') and hasattr(x, 'filename') for x in self.modified_nodes)
         assert all(hasattr(x, 'lineno') and hasattr(x, 'colno') and hasattr(x, 'filename') for x in self.to_remove_nodes)
-        assert all(isinstance(x, (ArrayNode, FunctionNode)) for x in self.modified_nodes)
+        assert all(isinstance(x, (ArrayNode, FunctionNode, MethodNode, AssignmentNode)) for x in self.modified_nodes)
         assert all(isinstance(x, (ArrayNode, AssignmentNode, FunctionNode)) for x in self.to_remove_nodes)
         # Sort based on line and column in reversed order
         work_nodes = [{'node': x, 'action': 'modify'} for x in self.modified_nodes]
@@ -946,14 +946,21 @@ class Rewriter:
             node = i['node']
             line = node.lineno - 1
             col = node.colno
+            if isinstance(node, MethodNode):
+                # The new data contains the source object as well
+                col = node.source_object.colno
+            elif isinstance(node, AssignmentNode):
+                col = node.var_name.colno
             start = offsets[line] + col
             end = start
-            if isinstance(node, (ArrayNode, FunctionNode)):
+            if isinstance(node, (ArrayNode, FunctionNode, MethodNode)):
                 end = offsets[node.end_lineno - 1] + node.end_colno
+            elif isinstance(node, AssignmentNode):
+                end = offsets[node.value.end_lineno - 1] + node.value.end_colno
 
             # Only removal is supported for assignments
             elif isinstance(node, AssignmentNode) and i['action'] == 'rm':
-                if isinstance(node.value, (ArrayNode, FunctionNode)):
+                if isinstance(node.value, (ArrayNode, FunctionNode, MethodNode)):
                     remove_node({'file': i['file'], 'str': '', 'node': node.value, 'action': 'rm'})
                     raw = files[i['file']]['raw']
                 while raw[end] != '=':
