@@ -73,6 +73,13 @@ class _Resolver:
             typ.resolved += [DataTypeInfo(obj, held_type)]
         return typ
 
+    @classmethod
+    def _flatten_resolved(cls, resolved: T.List[DataTypeInfo]) -> T.Generator[DataTypeInfo, None, None]:
+        for obj in resolved:
+            yield obj
+            if obj.holds:
+                yield from cls._flatten_resolved(obj.holds.resolved)
+
     def _validate_func(self, func: T.Union[Function, Method]) -> None:
         # Always run basic checks, since they also slightly post-process (strip) some strings
         self._validate_named_object(func)
@@ -94,8 +101,9 @@ class _Resolver:
             arg.type = self._resolve_type(arg.type.raw)
 
         # Handle returned_by
-        for obj in func.returns.resolved:
-            obj.data_type.returned_by += [func]
+        for obj in _Resolver._flatten_resolved(func.returns.resolved):
+            if func not in obj.data_type.returned_by:
+                obj.data_type.returned_by += [func]
 
         # Handle kwargs inheritance
         for base_name in func.kwargs_inherit:
