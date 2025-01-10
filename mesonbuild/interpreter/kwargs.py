@@ -404,7 +404,7 @@ class StaticLibrary(_BuildTarget, _StaticLibMixin, _LibraryMixin):
 
 class _SharedLibMixin(TypedDict):
 
-    darwin_versions: T.Optional[T.Tuple[str, str]]
+    darwin_versions: T.Union[None, Literal[False], T.Tuple[str, str]]
     soversion: T.Optional[str]
     version: T.Optional[str]
     vs_module_defs: T.Optional[T.Union[str, File, build.CustomTarget, build.CustomTargetIndex]]

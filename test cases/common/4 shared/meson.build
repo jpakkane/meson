@@ -1,6 +1,6 @@
 project('shared library test', 'c', default_options : ['default_library=shared'])
 lib = shared_library('mylib', 'libfile.c')
-build_target('mylib2', 'libfile.c', target_type: 'shared_library')
+build_target('mylib2', 'libfile.c', target_type: 'shared_library', soversion : 'invalid_darwin_version', darwin_versions: [])
 
 has_not_changed = false
 if is_disabler(lib)

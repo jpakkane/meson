@@ -678,9 +678,14 @@ def _validate_darwin_versions(darwin_versions: T.List[T.Union[str, int]]) -> T.O
     return None
 
 
-def _convert_darwin_versions(val: T.List[T.Union[str, int]]) -> T.Optional[T.Tuple[str, str]]:
-    if not val:
+def _convert_darwin_versions(val: T.List[T.Union[str, int]]) -> T.Union[None, Literal[False], T.Tuple[str, str]]:
+    # Returns None if unset, but False if an empty list is passed, which
+    # annoyingly have different behavior. False means do no use soversion, while
+    # None means do use it.
+    if None in val:
         return None
+    if not val:
+        return False
     elif len(val) == 1:
         v = str(val[0])
         return (v, v)
@@ -689,8 +694,8 @@ def _convert_darwin_versions(val: T.List[T.Union[str, int]]) -> T.Optional[T.Tup
 
 _DARWIN_VERSIONS_KW: KwargInfo[T.List[T.Union[str, int]]] = KwargInfo(
     'darwin_versions',
-    ContainerTypeInfo(list, (str, int)),
-    default=[],
+    ContainerTypeInfo(list, (str, int, NoneType)),
+    default=[None],
     listify=True,
     validator=_validate_darwin_versions,
     convertor=_convert_darwin_versions,

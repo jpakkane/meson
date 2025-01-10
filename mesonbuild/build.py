@@ -2410,10 +2410,14 @@ class SharedLibrary(BuildTarget):
                 # number of the version by default.
                 self.soversion = self.ltversion.split('.')[0]
             # macOS, iOS and tvOS dylib compatibility_version and current_version
-            self.darwin_versions = T.cast('T.Optional[T.Tuple[str, str]]', kwargs.get('darwin_versions'))
-            if self.darwin_versions is None and self.soversion is not None:
+            d = T.cast('T.Union[None, Literal[False], T.Tuple[str, str]]', kwargs.get('darwin_versions'))
+            if d is None and self.soversion is not None:
                 # If unspecified, pick the soversion
                 self.darwin_versions = (self.soversion, self.soversion)
+            elif d is False:
+                self.darwin_versions = None
+            else:
+                self.darwin_versions = d
 
         # Visual Studio module-definitions file
         self.process_vs_module_defs_kw(kwargs)
