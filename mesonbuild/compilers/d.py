@@ -127,11 +127,11 @@ class DmdLikeCompilerMixin(CompilerMixinBase):
         for idx, i in enumerate(parameter_list):
             if i[:3] == '-I=':
                 parameter_list[idx] = i[:3] + os.path.normpath(os.path.join(build_dir, i[3:]))
-            if i[:4] == '-L-L':
+            elif i[:4] == '-L-L':
                 parameter_list[idx] = i[:4] + os.path.normpath(os.path.join(build_dir, i[4:]))
-            if i[:5] == '-L=-L':
+            elif i[:5] == '-L=-L':
                 parameter_list[idx] = i[:5] + os.path.normpath(os.path.join(build_dir, i[5:]))
-            if i[:6] == '-Wl,-L':
+            elif i[:6] == '-Wl,-L':
                 parameter_list[idx] = i[:6] + os.path.normpath(os.path.join(build_dir, i[6:]))
 
         return parameter_list
@@ -411,6 +411,15 @@ class DmdLikeCompilerMixin(CompilerMixinBase):
             # ldc/dmd do some kind of mapping internally for arguments they
             # understand, but pass arguments they don't understand directly.
             args = [a.replace('-L=', '-Xcc=-Wl,') for a in args]
+        return args
+
+    def get_dependency_link_args(self, dep: 'Dependency') -> T.List[str]:
+        args = []  # type: T.List[str]
+        for a in super().get_dependency_link_args(dep):
+            if os.path.isfile(a):
+                args.append(self.LINKER_PREFIX + a)
+            else:
+                args.append(a)
         return args
 
 
