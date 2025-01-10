@@ -37,6 +37,10 @@ def get_distutils_paths(scheme=None, prefix=None):
 # site-packages with dist-packages.
 # See https://github.com/mesonbuild/meson/issues/8739.
 #
+# Also force posix_prefix when on Homebrew on osx, otherwise we end up
+# installing in completely the wrong place!
+# https://github.com/mesonbuild/meson/issues/12113
+
 # We should be using sysconfig, but before 3.10.3, Debian only patches distutils.
 # So we may end up falling back.
 
@@ -55,6 +59,9 @@ def get_install_paths():
             paths = get_distutils_paths(scheme='deb_system')
             install_paths = get_distutils_paths(scheme='deb_system', prefix='')
             return paths, install_paths
+
+    if scheme == 'osx_framework_library':
+        scheme = 'posix_prefix'
 
     paths = sysconfig.get_paths(scheme=scheme)
     empty_vars = {'base': '', 'platbase': '', 'installed_base': ''}
