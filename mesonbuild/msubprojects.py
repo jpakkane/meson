@@ -33,6 +33,7 @@ if T.TYPE_CHECKING:
         types: str
         subprojects_func: T.Callable[[], bool]
         allow_insecure: bool
+        command: str
 
     class UpdateArguments(Arguments):
         rebase: bool
@@ -57,6 +58,13 @@ if T.TYPE_CHECKING:
     class PackagefilesArguments(Arguments):
         apply: bool
         save: bool
+
+    class StatusArguments(Arguments):
+        to_dot: bool
+        explain: bool
+
+    class GitignoreArguments(Arguments):
+        write: bool
 
 ALL_TYPES_STRING = ', '.join(ALL_TYPES)
 
@@ -630,6 +638,172 @@ class Runner:
         return True
 
 
+class StatusPrinter:
+    @dataclass
+    class Package:
+        wrap: PackageDefinition
+        depends: T.List[str]
+        redirected: bool
+        wrap_dir: Path
+
+    def __init__(self, source_dir: str, wraps: T.List[PackageDefinition], to_dot: bool = False, explain: bool = False):
+        self.source_dir = source_dir
+        self.wraps = wraps
+        self.to_dot = to_dot
+        self.explain = explain
+        self.wrap_graph = self._build_graph()
+
+    def _build_graph(self) -> T.Dict[str, StatusPrinter.Package]:
+        packages = {}
+        for wrap in self.wraps:
+            if wrap.original_filename:
+                wrap_dir = Path(wrap.original_filename).parent
+            else:
+                wrap_dir = Path(self.source_dir) / 'subprojects'
+            wrap_dir = wrap_dir / wrap.directory
+            if wrap_dir.is_dir():
+                r = Resolver(self.source_dir, str(wrap_dir / 'subprojects'),
+                             wrap_frontend=False, allow_insecure=False, silent=True)
+                deps = list(r.wraps.keys())
+            else:
+                deps = []
+            packages[wrap.name] = StatusPrinter.Package(
+                wrap=wrap,
+                depends=deps,
+                redirected=wrap.redirected,
+                wrap_dir=wrap_dir,
+            )
+        return packages
+
+    def _print_to_dot(self) -> None:
+        dot_file = ["digraph {\nnode [ shape=box ];"]
+        wrap_to_idx = {}
+        dot_file.append('0 [label="self"]')
+        for idx, wrap_name in enumerate(self.wrap_graph, start=1):
+            wrap_to_idx[wrap_name] = idx
+            dot_file.append(f'{idx} [label="{wrap_name}"]')
+        for wrap_name, wrap in self.wrap_graph.items():
+            if not wrap.redirected:
+                dot_file.append(f"0 -> {wrap_to_idx[wrap_name]}")
+            for dep in wrap.depends:
+                dot_file.append(f"{wrap_to_idx[wrap_name]} -> {wrap_to_idx[dep]}")
+        dot_file_complete = '\n'.join(dot_file) + '\n}'
+        # we use print here to prevent accidental formatting
+        print(dot_file_complete)
+
+    def _print_wrap(self, wrap_name: str, level: int, layer: int, last: bool, with_info: bool) -> None:
+        wrap = self.wrap_graph[wrap_name]
+
+        out: T.List[str | mlog.AnsiDecorator] = [layer * '|  ' + (level - layer) * '   ']
+        if last:
+            out.append('`')
+            next_layer = layer
+        else:
+            out.append('|')
+            next_layer = layer + 1
+        out.append('- ')
+        out.append(mlog.bold(wrap_name))
+        if with_info:
+            out.append(' (')
+            if wrap.redirected:
+                out.append('redirect')
+            else:
+                attrs = []
+                if wrap.wrap.wrapfile_hash:
+                    attrs.append('wrap')
+                if wrap.wrap_dir.is_dir():
+                    attrs.append('folder')
+                if wrap.wrap.type:
+                    attrs.append(wrap.wrap.type)
+                out.append(', '.join(attrs))
+            out.append(')')
+        mlog.log(*out, sep='')
+
+        if level > 0 or not wrap.redirected:
+            sub_last = len(wrap.depends) - 1
+            for idx, wrap_name in enumerate(wrap.depends):
+                self._print_wrap(wrap_name,
+                                 level=level + 1,
+                                 layer=next_layer,
+                                 last=idx == sub_last,
+                                 with_info=False)
+
+    def _print_to_ascii(self) -> None:
+        # the first level is special
+        # print the remaining layers with recursion
+        directs = [k for k, v in self.wrap_graph.items()
+                   if not v.redirected]
+        redirects = [k for k, v in self.wrap_graph.items()
+                     if v.redirected]
+
+        last = len(directs) - 1
+        if redirects:
+            start = last + 2
+            last += len(redirects) + 1
+
+        for idx, wrap in enumerate(sorted(directs)):
+            self._print_wrap(wrap, 0, 0, idx == last, with_info=True)
+        if redirects:
+            mlog.log('|')
+            for idx, wrap in enumerate(sorted(redirects), start=start):
+                self._print_wrap(wrap, 0, 0, idx == last, with_info=True)
+
+        if self.explain:
+            mlog.log()
+            mlog.log(mlog.bold('Legend, Key Explanation:'))
+            mlog.log(mlog.bold('wrap:'), 'A wrap file describes this subproject.')
+            mlog.log(mlog.bold('folder:'), 'The subproject has a folder (it may be additionally backed with a wrap file).')
+            mlog.log(mlog.bold('type:'), 'The type of the subproject, e.g. git or svn.')
+
+    def print(self) -> None:
+        if self.to_dot:
+            self._print_to_dot()
+        else:
+            self._print_to_ascii()
+
+
+def create_gitignore(subproject_dir: str, wraps: T.List[PackageDefinition], write: bool) -> None:
+    header_line = '# This file was autogenerated with `meson subprojects gitignore`.'
+    ignore_line = '# Meson will not change anything below this line.'
+    gitig_path = Path(subproject_dir) / '.gitignore'
+    if gitig_path.exists():
+        # read the file but ignore everything above a specific line
+        with open(gitig_path, 'r', encoding='UTF-8') as f:
+            orig = []
+            write_line = False
+            for line in f:
+                if write_line:
+                    orig.append(line.strip('\n'))
+                if line.strip() == ignore_line:
+                    write_line = True
+    else:
+        orig = []
+
+    gitignore = [
+        header_line,
+        '',
+        '# ignore all directories except packagefiles',
+        '*/',
+        '!packagefiles',
+    ]
+
+    gitignore.extend(['', '# ignore redirects'])
+    reds = [Path(x.original_filename).name for x in wraps if x.redirected]
+    gitignore.extend(sorted(reds))
+
+    gitignore.extend(['', ignore_line])
+    gitignore.extend(orig)
+    gitignore.append('')
+
+    gitignore_content = '\n'.join(gitignore)
+    if write:
+        with open(gitig_path, 'w', encoding='UTF-8') as f:
+            f.write(gitignore_content)
+        mlog.log('Updated', gitig_path.absolute())
+    else:
+        mlog.log(gitignore_content)
+
+
 def add_common_arguments(p: argparse.ArgumentParser) -> None:
     p.add_argument('--sourcedir', default='.',
                    help='Path to source directory')
@@ -710,6 +884,18 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
     p.add_argument('--save', action='store_true', default=False, help='Save packagefiles from the subproject')
     p.set_defaults(subprojects_func=Runner.packagefiles)
 
+    p = subparsers.add_parser('status', help='Show information about subprojects')
+    add_common_arguments(p)
+    add_subprojects_argument(p)
+    p.add_argument('--to-dot', action='store_true', default=False, help='Output a dot file describing the subprojects.')
+    p.add_argument('--explain', action='store_true', default=False, help='Print not only the status but also an explanation.')
+
+    p = subparsers.add_parser('gitignore', help='Print/write a proper gitignore file for subprojects.')
+    add_common_arguments(p)
+    add_subprojects_argument(p)
+    p.add_argument('--write', action='store_true', default=False, help='(Over)Write subprojects/.gitignore.')
+
+
 def run(options: 'Arguments') -> int:
     source_dir = os.path.relpath(os.path.realpath(options.sourcedir))
     if not os.path.isfile(os.path.join(source_dir, 'meson.build')):
@@ -731,6 +917,14 @@ def run(options: 'Arguments') -> int:
     for t in types:
         if t not in ALL_TYPES:
             raise MesonException(f'Unknown subproject type {t!r}, supported types are: {ALL_TYPES_STRING}')
+    if options.command == 'status':
+        status_options = T.cast('StatusArguments', options)
+        StatusPrinter(source_dir, wraps, to_dot=status_options.to_dot, explain=status_options.explain).print()
+        return 0
+    if options.command == 'gitignore':
+        gitignore_options = T.cast('GitignoreArguments', options)
+        create_gitignore(subproject_dir, wraps, write=gitignore_options.write)
+        return 0
     tasks: T.List[T.Awaitable[bool]] = []
     task_names: T.List[str] = []
     loop = asyncio.new_event_loop()

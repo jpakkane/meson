@@ -1,0 +1,1 @@
+project('deep', 'c')
