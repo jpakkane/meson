@@ -1078,8 +1078,6 @@ class Interpreter(InterpreterBase, HoldableObject):
         except KeyError:
             pass
 
-        raise InterpreterException(f'Tried to access unknown option {optname!r}.')
-
     @typed_pos_args('get_option', str)
     @noKwargs
     def func_get_option(self, nodes: mparser.BaseNode, args: T.Tuple[str],
@@ -1096,12 +1094,34 @@ class Interpreter(InterpreterBase, HoldableObject):
         opt = self.get_option_internal(optname)
         if isinstance(opt, options.UserFeatureOption):
             opt.name = optname
-            return opt
+            _option_value = opt
         elif isinstance(opt, options.UserOption):
             if isinstance(opt.value, str):
-                return P_OBJ.OptionString(opt.value, f'{{{optname}}}')
-            return opt.value
-        return opt
+                _option_value = P_OBJ.OptionString(opt.value, f'{{{optname}}}')
+            else:
+                _option_value = opt.value
+        else:
+            _option_value = opt
+
+        self.load_options(nodes, args)
+        opt = self.get_option_internal(optname)
+        if isinstance(opt, options.UserFeatureOption):
+            opt.name = optname
+            option_value = opt
+        elif isinstance(opt, options.UserOption):
+            if isinstance(opt.value, str):
+                option_value = P_OBJ.OptionString(opt.value, f'{{{optname}}}')
+            else:
+                option_value = opt.value
+        else:
+            option_value = opt
+
+        if option_value is None and _option_value is None:
+            raise InterpreterException(f'Tried to access unknown option {optname!r}.')
+        elif not option_value == _option_value:
+            if not hasattr(self, 'prohibited_load_options_used'):
+                self.prohibited_load_options_used = {'option': optname, 'value': option_value}
+        return option_value
 
     @typed_pos_args('configuration_data', optargs=[dict])
     @noKwargs
@@ -1148,6 +1168,23 @@ class Interpreter(InterpreterBase, HoldableObject):
         options = {k: v for k, v in self.environment.options.items() if self.environment.coredata.optstore.is_backend_option(k)}
         self.coredata.set_options(options)
 
+    def load_options(self, node: mparser.FunctionNode, args: T.Tuple[str, T.List[str]]) -> None:
+        option_file = os.path.join(self.source_root, self.subdir, 'meson.options')
+        old_option_file = os.path.join(self.source_root, self.subdir, 'meson_options.txt')
+        if not os.path.exists(option_file):
+            option_file = old_option_file
+        if os.path.exists(option_file):
+            with open(option_file, 'rb') as f:
+                # We want fast not cryptographically secure, this is just to
+                # see if the option file has changed
+                self.coredata.options_files[self.subproject] = (option_file, hashlib.sha1(f.read()).hexdigest())
+            oi = optinterpreter.OptionInterpreter(self.environment.coredata.optstore, self.subproject)
+            oi.process(option_file)
+            self.coredata.update_project_options(oi.options, self.subproject)
+            self.add_build_def_file(option_file)
+        else:
+            self.coredata.options_files[self.subproject] = None
+
     @typed_pos_args('project', str, varargs=str)
     @typed_kwargs(
         'project',
@@ -1169,6 +1206,9 @@ class Interpreter(InterpreterBase, HoldableObject):
         if ':' in proj_name:
             raise InvalidArguments(f"Project name {proj_name!r} must not contain ':'")
 
+        # Read in the options file.
+        self.load_options(node, args)
+
         # This needs to be evaluated as early as possible, as meson uses this
         # for things like deprecation testing.
         if kwargs['meson_version']:
@@ -1176,12 +1216,9 @@ class Interpreter(InterpreterBase, HoldableObject):
         else:
             mesonlib.project_meson_versions[self.subproject] = mesonlib.NoProjectVersion()
 
-        # Load "meson.options" before "meson_options.txt", and produce a warning if
-        # it is being used with an old version. I have added check that if both
-        # exist the warning isn't raised
+        # Warn about use of meson.options / meson_options.txt.
         option_file = os.path.join(self.source_root, self.subdir, 'meson.options')
         old_option_file = os.path.join(self.source_root, self.subdir, 'meson_options.txt')
-
         if os.path.exists(option_file):
             if os.path.exists(old_option_file):
                 if os.path.samefile(option_file, old_option_file):
@@ -1190,19 +1227,11 @@ class Interpreter(InterpreterBase, HoldableObject):
                     raise MesonException("meson.options and meson_options.txt both exist, but are not the same file.")
             else:
                 FeatureNew.single_use('meson.options file', '1.1', self.subproject, 'Use meson_options.txt instead')
-        else:
-            option_file = old_option_file
-        if os.path.exists(option_file):
-            with open(option_file, 'rb') as f:
-                # We want fast  not cryptographically secure, this is just to
-                # see if the option file has changed
-                self.coredata.options_files[self.subproject] = (option_file, hashlib.sha1(f.read()).hexdigest())
-            oi = optinterpreter.OptionInterpreter(self.environment.coredata.optstore, self.subproject)
-            oi.process(option_file)
-            self.coredata.update_project_options(oi.options, self.subproject)
-            self.add_build_def_file(option_file)
-        else:
-            self.coredata.options_files[self.subproject] = None
+
+        # Using get_option() in project() isn't allowed.
+        # For the reason see https://github.com/mesonbuild/meson/pull/14016
+        if hasattr(self, 'prohibited_load_options_used'):
+            FeatureBroken.single_use('Reading meson.options or a meson -Dopt=value parameter by using get_option() as a parameter to project() isn\'t allowed', '1.7', self.subproject, 'Instead use something similar to run_command(\'./get_value.py\', check: true).stdout().strip()')
 
         if self.subproject:
             self.project_default_options = {k.evolve(subproject=self.subproject): v

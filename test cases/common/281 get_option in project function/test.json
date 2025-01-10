@@ -1,0 +1,7 @@
+{
+  "stdout": [
+    {
+      "line": "DEPRECATION: Project uses feature that was always broken, and is now deprecated since '1.7': Reading meson.options or a meson -Dopt=value parameter by using get_option() as a parameter to project() isn't allowed. Instead use something similar to run_command('./get_value.py', check: true).stdout().strip()"
+    }
+  ]
+}
