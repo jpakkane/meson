@@ -26,16 +26,16 @@ class Lexer:
         self.token_specification = [
             # Need to be sorted longest to shortest.
             ('ignore', re.compile(r'[ \t]')),
-            ('string', re.compile(r'"([^\\]|(\\.))*?"', re.M)),
+            ('string', re.compile(r'"([^\\]|(\\.))*?"', re.M | re.S)),
             ('varexp', re.compile(r'\${[-_0-9a-z/A-Z.]+}')),
-            ('id', re.compile('''[,-><${}=+_0-9a-z/A-Z|@.*]+''')),
+            ('id', re.compile('''[,-><%${}=+_0-9a-z/A-Z|@.*']+''')),
             ('eol', re.compile(r'\n')),
             ('comment', re.compile(r'#.*')),
             ('lparen', re.compile(r'\(')),
             ('rparen', re.compile(r'\)')),
         ]
 
-    def lex(self, code: str) -> T.Iterator[Token]:
+    def lex(self, code: str, debuginfo_path: Path) -> T.Iterator[Token]:
         lineno = 1
         line_start = 0
         loc = 0
@@ -58,9 +58,12 @@ class Lexer:
                     elif tid == 'rparen':
                         yield(Token('rparen', ')'))
                     elif tid == 'string':
-                        yield(Token('string', match_text[1:-1]))
+                        yield(Token('string',
+                            match_text[1:-1]
+                                .replace('\\\n', '')
+                                .replace('\'', '\\\'')))
                     elif tid == 'id':
-                        yield(Token('id', match_text))
+                        yield(Token('id', match_text.replace('\'', '\\\'')))
                     elif tid == 'eol':
                         # yield('eol')
                         lineno += 1
@@ -72,11 +75,12 @@ class Lexer:
                         raise ValueError(f'lex: unknown element {tid}')
                     break
             if not matched:
-                raise ValueError('Lexer got confused line %d column %d' % (lineno, col))
+                raise ValueError('Lexer got confused path %s line %d column %d'
+                    % (debuginfo_path, lineno, col))
 
 class Parser:
-    def __init__(self, code: str) -> None:
-        self.stream = Lexer().lex(code)
+    def __init__(self, code: str, debuginfo_path: Path) -> None:
+        self.stream = Lexer().lex(code, debuginfo_path)
         self.getsym()
 
     def getsym(self) -> None:
@@ -140,14 +144,119 @@ def token_or_group(arg: T.Union[Token, T.List[Token]]) -> str:
 
 class Converter:
     ignored_funcs = {'cmake_minimum_required': True,
-                     'enable_testing': True,
-                     'include': True}
+                     'enable_testing': True}
+
+    known_programs = ['bison']
+
+    comp_op = {
+        'EQUAL': '==',
+        'LESS': '<',
+        'LESS_EQUAL': '<=',
+        'GREATER': '>',
+        'GREATER_EQUAL': '>=',
+        'STREQUAL': '==',
+        'STRLESS': '<',
+        'STRLESS_EQUAL': '<=',
+        'STRGREATER': '>',
+        'STRGREATER_EQUAL': '>=',
+        'VERSION_EQUAL': 'todo',
+        'VERSION_LESS': 'todo',
+        'VERSION_LESS_EQUAL': 'todo',
+        'VERSION_GREATER': 'todo',
+        'VERSION_GREATER_EQUAL': 'todo',
+        'PATH_EQUAL': '=='
+    }
 
     def __init__(self, cmake_root: str):
         self.cmake_root = Path(cmake_root).expanduser()
         self.indent_unit = '  '
         self.indent_level = 0
         self.options: T.List[T.Tuple[str, str, T.Optional[str]]] = []
+
+    def convert_condition_part(self, arg: Token) -> str:
+        mapping = {
+            'APPLE': '(build_machine.system() == \'darwin\')',
+            'WIN32': '(build_machine.system() == \'windows\')',
+        }
+        if arg.value in mapping:
+            return mapping[arg.value]
+        elif arg.value in self.comp_op:
+            return self.comp_op[arg.value]
+        elif arg.value.endswith('_FOUND'):
+            # find_package(SomePackage) will set the variable SomePackage_FOUND Source:
+            # https://cmake.org/cmake/help/latest/command/find_package.html
+            pkgname = arg.value[:-len('_FOUND')]
+            return '%s_dep.found()' % pkgname
+        elif arg.tid == 'string':
+            return "'%s'" % arg.value
+        elif arg.value in [el[0] for el in self.options]:
+            return "get_option('%s')" % arg.value
+        else:
+            return arg.value.lower()
+
+    def convert_condition(self, args: T.List[Token]) -> str:
+        ar = list(map(self.convert_condition_part, args))
+
+        # return ' '.join(ar) would be simple, but cmake has another operator
+        # precedence than meson so we need to fix some brakets.
+
+        # For everyone wondering how cmake's grammar works, here are some examples:
+        # (Assume that `set(tv true)` and `set(fv false)` has been run)
+        # NOT tv -> false
+        # NOT NOT tv -> error
+        # NOT (NOT tv) -> true
+        # NOT tv AND fv -> (NOT tv) AND fv -> false
+        # NOT tv OR tv -> (NOT tv) OR tv -> true
+        # tv OR tv AND fv -> (tv OR tv) AND fv -> false
+        # fv AND tv OR tv -> (fv AND tv) OR tv -> true
+        # NOT 3 EQUAL 3 -> NOT (3 EQUAL 3) -> false
+
+        # In contrast, Meson has the following operator precedence:
+        # not
+        # comparison operators
+        # and
+        # or
+        # Examples:
+        # not a == b -> (not a) == b
+        # not true and false -> (not true) and false -> false
+        # true or true and false -> true or (true and false) -> true
+
+        def find_braket_end(pos, direction):
+            assert direction in [+1, -1]
+            if ar[pos] != '(':
+                return pos
+            else:
+                depth = 1
+                while depth > 0:
+                    pos += direction
+                    if ar[pos] == '(':
+                        depth += 1
+                    elif ar[pos] == ')':
+                        depth -= 1
+                return pos
+
+        def find_comp_end(pos, direction):
+            assert direction in [+1, -1]
+            pos = find_braket_end(pos, direction)
+            if pos + direction < len(ar) and ar[pos + direction] in self.comp_op.values():
+                return find_braket_end(pos + 2 * direction, direction)
+            else:
+                return pos
+
+        # I'm not sure how correct this while loop is. It's tricky and I'm currently really, really stupid.
+        i = 0
+        while i < len(ar):
+            if ar[i] == 'not':
+                ar.insert(i+1, '(')
+                i = find_comp_end(i+2, +1)+1
+                ar.insert(i, ')')
+            elif ar[i] == 'or':
+                ar.insert(0, '(')
+                i = find_comp_end(i+2, +1)+1
+                ar.insert(i, ')')
+            else:
+                i += 1
+        return ' '.join(ar)
 
     def convert_args(self, args: T.List[Token], as_array: bool = True) -> str:
         res = []
@@ -181,6 +290,18 @@ class Converter:
             line = t.args[0]
         elif t.name == 'add_subdirectory':
             line = "subdir('" + t.args[0].value + "')"
+        elif t.name == 'include':
+            assert(len(t.args) == 1)
+            assert(t.args[0].tid == 'id')
+            # Design Choice: Maybe the 'include' commands should be done by some sort of preprocessor?
+            fp = self.cmake_root / Path('cmake') / Path('Modules') / Path('%s.cmake' % t.args[0].value)
+            if fp.exists(): # Otherwise, we assume that it is a build-in-module https://cmake.org/cmake/help/latest/manual/cmake-modules.7.html
+                with fp.open(encoding='utf-8') as f:
+                    cmakecode = f.read()
+                p = Parser(cmakecode, fp)
+                for t_inner in p.parse():
+                    self.write_entry(outfile, t_inner)
+            return
         elif t.name == 'pkg_search_module' or t.name == 'pkg_search_modules':
             varname = t.args[0].value.lower()
             mods = ["dependency('%s')" % i.value for i in t.args[1:]]
@@ -189,7 +310,11 @@ class Converter:
             else:
                 line = '{} = [{}]'.format(varname, ', '.join(["'%s'" % i for i in mods]))
         elif t.name == 'find_package':
-            line = "{}_dep = dependency('{}')".format(t.args[0].value, t.args[0].value)
+            value = t.args[0].value
+            if value.lower() in self.known_programs:
+                line = "{}_dep = find_program('{}')".format(value, value.lower())
+            else:
+                line = "{}_dep = dependency('{}')".format(value, value)
         elif t.name == 'find_library':
             line = "{} = find_library('{}')".format(t.args[0].value.lower(), t.args[0].value)
         elif t.name == 'add_executable':
@@ -228,24 +353,14 @@ class Converter:
             line = 'project(' + ', '.join(args) + ", default_options : ['default_library=static'])"
         elif t.name == 'set':
             varname = t.args[0].value.lower()
-            line = '{} = {}\n'.format(varname, self.convert_args(t.args[1:]))
+            line = '{} = {}\n'.format(varname, self.convert_args(t.args[1:2]))
         elif t.name == 'if':
             postincrement = 1
-            try:
-                line = 'if %s' % self.convert_args(t.args, False)
-            except AttributeError:  # complex if statements
-                line = t.name
-                for arg in t.args:
-                    line += token_or_group(arg)
+            line = 'if %s' % self.convert_condition(t.args)
         elif t.name == 'elseif':
             preincrement = -1
             postincrement = 1
-            try:
-                line = 'elif %s' % self.convert_args(t.args, False)
-            except AttributeError:  # complex if statements
-                line = t.name
-                for arg in t.args:
-                    line += token_or_group(arg)
+            line = 'elif %s' % self.convert_condition(t.args)
         elif t.name == 'else':
             preincrement = -1
             postincrement = 1
@@ -273,7 +388,7 @@ class Converter:
         except FileNotFoundError:
             print('\nWarning: No CMakeLists.txt in', subdir, '\n', file=sys.stderr)
             return
-        p = Parser(cmakecode)
+        p = Parser(cmakecode, cfile)
         with (subdir / 'meson.build').open('w', encoding='utf-8') as outfile:
             for t in p.parse():
                 if t.name == 'add_subdirectory':
