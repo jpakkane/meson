@@ -5076,6 +5076,15 @@ class AllPlatformTests(BasePlatformTests):
             self.setconf('-Dcpp_std=c++11,gnu++11,vc++11')
             self.assertEqual(self.getconf('cpp_std'), 'c++11')
 
+    def test_skip_source_dir(self):
+        testdir = os.path.join(self.unit_test_dir, '125 skip_source_dir')
+        env = os.environ.copy()
+        env['PATH'] = os.path.join(testdir, 'path') + os.pathsep + env['PATH']
+        output = self.init(testdir, override_envvars=env)
+        self.assertRegex(output, r'no args *: from source directory')
+        self.assertRegex(output, r'skip_source_dir: true *: from source directory')
+        self.assertRegex(output, r'skip_source_dir: false *: from path')
+
     def test_rsp_support(self):
         env = get_fake_env()
         cc = detect_c_compiler(env, MachineChoice.HOST)
