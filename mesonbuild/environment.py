@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2012-2020 The Meson development team
-# Copyright © 2023 Intel Corporation
+# Copyright © 2023-2024 Intel Corporation
 
 from __future__ import annotations
 
@@ -1024,3 +1024,14 @@ class Environment:
         if extra_paths:
             env.prepend('PATH', list(extra_paths))
         return env
+
+    def redetect_build_machine(self, compilers: T.Dict[str, Compiler]) -> None:
+        """Redetect the build machine using a build machine compiler.
+
+        Which can provide more accurate information than what we guessed.
+
+        :param compilers: A Mapping of `str` to :class:`Compiler`
+        """
+        machines = self.machines.miss_defaulting()
+        machines.build = detect_machine_info(compilers)
+        self.machines: mesonlib.PerThreeMachine[MachineInfo | None] = machines.default_missing()

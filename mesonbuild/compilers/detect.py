@@ -81,6 +81,20 @@ defaults['clang_static_linker'] = ['llvm-ar']
 defaults['nasm'] = ['nasm', 'yasm']
 
 
+def _get_c_compiler_helper(env: Environment, for_machine: MachineChoice) -> T.Optional[Compiler]:
+    c_compiler = env.coredata.compilers[for_machine].get('c')
+
+    # Ensure that the build machine information is based on probing the build
+    # machine with a compiler. If we get a compiler for the cache then we can
+    # safely assume that this has already been done.
+    if not c_compiler:
+        c_compiler = detect_c_compiler(env, for_machine)
+        if not env.is_cross_build(for_machine):
+            env.redetect_build_machine({'c': c_compiler})
+
+    return c_compiler
+
+
 def compiler_from_language(env: 'Environment', lang: str, for_machine: MachineChoice) -> T.Optional[Compiler]:
     lang_map: T.Dict[str, T.Callable[['Environment', MachineChoice], Compiler]] = {
         'c': detect_c_compiler,
@@ -1145,20 +1159,17 @@ def detect_rust_compiler(env: 'Environment', for_machine: MachineChoice) -> Rust
     raise EnvironmentException('Unreachable code (exception to make mypy happy)')
 
 def detect_d_compiler(env: 'Environment', for_machine: MachineChoice) -> Compiler:
-    from . import c, d
+    from . import d
+
+    c_compiler = _get_c_compiler_helper(env, for_machine)
+
     info = env.machines[for_machine]
+    arch = info.cpu_family
 
     # Detect the target architecture, required for proper architecture handling on Windows.
     # MSVC compiler is required for correct platform detection.
-    c_compiler = {'c': detect_c_compiler(env, for_machine)}
-    is_msvc = isinstance(c_compiler['c'], c.VisualStudioCCompiler)
-    if not is_msvc:
-        c_compiler = {}
 
-    # Import here to avoid circular imports
-    from ..environment import detect_cpu_family
-    arch = detect_cpu_family(c_compiler)
-    if is_msvc and arch == 'x86':
+    if c_compiler.get_id() == 'msvc' and arch == 'x86':
         arch = 'x86_mscoff'
 
     popen_exceptions = {}
@@ -1294,12 +1305,8 @@ def detect_nasm_compiler(env: 'Environment', for_machine: MachineChoice) -> Comp
     compilers, _ = _get_compilers(env, 'nasm', for_machine, allow_build_machine=True)
 
     # We need a C compiler to properly detect the machine info and linker
-    cc = detect_c_compiler(env, for_machine)
-    if not is_cross:
-        from ..environment import detect_machine_info
-        info = detect_machine_info({'c': cc})
-    else:
-        info = env.machines[for_machine]
+    cc = _get_c_compiler_helper(env, for_machine)
+    info = env.machines[for_machine]
 
     popen_exceptions: T.Dict[str, Exception] = {}
     for comp in compilers:
@@ -1338,12 +1345,8 @@ def detect_nasm_compiler(env: 'Environment', for_machine: MachineChoice) -> Comp
 def detect_masm_compiler(env: 'Environment', for_machine: MachineChoice) -> Compiler:
     # We need a C compiler to properly detect the machine info and linker
     is_cross = env.is_cross_build(for_machine)
-    cc = detect_c_compiler(env, for_machine)
-    if not is_cross:
-        from ..environment import detect_machine_info
-        info = detect_machine_info({'c': cc})
-    else:
-        info = env.machines[for_machine]
+    cc = _get_c_compiler_helper(env, for_machine)
+    info = env.machines[for_machine]
 
     from .asm import MasmCompiler, MasmARMCompiler
     comp_class: T.Type[Compiler]
