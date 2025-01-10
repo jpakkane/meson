@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2013-2021 The Meson development team
-# Copyright © 2021-2023 Intel Corporation
+# Copyright © 2021-2024 Intel Corporation
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from .framework import ExtraFrameworkDependency
 from .pkgconfig import PkgConfigDependency
 
 if T.TYPE_CHECKING:
-    from .base import ExternalDependency
+    from .base import DependencyKWs, ExternalDependency
     from .configtool import ConfigToolDependency
     from ..environment import Environment
     from ..mesonlib import MachineChoice
@@ -25,7 +25,7 @@ if T.TYPE_CHECKING:
         [
             'Environment',
             MachineChoice,
-            T.Dict[str, T.Any],
+            DependencyKWs,
             T.List[DependencyMethods]
         ],
         T.List[DependencyGenerator]
@@ -35,12 +35,12 @@ if T.TYPE_CHECKING:
         [
             'Environment',
             MachineChoice,
-            T.Dict[str, T.Any]
+            DependencyKWs
         ],
         T.List[DependencyGenerator]
     ]
 
-    # This should be str, Environment, T.Dict[str, T.Any], T.Optional[str]
+    # This should be str, Environment, DependencyKWs, T.Optional[str]
     # But if you try that, you get error: Cannot infer type of lambda
     CmakeDependencyFunc = T.Callable[..., CMakeDependency]
 
@@ -68,7 +68,7 @@ class DependencyFactory:
     """
 
     def __init__(self, name: str, methods: T.List[DependencyMethods], *,
-                 extra_kwargs: T.Optional[T.Dict[str, T.Any]] = None,
+                 extra_kwargs: T.Optional[DependencyKWs] = None,
                  pkgconfig_name: T.Optional[str] = None,
                  pkgconfig_class: 'T.Type[PkgConfigDependency]' = PkgConfigDependency,
                  cmake_name: T.Optional[str] = None,
@@ -86,7 +86,7 @@ class DependencyFactory:
         self.methods = methods
         self.classes: T.Dict[
             DependencyMethods,
-            T.Callable[['Environment', T.Dict[str, T.Any]], ExternalDependency]
+            T.Callable[['Environment', DependencyKWs], ExternalDependency]
         ] = {
             # Just attach the correct name right now, either the generic name
             # or the method specific name.
@@ -116,7 +116,7 @@ class DependencyFactory:
         return True
 
     def __call__(self, env: 'Environment', for_machine: MachineChoice,
-                 kwargs: T.Dict[str, T.Any]) -> T.List['DependencyGenerator']:
+                 kwargs: DependencyKWs) -> T.List['DependencyGenerator']:
         """Return a list of Dependencies with the arguments already attached."""
         methods = process_method_kw(self.methods, kwargs)
         nwargs = self.extra_kwargs.copy()
@@ -131,14 +131,14 @@ def factory_methods(methods: T.Set[DependencyMethods]) -> T.Callable[['FactoryFu
 
     This helps to make factory functions self documenting
     >>> @factory_methods([DependencyMethods.PKGCONFIG, DependencyMethods.CMAKE])
-    >>> def factory(env: Environment, for_machine: MachineChoice, kwargs: T.Dict[str, T.Any], methods: T.List[DependencyMethods]) -> T.List['DependencyGenerator']:
+    >>> def factory(env: Environment, for_machine: MachineChoice, kwargs: DependencyKWs, methods: T.List[DependencyMethods]) -> T.List['DependencyGenerator']:
     >>>     pass
     """
 
     def inner(func: 'FactoryFunc') -> 'WrappedFactoryFunc':
 
         @functools.wraps(func)
-        def wrapped(env: 'Environment', for_machine: MachineChoice, kwargs: T.Dict[str, T.Any]) -> T.List['DependencyGenerator']:
+        def wrapped(env: 'Environment', for_machine: MachineChoice, kwargs: DependencyKWs) -> T.List['DependencyGenerator']:
             return func(env, for_machine, kwargs, process_method_kw(methods, kwargs))
 
         return wrapped

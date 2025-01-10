@@ -21,6 +21,7 @@ from ..options import OptionKey
 if T.TYPE_CHECKING:
     from typing_extensions import TypedDict
 
+    from .base import DependencyKWs
     from .factory import DependencyGenerator
     from ..environment import Environment
     from ..mesonlib import MachineChoice
@@ -56,7 +57,7 @@ class Pybind11ConfigToolDependency(ConfigToolDependency):
     # in the meantime
     skip_version = '--pkgconfigdir'
 
-    def __init__(self, name: str, environment: Environment, kwargs: T.Dict[str, T.Any]):
+    def __init__(self, name: str, environment: Environment, kwargs: DependencyKWs):
         super().__init__(name, environment, kwargs)
         if not self.is_found:
             return
@@ -67,7 +68,7 @@ class NumPyConfigToolDependency(ConfigToolDependency):
 
     tools = ['numpy-config']
 
-    def __init__(self, name: str, environment: Environment, kwargs: T.Dict[str, T.Any]):
+    def __init__(self, name: str, environment: Environment, kwargs: DependencyKWs):
         super().__init__(name, environment, kwargs)
         if not self.is_found:
             return
@@ -310,7 +311,7 @@ class _PythonDependencyBase(_Base):
 class PythonPkgConfigDependency(PkgConfigDependency, _PythonDependencyBase):
 
     def __init__(self, name: str, environment: 'Environment',
-                 kwargs: T.Dict[str, T.Any], installation: 'BasicPythonExternalProgram',
+                 kwargs: DependencyKWs, installation: 'BasicPythonExternalProgram',
                  libpc: bool = False):
         if libpc:
             mlog.debug(f'Searching for {name!r} via pkgconfig lookup in LIBPC')
@@ -331,7 +332,7 @@ class PythonPkgConfigDependency(PkgConfigDependency, _PythonDependencyBase):
 class PythonFrameworkDependency(ExtraFrameworkDependency, _PythonDependencyBase):
 
     def __init__(self, name: str, environment: 'Environment',
-                 kwargs: T.Dict[str, T.Any], installation: 'BasicPythonExternalProgram'):
+                 kwargs: DependencyKWs, installation: 'BasicPythonExternalProgram'):
         ExtraFrameworkDependency.__init__(self, name, environment, kwargs)
         _PythonDependencyBase.__init__(self, installation, kwargs.get('embed', False))
 
@@ -339,7 +340,7 @@ class PythonFrameworkDependency(ExtraFrameworkDependency, _PythonDependencyBase)
 class PythonSystemDependency(SystemDependency, _PythonDependencyBase):
 
     def __init__(self, name: str, environment: 'Environment',
-                 kwargs: T.Dict[str, T.Any], installation: 'BasicPythonExternalProgram'):
+                 kwargs: DependencyKWs, installation: 'BasicPythonExternalProgram'):
         SystemDependency.__init__(self, name, environment, kwargs)
         _PythonDependencyBase.__init__(self, installation, kwargs.get('embed', False))
 
@@ -374,7 +375,7 @@ class PythonSystemDependency(SystemDependency, _PythonDependencyBase):
         return 'sysconfig'
 
 def python_factory(env: 'Environment', for_machine: 'MachineChoice',
-                   kwargs: T.Dict[str, T.Any],
+                   kwargs: DependencyKWs,
                    installation: T.Optional['BasicPythonExternalProgram'] = None) -> T.List['DependencyGenerator']:
     # We can't use the factory_methods decorator here, as we need to pass the
     # extra installation argument
@@ -395,7 +396,7 @@ def python_factory(env: 'Environment', for_machine: 'MachineChoice',
             pkg_name = f'python-{pkg_version}{pkg_embed}'
 
             # If python-X.Y.pc exists in LIBPC, we will try to use it
-            def wrap_in_pythons_pc_dir(name: str, env: 'Environment', kwargs: T.Dict[str, T.Any],
+            def wrap_in_pythons_pc_dir(name: str, env: 'Environment', kwargs: DependencyKWs,
                                        installation: 'BasicPythonExternalProgram') -> 'ExternalDependency':
                 if not pkg_libdir:
                     # there is no LIBPC, so we can't search in it
@@ -416,6 +417,9 @@ def python_factory(env: 'Environment', for_machine: 'MachineChoice',
                             del os.environ[name]
                     set_env('PKG_CONFIG_LIBDIR', old_pkg_libdir)
                     set_env('PKG_CONFIG_PATH', old_pkg_path)
+
+            # Otherwise this doesn't fulfill the interface requirements
+            wrap_in_pythons_pc_dir.log_tried = PythonPkgConfigDependency.log_tried  # type: ignore[attr-defined]
 
             candidates.append(functools.partial(wrap_in_pythons_pc_dir, pkg_name, env, kwargs, installation))
             # We only need to check both, if a python install has a LIBPC. It might point to the wrong location,

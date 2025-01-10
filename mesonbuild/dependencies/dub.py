@@ -17,6 +17,7 @@ import typing as T
 if T.TYPE_CHECKING:
     from typing_extensions import TypedDict
 
+    from .base import DependencyKWs
     from ..environment import Environment
 
     # Definition of what `dub describe` returns (only the fields used by Meson)
@@ -69,7 +70,7 @@ class DubDependency(ExternalDependency):
         'llvm': 'ldc',
     }
 
-    def __init__(self, name: str, environment: 'Environment', kwargs: T.Dict[str, T.Any]):
+    def __init__(self, name: str, environment: 'Environment', kwargs: DependencyKWs):
         super().__init__(DependencyTypeName('dub'), environment, kwargs, language='d')
         self.name = name
         from ..compilers.d import DCompiler, d_feature_args
@@ -78,8 +79,8 @@ class DubDependency(ExternalDependency):
         assert isinstance(_temp_comp, DCompiler)
         self.compiler = _temp_comp
 
-        if 'required' in kwargs:
-            self.required = kwargs.get('required')
+        if kwargs.get('required') is not None:
+            self.required = kwargs['required']
 
         if DubDependency.class_dubbin is None and not DubDependency.class_dubbin_searched:
             DubDependency.class_dubbin = self._check_dub()
@@ -116,10 +117,8 @@ class DubDependency(ExternalDependency):
 
         # if an explicit version spec was stated, use this when querying Dub
         main_pack_spec = name
-        if 'version' in kwargs:
-            version_spec = kwargs['version']
-            if isinstance(version_spec, list):
-                version_spec = " ".join(version_spec)
+        if kwargs.get('version'):
+            version_spec = ' '.join(kwargs['version'])
             main_pack_spec = f'{name}@{version_spec}'
 
         # we need to know the target architecture
@@ -328,7 +327,7 @@ class DubDependency(ExternalDependency):
         for lib in bs['libs']:
             if os.name != 'nt':
                 # trying to add system libraries by pkg-config
-                pkgdep = PkgConfigDependency(lib, environment, {'required': 'true', 'silent': 'true'})
+                pkgdep = PkgConfigDependency(lib, environment, {'required': True, 'silent': True})
                 if pkgdep.is_found:
                     for arg in pkgdep.get_compile_args():
                         self.compile_args.append(arg)

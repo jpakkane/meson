@@ -19,6 +19,7 @@ from .pkgconfig import PkgConfigDependency
 from .misc import threads_factory
 
 if T.TYPE_CHECKING:
+    from .base import DependencyKWs
     from ..envconfig import Properties
     from ..environment import Environment
 
@@ -339,7 +340,7 @@ class BoostLibraryFile():
         return [self.path.as_posix()]
 
 class BoostDependency(SystemDependency):
-    def __init__(self, environment: Environment, kwargs: T.Dict[str, T.Any]) -> None:
+    def __init__(self, environment: Environment, kwargs: DependencyKWs) -> None:
         super().__init__('boost', environment, kwargs, language='cpp')
         buildtype = environment.coredata.get_option(OptionKey('buildtype'))
         assert isinstance(buildtype, str)
@@ -347,10 +348,10 @@ class BoostDependency(SystemDependency):
         self.multithreading = kwargs.get('threading', 'multi') == 'multi'
 
         self.boost_root: T.Optional[Path] = None
-        self.explicit_static = 'static' in kwargs
+        self.explicit_static = kwargs.get('static') is not None
 
         # Extract and validate modules
-        self.modules: T.List[str] = mesonlib.extract_as_list(kwargs, 'modules')
+        self.modules: T.List[str] = kwargs.get('modules', [])
         for i in self.modules:
             if not isinstance(i, str):
                 raise DependencyException('Boost module argument is not a string.')

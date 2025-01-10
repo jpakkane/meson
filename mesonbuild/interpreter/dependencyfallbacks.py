@@ -9,7 +9,7 @@ from .. import mlog
 from .. import dependencies
 from .. import build
 from ..wrap import WrapMode
-from ..mesonlib import extract_as_list, stringlistify, version_compare_many, listify
+from ..mesonlib import stringlistify, version_compare_many, listify
 from ..options import OptionKey
 from ..dependencies import Dependency, DependencyException, NotFoundDependency
 from ..interpreterbase import (MesonInterpreterObject, FeatureNew,
@@ -19,6 +19,7 @@ import typing as T
 if T.TYPE_CHECKING:
     from .interpreter import Interpreter
     from ..interpreterbase import TYPE_nkwargs, TYPE_nvar
+    from ..mesonlib import MachineChoice
     from .interpreterobjects import SubprojectHolder
 
 
@@ -91,7 +92,7 @@ class DependencyFallbacksHolder(MesonInterpreterObject):
         self._handle_featurenew_dependencies(name)
         dep = dependencies.find_external_dependency(name, self.environment, kwargs)
         if dep.found():
-            for_machine = self.interpreter.machine_from_native_kwarg(kwargs)
+            for_machine = T.cast('MachineChoice', kwargs['native'])
             identifier = dependencies.get_dep_identifier(name, kwargs)
             self.coredata.deps[for_machine].put(identifier, dep)
             return dep
@@ -209,7 +210,7 @@ class DependencyFallbacksHolder(MesonInterpreterObject):
         # of None in the case the dependency is cached as not-found, or if cached
         # version does not match. In that case we don't want to continue with
         # other candidates.
-        for_machine = self.interpreter.machine_from_native_kwarg(kwargs)
+        for_machine = T.cast('MachineChoice', kwargs['native'])
         identifier = dependencies.get_dep_identifier(name, kwargs)
         wanted_vers = stringlistify(kwargs.get('version', []))
 
@@ -310,7 +311,7 @@ class DependencyFallbacksHolder(MesonInterpreterObject):
         return candidates
 
     def lookup(self, kwargs: TYPE_nkwargs, force_fallback: bool = False) -> Dependency:
-        mods = extract_as_list(kwargs, 'modules')
+        mods = T.cast('T.List[str]', kwargs.get('modules', []))
         if mods:
             self._display_name += ' (modules: {})'.format(', '.join(str(i) for i in mods))
 
@@ -361,7 +362,7 @@ class DependencyFallbacksHolder(MesonInterpreterObject):
                 # Override this dependency to have consistent results in subsequent
                 # dependency lookups.
                 for name in self.names:
-                    for_machine = self.interpreter.machine_from_native_kwarg(kwargs)
+                    for_machine = T.cast('MachineChoice', kwargs['native'])
                     identifier = dependencies.get_dep_identifier(name, kwargs)
                     if identifier not in self.build.dependency_overrides[for_machine]:
                         self.build.dependency_overrides[for_machine][identifier] = \

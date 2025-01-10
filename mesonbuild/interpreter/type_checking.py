@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright © 2021 Intel Corporation
+# Copyright © 2021-2024 Intel Corporation
 
 """Helpers for strict type checking."""
 
@@ -12,7 +12,7 @@ from ..build import (CustomTarget, BuildTarget,
                      CustomTargetIndex, ExtractedObjects, GeneratedList, IncludeDirs,
                      BothLibraries, SharedLibrary, StaticLibrary, Jar, Executable, StructuredSources)
 from ..options import UserFeatureOption
-from ..dependencies import Dependency, InternalDependency
+from ..dependencies import Dependency, DependencyMethods, InternalDependency
 from ..interpreterbase.decorators import KwargInfo, ContainerTypeInfo
 from ..mesonlib import (File, FileMode, MachineChoice, listify, has_path_sep,
                         EnvironmentVariables)
@@ -851,3 +851,30 @@ PKGCONFIG_DEFINE_KW: KwargInfo = KwargInfo(
     default=[],
     convertor=_pkgconfig_define_convertor,
 )
+
+
+DEPENDENCY_KWS: T.List[KwargInfo] = [
+    DEFAULT_OPTIONS.evolve(since='0.38.0'),
+    DISABLER_KW.evolve(since='0.49.0'),
+    KwargInfo('allow_fallback', (bool, NoneType), since='0.56.0'),
+    KwargInfo('cmake_args', ContainerTypeInfo(list, str), listify=True, default=[], since='0.50.0'),
+    KwargInfo('cmake_module_path', ContainerTypeInfo(list, str), listify=True, default=[], since='0.50.0'),
+    KwargInfo('cmake_package_version', str, default='', since='0.57.0'),
+    KwargInfo('components', ContainerTypeInfo(list, str), listify=True, default=[], since='0.54.0'),
+    KwargInfo('fallback', (ContainerTypeInfo(list, str), str, NoneType), since='0.54.0'),
+    KwargInfo('include_type', str, default='preserve', since='0.52.0',
+              validator=in_set_validator({'system', 'non-system', 'preserve'})),
+    KwargInfo('language', (str, NoneType), convertor=lambda x: x.lower() if x is not None else x,
+              validator=lambda x: 'Must be a valid language if set' if (x is not None and x not in compilers.all_languages) else None),
+    KwargInfo('main', bool, default=False),
+    KwargInfo('method', str, default='auto', validator=in_set_validator({m.value for m in DependencyMethods}),
+              since='0.40.0'),
+    KwargInfo('modules', ContainerTypeInfo(list, str), listify=True, default=[]),
+    KwargInfo('not_found_message', str, default='', since='0.50.0'),
+    KwargInfo('optional_modules', ContainerTypeInfo(list, str), listify=True, default=[]),
+    KwargInfo('private_headers', bool, default=False),
+    KwargInfo('static', (bool, NoneType)),
+    KwargInfo('version', ContainerTypeInfo(list, str), listify=True, default=[]),
+    NATIVE_KW,
+    REQUIRED_KW,
+]

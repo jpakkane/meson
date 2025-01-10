@@ -14,13 +14,13 @@ from ..build import known_shmod_kwargs, CustomTarget, CustomTargetIndex, BuildTa
 from ..dependencies import NotFoundDependency
 from ..dependencies.detect import get_dep_identifier, find_external_dependency
 from ..dependencies.python import BasicPythonExternalProgram, python_factory, _PythonDependencyBase
-from ..interpreter import extract_required_kwarg, permitted_dependency_kwargs, primitives as P_OBJ
+from ..interpreter import extract_required_kwarg, primitives as P_OBJ
 from ..interpreter.interpreterobjects import _ExternalProgramHolder
-from ..interpreter.type_checking import NoneType, PRESERVE_PATH_KW, SHARED_MOD_KWS
+from ..interpreter.type_checking import NoneType, DEPENDENCY_KWS, PRESERVE_PATH_KW, SHARED_MOD_KWS
 from ..interpreterbase import (
     noPosargs, noKwargs, permittedKwargs, ContainerTypeInfo,
     InvalidArguments, typed_pos_args, typed_kwargs, KwargInfo,
-    FeatureNew, FeatureNewKwargs, disablerIfNotFound
+    FeatureNew, disablerIfNotFound
 )
 from ..mesonlib import MachineChoice
 from ..options import OptionKey
@@ -249,7 +249,12 @@ class PythonInstallation(_ExternalProgramHolder['PythonExternalProgram']):
         return '0x{:02x}{:02x}0000'.format(major, minor)
 
     def _dependency_method_impl(self, kwargs: TYPE_kwargs) -> Dependency:
-        for_machine = self.interpreter.machine_from_native_kwarg(kwargs)
+        native = kwargs.get('native', False)
+        if isinstance(native, bool):
+            for_machine = MachineChoice.BUILD if native else MachineChoice.HOST
+        else:
+            assert isinstance(native, MachineChoice), 'for mypy'
+            for_machine = native
         identifier = get_dep_identifier(self._full_path(), kwargs)
 
         dep = self.interpreter.coredata.deps[for_machine].get(identifier)
@@ -264,10 +269,13 @@ class PythonInstallation(_ExternalProgramHolder['PythonExternalProgram']):
         self.interpreter.coredata.deps[for_machine].put(identifier, dep)
         return dep
 
-    @disablerIfNotFound
-    @permittedKwargs(permitted_dependency_kwargs | {'embed'})
-    @FeatureNewKwargs('python_installation.dependency', '0.53.0', ['embed'])
     @noPosargs
+    @typed_kwargs(
+        'python_installation.dependency',
+        *DEPENDENCY_KWS,
+        KwargInfo('embed', bool, default=False, since='0.53.0'),
+    )
+    @disablerIfNotFound
     def dependency_method(self, args: T.List['TYPE_var'], kwargs: 'TYPE_kwargs') -> 'Dependency':
         disabled, required, feature = extract_required_kwarg(kwargs, self.subproject)
         if disabled:

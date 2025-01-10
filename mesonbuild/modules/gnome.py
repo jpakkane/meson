@@ -279,7 +279,7 @@ class GnomeModule(ExtensionModule):
     def _get_native_glib_version(self, state: 'ModuleState') -> str:
         if self.native_glib_version is None:
             glib_dep = PkgConfigDependency('glib-2.0', state.environment,
-                                           {'native': True, 'required': False})
+                                           {'native': MachineChoice.BUILD, 'required': False})
             if glib_dep.found():
                 self.native_glib_version = glib_dep.get_version()
             else:

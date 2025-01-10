@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright © 2021 The Meson Developers
+# Copyright © 2021-2024 Intel Corporation
 # Copyright © 2021-2024 Intel Corporation
 from __future__ import annotations
 
@@ -482,3 +482,28 @@ class FuncDeclareDependency(TypedDict):
     sources: T.List[T.Union[FileOrString, build.GeneratedTypes]]
     variables: T.Dict[str, str]
     version: T.Optional[str]
+
+
+# This must be kept in sync with the DependencyKws class in
+# dependencies.base
+# They cannot share in anyway due to the way total works
+class FuncDependency(ExtractRequired):
+
+    allow_fallback: T.Optional[bool]
+    cmake_args: T.List[str]
+    cmake_module_path: T.List[str]
+    cmake_package_version: str
+    components: T.List[str]
+    default_options: T.Dict[OptionKey, T.Union[str, int, bool, T.List[str]]]
+    fallback: T.Union[str, T.List[str], None]
+    include_type: Literal['system', 'non-system', 'preserve']
+    language: T.Optional[str]  # TODO: use a shared literal?
+    main: bool
+    method: str
+    modules: T.List[str]
+    native: MachineChoice
+    not_found_message: str
+    optional_modules: T.List[str]
+    private_headers: bool
+    static: T.Optional[bool]
+    version: T.List[str]

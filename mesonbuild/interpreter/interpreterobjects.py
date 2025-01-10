@@ -29,6 +29,8 @@ from ..mesonlib import HoldableObject, listify, Popen_safe
 import typing as T
 
 if T.TYPE_CHECKING:
+    from typing_extensions import Literal
+
     from . import kwargs
     from ..cmake.interpreter import CMakeInterpreter
     from ..envconfig import MachineInfo
@@ -577,7 +579,11 @@ class DependencyHolder(ObjectHolder[Dependency]):
     @noKwargs
     @typed_pos_args('dependency.as_system', optargs=[str])
     def as_system_method(self, args: T.Tuple[T.Optional[str]], kwargs: TYPE_kwargs) -> Dependency:
-        return self.held_object.generate_system_dependency(args[0] or 'system')
+        mode = args[0] if args[0] is not None else 'system'
+        if mode not in {'system', 'non-system', 'preserve'}:
+            raise InvalidArguments('dependency.as_system argument must be "system", "non-system", or "preserve" if set')
+        mode = T.cast('Literal["system", "non-system", "preserve"]', mode)
+        return self.held_object.generate_system_dependency(mode)
 
     @FeatureNew('dependency.as_link_whole', '0.56.0')
     @noKwargs

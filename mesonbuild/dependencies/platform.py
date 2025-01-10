@@ -11,10 +11,11 @@ from ..mesonlib import MesonException
 import typing as T
 
 if T.TYPE_CHECKING:
+    from .base import DependencyKWs
     from ..environment import Environment
 
 class AppleFrameworks(ExternalDependency):
-    def __init__(self, env: 'Environment', kwargs: T.Dict[str, T.Any]) -> None:
+    def __init__(self, env: 'Environment', kwargs: DependencyKWs) -> None:
         super().__init__(DependencyTypeName('appleframeworks'), env, kwargs)
         modules = kwargs.get('modules', [])
         if isinstance(modules, str):

@@ -10,12 +10,13 @@ from pathlib import Path
 import typing as T
 
 if T.TYPE_CHECKING:
+    from .base import DependencyKWs
     from ..environment import Environment
 
 class ExtraFrameworkDependency(ExternalDependency):
     system_framework_paths: T.Optional[T.List[str]] = None
 
-    def __init__(self, name: str, env: 'Environment', kwargs: T.Dict[str, T.Any], language: T.Optional[str] = None) -> None:
+    def __init__(self, name: str, env: 'Environment', kwargs: DependencyKWs, language: T.Optional[str] = None) -> None:
         paths = stringlistify(kwargs.get('paths', []))
         super().__init__(DependencyTypeName('extraframeworks'), env, kwargs, language=language)
         self.name = name

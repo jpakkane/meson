@@ -19,6 +19,7 @@ import shlex
 import typing as T
 
 if T.TYPE_CHECKING:
+    from .base import DependencyKWs
     from typing_extensions import Literal
     from .._typing import ImmutableListProtocol
 
@@ -294,7 +295,7 @@ class PkgConfigCLI(PkgConfigInterface):
 
 class PkgConfigDependency(ExternalDependency):
 
-    def __init__(self, name: str, environment: Environment, kwargs: T.Dict[str, T.Any],
+    def __init__(self, name: str, environment: Environment, kwargs: DependencyKWs,
                  language: T.Optional[str] = None) -> None:
         super().__init__(DependencyTypeName('pkgconfig'), environment, kwargs, language=language)
         self.name = name

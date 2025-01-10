@@ -16,6 +16,7 @@ from .pkgconfig import PkgConfigDependency
 from .factory import factory_methods
 
 if T.TYPE_CHECKING:
+    from .base import DependencyKWs
     from ..environment import Environment
     from ..mesonlib import MachineChoice
     from .factory import DependencyGenerator
@@ -23,12 +24,12 @@ if T.TYPE_CHECKING:
 
 @factory_methods({DependencyMethods.PKGCONFIG, DependencyMethods.CMAKE})
 def scalapack_factory(env: 'Environment', for_machine: 'MachineChoice',
-                      kwargs: T.Dict[str, T.Any],
+                      kwargs: DependencyKWs,
                       methods: T.List[DependencyMethods]) -> T.List['DependencyGenerator']:
     candidates: T.List['DependencyGenerator'] = []
 
     if DependencyMethods.PKGCONFIG in methods:
-        static_opt = kwargs.get('static', env.coredata.get_option(OptionKey('prefer_static')))
+        static_opt = kwargs['static'] if kwargs.get('static') is not None else env.coredata.get_option(OptionKey('prefer_static'))
         mkl = 'mkl-static-lp64-iomp' if static_opt else 'mkl-dynamic-lp64-iomp'
         candidates.append(functools.partial(
             MKLPkgConfigDependency, mkl, env, kwargs))
@@ -54,7 +55,7 @@ class MKLPkgConfigDependency(PkgConfigDependency):
     bunch of fixups to make it work correctly.
     """
 
-    def __init__(self, name: str, env: 'Environment', kwargs: T.Dict[str, T.Any],
+    def __init__(self, name: str, env: 'Environment', kwargs: DependencyKWs,
                  language: T.Optional[str] = None):
         _m = os.environ.get('MKLROOT')
         self.__mklroot = Path(_m).resolve() if _m else None
