@@ -90,6 +90,24 @@ class CLikeCompilerArgs(arglist.CompilerArgs):
                 new.insert(group_start, '-Wl,--start-group')
         # Remove system/default include paths added with -isystem
         default_dirs = self.compiler.get_default_include_dirs()
+        sys_root = None
+
+        for i, each in enumerate(new):
+            if each.startswith('--sysroot'):
+                if each == '--sysroot':
+                    try:
+                        sys_root = new[i + 1]
+                    except IndexError:
+                        mlog.warning('--sysroot passed to', self.compiler.language, 'compiler without argument')
+                    break
+
+                if each.startswith('--sysroot='):
+                    sys_root = each[10:]
+                    break
+
+        if sys_root:
+            default_dirs.append(os.path.join(sys_root, 'usr', 'include'))
+
         if default_dirs:
             real_default_dirs = [self._cached_realpath(i) for i in default_dirs]
             bad_idx_list: T.List[int] = []
