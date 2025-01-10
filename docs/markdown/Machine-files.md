@@ -290,7 +290,7 @@ set(CMAKE_SOME_VARIABLE "some" "value with spaces")
 
 *New in 0.56.0*
 
-Path options are not allowed, those must be set in the `[paths]`
+Path options are not allowed, those must be set in the `[built-in options]`
 section.
 
 Being able to set project specific options in a cross or native file
