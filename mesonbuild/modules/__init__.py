@@ -81,7 +81,7 @@ class ModuleState:
                                                    wanted=wanted, silent=silent, for_machine=for_machine)
 
     def find_tool(self, name: str, depname: str, varname: str, required: bool = True,
-                  wanted: T.Optional[str] = None) -> T.Union['build.Executable', ExternalProgram, 'OverrideProgram']:
+                  wanted: T.Optional[str] = None, native: bool = True) -> T.Union['build.Executable', ExternalProgram, 'OverrideProgram']:
         # Look in overrides in case it's built as subproject
         progobj = self._interpreter.program_from_overrides([name], [])
         if progobj is not None:
@@ -93,7 +93,7 @@ class ModuleState:
             return ExternalProgram.from_entry(name, prog_list)
 
         # Check if pkgconfig has a variable
-        dep = self.dependency(depname, native=True, required=False, wanted=wanted)
+        dep = self.dependency(depname, native=native, required=False, wanted=wanted)
         if dep.found() and dep.type_name == 'pkgconfig':
             value = dep.get_variable(pkgconfig=varname)
             if value:

@@ -318,7 +318,7 @@ class GnomeModule(ExtensionModule):
         }
         depname = tool_map[tool]
         varname = tool.replace('-', '_')
-        return state.find_tool(tool, depname, varname)
+        return state.find_tool(tool, depname, varname, native=depname != "gobject-introspection-1.0")
 
     @typed_kwargs(
         'gnome.post_install',
