@@ -337,8 +337,11 @@ class CMakeDependency(ExternalDependency):
         # Check the Linux CMake registry
         linux_reg = Path.home() / '.cmake' / 'packages'
         for p in [linux_reg / name, linux_reg / lname]:
-            if p.exists():
-                return True
+            try:
+                if p.exists():
+                    return True
+            except PermissionError:
+                continue
 
         return False
 
