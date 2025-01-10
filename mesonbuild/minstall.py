@@ -440,6 +440,10 @@ class Installer:
         if os.path.exists(link):
             if not os.path.islink(link):
                 raise MesonException(f'Destination {link!r} already exists and is not a symlink')
+            elif self.options.only_changed and os.readlink(link) == target:
+                append_to_log(self.lf, f'# Preserving old symlink {link}\n')
+                self.preserved_file_count += 1
+                return False
             self.remove(link)
         if not self.printed_symlink_error:
             self.log(f'Installing symlink pointing to {target} to {link}')
