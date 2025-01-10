@@ -1,14 +1,25 @@
 {{#notes}}
-<div class="alert alert-info">
-  <strong>Note:</strong>
+<aside class="note note-info">
+<div class="note-topbar note-topbar-info">
+  <span class="glyphicon glyphicon-info-sign"></span>
+  <span class="note-title">Note:</span>
+</div>
+<div class="note-content">
 
 {{&.}}
 </div>
+</aside>
 {{/notes}}
+
 {{#warnings}}
-<div class="alert alert-warning">
-  <strong>Warning:</strong>
+<aside class="note note-warning">
+<div class="note-topbar note-topbar-warning">
+  <span class="glyphicon glyphicon-warning-sign"></span>
+  <span class="note-title">Warning:</span>
+</div>
+<div class="note-content">
 
 {{&.}}
 </div>
+</aside>
 {{/warnings}}

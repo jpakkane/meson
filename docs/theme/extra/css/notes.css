@@ -1,0 +1,41 @@
+.note {
+    border: 0.2rem solid;
+    border-left-width: 0.5rem;
+    border-radius: 0.2rem;
+    margin: 2rem 1rem;
+}
+.note-topbar {
+    padding: 0.4rem 1rem;
+    border-radius: 1rem;
+    position: relative;
+    top: -1rem;
+    left: -1rem;
+    margin-right: auto;
+    min-width: min-content;
+    font-weight: bold;
+    font-size: 120%;
+    color: #fff;
+}
+.note-topbar .glyphicon {
+    top: 2px;
+}
+
+.note-content {
+    padding: 0 1rem;
+    margin-top: -0.5rem;
+}
+
+/* Colors taken from hotdoc_bootstrap_theme */
+.note-info {
+    border-color: #3dced8;
+}
+.note-topbar-info {
+    background-color: #3dced8;
+}
+
+.note-warning {
+    border-color: #e96506;
+}
+.note-topbar-warning {
+    background-color: #e96506;
+}
