@@ -214,6 +214,10 @@ class DependencyFallbacksHolder(MesonInterpreterObject):
         wanted_vers = stringlistify(kwargs.get('version', []))
 
         override = self.build.dependency_overrides[for_machine].get(identifier)
+        if not override and self.subproject_name:
+            identifier_without_modules = tuple((k, v) for k, v in identifier if k not in {'modules', 'optional_modules'})
+            if identifier_without_modules != identifier:
+                override = self.build.dependency_overrides[for_machine].get(identifier_without_modules)
         if override:
             info = [mlog.blue('(overridden)' if override.explicit else '(cached)')]
             cached_dep = override.dep
