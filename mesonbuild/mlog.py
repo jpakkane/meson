@@ -486,7 +486,7 @@ def green(text: str) -> AnsiDecorator:
     return AnsiDecorator(text, "\033[1;32m")
 
 def yellow(text: str) -> AnsiDecorator:
-    return AnsiDecorator(text, "\033[1;33m")
+    return AnsiDecorator(text, "\033[33m")
 
 def blue(text: str) -> AnsiDecorator:
     return AnsiDecorator(text, "\033[1;34m")
