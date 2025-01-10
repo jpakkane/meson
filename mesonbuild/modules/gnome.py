@@ -899,12 +899,21 @@ class GnomeModule(ExtensionModule):
 
     @staticmethod
     def _get_langs_compilers_flags(state: 'ModuleState', langs_compilers: T.List[T.Tuple[str, 'Compiler']]
-                                   ) -> T.Tuple[T.List[str], T.List[str], T.List[str]]:
+                                   ) -> T.Tuple[T.List[str], T.List[str], T.List[str], T.List[str]]:
         cflags: T.List[str] = []
         internal_ldflags: T.List[str] = []
         external_ldflags: T.List[str] = []
+        crt_cflags: T.List[str] = []
 
         for lang, compiler in langs_compilers:
+            if len(crt_cflags) == 0 and OptionKey('b_vscrt') in compiler.base_options:
+                # For the latest Windows SDK 10.0.26100.0+, we must specify a CRT cflag (/MD or /MDd for instance),
+                # otherwise the scanner program will fail to link with an obscure undefined symbol
+                # _guard_check_icall_$fo$
+                crt_val = state.environment.coredata.get_option(OptionKey('b_vscrt'))
+                buildtype = state.environment.coredata.get_option(OptionKey('buildtype'))
+                if isinstance(crt_val, str) and isinstance(buildtype, str):
+                    crt_cflags = compiler.get_crt_compile_args(crt_val, buildtype)
             if state.global_args.get(lang):
                 cflags += state.global_args[lang]
             if state.project_args.get(lang):
@@ -924,7 +933,7 @@ class GnomeModule(ExtensionModule):
                 # does not understand -f LDFLAGS. https://bugzilla.gnome.org/show_bug.cgi?id=783892
                 # ldflags += compiler.sanitizer_link_args(sanitize)
 
-        return cflags, internal_ldflags, external_ldflags
+        return cflags, internal_ldflags, external_ldflags, crt_cflags
 
     @staticmethod
     def _make_gir_filelist(state: 'ModuleState', srcdir: str, ns: str,
@@ -1146,7 +1155,7 @@ class GnomeModule(ExtensionModule):
         depends.extend(girtargets)
 
         langs_compilers = self._get_girtargets_langs_compilers(girtargets)
-        cflags, internal_ldflags, external_ldflags = self._get_langs_compilers_flags(state, langs_compilers)
+        cflags, internal_ldflags, external_ldflags, crt_cflags = self._get_langs_compilers_flags(state, langs_compilers)
         deps = self._get_gir_targets_deps(girtargets)
         deps += kwargs['dependencies']
         deps += [gir_dep]
@@ -1157,6 +1166,8 @@ class GnomeModule(ExtensionModule):
         dep_cflags, dep_internal_ldflags, dep_external_ldflags, gi_includes, depends = \
             self._get_dependencies_flags(deps, state, depends, use_gir_args=True)
         scan_cflags = []
+        if len(crt_cflags) > 0:
+            scan_cflags += list(crt_cflags)
         scan_cflags += list(self._get_scanner_cflags(cflags))
         scan_cflags += list(self._get_scanner_cflags(dep_cflags))
         scan_cflags += list(self._get_scanner_cflags(self._get_external_args_for_langs(state, [lc[0] for lc in langs_compilers])))
@@ -1572,6 +1583,8 @@ class GnomeModule(ExtensionModule):
         compiler = state.environment.coredata.compilers[MachineChoice.HOST]['c']
 
         compiler_flags = self._get_langs_compilers_flags(state, [('c', compiler)])
+        if len(compiler_flags[3]) > 0:
+            cflags.extend(compiler_flags[3]) # Apply CRT cflag first if necessary
         cflags.extend(compiler_flags[0])
         ldflags.extend(compiler_flags[1])
         ldflags.extend(compiler_flags[2])
