@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import collections, functools, importlib
+import platform
 import typing as T
 
 from .base import ExternalDependency, DependencyException, DependencyMethods, NotFoundDependency
@@ -18,6 +19,10 @@ if T.TYPE_CHECKING:
     TV_DepIDEntry = T.Union[str, bool, int, T.Tuple[str, ...]]
     TV_DepID = T.Tuple[T.Tuple[str, TV_DepIDEntry], ...]
     PackageTypes = T.Union[T.Type[ExternalDependency], DependencyFactory, WrappedFactoryFunc]
+
+
+_excluded_packages = ['wxwidgets']
+
 
 class DependencyPackages(collections.UserDict):
     data: T.Dict[str, PackageTypes]
@@ -180,15 +185,17 @@ def _build_external_dependency_list(name: str, env: 'Environment', for_machine: 
         # Create the list of dependency object constructors using a factory
         # class method, if one exists, otherwise the list just consists of the
         # constructor
-        if isinstance(packages[lname], type):
-            entry1 = T.cast('T.Type[ExternalDependency]', packages[lname])  # mypy doesn't understand isinstance(..., type)
-            if issubclass(entry1, ExternalDependency):
-                func: T.Callable[[], 'ExternalDependency'] = functools.partial(entry1, env, kwargs)
-                dep = [func]
-        else:
-            entry2 = T.cast('T.Union[DependencyFactory, WrappedFactoryFunc]', packages[lname])
-            dep = entry2(env, for_machine, kwargs)
-        return dep
+        if platform.system() != 'Windows' or lname not in _excluded_packages:
+            # Packages who are not compatible with Windows
+            if isinstance(packages[lname], type):
+                entry1 = T.cast('T.Type[ExternalDependency]', packages[lname])  # mypy doesn't understand isinstance(..., type)
+                if issubclass(entry1, ExternalDependency):
+                    func: T.Callable[[], 'ExternalDependency'] = functools.partial(entry1, env, kwargs)
+                    dep = [func]
+            else:
+                entry2 = T.cast('T.Union[DependencyFactory, WrappedFactoryFunc]', packages[lname])
+                dep = entry2(env, for_machine, kwargs)
+            return dep
 
     candidates: T.List['DependencyGenerator'] = []
 
