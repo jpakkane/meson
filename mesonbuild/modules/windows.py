@@ -87,7 +87,7 @@ class WindowsModule(ExtensionModule):
 
         for (arg, match, rc_type) in [
                 ('/?', '^.*Microsoft.*Resource Compiler.*$', ResourceCompilerType.rc),
-                ('/?', 'LLVM Resource Converter.*$', ResourceCompilerType.rc),
+                ('/?', '^.*LLVM Resource Converter.*$', ResourceCompilerType.rc),
                 ('--version', '^.*GNU windres.*$', ResourceCompilerType.windres),
                 ('--version', '^.*Wine Resource Compiler.*$', ResourceCompilerType.wrc),
         ]:
