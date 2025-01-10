@@ -90,7 +90,7 @@ methods:
     description: |
       Returns a copy of the dependency object, which has changed the value of `include_type`
       to `value`. The `value` argument is optional and
-      defaults to `'preserve'`.
+      defaults to `'system'`.
 
     optargs:
       value:

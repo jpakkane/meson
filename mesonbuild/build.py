@@ -1354,7 +1354,7 @@ class BuildTarget(Target):
                 # Those parts that are internal.
                 self.process_sourcelist(dep.sources)
                 self.extra_files.extend(f for f in dep.extra_files if f not in self.extra_files)
-                self.add_include_dirs(dep.include_directories, dep.get_include_type())
+                self.add_include_dirs(dep.get_include_dirs())
                 self.objects.extend(dep.objects)
                 self.link_targets.extend(dep.libraries)
                 self.link_whole_targets.extend(dep.whole_libraries)
@@ -1537,17 +1537,12 @@ class BuildTarget(Target):
                 raise MesonException(f'File {f} does not exist.')
         self.pch[language] = pchlist
 
-    def add_include_dirs(self, args: T.Sequence['IncludeDirs'], set_is_system: T.Optional[str] = None) -> None:
+    def add_include_dirs(self, args: T.Sequence['IncludeDirs']) -> None:
         ids: T.List['IncludeDirs'] = []
         for a in args:
             if not isinstance(a, IncludeDirs):
                 raise InvalidArguments('Include directory to be added is not an include directory object.')
             ids.append(a)
-        if set_is_system is None:
-            set_is_system = 'preserve'
-        if set_is_system != 'preserve':
-            is_system = set_is_system == 'system'
-            ids = [IncludeDirs(x.get_curdir(), x.get_incdirs(), is_system, x.get_extra_build_dirs()) for x in ids]
         self.include_dirs += ids
 
     def get_aliases(self) -> T.List[T.Tuple[str, str, str]]:

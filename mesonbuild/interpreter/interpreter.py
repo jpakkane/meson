@@ -2965,12 +2965,11 @@ class Interpreter(InterpreterBase, HoldableObject):
 
         for d in dependencies.get_leaf_external_dependencies(args[0]):
             compile_args = list(d.get_compile_args())
-            system_incdir = d.get_include_type() == 'system'
             for i in d.get_include_dirs():
                 for lang in kwargs['language']:
                     comp = self.coredata.compilers[for_machine][lang]
                     for idir in i.to_string_list(self.environment.get_source_dir(), self.environment.get_build_dir()):
-                        compile_args.extend(comp.get_include_args(idir, system_incdir))
+                        compile_args.extend(comp.get_include_args(idir, i.is_system))
 
             self._add_project_arguments(node, self.build.projects_args[for_machine], compile_args, kwargs)
             self._add_project_arguments(node, self.build.projects_link_args[for_machine], d.get_link_args(), kwargs)
