@@ -152,10 +152,16 @@ class CLikeCompiler(Compiler):
         return self.get_largefile_args()
 
     def get_no_stdinc_args(self) -> T.List[str]:
-        return ['-nostdinc']
+        if self.get_id() == 'msvc':
+            return ['/X']
+        else:
+            return ['-nostdinc']
 
     def get_no_stdlib_link_args(self) -> T.List[str]:
-        return ['-nostdlib']
+        if self.get_id() == 'msvc':
+            return ['/NODEFAULTLIB']
+        else:
+            return ['-nostdlib']
 
     def get_warn_args(self, level: str) -> T.List[str]:
         # TODO: this should be an enum

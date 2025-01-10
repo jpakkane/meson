@@ -81,7 +81,10 @@ class CPPCompiler(CLikeCompiler, Compiler):
         return 'C++'
 
     def get_no_stdinc_args(self) -> T.List[str]:
-        return ['-nostdinc++']
+        if self.get_id() == 'msvc':
+            return ['/X']
+        else:
+            return ['-nostdinc++']
 
     def get_no_stdlib_link_args(self) -> T.List[str]:
         return ['-nostdlib++']
