@@ -103,6 +103,12 @@ kwargs:
       Flags to use during linking. You can use UNIX-style
       flags here for all platforms.
 
+  link_syms:
+    type: list[str]
+    description: |
+      Flags to define and undefine symbols during linking. You must use
+      build-system-appropriate flags here.
+
   link_depends:
     type: str | file | custom_tgt | custom_idx
     description: |

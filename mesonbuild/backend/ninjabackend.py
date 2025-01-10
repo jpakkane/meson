@@ -3622,15 +3622,19 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
                 raise MesonException(f'Tried to link the target named \'{target.name}\' with a MIL archive without LTO enabled! This causes the compiler to ignore the archive.')
 
         # Compiler args must be included in TI C28x linker commands.
+        compile_args = []
         if linker.get_id() in {'c2000', 'c6000', 'ti'}:
-            compile_args = []
             for for_machine in MachineChoice:
                 clist = self.environment.coredata.compilers[for_machine]
                 for langname, compiler in clist.items():
                     if langname in {'c', 'cpp'} and compiler.get_id() in {'c2000', 'c6000', 'ti'}:
                         compile_args += self.generate_basic_compiler_args(target, compiler)
-            elem.add_item('ARGS', compile_args)
 
+        # Add -Wl,--defsym and -Wl,--undefined args
+        if not isinstance(target, build.StaticLibrary):
+            compile_args += linker.get_target_link_syms(target)
+        if compile_args:
+            elem.add_item('ARGS', compile_args)
         elem.add_item('LINK_ARGS', commands)
         self.create_target_linker_introspection(target, linker, commands)
         return elem
