@@ -79,13 +79,20 @@ stuff_pxi = fs.copyfile(
   'stuff.pxi'
 )
 
+stuff_pxi_2 = configure_file(
+  input: 'stuff.pxi.in',
+  output: 'stuff.pxi',
+  configuration: configuration_data(),
+  install: false
+)
+
 # Need to copy the cython source to the build directory
 # since meson can only generate the .pxi there
 includestuff_pyx = fs.copyfile(
   'includestuff.pyx'
 )
 
-stuff_pxi_dep = declare_dependency(sources: stuff_pxi)
+stuff_pxi_dep = declare_dependency(sources: [stuff_pxi, stuff_pxi_2])
 
 includestuff_ext = py3.extension_module(
   'includestuff',
