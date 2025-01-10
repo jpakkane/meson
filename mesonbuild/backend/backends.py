@@ -901,7 +901,7 @@ class Backend:
             if self.environment.is_source(s):
                 sources.append(s)
             elif self.environment.is_object(s):
-                result.append(s.relative_name())
+                result.append(os.path.join(proj_dir_to_build_root, s.relative_name()))
 
         # MSVC generate an object file for PCH
         if extobj.pch and self.target_uses_pch(extobj.target):
