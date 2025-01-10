@@ -8,19 +8,10 @@ In addition to development, almost all projects provide periodical
 source releases. These are standalone packages (usually either in
 tar or zip format) of the source code. They do not contain any
 revision control metadata, only the source code.  Meson provides
-a simple way of generating these, with the `meson dist` command.
-
-Meson provides a simple way of generating these. It consists of a
-single command *(available since 0.52.0)*:
+a simple way of generating these, with the `meson dist` command:
 
 ```sh
 meson dist
-```
-
-or alternatively (on older Meson versions with `ninja` backend):
-
-```sh
-ninja dist
 ```
 
 This creates a file called `projectname-version.tar.xz` in the build
@@ -59,6 +50,21 @@ for example when done in CI that already does its own testing.
 
 So with `--no-tests` you can tell Meson "Do not build and test generated
 packages.".
+
+## Modifying release archive contents
+
+By default `meson dist` includes all source code under version control. In
+order to exclude tracked files, include uncommitted files, or modify existing
+files, dist scripts can be used with [[meson.add_dist_script]]. For example:
+
+```meson
+meson.add_dist_script('gen_somefile.py')
+```
+
+Dist scripts work for any supported VCS. In addition, if Git is used as the
+VCS, a `.gitattributes` file can be used to ignore or modify files during
+archive creation via using the `export-ignore` and `export-subst` attributes
+for files or directories.
 
 ## Use `--allow-dirty` to override error when git repository contains uncommitted changes
 
