@@ -176,7 +176,7 @@ def _build_external_dependency_list(name: str, env: 'Environment', for_machine: 
 
     # Is there a specific dependency detector for this dependency?
     lname = name.lower()
-    if lname in packages:
+    if lname in packages and 'method' not in kwargs:
         # Create the list of dependency object constructors using a factory
         # class method, if one exists, otherwise the list just consists of the
         # constructor
