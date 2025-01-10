@@ -12,6 +12,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+import re
 import typing as T
 import re
 
@@ -86,6 +87,10 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
                         help='Install only targets having one of the given tags. (Since 0.60.0)')
     parser.add_argument('--strip', action='store_true',
                         help='Strip targets even if strip option was not set during configure. (Since 0.62.0)')
+    parser.add_argument('--dbg', action='store_true',
+                        help='Copy debug symbols into seperated files. Requires readelf and objcopy. (Since 1.3.0)')
+    parser.add_argument('--debugdir', default='lib/debug',
+                        help='Directory where to install debug files. Default: lib/debug. (Since 1.3.0)')
 
 class DirMaker:
     def __init__(self, lf: T.TextIO, makedirs: T.Callable[..., None]):
@@ -368,10 +373,11 @@ class Installer:
 
     def should_install(self, d: T.Union[TargetInstallData, InstallEmptyDir,
                                         InstallDataBase, InstallSymlinkData,
-                                        ExecutableSerialisation]) -> bool:
+                                        ExecutableSerialisation],
+                                        ignore_tag: bool = False) -> bool:
         if d.subproject and (d.subproject in self.skip_subprojects or '*' in self.skip_subprojects):
             return False
-        if self.tags and d.tag not in self.tags:
+        if not ignore_tag and self.tags and d.tag not in self.tags:
             return False
         return True
 
@@ -553,6 +559,8 @@ class Installer:
                 self.install_emptydir(d, dm, destdir, fullprefix)
                 self.install_data(d, dm, destdir, fullprefix)
                 self.install_symlinks(d, dm, destdir, fullprefix)
+                if self.options.dbg:
+                    self.install_debug(d, dm, destdir, fullprefix)
                 self.restore_selinux_contexts(destdir)
                 self.run_install_script(d, destdir, fullprefix)
                 if not self.did_install_something:
@@ -611,6 +619,18 @@ class Installer:
             print(f'Stdout:\n{stdo}\n')
             print(f'Stderr:\n{stde}\n')
             sys.exit(1)
+
+    def do_dbg(self, fname: str, fulldebugdir: str, dm: DirMaker):
+        stdo = subprocess.check_output(['readelf', '-n', fname], encoding='utf-8')
+        m = re.search(r'Build ID: ([a-z0-9]+)', stdo)
+        if not m:
+            raise MesonException(f'Could not determine Build ID for {fname!r}')
+        build_id = m.group(1)
+        debug_dir = os.path.join(fulldebugdir, '.build-id', build_id[:2])
+        debug_file = os.path.join(debug_dir, build_id[2:] + '.debug')
+        dm.makedirs(debug_dir, exist_ok=True)
+        self.log(f'Installing {fname} debug to {debug_file}')
+        self.Popen_safe(['objcopy', '--only-keep-debug', '--compress-debug-sections', fname, debug_file])
 
     def install_subdirs(self, d: InstallData, dm: DirMaker, destdir: str, fullprefix: str) -> None:
         for i in d.install_subdirs:
@@ -718,6 +738,17 @@ class Installer:
             if rc != 0:
                 print(f'FAILED: install script \'{name}\' failed with exit code {rc}.')
                 sys.exit(rc)
+
+    def install_debug(self, d: InstallData, dm: DirMaker, destdir: str, fullprefix: str) -> None:
+        fulldebugdir = get_destdir_path(destdir, fullprefix, self.options.debugdir)
+        for t in d.targets:
+            if not t.can_strip or not self.should_install(t, ignore_tag=True):
+                continue
+            if not os.path.exists(t.fname):
+                raise MesonException(f'File {t.fname!r} could not be found')
+            self.did_install_something = True
+            fname = check_for_stampfile(t.fname)
+            self.do_dbg(fname, fulldebugdir, dm)
 
     def install_targets(self, d: InstallData, dm: DirMaker, destdir: str, fullprefix: str) -> None:
         for t in d.targets:
