@@ -1785,6 +1785,8 @@ class NinjaBackend(backends.Backend):
                                     self.compiler_to_rule_name(valac),
                                     all_files + dependency_vapis)
         element.add_item('ARGS', args)
+        depfile = valac.depfile_for_object(os.path.join(self.get_target_dir(target), target.name))
+        element.add_item('DEPFILE', depfile)
         element.add_dep(extra_dep_files)
         self.add_build(element)
         self.create_target_source_introspection(target, valac, args, all_files, [])
@@ -2425,9 +2427,19 @@ class NinjaBackend(backends.Backend):
 
     def generate_vala_compile_rules(self, compiler) -> None:
         rule = self.compiler_to_rule_name(compiler)
-        command = compiler.get_exelist() + ['$ARGS', '$in']
+        command = compiler.get_exelist()
         description = 'Compiling Vala source $in'
-        self.add_rule(NinjaRule(rule, command, [], description, extra='restat = 1'))
+
+        depargs = compiler.get_dependency_gen_args('$out', '$DEPFILE')
+        depfile = '$DEPFILE' if depargs else None
+        depstyle = 'gcc' if depargs else None
+
+        args = depargs + ['$ARGS', '$in']
+
+        self.add_rule(NinjaRule(rule, command + args, [], description,
+                                depfile=depfile,
+                                deps=depstyle,
+                                extra='restat = 1'))
 
     def generate_cython_compile_rules(self, compiler: 'Compiler') -> None:
         rule = self.compiler_to_rule_name(compiler)

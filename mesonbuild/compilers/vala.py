@@ -39,6 +39,14 @@ class ValaCompiler(Compiler):
     def get_optimization_args(self, optimization_level: str) -> T.List[str]:
         return []
 
+    def get_dependency_gen_args(self, outtarget: str, outfile: str) -> T.List[str]:
+        if version_compare(self.version, '>=0.47.2'):
+            return ['--depfile', outfile]
+        return []
+
+    def get_depfile_suffix(self) -> str:
+        return 'depfile'
+
     def get_debug_args(self, is_debug: bool) -> T.List[str]:
         return ['--debug'] if is_debug else []
 
