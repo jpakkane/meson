@@ -2824,12 +2824,18 @@ class Interpreter(InterpreterBase, HoldableObject):
         return result
 
     @typed_pos_args('include_directories', varargs=str)
-    @typed_kwargs('include_directories', KwargInfo('is_system', bool, default=False))
+    @typed_kwargs(
+        'include_directories',
+        KwargInfo('is_system', bool, default=False),
+        KwargInfo('build', bool, default=True, since='1.3.0'),
+        KwargInfo('source', bool, default=True, since='1.3.0'),
+    )
     def func_include_directories(self, node: mparser.BaseNode, args: T.Tuple[T.List[str]],
                                  kwargs: 'kwtypes.FuncIncludeDirectories') -> build.IncludeDirs:
-        return self.build_incdir_object(args[0], kwargs['is_system'])
+        return self.build_incdir_object(args[0], kwargs['is_system'], kwargs['build'], kwargs['source'])
 
-    def build_incdir_object(self, incdir_strings: T.List[str], is_system: bool = False) -> build.IncludeDirs:
+    def build_incdir_object(self, incdir_strings: T.List[str], is_system: bool = False,
+                            build_relative: bool = True, source_relative: bool = True) -> build.IncludeDirs:
         if not isinstance(is_system, bool):
             raise InvalidArguments('Is_system must be boolean.')
         src_root = self.environment.get_source_dir()
@@ -2893,7 +2899,20 @@ class Interpreter(InterpreterBase, HoldableObject):
             absdir_build = os.path.join(absbase_build, a)
             if not os.path.isdir(absdir_src) and not os.path.isdir(absdir_build):
                 raise InvalidArguments(f'Include dir {a} does not exist.')
-        i = build.IncludeDirs(self.subdir, incdir_strings, is_system)
+
+        if not (build_relative or source_relative):
+            raise InvalidArguments('include_directories must use \'build\'-relative, '
+                                   '\'source\'-relative, or both.')
+
+        if build_relative and not source_relative:
+            for d in incdir_strings:
+                if os.path.isabs(d):
+                    raise InvalidArguments(
+                        f'Absolute paths ({d}) in include_directories() with only '
+                        '\'build\'-relative use is not expected.')
+
+        i = build.IncludeDirs(self.subdir, incdir_strings, is_system,
+                              build_relative=build_relative, source_relative=source_relative)
         return i
 
     @typed_pos_args('add_test_setup', str)

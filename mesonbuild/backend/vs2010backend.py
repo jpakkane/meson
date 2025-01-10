@@ -955,7 +955,7 @@ class Vs2010Backend(backends.Backend):
                 other.append(arg)
         return lpaths, libs, other
 
-    def _get_cl_compiler(self, target):
+    def _get_cl_compiler(self, target) -> compilers.Compiler:
         for lang, c in target.compilers.items():
             if lang in {'c', 'cpp'}:
                 return c
@@ -978,19 +978,25 @@ class Vs2010Backend(backends.Backend):
         replace_if_different(ofname, ofname_tmp)
 
     # Returns:  (target_args,file_args), (target_defines,file_defines), (target_inc_dirs,file_inc_dirs)
-    def get_args_defines_and_inc_dirs(self, target, compiler, generated_files_include_dirs, proj_to_src_root, proj_to_src_dir, build_args):
+    def get_args_defines_and_inc_dirs(self, target: build.BuildTarget, compiler: compilers.Compiler,
+                                      generated_files_include_dirs: T.List[str], proj_to_src_root: str,
+                                      proj_to_src_dir: str, build_args: T.List[str]) -> \
+            T.Tuple[
+                T.Tuple[T.List[str], T.Dict[str, CompilerArgs]],
+                T.Tuple[T.List[str], T.Dict[str, list]],
+                T.Tuple[T.List[str], T.Dict[str, list]]]:
         # Arguments, include dirs, defines for all files in the current target
-        target_args = []
-        target_defines = []
-        target_inc_dirs = []
+        target_args: T.List[str] = []
+        target_defines: T.List[str] = []
+        target_inc_dirs: T.List[str] = []
         # Arguments, include dirs, defines passed to individual files in
         # a target; perhaps because the args are language-specific
         #
         # file_args is also later split out into defines and include_dirs in
         # case someone passed those in there
         file_args: T.Dict[str, CompilerArgs] = {l: c.compiler_args() for l, c in target.compilers.items()}
-        file_defines = {l: [] for l in target.compilers}
-        file_inc_dirs = {l: [] for l in target.compilers}
+        file_defines: T.Dict[str, list] = {l: [] for l in target.compilers}
+        file_inc_dirs: T.Dict[str, list] = {l: [] for l in target.compilers}
         # The order in which these compile args are added must match
         # generate_single_compile() and generate_basic_compiler_args()
         for l, comp in target.compilers.items():
@@ -1037,13 +1043,21 @@ class Vs2010Backend(backends.Backend):
                 # reversed is used to keep order of includes
                 for i in reversed(d.get_incdirs()):
                     curdir = os.path.join(d.get_curdir(), i)
-                    try:
+                    if d.source_relative:
                         # Add source subdir first so that the build subdir overrides it
                         args.append('-I' + os.path.join(proj_to_src_root, curdir))  # src dir
-                        args.append('-I' + self.relpath(curdir, target.subdir)) # build dir
-                    except ValueError:
-                        # Include is on different drive
-                        args.append('-I' + os.path.normpath(curdir))
+
+                    # We assert that we don't have any absolute paths with ONLY build-relative
+                    # include dirs but since we allow abs paths in conjunction with source
+                    # and/or build-relative include dirs, any abs paths will already be added
+                    # via the 'source_relative' step above, so don't duplicate -
+                    if d.build_relative and not os.path.isabs(i):
+                        try:
+                            args.append('-I' + self.relpath(curdir, target.subdir)) # build dir
+                        except ValueError:  # From 'relpath'...
+                            # ... if curdir and target.subdir are different drives
+                            args.append('-I' + os.path.normpath(curdir))
+
                 for i in d.get_extra_build_dirs():
                     curdir = os.path.join(d.get_curdir(), i)
                     args.append('-I' + self.relpath(curdir, target.subdir))  # build dir

@@ -1,0 +1,1 @@
+#define SRC_ONLY_MSG	"Src-only"

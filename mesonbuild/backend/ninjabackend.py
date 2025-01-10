@@ -2879,27 +2879,59 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
         self.add_build(element)
         return (rel_obj, rel_src)
 
+    # Returns a list of include dir arg strings.
+    # If 'd' is an absolute path, then there's just one include dir arg.
+    # If 'build_relative' and 'source_relative' then the list contains the
+    # src-relative dir and the build-relative dir... IN THIS ORDER -
+    #   [build-relative, src-relative]
+    # This is because -
+    #
+    # - We know that this function is used with CompilerArgs.__iadd_ (+=)
+    # which has very particular behaviour.
+    #
+    # - With include dirs, CompilerArgs '+=' reverses the input sequence and
+    # prepends the reverse of that again to its internal commands list, so -
+    #   commands += [a]
+    #   commands += [b]
+    # gives [b,a,...], which is different from -
+    #   commands += [a,b]
+    # which gives [a,b,...]
+    #
+    # Because of this, returning any build-relative path before a src-relative
+    # path means the build-relative path will come earlier in the final command
+    # args and so take precedence, which is what we want.
+    #
+    # Because this is internal, it's reasonable to assume all 'd' paths have
+    # checked we don't use absolute paths with ONLY 'build_relative' paths.
     @lru_cache(maxsize=None)
-    def generate_inc_dir(self, compiler: 'Compiler', d: str, basedir: str, is_system: bool) -> \
-            T.Tuple['ImmutableListProtocol[str]', 'ImmutableListProtocol[str]']:
+    def _generate_inc_dir(self, compiler: 'Compiler', d: str, basedir: str,
+                          is_system: bool, build_relative: bool,
+                          source_relative: bool) -> \
+            T.List['ImmutableListProtocol[str]']:
         # Avoid superfluous '/.' at the end of paths when d is '.'
         if d not in ('', '.'):
             expdir = os.path.normpath(os.path.join(basedir, d))
         else:
             expdir = basedir
-        srctreedir = os.path.normpath(os.path.join(self.build_to_src, expdir))
-        sargs = compiler.get_include_args(srctreedir, is_system)
+
+        inc_dirs: T.List[T.List[str]] = []
+
+        is_builddir_suitable = build_relative and not os.path.isabs(d)
+
         # There may be include dirs where a build directory has not been
         # created for some source dir. For example if someone does this:
         #
         # inc = include_directories('foo/bar/baz')
         #
         # But never subdir()s into the actual dir.
-        if os.path.isdir(os.path.join(self.environment.get_build_dir(), expdir)):
-            bargs = compiler.get_include_args(expdir, is_system)
-        else:
-            bargs = []
-        return (sargs, bargs)
+        if is_builddir_suitable and os.path.isdir(os.path.join(self.environment.get_build_dir(), expdir)):
+            inc_dirs += compiler.get_include_args(expdir, is_system)
+
+        if source_relative:
+            srctreedir = os.path.normpath(os.path.join(self.build_to_src, expdir))
+            inc_dirs += compiler.get_include_args(srctreedir, is_system)
+
+        return inc_dirs
 
     def _generate_single_compile(self, target: build.BuildTarget, compiler: Compiler) -> CompilerArgs:
         commands = self._generate_single_compile_base_args(target, compiler)
@@ -2944,10 +2976,8 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
             # -Ipath will add to begin of array. And without reverse
             # flags will be added in reversed order.
             for d in reversed(i.get_incdirs()):
-                # Add source subdir first so that the build subdir overrides it
-                (compile_obj, includeargs) = self.generate_inc_dir(compiler, d, basedir, i.is_system)
-                commands += compile_obj
-                commands += includeargs
+                commands += self._generate_inc_dir(compiler, d, basedir, i.is_system,
+                                                   i.build_relative, i.source_relative)
             for d in i.get_extra_build_dirs():
                 commands += compiler.get_include_args(d, i.is_system)
         # Add per-target compile args, f.ex, `c_args : ['-DFOO']`. We set these

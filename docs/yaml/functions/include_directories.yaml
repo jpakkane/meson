@@ -2,11 +2,11 @@ name: include_directories
 returns: inc
 description: |
   Returns an opaque object which contains the directories (relative to
-  the current directory) given in the positional arguments. The result
-  can then be passed to the `include_directories:` keyword argument when
-  building executables or libraries. You can use the returned object in
-  any subdirectory you want, Meson will make the paths work
-  automatically.
+  the current build and/or source directory) given in the positional
+  arguments. The result can then be passed to the `include_directories:`
+  keyword argument when building executables or libraries. You can use
+  the returned object in any subdirectory you want, Meson will make the
+  paths work automatically.
 
   Note that this function call itself does not add the directories into
   the search path, since there is no global search path. For something
@@ -16,8 +16,18 @@ description: |
   [[executable]], which adds current source and build
   directories to include path.
 
-  Each directory given is converted to two include paths: one that is
-  relative to the source root and one relative to the build root.
+  Each given directory is converted to a build-root-relative include
+  search path (if `build` is `true`) and/or a source-root-relative
+  path (if `source` is `true`).
+
+  The default values for `build` and `source` are `true`.  It is
+  invalid for both to be `false`.
+
+  It is invalid to use absolute paths with _only_ 'build' `true`,
+  since asking for build-relative-only absolute include directories is
+  meaningless or at least a user misunderstanding.  However, absolute
+  search paths are allowed if `source` is `true`.  If `build` is also
+  `true`, any absolute paths will only be added once.
 
 example: |
   For example, with the following source tree layout in
@@ -70,3 +80,20 @@ kwargs:
       they will be used with the `-isystem` compiler argument rather than
       `-I` on compilers that support this flag (in practice everything
       except Visual Studio).
+
+  build:
+    type: bool
+    default: true
+    since: 1.3.0
+    description: |
+      Specifies whether the resultant include search directories should be
+      treated as build-relative include search directories.
+
+  source:
+    type: bool
+    default: true
+    since: 1.3.0
+    description: |
+      Specifies whether the resultant include search directories should be
+      treated as source-relative include search directories, while also
+      allowing absolute directory paths.

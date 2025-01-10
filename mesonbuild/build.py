@@ -380,10 +380,23 @@ class IncludeDirs(HoldableObject):
     # Interpreter has validated that all given directories
     # actually exist.
     extra_build_dirs: T.List[str] = field(default_factory=list)
+    build_relative: bool = True
+    source_relative: bool = True
 
     def __repr__(self) -> str:
         r = '<{} {}/{}>'
         return r.format(self.__class__.__name__, self.curdir, self.incdirs)
+
+    def __post_init__(self):
+        assert self.build_relative or self.source_relative, \
+            'IncludeDirs must enable build_relative, or source_relative, or both'
+
+        # It's meaningless to explicitly specify build-relative include dirs but
+        # with absolute paths.  This is in addition to the same validation on
+        # user-supplied include dirs, since we also instantiate some internal
+        # IncludeDirs elsewhere, which we can prevent breaking this expectation.
+        assert self.source_relative or not any(os.path.isabs(d) for d in self.incdirs), \
+            'build-relative-only IncludeDirs with absolute paths is not expected.'
 
     def get_curdir(self) -> str:
         return self.curdir
@@ -402,10 +415,20 @@ class IncludeDirs(HoldableObject):
             be added if this is unset
         :returns: A list of strings (without compiler argument)
         """
+
         strlist: T.List[str] = []
-        for idir in self.incdirs:
-            strlist.append(os.path.join(sourcedir, self.curdir, idir))
-            strlist.append(os.path.join(builddir, self.curdir, idir))
+        if self.source_relative:
+            strlist.extend(os.path.join(sourcedir, self.curdir, idir) for idir in self.incdirs)
+
+        if self.build_relative:
+            if self.source_relative:
+                # Only append relative incdirs paths to the builddir, since any absolute paths
+                # will already have been appended above.
+                strlist.extend(os.path.join(builddir, self.curdir, idir) for idir in self.incdirs if not os.path.isabs(idir))
+            else:
+                # We can assume they're relative paths that can all be appended
+                strlist.extend(os.path.join(builddir, self.curdir, idir) for idir in self.incdirs)
+
         return strlist
 
 @dataclass(eq=False)

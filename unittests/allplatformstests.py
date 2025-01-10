@@ -5043,6 +5043,12 @@ class AllPlatformTests(BasePlatformTests):
             olddata = newdata
             oldmtime = newmtime
 
+    def test_include_dirs_relative(self):
+        testdir = os.path.join(self.common_test_dir, '267 include_directories relative')
+        self.init(testdir)
+        self.build()
+        self.run_tests()
+
     def test_c_cpp_stds(self):
         testdir = os.path.join(self.unit_test_dir, '116 c cpp stds')
         self.init(testdir)

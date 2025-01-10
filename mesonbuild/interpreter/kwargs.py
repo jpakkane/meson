@@ -161,6 +161,9 @@ class FuncImportModule(ExtractRequired):
 class FuncIncludeDirectories(TypedDict):
 
     is_system: bool
+    build: bool
+    source: bool
+
 
 class FuncAddLanguages(ExtractRequired):
 
