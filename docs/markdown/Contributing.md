@@ -183,8 +183,12 @@ unit test.
 
 Additionally:
 
-* `crossfile.ini` and `nativefile.ini` are passed to the configure step with
-`--cross-file` and `--native-file` options, respectively.
+* `crossfile.ini` and `nativefile.ini` can be placed in the test project
+  folder. If present and running a cross-compile test (using the
+  `--cross-file` option of `run_project_tests.py`) the `crossfile.ini`
+  will be added to the test execution by appending the `--cross-file`
+  meson option. The native file is added always, if present in the
+  folder, using the `--native-file` meson option.
 
 * `mlog.cmd_ci_include()` can be called from anywhere inside Meson to
 capture the contents of an additional file into the CI log on failure.

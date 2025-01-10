@@ -671,11 +671,14 @@ def _run_test(test: TestDef,
         gen_args += ['--libdir', 'lib']
     gen_args += [test.path.as_posix(), test_build_dir] + backend_flags + extra_args
 
+    has_global_crossfile = '--cross-file' in extra_args
     nativefile, crossfile = detect_parameter_files(test, test_build_dir)
 
     if nativefile.exists():
         gen_args.extend(['--native-file', nativefile.as_posix()])
-    if crossfile.exists():
+
+    # Only add the cross file if we are already doing a cross-build
+    if crossfile.exists() and has_global_crossfile:
         gen_args.extend(['--cross-file', crossfile.as_posix()])
     inprocess, res = run_configure(gen_args, env=test.env, catch_exception=True)
     returncode, stdo, stde = res

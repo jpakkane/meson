@@ -7,11 +7,12 @@ description: |
 notes:
 - |
   These compiler checks do not use compiler arguments added
-  with `add_*_arguments()`, via `-Dlang_args` on the command-line, or
-  through `CFLAGS`/`LDFLAGS`, etc in the environment. Hence, you can
-  trust that the tests will be fully self-contained, and won't fail
-  because of custom flags added by other parts of the build file or by
-  users.
+  with `add_*_arguments()`, so that tests do not depend on the order
+  they are run in and won't fail because of custom flags added by other
+  parts of the build file.
+
+  However, arguments added via `-Dlang_args` on the command-line, or through 
+  `CFLAGS`/`LDFLAGS`, etc. in the environment are taken into account.
 
 - |
   Note that if you have a single prefix with all your dependencies, you

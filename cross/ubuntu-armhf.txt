@@ -9,11 +9,6 @@ strip = '/usr/arm-linux-gnueabihf/bin/strip'
 pkg-config = '/usr/bin/arm-linux-gnueabihf-pkg-config'
 ld = '/usr/bin/arm-linux/gnueabihf-ld'
 
-[built-in options]
-# Used in unit test '140 get define'
-c_args = ['-DMESON_TEST_ISSUE_1665=1']
-cpp_args = '-DMESON_TEST_ISSUE_1665=1'
-
 [properties]
 root = '/usr/arm-linux-gnueabihf'
 

@@ -1,0 +1,32 @@
+{
+  "env" : {
+    "CFLAGS": "-DMESON_CC_CHECKS_SHOULD_SEE_ME__ENV=1"
+  },
+  "matrix": {
+    "options": {
+      "c_args": [
+        { "val": "-DMESON_CC_CHECKS_SHOULD_SEE_ME__ARG=1" },
+        { "val": null }
+      ],
+      "define_to_check" : [
+        { "val": "MESON_CC_CHECKS_SHOULD_SEE_ME__ARG" },
+        { "val": "MESON_CC_CHECKS_SHOULD_SEE_ME__ENV" },
+        { "val": null }
+      ]
+    },
+    "exclude": [
+      {
+        "c_args": "-DMESON_CC_CHECKS_SHOULD_SEE_ME__ARG=1",
+        "define_to_check": "MESON_CC_CHECKS_SHOULD_SEE_ME__ENV"
+      },
+      {
+        "c_args": null,
+        "define_to_check": "MESON_CC_CHECKS_SHOULD_SEE_ME__ARG"
+      },
+      {
+        "c_args": "-DMESON_CC_CHECKS_SHOULD_SEE_ME__ARG=1",
+        "define_to_check": null
+      }
+    ]
+  }
+}
