@@ -5084,3 +5084,13 @@ class AllPlatformTests(BasePlatformTests):
             'link', 'lld-link', 'mwldarm', 'mwldeppc', 'optlink', 'xilink',
         }
         self.assertEqual(cc.linker.get_accepts_rsp(), has_rsp)
+
+    def test_compiler_link_args(self):
+        testdir = os.path.join(self.unit_test_dir, '123 compiler.links args')
+
+        with self.assertRaises(subprocess.CalledProcessError) as cm:
+            self.init(testdir)
+        self.assertIn('gcov does not link', cm.exception.stdout)
+
+        # This should succeed without raising due to '-Db_coverage=true'
+        self.init(testdir, extra_args=['-Db_coverage=true'])

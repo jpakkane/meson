@@ -17,7 +17,7 @@ from .. import options
 from .. import mesonlib
 from .. import mlog
 from ..compilers import SUFFIX_TO_LANG, RunResult
-from ..compilers.compilers import CompileCheckMode
+from ..compilers.compilers import CompileCheckMode, get_base_compile_args, get_base_link_args
 from ..interpreterbase import (ObjectHolder, noPosargs, noKwargs,
                                FeatureNew, FeatureNewKwargs, disablerIfNotFound,
                                InterpreterException)
@@ -271,9 +271,11 @@ class CompilerHolder(ObjectHolder['Compiler']):
                 args.extend(self.compiler.get_include_args(idir, False))
         if not kwargs['no_builtin_args']:
             opts = coredata.OptionsView(self.environment.coredata.optstore, self.subproject)
-            args += self.compiler.get_option_compile_args(opts)
+            args.extend(self.compiler.get_option_compile_args(opts))
+            args.extend(get_base_compile_args(opts, self.compiler, self.environment))
             if mode is CompileCheckMode.LINK:
                 args.extend(self.compiler.get_option_link_args(opts))
+                args.extend(get_base_link_args(opts, self.compiler, False, self.environment.get_build_dir()))
         if kwargs.get('werror', False):
             args.extend(self.compiler.get_werror_args())
         args.extend(kwargs['args'])
