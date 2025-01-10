@@ -48,7 +48,7 @@ GROUP_FLAGS = re.compile(r'''^(?!-Wl,) .*\.so (?:\.[0-9]+)? (?:\.[0-9]+)? (?:\.[
                              \.a$''', re.X)
 
 class CLikeCompilerArgs(arglist.CompilerArgs):
-    prepend_prefixes = ('-I', '-L')
+    prepend_prefixes = ('-I', '-isystem', '-L')
     dedup2_prefixes = ('-I', '-isystem', '-L', '-D', '-U')
 
     # NOTE: not thorough. A list of potential corner cases can be found in
