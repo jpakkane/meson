@@ -2529,8 +2529,7 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
             self.generate_java_compile_rule(compiler)
             return
         if langname == 'cs':
-            if self.environment.machines.matches_build_machine(compiler.for_machine):
-                self.generate_cs_compile_rule(compiler)
+            self.generate_cs_compile_rule(compiler)
             return
         if langname == 'vala':
             self.generate_vala_compile_rules(compiler)
