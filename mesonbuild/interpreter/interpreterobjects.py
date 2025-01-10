@@ -909,6 +909,8 @@ class BuildTargetHolder(ObjectHolder[_BuildTarget]):
                              'path': self.path_method,
                              'found': self.found_method,
                              'private_dir_include': self.private_dir_include_method,
+                             'get_link_targets': self.get_link_targets_method,
+                             'get_link_whole_targets': self.get_link_whole_targets_method,
                              })
 
     def __repr__(self) -> str:
@@ -989,6 +991,18 @@ class BuildTargetHolder(ObjectHolder[_BuildTarget]):
     @noKwargs
     def name_method(self, args: T.List[TYPE_var], kwargs: TYPE_kwargs) -> str:
         return self._target_object.name
+
+    @FeatureNew('get_link_targets', '1.6.0')
+    @noPosargs
+    @noKwargs
+    def get_link_targets_method(self, args: T.List[TYPE_var], kwargs: TYPE_kwargs) -> T.List[build.LibTypes]:
+        return self._target_object.link_targets
+
+    @FeatureNew('get_link_whole_targets', '1.6.0')
+    @noPosargs
+    @noKwargs
+    def get_link_whole_targets_method(self, args: T.List[TYPE_var], kwargs: TYPE_kwargs) -> T.List[T.Union[build.StaticLibrary, build.CustomTarget, build.CustomTargetIndex]]:
+        return self._target_object.link_whole_targets
 
 class ExecutableHolder(BuildTargetHolder[build.Executable]):
     pass
