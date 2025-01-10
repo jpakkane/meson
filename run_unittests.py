@@ -12,42 +12,9 @@ import subprocess
 import os
 import unittest
 
-import mesonbuild.mlog
-import mesonbuild.depfile
-import mesonbuild.dependencies.base
-import mesonbuild.dependencies.factory
-import mesonbuild.compilers
-import mesonbuild.envconfig
-import mesonbuild.environment
 import mesonbuild.coredata
-import mesonbuild.modules.gnome
 from mesonbuild.mesonlib import python_command, setup_vsenv
-import mesonbuild.modules.pkgconfig
 
-from unittests.allplatformstests import AllPlatformTests
-from unittests.cargotests import CargoVersionTest, CargoCfgTest, CargoLockTest
-from unittests.darwintests import DarwinTests
-from unittests.failuretests import FailureTests
-from unittests.linuxcrosstests import LinuxCrossArmTests, LinuxCrossMingwTests
-from unittests.machinefiletests import NativeFileTests, CrossFileTests
-from unittests.rewritetests import RewriterTests
-from unittests.taptests import TAPParserTests
-from unittests.datatests import DataTests
-from unittests.internaltests import InternalTests
-from unittests.linuxliketests import LinuxlikeTests
-from unittests.pythontests import PythonTests
-from unittests.subprojectscommandtests import SubprojectsCommandTests
-from unittests.windowstests import WindowsTests
-from unittests.platformagnostictests import PlatformAgnosticTests
-
-def unset_envs():
-    # For unit tests we must fully control all command lines
-    # so that there are no unexpected changes coming from the
-    # environment, for example when doing a package build.
-    varnames = ['CPPFLAGS', 'LDFLAGS'] + list(mesonbuild.compilers.compilers.CFLAGS_MAPPING.values())
-    for v in varnames:
-        if v in os.environ:
-            del os.environ[v]
 
 def convert_args(argv):
     # If we got passed a list of tests, pass it on
@@ -100,15 +67,34 @@ def setup_backend():
     os.environ['MESON_UNIT_TEST_BACKEND'] = be
     sys.argv = filtered
 
-def main():
-    unset_envs()
-    setup_backend()
-    cases = ['InternalTests', 'DataTests', 'AllPlatformTests', 'FailureTests',
-             'PythonTests', 'NativeFileTests', 'RewriterTests', 'CrossFileTests',
-             'TAPParserTests', 'SubprojectsCommandTests', 'PlatformAgnosticTests',
+def import_test_cases(suite: unittest.TestSuite) -> list:
+    '''
+    Imports all test classes into the current module and returns their names
+    '''
+    classes = set()
+    for test in suite:
+        if isinstance(test, unittest.TestSuite):
+            classes.update(import_test_cases(test))
+        elif isinstance(test, unittest.TestCase):
+            import importlib
+            mod = importlib.import_module(test.__module__)
+            class_name = test.__class__.__name__
+            test_class = getattr(mod, class_name)
+            classes.add(class_name)
+            setattr(sys.modules[__name__], class_name, test_class)
+    return sorted(classes)
 
-             'LinuxlikeTests', 'LinuxCrossArmTests', 'LinuxCrossMingwTests',
-             'WindowsTests', 'DarwinTests']
+def discover_test_cases() -> list:
+    current_dir = os.path.dirname(os.path.realpath(__file__))
+    loader = unittest.TestLoader()
+    suite = loader.discover(os.path.join(current_dir, 'unittests'), '*tests.py', current_dir)
+    if loader.errors:
+        raise SystemExit(loader.errors)
+    return import_test_cases(suite)
+
+def main():
+    cases = discover_test_cases()
+    setup_backend()
 
     try:
         import pytest # noqa: F401
