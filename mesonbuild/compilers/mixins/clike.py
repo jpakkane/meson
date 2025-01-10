@@ -76,7 +76,15 @@ class CLikeCompilerArgs(arglist.CompilerArgs):
         if isinstance(self.compiler.linker, (GnuLikeDynamicLinkerMixin, SolarisDynamicLinker, CompCertDynamicLinker)):
             group_start = -1
             group_end = -1
+            ignore = False
             for i, each in enumerate(new):
+                if ignore:
+                    ignore = False
+                    continue
+                if each == "-Xclang":
+                    ignore = True
+                    continue
+
                 if not GROUP_FLAGS.search(each):
                     continue
                 group_end = i
