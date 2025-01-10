@@ -24,8 +24,10 @@ class ManPage:
 
     def title(self, name: str, section: int) -> None:
         import datetime
+        import time
+        from os import environ
 
-        date = datetime.date.today()
+        date = datetime.date.fromtimestamp(int(environ.get('SOURCE_DATE_EPOCH', time.time())))
         self.reset_font()
         self.text += f'.TH "{name}" "{section}" "{date}"\n'
 
