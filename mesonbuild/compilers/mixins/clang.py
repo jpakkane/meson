@@ -8,6 +8,7 @@ from __future__ import annotations
 import os
 import shutil
 import typing as T
+import re
 
 from ... import mesonlib
 from ...linkers.linkers import AppleDynamicLinker, ClangClDynamicLinker, LLVMDynamicLinker, GnuGoldDynamicLinker, \
@@ -139,6 +140,8 @@ class ClangCompiler(GnuLikeCompiler):
             # With MSVC, DLLs only export symbols that are explicitly exported,
             # so if a module defs file is specified, we use that to export symbols
             return ['-Wl,/DEF:' + defsfile]
+        if isinstance(self.linker, ClangClDynamicLinker):
+            return ['-Wl,/DEF:' + re.sub(R'(?<!\\)\\(?!\\)', R'\\\\', defsfile.replace('/', '\\'))]
         return super().gen_vs_module_defs_args(defsfile)
 
     @classmethod
