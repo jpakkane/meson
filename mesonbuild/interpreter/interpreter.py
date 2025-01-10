@@ -96,7 +96,7 @@ from .type_checking import (
 )
 from . import primitives as P_OBJ
 
-from pathlib import Path
+from pathlib import Path, PurePath, PurePosixPath, PureWindowsPath
 from enum import Enum
 import os
 import shutil
@@ -3051,16 +3051,62 @@ class Interpreter(InterpreterBase, HoldableObject):
             return env_convertor_with_method(init, kwargs['method'], kwargs['separator'])
         return EnvironmentVariables()
 
+    @FeatureNew('both_libraries', '0.36.0')
     @typed_pos_args('join_paths', varargs=str, min_varargs=1)
-    @noKwargs
-    def func_join_paths(self, node: mparser.BaseNode, args: T.Tuple[T.List[str]], kwargs: 'TYPE_kwargs') -> str:
-        parts = args[0]
-        other = os.path.join('', *parts[1:]).replace('\\', '/')
-        ret = os.path.join(*parts).replace('\\', '/')
-        if isinstance(parts[0], P_OBJ.DependencyVariableString) and '..' not in other:
+    @typed_kwargs('join_paths',
+                  KwargInfo('flavor', str, default='meson', since='1.5.0',
+                            validator=in_set_validator({'meson', 'posix', 'windows', 'native'})),
+                  KwargInfo('mode', str, default='relative', since='1.5.0',
+                            validator=in_set_validator({'relative', 'absolute'})),
+                  )
+    def func_join_paths(self, node: mparser.BaseNode, args: T.Tuple[T.List[str]], kwargs: T.Dict[str, str]) -> str:
+        if not any(args[0]):
+            return ''
+
+        flavor = kwargs['flavor']
+
+        if flavor == 'posix':
+            path_func = PurePosixPath
+            path_sep = '/'
+        elif flavor == 'windows':
+            path_func = PureWindowsPath
+            path_sep = '\\'
+        else:
+            path_func = PurePath
+            path_sep = os.sep
+
+        def remove_abs(parts: T.Iterable[str]) -> T.Iterable[str]:
+            if not parts:
+                return
+            yield parts[0]
+
+            for part in parts[1:]:
+                if not part:
+                    yield ''
+                else:
+                    p = path_func(part)
+                    if p.is_absolute() or p.parts[0].startswith(path_sep):
+                        p = path_func(*p.parts[1:])
+                    yield str(p)
+
+        if kwargs['mode'] == 'absolute':
+            first, *others = remove_abs(args[0])
+        else:
+            first, *others = args[0]
+
+        if flavor == 'meson':
+            ret = os.path.join(first, *others).replace('\\', '/')
+        else:
+            ret = str(path_func(first, *others))
+            if others:
+                last = others[-1]
+                if not last or last.endswith(path_sep):
+                    ret += path_sep
+
+        if isinstance(first, P_OBJ.DependencyVariableString) and '..' not in ret:
             return P_OBJ.DependencyVariableString(ret)
-        elif isinstance(parts[0], P_OBJ.OptionString):
-            name = os.path.join(parts[0].optname, other)
+        elif isinstance(first, P_OBJ.OptionString):
+            name = os.path.join(first.optname, *others).replace('\\', '/')
             return P_OBJ.OptionString(ret, name)
         else:
             return ret

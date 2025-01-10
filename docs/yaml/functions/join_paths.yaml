@@ -24,3 +24,26 @@ varargs:
   type: str
   description: The path parts to join.
   min_varargs: 1
+
+kwargs:
+  flavor:
+    type: str
+    since: 1.5.0
+    description: |
+      Determine the way paths are interpreted:
+      - 'meson' (default): Converts backslashes to slashes. The behavior for
+                           joining Windows paths depends on the host system.
+                           This mode keeps the behavior of previous meson versions.
+      - 'posix': Paths are handled like posix paths. Backslashes are not converted.
+      - 'windows': Paths are handled like windows paths. Slashes are converted
+                   to backslashes.
+      - 'native': Uses 'posix' mode on posix systems, and 'windows' mode on Windows.
+
+  mode:
+    type: str
+    since: 1.5.0
+    description: |
+      If 'relative' (default), the last part that is an absolute path becomes the starting
+      point of the resulting path.
+      If 'absolute', absolute paths are joined by removing the absolute component
+      of subsequent paths. For instance, joining `/foo` and `/bar` becomes `/foo/bar`.
