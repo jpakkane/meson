@@ -9,10 +9,13 @@ import textwrap
 import re
 import typing as T
 
+from .. import arglist
 from .. import options
+from ..linkers.linkers import GnuLikeDynamicLinkerMixin, SolarisDynamicLinker, CompCertDynamicLinker
 from ..mesonlib import EnvironmentException, MesonException, Popen_safe_logged
 from ..options import OptionKey
 from .compilers import Compiler, clike_debug_args
+from .mixins.clike import GROUP_FLAGS
 
 if T.TYPE_CHECKING:
     from ..coredata import MutableKeyedOptionDictType, KeyedOptionDictType
@@ -62,6 +65,37 @@ def get_rustup_run_and_args(exelist: T.List[str]) -> T.Optional[T.Tuple[T.List[s
     except StopIteration:
         return None
 
+
+class RustcCompilerArgs(arglist.CompilerArgs):
+    def to_native_inplace(self) -> None:
+        assert isinstance(self.compiler, RustCompiler), 'How did you get here'
+
+        # Check if we need to add --start/end-group for circular dependencies
+        # between static libraries, and for recursively searching for symbols
+        # needed by static libraries that are provided by object files or
+        # shared libraries.
+        # This covers all ld.bfd, ld.gold, ld.gold, and xild on Linux, which
+        # all act like (or are) gnu ld
+        if isinstance(self.compiler.linker, (GnuLikeDynamicLinkerMixin, SolarisDynamicLinker, CompCertDynamicLinker)):
+            group_start = -1
+            group_end = -1
+            last_rustc_arg = -1
+            for i, each in enumerate(self):
+                if each in {'--emit', '-o', '--extern'}:
+                    last_rustc_arg = i
+                if last_rustc_arg == i - 1 or not GROUP_FLAGS.search(each):
+                    continue
+                group_end = i
+                if group_start < 0:
+                    # First occurrence of a library
+                    group_start = i
+            # Only add groups if there are multiple libraries.
+            if group_end > group_start >= 0:
+                # Last occurrence of a library
+                self.insert(group_end + 1, '-Clink-arg=-Wl,--end-group')
+                self.insert(group_start, '-Clink-arg=-Wl,--start-group')
+
+
 class RustCompiler(Compiler):
 
     # rustc doesn't invoke the compiler itself, it doesn't need a LINKER_PREFIX
@@ -99,6 +133,10 @@ class RustCompiler(Compiler):
         if 'link' in self.linker.id:
             self.base_options.add(OptionKey('b_vscrt'))
         self.native_static_libs: T.List[str] = []
+
+    def compiler_args(self, args: T.Optional[T.Iterable[str]] = None) -> RustcCompilerArgs:
+        # This is correct, mypy just doesn't understand co-operative inheritance
+        return RustcCompilerArgs(self, args)
 
     def needs_static_linker(self) -> bool:
         return False

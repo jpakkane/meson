@@ -220,6 +220,9 @@ class CompilerArgs(T.MutableSequence[str]):
     def _should_prepend(cls, arg: str) -> bool:
         return arg.startswith(cls.prepend_prefixes)
 
+    def to_native_inplace(self) -> None:
+        pass
+
     def to_native(self, copy: bool = False) -> T.List[str]:
         # Check if we need to add --start/end-group for circular dependencies
         # between static libraries, and for recursively searching for symbols
@@ -230,6 +233,7 @@ class CompilerArgs(T.MutableSequence[str]):
             new = self.copy()
         else:
             new = self
+        new.to_native_inplace()
         return self.compiler.unix_args_to_native(new._container)
 
     def append_direct(self, arg: str) -> None:

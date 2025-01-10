@@ -57,26 +57,17 @@ class CLikeCompilerArgs(arglist.CompilerArgs):
     dedup1_suffixes = ('.lib', '.dll', '.so', '.dylib', '.a')
     dedup1_args = ('-c', '-S', '-E', '-pipe', '-pthread', '-Wl,--export-dynamic')
 
-    def to_native(self, copy: bool = False) -> T.List[str]:
+    def to_native_inplace(self) -> None:
         # This seems to be allowed, but could never work?
         assert isinstance(self.compiler, compilers.Compiler), 'How did you get here'
 
-        # Check if we need to add --start/end-group for circular dependencies
-        # between static libraries, and for recursively searching for symbols
-        # needed by static libraries that are provided by object files or
-        # shared libraries.
-        self.flush_pre_post()
-        if copy:
-            new = self.copy()
-        else:
-            new = self
         # This covers all ld.bfd, ld.gold, ld.gold, and xild on Linux, which
         # all act like (or are) gnu ld
         # TODO: this could probably be added to the DynamicLinker instead
         if isinstance(self.compiler.linker, (GnuLikeDynamicLinkerMixin, SolarisDynamicLinker, CompCertDynamicLinker)):
             group_start = -1
             group_end = -1
-            for i, each in enumerate(new):
+            for i, each in enumerate(self):
                 if not GROUP_FLAGS.search(each):
                     continue
                 group_end = i
@@ -86,20 +77,20 @@ class CLikeCompilerArgs(arglist.CompilerArgs):
             # Only add groups if there are multiple libraries.
             if group_end > group_start >= 0:
                 # Last occurrence of a library
-                new.insert(group_end + 1, '-Wl,--end-group')
-                new.insert(group_start, '-Wl,--start-group')
+                self.insert(group_end + 1, '-Wl,--end-group')
+                self.insert(group_start, '-Wl,--start-group')
         # Remove system/default include paths added with -isystem
         default_dirs = self.compiler.get_default_include_dirs()
         if default_dirs:
             real_default_dirs = [self._cached_realpath(i) for i in default_dirs]
             bad_idx_list: T.List[int] = []
-            for i, each in enumerate(new):
+            for i, each in enumerate(self):
                 if not each.startswith('-isystem'):
                     continue
 
                 # Remove the -isystem and the path if the path is a default path
                 if each == '-isystem':
-                    if i < (len(new) - 1) and self._cached_realpath(new[i + 1]) in real_default_dirs:
+                    if i < (len(self) - 1) and self._cached_realpath(self[i + 1]) in real_default_dirs:
                         bad_idx_list += [i, i + 1]
                 elif each.startswith('-isystem='):
                     if self._cached_realpath(each[9:]) in real_default_dirs:
@@ -107,8 +98,7 @@ class CLikeCompilerArgs(arglist.CompilerArgs):
                 elif self._cached_realpath(each[8:]) in real_default_dirs:
                     bad_idx_list += [i]
             for i in reversed(bad_idx_list):
-                new.pop(i)
-        return self.compiler.unix_args_to_native(new._container)
+                self.pop(i)
 
     @staticmethod
     @functools.lru_cache(maxsize=None)
