@@ -912,6 +912,11 @@ class Interpreter(InterpreterBase, HoldableObject):
                 return self.disabled_subproject(subp_name, exception=e)
             raise e
 
+        if method == 'cmake' and force_method != method:
+            mlog.log('\nSubproject', mlog.bold(subdir), 'ignored', '(cmake)')
+            # do not use disabled_subproject(), we do not want to cache the disabled project
+            return SubprojectHolder(NullSubprojectInterpreter(), os.path.join(self.subproject_dir, subp_name))
+
         os.makedirs(os.path.join(self.build.environment.get_build_dir(), subdir), exist_ok=True)
         self.global_args_frozen = True
 
