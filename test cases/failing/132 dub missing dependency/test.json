@@ -1,0 +1,8 @@
+{
+  "stdout": [
+    {
+      "line": "test cases/failing/132 dub missing dependency/meson.build:17:6: ERROR: Dependency \"urld\" not found",
+      "line": "dub add urld"
+    }
+  ]
+}

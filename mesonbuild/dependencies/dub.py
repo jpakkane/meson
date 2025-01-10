@@ -5,10 +5,11 @@ from __future__ import annotations
 
 from .base import ExternalDependency, DependencyException, DependencyTypeName
 from .pkgconfig import PkgConfigDependency
-from ..mesonlib import (Popen_safe, join_args, version_compare)
+from ..mesonlib import (Popen_safe, join_args, version_compare, version_compare_many)
 from ..options import OptionKey
 from ..programs import ExternalProgram
 from .. import mlog
+from enum import Enum
 import re
 import os
 import json
@@ -56,6 +57,10 @@ if T.TYPE_CHECKING:
         search: str
         artifactPath: str
 
+class DubDescriptionSource(Enum):
+    Local = 'local'
+    External = 'external'
+
 class DubDependency(ExternalDependency):
     # dub program and version
     class_dubbin: T.Optional[T.Tuple[ExternalProgram, str]] = None
@@ -87,7 +92,6 @@ class DubDependency(ExternalDependency):
         if DubDependency.class_dubbin is None:
             if self.required:
                 raise DependencyException('DUB not found.')
-            self.is_found = False
             return
 
         (self.dubbin, dubver) = DubDependency.class_dubbin  # pylint: disable=unpacking-non-sequence
@@ -108,19 +112,10 @@ class DubDependency(ExternalDependency):
                 mlog.warning(f'DUB dependency {name} not found because Dub {dubver} '
                              "is not compatible with Meson. (Can't locate artifacts in DUB's cache)."
                              ' Upgrade to Dub >= 1.35')
-            self.is_found = False
             return
 
         mlog.debug('Determining dependency {!r} with DUB executable '
                    '{!r}'.format(name, self.dubbin.get_path()))
-
-        # if an explicit version spec was stated, use this when querying Dub
-        main_pack_spec = name
-        if 'version' in kwargs:
-            version_spec = kwargs['version']
-            if isinstance(version_spec, list):
-                version_spec = " ".join(version_spec)
-            main_pack_spec = f'{name}@{version_spec}'
 
         # we need to know the target architecture
         dub_arch = self.compiler.arch
@@ -135,37 +130,11 @@ class DubDependency(ExternalDependency):
         elif dub_buildtype == 'minsize':
             dub_buildtype = 'release'
 
-        # A command that might be useful in case of missing DUB package
-        def dub_build_deep_command() -> str:
-            if self._dub_has_build_deep:
-                cmd = ['dub', 'build', '--deep']
-            else:
-                cmd = ['dub', 'run', '--yes', 'dub-build-deep', '--']
-
-            return join_args(cmd + [
-                main_pack_spec,
-                '--arch=' + dub_arch,
-                '--compiler=' + self.compiler.get_exelist()[-1],
-                '--build=' + dub_buildtype
-            ])
-
-        # Ask dub for the package
-        describe_cmd = [
-            'describe', main_pack_spec, '--arch=' + dub_arch,
-            '--build=' + dub_buildtype, '--compiler=' + self.compiler.get_exelist()[-1]
-        ]
-        ret, res, err = self._call_dubbin(describe_cmd)
-
-        if ret != 0:
-            mlog.debug('DUB describe failed: ' + err)
-            if 'locally' in err:
-                mlog.error(mlog.bold(main_pack_spec), 'is not present locally. You may try the following command:')
-                mlog.log(mlog.bold(dub_build_deep_command()))
-            self.is_found = False
+        result = self._get_dub_description(dub_arch, dub_buildtype)
+        if result is None:
             return
-
+        description, build_cmd, description_source = result
         dub_comp_id = self._ID_MAP[self.compiler.get_id()]
-        description: DubDescription = json.loads(res)
 
         self.compile_args = []
         self.link_args = self.raw_link_args = []
@@ -204,7 +173,7 @@ class DubDependency(ExternalDependency):
                     mlog.error(mlog.bold(pack_id), 'not found')
 
                 mlog.log('You may try the following command to install the necessary DUB libraries:')
-                mlog.log(mlog.bold(dub_build_deep_command()))
+                mlog.log(mlog.bold(build_cmd))
 
                 return False
 
@@ -223,33 +192,45 @@ class DubDependency(ExternalDependency):
         # 4. Add other build settings (imports, versions etc.)
 
         # 1
-        self.is_found = False
         packages: T.Dict[str, DubPackDesc] = {}
+        found_it = False
         for pkg in description['packages']:
             packages[pkg['name']] = pkg
 
             if not pkg['active']:
                 continue
 
-            if pkg['targetType'] == 'dynamicLibrary':
-                mlog.error('DUB dynamic library dependencies are not supported.')
-                self.is_found = False
-                return
-
             # check that the main dependency is indeed a library
             if pkg['name'] == name:
-                self.is_found = True
-
                 if pkg['targetType'] not in ['library', 'sourceLibrary', 'staticLibrary']:
-                    mlog.error(mlog.bold(name), "found but it isn't a library")
-                    self.is_found = False
+                    mlog.error(mlog.bold(name), "found but it isn't a static library, it is:",
+                               pkg['targetType'])
                     return
 
+                if self.version_reqs is not None:
+                    ver = pkg['version']
+                    if not version_compare_many(ver, self.version_reqs)[0]:
+                        mlog.error(mlog.bold(f'{name}@{ver}'),
+                                   'does not satisfy all version requirements of:',
+                                   ' '.join(self.version_reqs))
+                        return
+
+                found_it = True
                 self.version = pkg['version']
                 self.pkg = pkg
 
+        if not found_it:
+            mlog.error(f'Could not find {name} in DUB description.')
+            if description_source is DubDescriptionSource.Local:
+                mlog.log('Make sure that the dependency is registered for your dub project by running:')
+                mlog.log(mlog.bold(f'dub add {name}'))
+            elif description_source is DubDescriptionSource.External:
+                # It shouldn't be possible to get here
+                mlog.log('Make sure that the dependency is built:')
+                mlog.log(mlog.bold(build_cmd))
+            return
+
         if name not in targets:
-            self.is_found = False
             if self.pkg['targetType'] == 'sourceLibrary':
                 # source libraries have no associated targets,
                 # but some build settings like import folders must be found from the package object.
@@ -258,10 +239,7 @@ class DubDependency(ExternalDependency):
                 # (See openssl DUB package for example of sourceLibrary)
                 mlog.error('DUB targets of type', mlog.bold('sourceLibrary'), 'are not supported.')
             else:
-                mlog.error('Could not find target description for', mlog.bold(main_pack_spec))
-
-        if not self.is_found:
-            mlog.error(f'Could not find {name} in DUB description')
+                mlog.error('Could not find target description for', mlog.bold(self.name))
             return
 
         # Current impl only supports static libraries
@@ -269,19 +247,17 @@ class DubDependency(ExternalDependency):
 
         # 2
         if not find_package_target(self.pkg):
-            self.is_found = False
             return
 
         # 3
         for link_dep in targets[name]['linkDependencies']:
             pkg = packages[link_dep]
             if not find_package_target(pkg):
-                self.is_found = False
                 return
 
         if show_buildtype_warning:
             mlog.log('If it is not suitable, try the following command and reconfigure Meson with', mlog.bold('--clearcache'))
-            mlog.log(mlog.bold(dub_build_deep_command()))
+            mlog.log(mlog.bold(build_cmd))
 
         # 4
         bs = targets[name]['buildSettings']
@@ -344,6 +320,60 @@ class DubDependency(ExternalDependency):
 
             # fallback
             self.link_args.append('-l'+lib)
+
+        self.is_found = True
+
+    # Get the dub description needed to resolve the dependency and a
+    # build command that can be used to build the dependency in case it is
+    # not present.
+    def _get_dub_description(self, dub_arch: str, dub_buildtype: str) -> T.Optional[T.Tuple[DubDescription, str, DubDescriptionSource]]:
+        def get_build_command() -> T.List[str]:
+            if self._dub_has_build_deep:
+                cmd = ['dub', 'build', '--deep']
+            else:
+                cmd = ['dub', 'run', '--yes', 'dub-build-deep', '--']
+
+            return cmd + [
+                '--arch=' + dub_arch,
+                '--compiler=' + self.compiler.get_exelist()[-1],
+                '--build=' + dub_buildtype,
+            ]
+
+        # Ask dub for the package
+        describe_cmd = [
+            'describe', '--arch=' + dub_arch,
+            '--build=' + dub_buildtype, '--compiler=' + self.compiler.get_exelist()[-1]
+        ]
+        helper_build = join_args(get_build_command())
+        source = DubDescriptionSource.Local
+        ret, res, err = self._call_dubbin(describe_cmd)
+        if ret == 0:
+            return (json.loads(res), helper_build, source)
+
+        pack_spec = self.name
+        if self.version_reqs is not None:
+            if len(self.version_reqs) > 1:
+                mlog.error('Multiple version requirements are not supported for raw dub dependencies.')
+                mlog.error("Please specify only an exact version like '1.2.3'")
+                raise DependencyException('Multiple version requirements are not solvable for raw dub depencies')
+            elif len(self.version_reqs) == 1:
+                pack_spec += '@' + self.version_reqs[0]
+
+        describe_cmd = [
+            'describe', pack_spec, '--arch=' + dub_arch,
+            '--build=' + dub_buildtype, '--compiler=' + self.compiler.get_exelist()[-1]
+        ]
+        helper_build = join_args(get_build_command() + [pack_spec])
+        source = DubDescriptionSource.External
+        ret, res, err = self._call_dubbin(describe_cmd)
+        if ret == 0:
+            return (json.loads(res), helper_build, source)
+
+        mlog.debug('DUB describe failed: ' + err)
+        if 'locally' in err:
+            mlog.error(mlog.bold(pack_spec), 'is not present locally. You may try the following command:')
+            mlog.log(mlog.bold(helper_build))
+        return None
 
     # This function finds the target of the provided JSON package, built for the right
     # compiler, architecture, configuration...
@@ -469,7 +499,7 @@ class DubDependency(ExternalDependency):
 
     def _call_dubbin(self, args: T.List[str], env: T.Optional[T.Dict[str, str]] = None) -> T.Tuple[int, str, str]:
         assert isinstance(self.dubbin, ExternalProgram)
-        p, out, err = Popen_safe(self.dubbin.get_command() + args, env=env)
+        p, out, err = Popen_safe(self.dubbin.get_command() + args, env=env, cwd=self.env.get_source_dir())
         return p.returncode, out.strip(), err.strip()
 
     def _call_compbin(self, args: T.List[str], env: T.Optional[T.Dict[str, str]] = None) -> T.Tuple[int, str, str]:

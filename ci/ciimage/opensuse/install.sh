@@ -42,11 +42,12 @@ echo 'ulimit -n -S 10000' >> /ci/env_vars.sh
 
 source /ci/env_vars.sh
 
-dub_fetch urld
-dub build --deep urld --arch=x86_64 --compiler=dmd --build=debug
-dub_fetch dubtestproject
-dub build dubtestproject:test1 --compiler=dmd
-dub build dubtestproject:test2 --compiler=dmd
+dub_fetch dubtestproject@1.2.0
+dub build dubtestproject:test1 --compiler=dmd --arch=x86_64
+dub build dubtestproject:test2 --compiler=dmd --arch=x86_64
+dub build dubtestproject:test3 --compiler=dmd --arch=x86_64
+dub_fetch urld@3.0.0
+dub build urld --compiler=dmd --arch=x86_64
 
 # Cleanup
 zypper --non-interactive clean --all

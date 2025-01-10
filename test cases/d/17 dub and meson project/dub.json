@@ -1,0 +1,11 @@
+{
+  "name": "17-dub-meson-project",
+  "dependencies": {
+    "urld": ">=3.0.0 <3.0.1",
+    "dubtestproject:test3": "1.2.0",
+    ":multi-configuration": "*"
+  },
+  "subPackages": [
+    "multi-configuration"
+  ]
+}
