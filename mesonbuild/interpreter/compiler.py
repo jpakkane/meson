@@ -676,7 +676,7 @@ class CompilerHolder(ObjectHolder['Compiler']):
         return haz
 
     def notfound_library(self, libname: str) -> 'dependencies.ExternalLibrary':
-        lib = dependencies.ExternalLibrary(libname, None,
+        lib = dependencies.ExternalLibrary(libname, None, None,
                                            self.environment,
                                            self.compiler.language,
                                            silent=True)
@@ -716,6 +716,14 @@ class CompilerHolder(ObjectHolder['Compiler']):
             if not self._has_header_impl(h, has_header_kwargs):
                 return self.notfound_library(libname)
 
+        # If has_headers is enabled and header_include_directories were passed,
+        # then construct compile_args from those include dirs.
+        compile_args = []
+        if kwargs['has_headers']:
+            for incdirs in kwargs['header_include_directories']:
+                for arg in incdirs.to_string_list(self.environment.get_source_dir()):
+                    compile_args.append(f'-I{arg}')
+
         search_dirs = extract_search_dirs(kwargs)
 
         prefer_static = self.environment.coredata.get_option(OptionKey('prefer_static'))
@@ -736,7 +744,7 @@ class CompilerHolder(ObjectHolder['Compiler']):
             raise InterpreterException('{} {} library {!r} not found'
                                        .format(self.compiler.get_display_language(),
                                                libtype_s, libname))
-        lib = dependencies.ExternalLibrary(libname, linkargs, self.environment,
+        lib = dependencies.ExternalLibrary(libname, linkargs, compile_args, self.environment,
                                            self.compiler.language)
         return lib
 

@@ -495,8 +495,8 @@ class NotFoundDependency(Dependency):
 
 
 class ExternalLibrary(ExternalDependency):
-    def __init__(self, name: str, link_args: T.List[str], environment: 'Environment',
-                 language: str, silent: bool = False) -> None:
+    def __init__(self, name: str, link_args: T.List[str], compile_args: T.List[str],
+                 environment: 'Environment', language: str, silent: bool = False) -> None:
         super().__init__(DependencyTypeName('library'), environment, {}, language=language)
         self.name = name
         self.language = language
@@ -504,6 +504,8 @@ class ExternalLibrary(ExternalDependency):
         if link_args:
             self.is_found = True
             self.link_args = link_args
+        if compile_args:
+            self.compile_args = compile_args
         if not silent:
             if self.is_found:
                 mlog.log('Library', mlog.bold(name), 'found:', mlog.green('YES'))
@@ -528,12 +530,14 @@ class ExternalLibrary(ExternalDependency):
     def get_partial_dependency(self, *, compile_args: bool = False,
                                link_args: bool = False, links: bool = False,
                                includes: bool = False, sources: bool = False) -> 'ExternalLibrary':
-        # External library only has link_args, so ignore the rest of the
-        # interface.
+        # External library only has link_args and compile_args, so ignore the
+        # rest of the interface.
         new = copy.copy(self)
         new._id = uuid.uuid4().int
         if not link_args:
             new.link_args = []
+        if not compile_args:
+            new.compile_args = []
         return new
 
 

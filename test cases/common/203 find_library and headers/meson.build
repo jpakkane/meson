@@ -12,12 +12,14 @@ lib = cc.find_library('z',
 assert(not lib.found(), 'Header should be missing')
 
 lib = cc.find_library('z',
-  has_headers : 'foo.h',
-  header_include_directories : include_directories('.'))
-assert(lib.found(), 'Header should be found')
-
-lib = cc.find_library('z',
   has_headers : ['foo.h', 'bar.h'],
-  header_include_directories : include_directories('.'),
+  header_include_directories : include_directories('inc'),
   required : false)
 assert(not lib.found(), 'One header should be missing')
+
+lib = cc.find_library('z',
+  has_headers : 'foo.h',
+  header_include_directories : include_directories('inc'))
+assert(lib.found(), 'Header should be found')
+
+executable('main', 'src/main.c', dependencies: lib)
