@@ -603,7 +603,8 @@ gnome.generate_gir(asglib,
   identifier_prefix : 'As',
   export_packages : 'appstream-glib',
   includes : ['GObject-2.0', 'Gio-2.0', 'GdkPixbuf-2.0'],
-  install : true
+  install : true,
+  use_gi_repository_compile: true
 )
 ```
 

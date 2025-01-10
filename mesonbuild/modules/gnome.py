@@ -97,6 +97,7 @@ if T.TYPE_CHECKING:
         nsversion: str
         sources: T.List[T.Union[FileOrString, build.GeneratedTypes]]
         symbol_prefix: T.List[str]
+        use_gi_repository_compile: bool
 
     class GtkDoc(TypedDict):
 
@@ -252,6 +253,7 @@ class GnomeModule(ExtensionModule):
     def __init__(self, interpreter: 'Interpreter') -> None:
         super().__init__(interpreter)
         self.gir_dep: T.Optional[Dependency] = None
+        self.girepository_dep: T.Optional[Dependency] = None
         self.giscanner: T.Optional[T.Union[ExternalProgram, Executable, OverrideProgram]] = None
         self.gicompiler: T.Optional[T.Union[ExternalProgram, Executable, OverrideProgram]] = None
         self.install_glib_compile_schemas = False
@@ -307,17 +309,18 @@ class GnomeModule(ExtensionModule):
     @staticmethod
     def _find_tool(state: 'ModuleState', tool: str) -> 'ToolType':
         tool_map = {
-            'gio-querymodules': 'gio-2.0',
-            'glib-compile-schemas': 'gio-2.0',
-            'glib-compile-resources': 'gio-2.0',
-            'gdbus-codegen': 'gio-2.0',
-            'glib-genmarshal': 'glib-2.0',
-            'glib-mkenums': 'glib-2.0',
-            'g-ir-scanner': 'gobject-introspection-1.0',
-            'g-ir-compiler': 'gobject-introspection-1.0',
+            'gio-querymodules': ('gio-2.0', 'gio_querymodules'),
+            'glib-compile-schemas': ('gio-2.0', 'glib_compile_schemas'),
+            'glib-compile-resources': ('gio-2.0', 'glib_compile_resources'),
+            'gdbus-codegen': ('gio-2.0', 'gdbus_codegen'),
+            'glib-genmarshal': ('glib-2.0', 'glib_genmarshal'),
+            'glib-mkenums': ('glib-2.0', 'glib_mkenums'),
+            # TODO: Use gi_compile_repository once GLib exposes it
+            'gi-compile-repository': ('girepository-2.0', None),
+            'g-ir-scanner': ('gobject-introspection-1.0', 'g_ir_scanner'),
+            'g-ir-compiler': ('gobject-introspection-1.0', 'g_ir_compiler'),
         }
-        depname = tool_map[tool]
-        varname = tool.replace('-', '_')
+        depname, varname = tool_map[tool]
         return state.find_tool(tool, depname, varname)
 
     @typed_kwargs(
@@ -763,7 +766,7 @@ class GnomeModule(ExtensionModule):
 
         return cflags, internal_ldflags, external_ldflags, gi_includes, depends
 
-    def _unwrap_gir_target(self, girtarget: T.Union[Executable, build.StaticLibrary, build.SharedLibrary], state: 'ModuleState'
+    def _unwrap_gir_target(self, girtarget: T.Union[Executable, build.StaticLibrary, build.SharedLibrary], state: 'ModuleState', use_gi_repository_compile: bool
                            ) -> T.Union[Executable, build.StaticLibrary, build.SharedLibrary]:
         if not isinstance(girtarget, (Executable, build.SharedLibrary,
                                       build.StaticLibrary)):
@@ -772,7 +775,7 @@ class GnomeModule(ExtensionModule):
         STATIC_BUILD_REQUIRED_VERSION = ">=1.58.1"
         if isinstance(girtarget, (build.StaticLibrary)) and \
            not mesonlib.version_compare(
-               self._get_gir_dep(state)[0].get_version(),
+               self._get_gir_dep(state, use_gi_repository_compile=use_gi_repository_compile)[0].get_version(),
                STATIC_BUILD_REQUIRED_VERSION):
             raise MesonException('Static libraries can only be introspected with GObject-Introspection ' + STATIC_BUILD_REQUIRED_VERSION)
 
@@ -787,12 +790,28 @@ class GnomeModule(ExtensionModule):
         if self.devenv is not None:
             b.devenv.append(self.devenv)
 
-    def _get_gir_dep(self, state: 'ModuleState') -> T.Tuple[Dependency, T.Union[Executable, 'ExternalProgram', 'OverrideProgram'],
-                                                            T.Union[Executable, 'ExternalProgram', 'OverrideProgram']]:
+    def _supports_girepository2(self, state: 'ModuleState') -> bool:
+        glib_version = self._get_native_glib_version(state)
+
+        return mesonlib.version_compare(glib_version, '>= 2.79.2')
+
+    def _get_gir_dep(self, state: 'ModuleState', use_gi_repository_compile: bool
+                     ) -> T.Tuple[Dependency, T.Union[Executable, 'ExternalProgram', 'OverrideProgram'],
+                                  T.Union[Executable, 'ExternalProgram', 'OverrideProgram']]:
+        supports_girepository_2 = self._supports_girepository2(state)
+        if supports_girepository_2 and not self.girepository_dep and use_gi_repository_compile:
+            self.girepository_dep = state.dependency('girepository-2.0')
+
         if not self.gir_dep:
             self.gir_dep = state.dependency('gobject-introspection-1.0')
             self.giscanner = self._find_tool(state, 'g-ir-scanner')
-            self.gicompiler = self._find_tool(state, 'g-ir-compiler')
+
+        if not self.gicompiler:
+            if use_gi_repository_compile and supports_girepository_2:
+                self.gicompiler = self._find_tool(state, 'gi-compile-repository')
+            else:
+                self.gicompiler = self._find_tool(state, 'g-ir-compiler')
+
         return self.gir_dep, self.giscanner, self.gicompiler
 
     @functools.lru_cache(maxsize=None)
@@ -1112,6 +1131,7 @@ class GnomeModule(ExtensionModule):
         KwargInfo('install_dir_gir', (str, bool, NoneType),
                   deprecated_values={False: ('0.61.0', 'Use install_gir to disable installation')},
                   validator=lambda x: 'as boolean can only be false' if x is True else None),
+        KwargInfo('use_gi_repository_compile', (bool), default=False),
         KwargInfo('install_typelib', (bool, NoneType), since='0.61.0'),
         KwargInfo('install_dir_typelib', (str, bool, NoneType),
                   deprecated_values={False: ('0.61.0', 'Use install_typelib to disable installation')},
@@ -1127,11 +1147,13 @@ class GnomeModule(ExtensionModule):
         # Ensure we have a C compiler even in C++ projects.
         state.add_language('c', MachineChoice.HOST)
 
-        girtargets = [self._unwrap_gir_target(arg, state) for arg in args[0]]
+        use_gi_repository_compile = kwargs['use_gi_repository_compile']
+
+        girtargets = [self._unwrap_gir_target(arg, state, use_gi_repository_compile=use_gi_repository_compile) for arg in args[0]]
         if len(girtargets) > 1 and any(isinstance(el, Executable) for el in girtargets):
             raise MesonException('generate_gir only accepts a single argument when one of the arguments is an executable')
 
-        gir_dep, giscanner, gicompiler = self._get_gir_dep(state)
+        gir_dep, giscanner, gicompiler = self._get_gir_dep(state, use_gi_repository_compile=use_gi_repository_compile)
 
         ns = kwargs['namespace']
         nsversion = kwargs['nsversion']
