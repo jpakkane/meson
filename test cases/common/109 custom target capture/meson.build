@@ -22,3 +22,13 @@ if not os.path.exists(sys.argv[1]):
 '''
 
 test('capture-wrote', python3, args : ['-c', ct_output_exists, mytarget])
+
+mytarget = custom_target('bindat',
+  output : 'data.dat',
+  input : 'data_source.txt',
+  build_subdir : 'subdir2',
+  capture : true,
+  command : [python3, comp, '@INPUT@'],
+  install : true,
+  install_dir : 'subdir2'
+)

@@ -2055,6 +2055,7 @@ class Interpreter(InterpreterBase, HoldableObject):
         KwargInfo('feed', bool, default=False, since='0.59.0'),
         KwargInfo('capture', bool, default=False),
         KwargInfo('console', bool, default=False, since='0.48.0'),
+        KwargInfo('build_subdir', str, default='', since='1.7.0'),
     )
     def func_custom_target(self, node: mparser.FunctionNode, args: T.Tuple[str],
                            kwargs: 'kwtypes.CustomTarget') -> build.CustomTarget:
@@ -2145,7 +2146,8 @@ class Interpreter(InterpreterBase, HoldableObject):
             install_dir=kwargs['install_dir'],
             install_mode=install_mode,
             install_tag=kwargs['install_tag'],
-            backend=self.backend)
+            backend=self.backend,
+            build_subdir=kwargs['build_subdir'])
         self.add_target(tg.name, tg)
         return tg
 
@@ -2643,6 +2645,7 @@ class Interpreter(InterpreterBase, HoldableObject):
         KwargInfo('output_format', str, default='c', since='0.47.0', since_values={'json': '1.3.0'},
                   validator=in_set_validator({'c', 'json', 'nasm'})),
         KwargInfo('macro_name', (str, NoneType), default=None, since='1.3.0'),
+        KwargInfo('build_subdir', str, default='', since='1.7.0'),
     )
     def func_configure_file(self, node: mparser.BaseNode, args: T.List[TYPE_var],
                             kwargs: kwtypes.ConfigureFile):
@@ -2698,8 +2701,19 @@ class Interpreter(InterpreterBase, HoldableObject):
             mlog.warning('Output file', mlog.bold(ofile_rpath, True), 'for configure_file() at', current_call, 'overwrites configure_file() output at', first_call)
         else:
             self.configure_file_outputs[ofile_rpath] = self.current_node.lineno
-        (ofile_path, ofile_fname) = os.path.split(os.path.join(self.subdir, output))
+
+        # Validate build_subdir
+        build_subdir = kwargs['build_subdir']
+        self.build_subdir = build_subdir
+        if self.build_subdir and self.build_subdir != '.':
+            if os.path.exists(os.path.join(self.source_root, self.subdir, build_subdir)):
+                raise InvalidArguments(f'Build subdir "{build_subdir}" in output "{output}" exists in source tree.')
+            if '..' in build_subdir:
+                raise InvalidArguments(f'Build subdir "{build_subdir}" in output "{output}" contains ..')
+
+        (ofile_path, ofile_fname) = os.path.split(os.path.join(self.subdir, self.build_subdir, output))
         ofile_abs = os.path.join(self.environment.build_dir, ofile_path, ofile_fname)
+        os.makedirs(os.path.split(ofile_abs)[0], exist_ok=True)
 
         # Perform the appropriate action
         if kwargs['configuration'] is not None:
@@ -2715,7 +2729,6 @@ class Interpreter(InterpreterBase, HoldableObject):
             if len(inputs) > 1:
                 raise InterpreterException('At most one input file can given in configuration mode')
             if inputs:
-                os.makedirs(os.path.join(self.environment.build_dir, self.subdir), exist_ok=True)
                 file_encoding = kwargs['encoding']
                 missing_variables, confdata_useless = \
                     mesonlib.do_conf_file(inputs_abs[0], ofile_abs, conf,
@@ -3224,11 +3237,21 @@ class Interpreter(InterpreterBase, HoldableObject):
                     To define a target that builds in that directory you must define it
                     in the meson.build file in that directory.
             '''))
+
+        # Make sure build_subdir doesn't exist in the source tree and
+        # doesn't contain ..
+        build_subdir = tobj.get_build_subdir()
+        if build_subdir and build_subdir != '.':
+            if os.path.exists(os.path.join(self.source_root, self.subdir, build_subdir)):
+                raise InvalidArguments(f'Build subdir "{build_subdir}" in target "{name}" exists in source tree.')
+            if '..' in build_subdir:
+                raise InvalidArguments(f'Build subdir "{build_subdir}" in target "{name}" contains ..')
+
         self.validate_forbidden_targets(name)
         # To permit an executable and a shared library to have the
         # same name, such as "foo.exe" and "libfoo.a".
         idname = tobj.get_id()
-        subdir = tobj.get_subdir()
+        subdir = tobj.get_builddir()
         namedir = (name, subdir)
 
         if idname in self.build.targets:

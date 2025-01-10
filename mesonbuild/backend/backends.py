@@ -335,9 +335,9 @@ class Backend:
 
     def get_build_dir_include_args(self, target: build.BuildTarget, compiler: 'Compiler', *, absolute_path: bool = False) -> T.List[str]:
         if absolute_path:
-            curdir = os.path.join(self.build_dir, target.get_subdir())
+            curdir = os.path.join(self.build_dir, target.get_builddir())
         else:
-            curdir = target.get_subdir()
+            curdir = target.get_builddir()
             if curdir == '':
                 curdir = '.'
         return compiler.get_include_args(curdir, False)
@@ -372,9 +372,12 @@ class Backend:
             # this produces no output, only a dummy top-level name
             dirname = ''
         elif self.environment.coredata.get_option(OptionKey('layout')) == 'mirror':
-            dirname = target.get_subdir()
+            dirname = target.get_builddir()
         else:
             dirname = 'meson-out'
+            build_subdir = target.get_build_subdir()
+            if build_subdir:
+                dirname = os.path.join(dirname, build_subdir)
         return dirname
 
     def get_target_dir_relative_to(self, t: build.Target, o: build.Target) -> str:
@@ -484,7 +487,7 @@ class Backend:
         for obj in objects:
             if isinstance(obj, str):
                 o = os.path.join(proj_dir_to_build_root,
-                                 self.build_to_src, target.get_subdir(), obj)
+                                 self.build_to_src, target.get_builddir(), obj)
                 obj_list.append(o)
             elif isinstance(obj, mesonlib.File):
                 if obj.is_built:
@@ -1287,7 +1290,7 @@ class Backend:
                                 ld_lib_path_libs.add(l)
 
                 env_build_dir = self.environment.get_build_dir()
-                ld_lib_path: T.Set[str] = set(os.path.join(env_build_dir, l.get_subdir()) for l in ld_lib_path_libs)
+                ld_lib_path: T.Set[str] = set(os.path.join(env_build_dir, l.get_builddir()) for l in ld_lib_path_libs)
 
                 if ld_lib_path:
                     t_env.prepend('LD_LIBRARY_PATH', list(ld_lib_path), ':')

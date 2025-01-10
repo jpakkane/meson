@@ -30,6 +30,13 @@ configure_file(input : files('config.h.in'),
   output : 'config2.h',
   configuration : conf)
 
+# Test if build_subdir works
+configure_file(input : files('config.h.in'),
+  output : 'config2.h',
+  build_subdir : 'config-subdir',
+  install_dir : 'share/appdir/config-subdir',
+  configuration : conf)
+
 # Now generate a header file with an external script.
 genprog = import('python3').find_python()
 scriptfile = '@0@/generator.py'.format(meson.current_source_dir())
