@@ -896,14 +896,23 @@ class CLikeCompiler(Compiler):
         and then searching the binary for the string,
         '''
         symbol_name = b'meson_uscore_prefix'
-        code = '''#ifdef __cplusplus
-        extern "C" {
-        #endif
-        void ''' + symbol_name.decode() + ''' (void) {}
-        #ifdef __cplusplus
-        }
-        #endif
-        '''
+        if self.language == 'fortran':
+            code = f'''      real function {symbol_name.decode()}()
+                  {symbol_name.decode()} = 0
+                  return
+                  end
+            '''
+        elif self.language in {'c', 'cpp'}:
+            code = '''#ifdef __cplusplus
+            extern "C" {
+            #endif
+            void ''' + symbol_name.decode() + ''' (void) {}
+            #ifdef __cplusplus
+            }
+            #endif
+            '''
+        else:
+            raise RuntimeError(f'Underscore prefix check not implemented for {self.language}')
         args = self.get_compiler_check_args(CompileCheckMode.COMPILE)
         n = '_symbols_have_underscore_prefix_searchbin'
         with self._build_wrapper(code, env, extra_args=args, mode=CompileCheckMode.COMPILE, want_output=True) as p:
@@ -971,7 +980,7 @@ class CLikeCompiler(Compiler):
 
     def symbols_have_underscore_prefix(self, env: 'Environment') -> bool:
         '''
-        Check if the compiler prefixes an underscore to global C symbols
+        Check if the compiler prefixes an underscore to global C or Fortran symbols
         '''
         # First, try to query the compiler directly
         result = self._symbols_have_underscore_prefix_define(env)
