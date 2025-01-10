@@ -110,7 +110,7 @@ def list_installed(installdata: backends.InstallData) -> T.Dict[str, str]:
     if installdata is not None:
         for t in installdata.targets:
             res[os.path.join(installdata.build_dir, t.fname)] = \
-                os.path.join(installdata.prefix, t.outdir, os.path.basename(t.fname))
+                os.path.join(installdata.prefix, t.outdir, t.out_fname)
         for i in installdata.data:
             res[i.path] = os.path.join(installdata.prefix, i.install_path)
         for i in installdata.headers:
@@ -234,7 +234,7 @@ def list_targets(builddata: build.Build, installdata: backends.InstallData, back
     install_lookuptable = {}
     for i in installdata.targets:
         basename = os.path.basename(i.fname)
-        install_lookuptable[basename] = [str(PurePath(installdata.prefix, i.outdir, basename))]
+        install_lookuptable[basename] = [str(PurePath(installdata.prefix, i.outdir, i.out_fname))]
     for s in installdata.symlinks:
         # Symlink's target must already be in the table. They share the same list
         # to support symlinks to symlinks recursively, such as .so -> .so.0 -> .so.1.2.3

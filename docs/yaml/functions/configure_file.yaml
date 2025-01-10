@@ -153,3 +153,12 @@ kwargs:
     description: |
       When specified, macro guards will be used instead of '#pragma once'. The
       macro guard name will be the specified name.
+
+  rename:
+    type: str
+    since: 1.7.0
+    description: |
+      If specified, renames the output to the provided name during
+      install.  A nested path is allowed and is joined with
+      `install_dir`. The `rename` value must either be an empty list
+      (which disables this feature) or a single string.

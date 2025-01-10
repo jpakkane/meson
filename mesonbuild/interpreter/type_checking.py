@@ -584,6 +584,13 @@ _ALL_TARGET_KWS: T.List[KwargInfo] = [
                 ('1.1.0', 'generated sources as positional "objects" arguments')
         },
     ),
+    KwargInfo(
+        'rename',
+        (ContainerTypeInfo(list, str), NoneType),
+        listify=True,
+        default=None,
+        since='1.7.0',
+    ),
 ]
 
 
@@ -710,6 +717,8 @@ _EXCLUSIVE_EXECUTABLE_KWS: T.List[KwargInfo] = [
         convertor=lambda x: x.lower() if isinstance(x, str) else None,
         validator=_validate_win_subsystem,
     ),
+    KwargInfo('debug_rename', str, default='', since='1.7.0'),
+    KwargInfo('import_rename', str, default='', since='1.7.0'),
 ]
 
 # The total list of arguments used by Executable
@@ -746,6 +755,8 @@ _EXCLUSIVE_SHARED_LIB_KWS: T.List[KwargInfo] = [
     _DARWIN_VERSIONS_KW,
     KwargInfo('soversion', (str, int, NoneType), convertor=lambda x: str(x) if x is not None else None),
     KwargInfo('version', (str, NoneType), validator=_validate_shlib_version),
+    KwargInfo('debug_rename', str, default='', since='1.7.0'),
+    KwargInfo('import_rename', str, default='', since='1.7.0'),
 ]
 
 # The total list of arguments used by SharedLibrary
@@ -759,7 +770,10 @@ SHARED_LIB_KWS = [
 
 # Arguments exclusive to SharedModule. These are separated to make integrating
 # them into build_target easier
-_EXCLUSIVE_SHARED_MOD_KWS: T.List[KwargInfo] = []
+_EXCLUSIVE_SHARED_MOD_KWS: T.List[KwargInfo] = [
+    KwargInfo('debug_rename', str, default='', since='1.7.0'),
+    KwargInfo('import_rename', str, default='', since='1.7.0'),
+]
 
 # The total list of arguments used by SharedModule
 SHARED_MOD_KWS = [

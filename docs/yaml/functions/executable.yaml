@@ -57,3 +57,19 @@ kwargs:
 
       This can be used to expose which functions a shared_module loaded by an
       executable will be allowed to use.
+
+  import_rename:
+    type: str
+    since: 1.7.0
+    description: |
+      If specified, renames the import library during install.  Nested
+      paths are allowed and they are joined with `install_dir`.  If
+      the value is an empty string, then this feature is disabled.
+
+  debug_rename:
+    type: str
+    since: 1.7.0
+    description: |
+      If specified, renames the debuginfo file during install.  Nested
+      paths are allowed and they are joined with `install_dir`.  If
+      the value is an empty string, then this feature is disabled.

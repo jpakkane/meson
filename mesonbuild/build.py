@@ -97,6 +97,7 @@ buildtarget_kwargs = {
     'native',
     'objects',
     'override_options',
+    'rename',
     'sources',
     'gnu_symbol_visibility',
     'link_language',
@@ -111,9 +112,9 @@ known_build_target_kwargs = (
     rust_kwargs |
     cs_kwargs)
 
-known_exe_kwargs = known_build_target_kwargs | {'implib', 'export_dynamic', 'pie', 'vs_module_defs'}
-known_shlib_kwargs = known_build_target_kwargs | {'version', 'soversion', 'vs_module_defs', 'darwin_versions', 'rust_abi'}
-known_shmod_kwargs = known_build_target_kwargs | {'vs_module_defs', 'rust_abi'}
+known_exe_kwargs = known_build_target_kwargs | {'implib', 'export_dynamic', 'pie', 'vs_module_defs', 'import_rename', 'debug_rename'}
+known_shlib_kwargs = known_build_target_kwargs | {'version', 'soversion', 'vs_module_defs', 'darwin_versions', 'rust_abi', 'import_rename', 'debug_rename'}
+known_shmod_kwargs = known_build_target_kwargs | {'vs_module_defs', 'rust_abi', 'import_rename', 'debug_rename'}
 known_stlib_kwargs = known_build_target_kwargs | {'pic', 'prelink', 'rust_abi'}
 known_jar_kwargs = known_exe_kwargs | {'main_class', 'java_resources'}
 
@@ -1128,6 +1129,11 @@ class BuildTarget(Target):
     def get_custom_install_mode(self) -> T.Optional['FileMode']:
         return self.install_mode
 
+    def get_rename(self) -> T.List[str]:
+        if self.rename:
+            return self.rename
+        return [None] * len(self.outputs)
+
     def process_kwargs(self, kwargs):
         self.process_kwargs_base(kwargs)
         self.original_kwargs = kwargs
@@ -1165,6 +1171,7 @@ class BuildTarget(Target):
                                         (str, bool))
         self.install_mode = kwargs.get('install_mode', None)
         self.install_tag = stringlistify(kwargs.get('install_tag', [None]))
+        self.rename = kwargs.get('rename', None)
         if not isinstance(self, Executable):
             # build_target will always populate these as `None`, which is fine
             if kwargs.get('gui_app') is not None:
@@ -1989,6 +1996,10 @@ class Executable(BuildTarget):
         # Remember that this exe was returned by `find_program()` through an override
         self.was_returned_by_find_program = False
 
+        # Get renames for import library and debuginfo file
+        self.import_rename = kwargs.get('import_rename')
+        self.debug_rename = kwargs.get('debug_rename')
+
         self.vs_module_defs: T.Optional[File] = None
         self.process_vs_module_defs_kw(kwargs)
 
@@ -2092,6 +2103,26 @@ class Executable(BuildTarget):
         Returns None if the build won't create any debuginfo file
         """
         return self.debug_filename
+
+    def get_import_rename(self) -> T.Optional[str]:
+        """
+        The filename to be used while installing the import library
+
+        Returns None if no value was provided
+        """
+        if self.import_rename:
+            return self.import_rename
+        return None
+
+    def get_debug_rename(self) -> T.Optional[str]:
+        """
+        The filename to be used while installing the debug info
+
+        Returns None if no value was provided
+        """
+        if self.debug_rename:
+            return self.debug_rename
+        return None
 
     def is_linkable_target(self):
         return self.is_linkwithable
@@ -2418,6 +2449,10 @@ class SharedLibrary(BuildTarget):
         # Visual Studio module-definitions file
         self.process_vs_module_defs_kw(kwargs)
 
+        # Get renames for import library and debuginfo file
+        self.import_rename = kwargs.get('import_rename')
+        self.debug_rename = kwargs.get('debug_rename')
+
         rust_abi = kwargs.get('rust_abi')
         rust_crate_type = kwargs.get('rust_crate_type')
         if rust_crate_type:
@@ -2482,6 +2517,26 @@ class SharedLibrary(BuildTarget):
         tag = self.install_tag[0] or 'devel'
         aliases.append((self.basic_filename_tpl.format(self), ltversion_filename, tag))
         return aliases
+
+    def get_import_rename(self) -> T.Optional[str]:
+        """
+        The filename to be used while installing the import library
+
+        Returns None if no value was provided
+        """
+        if self.import_rename:
+            return self.import_rename
+        return None
+
+    def get_debug_rename(self) -> T.Optional[str]:
+        """
+        The filename to be used while installing the debug info
+
+        Returns None if no value was provided
+        """
+        if self.debug_rename:
+            return self.debug_rename
+        return None
 
     def type_suffix(self):
         return "@sha"
@@ -2648,6 +2703,7 @@ class CustomTarget(Target, CustomTargetBase, CommandBase):
                  feed: bool = False,
                  install: bool = False,
                  install_dir: T.Optional[T.List[T.Union[str, Literal[False]]]] = None,
+                 rename: T.Optional[T.List[str]] = None,
                  install_mode: T.Optional[FileMode] = None,
                  install_tag: T.Optional[T.List[T.Optional[str]]] = None,
                  absolute_paths: bool = False,
@@ -2674,6 +2730,7 @@ class CustomTarget(Target, CustomTargetBase, CommandBase):
         self.extra_depends = list(extra_depends or [])
         self.feed = feed
         self.install_dir = list(install_dir or [])
+        self.rename = rename
         self.install_mode = install_mode
         self.install_tag = _process_install_tag(install_tag, len(self.outputs))
         self.name = name if name else self.outputs[0]
@@ -2792,6 +2849,11 @@ class CustomTarget(Target, CustomTargetBase, CommandBase):
 
     def get_all_link_deps(self):
         return []
+
+    def get_rename(self) -> T.List[str]:
+        if self.rename:
+            return self.rename
+        return [None] * len(self.outputs)
 
     def is_internal(self) -> bool:
         '''

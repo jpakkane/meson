@@ -144,11 +144,14 @@ class TargetInstallData:
     optional: bool = False
     tag: T.Optional[str] = None
     can_strip: bool = False
+    out_fname: T.Optional[str] = None
 
     def __post_init__(self, outdir_name: T.Optional[str]) -> None:
         if outdir_name is None:
             outdir_name = os.path.join('{prefix}', self.outdir)
-        self.out_name = os.path.join(outdir_name, os.path.basename(self.fname))
+        if self.out_fname is None:
+            self.out_fname = os.path.basename(self.fname)
+        self.out_name = os.path.join(outdir_name, self.out_fname)
 
 @dataclass(eq=False)
 class InstallEmptyDir:
@@ -1720,6 +1723,7 @@ class Backend:
             if not t.should_install():
                 continue
             outdirs, install_dir_names, custom_install_dir = t.get_install_dir()
+            rename = t.get_rename()
             # Sanity-check the outputs and install_dirs
             num_outdirs, num_out = len(outdirs), len(t.get_outputs())
             if num_outdirs not in {1, num_out}:
@@ -1760,7 +1764,7 @@ class Backend:
                                           first_outdir_name,
                                           should_strip, mappings, t.rpath_dirs_to_remove,
                                           t.install_rpath, install_mode, t.subproject,
-                                          tag=tag, can_strip=can_strip)
+                                          tag=tag, can_strip=can_strip, out_fname=rename[0])
                     d.targets.append(i)
 
                     for alias, to, tag in t.get_aliases():
@@ -1785,7 +1789,7 @@ class Backend:
                                                   implib_install_dir, first_outdir_name,
                                                   False, {}, set(), '', install_mode,
                                                   t.subproject, optional=isinstance(t, build.SharedModule),
-                                                  tag='devel')
+                                                  tag='devel', out_fname = t.get_import_rename())
                             d.targets.append(i)
 
                         if not should_strip and t.get_debug_filename():
@@ -1794,18 +1798,18 @@ class Backend:
                                                   first_outdir_name,
                                                   False, {}, set(), '',
                                                   install_mode, t.subproject,
-                                                  optional=True, tag='devel')
+                                                  optional=True, tag='devel', out_fname = t.get_debug_rename())
                             d.targets.append(i)
                 # Install secondary outputs. Only used for Vala right now.
                 if num_outdirs > 1:
-                    for output, outdir, outdir_name, tag in zip(t.get_outputs()[1:], outdirs[1:], install_dir_names[1:], t.install_tag[1:]):
+                    for output, outdir, outdir_name, tag, out_fname in zip(t.get_outputs()[1:], outdirs[1:], install_dir_names[1:], t.install_tag[1:], rename[1:]):
                         # User requested that we not install this output
                         if outdir is False:
                             continue
                         f = os.path.join(self.get_target_dir(t), output)
                         i = TargetInstallData(f, outdir, outdir_name, False, {}, set(), None,
                                               install_mode, t.subproject,
-                                              tag=tag)
+                                              tag=tag, out_fname=out_fname)
                         d.targets.append(i)
             elif isinstance(t, build.CustomTarget):
                 # If only one install_dir is specified, assume that all
@@ -1820,16 +1824,16 @@ class Backend:
                 # to the length of outputs…
                 if num_outdirs == 1 and num_out > 1:
                     if first_outdir is not False:
-                        for output, tag in zip(t.get_outputs(), t.install_tag):
+                        for output, tag, out_fname in zip(t.get_outputs(), t.install_tag, rename):
                             tag = tag or self.guess_install_tag(output, first_outdir)
                             f = os.path.join(self.get_target_dir(t), output)
                             i = TargetInstallData(f, first_outdir, first_outdir_name,
                                                   False, {}, set(), None, install_mode,
                                                   t.subproject, optional=not t.build_by_default,
-                                                  tag=tag)
+                                                  tag=tag, out_fname=out_fname)
                             d.targets.append(i)
                 else:
-                    for output, outdir, outdir_name, tag in zip(t.get_outputs(), outdirs, install_dir_names, t.install_tag):
+                    for output, outdir, outdir_name, tag, out_fname in zip(t.get_outputs(), outdirs, install_dir_names, t.install_tag, rename):
                         # User requested that we not install this output
                         if outdir is False:
                             continue
@@ -1838,7 +1842,7 @@ class Backend:
                         i = TargetInstallData(f, outdir, outdir_name,
                                               False, {}, set(), None, install_mode,
                                               t.subproject, optional=not t.build_by_default,
-                                              tag=tag)
+                                              tag=tag, out_fname=out_fname)
                         d.targets.append(i)
 
     def generate_custom_install_script(self, d: InstallData) -> None:

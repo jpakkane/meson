@@ -235,3 +235,13 @@ kwargs:
       their input from a file and instead read it from standard input. When this
       argument is set to `true`, Meson feeds the input file to `stdin`. Note that
       your argument list may not contain `@INPUT@` when feed mode is active.
+
+  rename:
+    type: list[str]
+    since: 1.7.0
+    description: |
+      If specified renames each output into corresponding file from
+      `rename` list during install.  Nested paths are allowed and they
+      are joined with `install_dir`. The `rename` list must either be
+      empty (which disables this feature) or its length must be equal
+      to the number of outputs,

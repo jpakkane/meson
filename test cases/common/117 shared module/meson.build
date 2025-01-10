@@ -34,6 +34,29 @@ test('import test', e, args : m)
 m2 = build_target('mymodule2', 'module.c', target_type: 'shared_module')
 test('import test 2', e, args : m2)
 
+import_rename = 'subdir/libmymodule.dll.a'
+debug_rename = ''
+if target_machine.system() == 'windows'
+  rename = 'subdir/libmymodule.dll'
+  debug_rename = 'subdir/libmymodule.pdb'
+elif target_machine.system() == 'darwin'
+  rename = 'subdir/libmymodule.dylib'
+elif target_machine.system() == 'cygwin'
+  rename = 'subdir/cygmymodule.dll'
+  debug_rename = 'subdir/cygmymodule.pdb'
+else
+  rename = 'subdir/libmymodule.so'
+endif
+
+# Same as above, but installed into a sub directory
+m3 = shared_module('mymodule3', 'module.c',
+                   install : true,
+                   install_dir : join_paths(get_option('libdir'), 'modules'),
+                   rename:  rename,
+                   import_rename: import_rename,
+                   debug_rename: debug_rename)
+test('import test 3', e, args : m3)
+
 # Shared module that does not export any symbols
 shared_module('nosyms', 'nosyms.c',
   override_options: ['werror=false'],
