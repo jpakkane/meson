@@ -3,6 +3,11 @@ long_name: Subproject object
 description: This object is returned by [[subproject]] and is an opaque object representing it.
 
 methods:
+- name: build_root
+  returns: str
+  since: 0.63.0
+  description: Returns the build root of the subproject
+
 - name: found
   returns: bool
   since: 0.48.0
