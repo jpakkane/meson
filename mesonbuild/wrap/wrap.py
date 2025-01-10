@@ -694,6 +694,7 @@ class Resolver:
         else:
             headers = {
                 'User-Agent': f'mesonbuild/{coredata.version}',
+                'Accept': '*/*',
                 'Accept-Language': '*',
                 'Accept-Encoding': '*',
             }
