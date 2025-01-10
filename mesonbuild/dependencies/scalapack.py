@@ -59,14 +59,17 @@ class MKLPkgConfigDependency(PkgConfigDependency):
         _m = os.environ.get('MKLROOT')
         self.__mklroot = Path(_m).resolve() if _m else None
 
+        if not self.__mklroot:
+            self.is_found = False
+            return
+
         # We need to call down into the normal super() method even if we don't
         # find mklroot, otherwise we won't have all of the instance variables
         # initialized that meson expects.
         super().__init__(name, env, kwargs, language=language)
 
         # Doesn't work with gcc on windows, but does on Linux
-        if (not self.__mklroot or (env.machines[self.for_machine].is_windows()
-                                   and self.clib_compiler.id == 'gcc')):
+        if env.machines[self.for_machine].is_windows() and self.clib_compiler.id == 'gcc':
             self.is_found = False
 
         # This can happen either because we're using GCC, we couldn't find the
