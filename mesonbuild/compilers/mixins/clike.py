@@ -399,10 +399,7 @@ class CLikeCompiler(Compiler):
                 largs += self.use_linker_args(ld_value[0], self.version)
 
             # Add LDFLAGS from the env
-            sys_ld_args = env.coredata.get_external_link_args(self.for_machine, self.language)
-            # CFLAGS and CXXFLAGS go to both linking and compiling, but we want them
-            # to only appear on the command line once. Remove dupes.
-            largs += [x for x in sys_ld_args if x not in sys_args]
+            largs += env.coredata.get_external_link_args(self.for_machine, self.language)
 
         cargs += self.get_compiler_args_for_mode(mode)
         return cargs, largs
