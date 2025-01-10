@@ -106,7 +106,12 @@ class StringHolder(ObjectHolder[str]):
                 raise InvalidArguments(f'Format placeholder @{idx}@ out of range.')
             return arg_strings[idx]
 
-        return re.sub(r'@(\d+)@', arg_replace, self.held_object)
+        def var_replace(match: T.Match[str]) -> str:
+            FeatureNew.single_use('Identity expressions in string.format', '1.6.0', self.subproject, location=self.current_node)
+            return self.interpreter.fstring_replace(match)
+
+        formatted = re.sub(r'@(\d+)@', arg_replace, self.held_object)
+        return re.sub(r'@([_a-zA-Z][_0-9a-zA-Z]*)@', var_replace, formatted)
 
     @noKwargs
     @noPosargs

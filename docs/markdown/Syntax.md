@@ -207,6 +207,19 @@ res = template.format('text', 1, true)
 As can be seen, the formatting works by replacing placeholders of type
 `@number@` with the corresponding argument.
 
+*(Added 1.6.0)*
+
+Next to positional arguments, variable name placeholders can be formatted as well.
+This means only plain variable names, not arbitrary code can be inserted into strings.
+This is useful if an fstring (see below) cannot be used.
+
+```meson
+a = 1
+template = 'string: @0@, number: @a@'
+res = template.format('text')
+# res now has value 'string: text, number: 1'
+```
+
 #### Format strings
 *(Added 0.58)*
 
