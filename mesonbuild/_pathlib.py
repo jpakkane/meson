@@ -24,16 +24,6 @@ import pathlib
 import os
 import platform
 
-__all__ = [
-    'PurePath',
-    'PurePosixPath',
-    'PureWindowsPath',
-    'Path',
-]
-
-PurePath = pathlib.PurePath
-PurePosixPath = pathlib.PurePosixPath
-PureWindowsPath = pathlib.PureWindowsPath
 
 # Only patch on platforms where the bug occurs
 if platform.system().lower() in {'windows'}:
@@ -54,10 +44,11 @@ if platform.system().lower() in {'windows'}:
                 return Path(os.path.normpath(self))
 else:
     Path = pathlib.Path
-    PosixPath = pathlib.PosixPath
-    WindowsPath = pathlib.WindowsPath
 
-    __all__ += [
-        'PosixPath',
-        'WindowsPath',
-    ]
+def __dir__():
+    return dir(pathlib)
+
+def __getattr__(name):
+    if name == 'Path':
+        return Path
+    return getattr(pathlib, name)
