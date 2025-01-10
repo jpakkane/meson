@@ -39,7 +39,7 @@ Ubuntu:
 
 ```console
 $ sudo apt-get install python3 python3-pip python3-setuptools \
-                       python3-wheel ninja-build
+                       python3-wheel ninja-build meson
 ```
 *Due to our frequent release cycle and development speed, distro packaged software may quickly become outdated.*
 
