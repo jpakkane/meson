@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright © 2021 Intel Corporation
+# Copyright © 2021-2024 Intel Corporation
 
 """Helpers for strict type checking."""
 
@@ -314,7 +314,7 @@ OVERRIDE_OPTIONS_KW: KwargInfo[T.Union[str, T.Dict[str, T.Union[str, int, bool, 
 )
 
 
-def _output_validator(outputs: T.List[str]) -> T.Optional[str]:
+def output_validator(outputs: T.List[str]) -> T.Optional[str]:
     output_set = set(outputs)
     if len(output_set) != len(outputs):
         seen = set()
@@ -340,14 +340,14 @@ MULTI_OUTPUT_KW: KwargInfo[T.List[str]] = KwargInfo(
     listify=True,
     required=True,
     default=[],
-    validator=_output_validator,
+    validator=output_validator,
 )
 
 OUTPUT_KW: KwargInfo[str] = KwargInfo(
     'output',
     str,
     required=True,
-    validator=lambda x: _output_validator([x])
+    validator=lambda x: output_validator([x])
 )
 
 CT_INPUT_KW: KwargInfo[T.List[T.Union[str, File, ExternalProgram, BuildTarget, CustomTarget, CustomTargetIndex, ExtractedObjects, GeneratedList]]] = KwargInfo(

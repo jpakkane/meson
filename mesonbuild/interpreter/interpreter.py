@@ -3165,6 +3165,9 @@ class Interpreter(InterpreterBase, HoldableObject):
     @T.overload
     def source_strings_to_files(self, sources: T.List[SourcesVarargsType], strict: bool = True) -> T.List['SourceOutputs']: ... # noqa: F811
 
+    @T.overload
+    def source_strings_to_files(self, sources: T.List[T.Union[str, build.BuildTarget, build.GeneratedTypes, build.ExtractedObjects, ExternalProgram, mesonlib.File]], strict: bool = True) -> T.List[T.Union[build.BuildTarget, build.GeneratedTypes, build.ExtractedObjects, ExternalProgram, mesonlib.File]]: ...
+
     def source_strings_to_files(self, sources: T.List['SourceInputs'], strict: bool = True) -> T.List['SourceOutputs']: # noqa: F811
         """Lower inputs to a list of Targets and Files, replacing any strings.
 

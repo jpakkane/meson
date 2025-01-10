@@ -59,6 +59,7 @@ modules = [
     'mesonbuild/modules/cuda.py',
     'mesonbuild/modules/external_project.py',
     'mesonbuild/modules/fs.py',
+    'mesonbuild/modules/generator.py',
     'mesonbuild/modules/gnome.py',
     'mesonbuild/modules/i18n.py',
     'mesonbuild/modules/icestorm.py',
