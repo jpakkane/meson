@@ -430,7 +430,7 @@ class File(HoldableObject):
         absdir = srcdir
         if self.is_built:
             absdir = builddir
-        return os.path.join(absdir, self.relative_name())
+        return os.path.normpath(os.path.join(absdir, self.relative_name()))
 
     @property
     def suffix(self) -> str:
