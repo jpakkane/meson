@@ -1464,6 +1464,8 @@ class SingleTestRunner:
         testentry = self.test.fname[0]
         if self.options.no_rebuild and self.test.cmd_is_built and not os.path.isfile(testentry):
             raise TestException(f'The test program {testentry!r} does not exist. Cannot run tests before building them.')
+        if self.test.skip and not testentry:
+            return None  # In case we skip a not found test command
         if testentry.endswith('.jar'):
             return ['java', '-jar'] + self.test.fname
         elif not self.test.is_cross_built and run_with_mono(testentry):
@@ -1507,7 +1509,11 @@ class SingleTestRunner:
         return self.runobj.timeout
 
     async def run(self, harness: 'TestHarness') -> TestRun:
-        if self.cmd is None:
+        if self.test.skip:
+            self.stdo = 'Test marked as skip.'
+            harness.log_start_test(self.runobj)
+            self.runobj.complete_skip()
+        elif self.cmd is None:
             self.stdo = 'Not run because cannot execute cross compiled binaries.'
             harness.log_start_test(self.runobj)
             self.runobj.complete_skip()

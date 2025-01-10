@@ -2247,7 +2247,7 @@ class Interpreter(InterpreterBase, HoldableObject):
             name = name.replace(':', '_')
         exe = args[1]
         if isinstance(exe, ExternalProgram):
-            if not exe.found():
+            if not exe.found() and not kwargs['skip']:
                 raise InvalidArguments('Tried to use not-found external program as test exe')
         elif isinstance(exe, mesonlib.File):
             exe = self.find_program_impl([exe])
@@ -2278,6 +2278,7 @@ class Interpreter(InterpreterBase, HoldableObject):
                     kwargs['args'],
                     env,
                     kwargs['should_fail'],
+                    kwargs['skip'],
                     kwargs['timeout'],
                     kwargs['workdir'],
                     kwargs['protocol'],

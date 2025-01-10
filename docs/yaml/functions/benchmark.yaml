@@ -38,6 +38,13 @@ kwargs:
       'NAME2=value2']`, or an [[@env]] object which allows more sophisticated
       environment juggling. *(Since 0.52.0)* A dictionary is also accepted.
 
+  skip:
+    type: bool
+    default: false
+    since: 1.5.0
+    description: |
+      when true, the test is not run, but marked as skip.
+
   should_fail:
     type: bool
     default: false

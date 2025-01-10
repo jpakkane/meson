@@ -785,7 +785,7 @@ class Test(MesonInterpreterObject):
                  is_parallel: bool,
                  cmd_args: T.List[T.Union[str, mesonlib.File, build.Target, ExternalProgram]],
                  env: mesonlib.EnvironmentVariables,
-                 should_fail: bool, timeout: int, workdir: T.Optional[str], protocol: str,
+                 should_fail: bool, skip: bool, timeout: int, workdir: T.Optional[str], protocol: str,
                  priority: int, verbose: bool):
         super().__init__()
         self.name = name
@@ -796,6 +796,7 @@ class Test(MesonInterpreterObject):
         self.is_parallel = is_parallel
         self.cmd_args = cmd_args
         self.env = env
+        self.skip = skip
         self.should_fail = should_fail
         self.timeout = timeout
         self.workdir = workdir

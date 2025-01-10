@@ -499,6 +499,7 @@ TEST_KWS: T.List[KwargInfo] = [
     # TODO: env needs reworks of the way the environment variable holder itself works probably
     ENV_KW,
     DEPENDS_KW.evolve(since='0.46.0'),
+    KwargInfo('skip', bool, default=False, since='1.5.0'),
     KwargInfo('suite', ContainerTypeInfo(list, str), listify=True, default=['']),  # yes, a list of empty string
     KwargInfo('verbose', bool, default=False, since='0.62.0'),
 ]
