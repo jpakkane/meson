@@ -3,6 +3,7 @@
 
 import os
 import shutil
+import subprocess
 import unittest
 import platform
 
@@ -23,9 +24,22 @@ class BaseLinuxCrossTests(BasePlatformTests):
 
 
 def should_run_cross_arm_tests():
-    return shutil.which('arm-linux-gnueabihf-gcc') and not platform.machine().lower().startswith('arm')
+    if is_windows():
+        return False
 
-@unittest.skipUnless(not is_windows() and should_run_cross_arm_tests(), "requires ability to cross compile to ARM")
+    if not platform.machine().lower().startswith('arm'):
+        return False
+
+    try:
+        # Check by calling the compiler rather than just checking that
+        # the file exists.  The compiler binary could be a symlink to
+        # ccache, in which case it will appear to exist but will fail
+        # when called.
+        return subprocess.call(['arm-linux-gnueabihf-gcc', '--version'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) == 0
+    except FileNotFoundError:
+        return False
+
+@unittest.skipUnless(should_run_cross_arm_tests(), "requires ability to cross compile to ARM")
 class LinuxCrossArmTests(BaseLinuxCrossTests):
     '''
     Tests that cross-compilation to Linux/ARM works
@@ -116,9 +130,19 @@ class LinuxCrossArmTests(BaseLinuxCrossTests):
 
 
 def should_run_cross_mingw_tests():
-    return shutil.which('x86_64-w64-mingw32-gcc') and not (is_windows() or is_cygwin())
+    if is_windows() or is_cygwin():
+        return False
 
-@unittest.skipUnless(not is_windows() and should_run_cross_mingw_tests(), "requires ability to cross compile with MinGW")
+    try:
+        # Check by calling the compiler rather than just checking that
+        # the file exists.  The compiler binary could be a symlink to
+        # ccache, in which case it will appear to exist but will fail
+        # when called.
+        return subprocess.call(['x86_64-w64-mingw32-gcc', '--version'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) == 0
+    except FileNotFoundError:
+        return False
+
+@unittest.skipUnless(should_run_cross_mingw_tests(), "requires ability to cross compile with MinGW")
 class LinuxCrossMingwTests(BaseLinuxCrossTests):
     '''
     Tests that cross-compilation to Windows/MinGW works
