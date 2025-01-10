@@ -1,5 +1,5 @@
 {
     "installed": [
-        { "type": "python_file", "file": "pure/a.py"}
+        { "type": "python_file", "file": "usr/@PYTHON_PURELIB@/a.py"}
     ]
 }

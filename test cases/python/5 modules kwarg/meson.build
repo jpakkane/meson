@@ -1,7 +1,6 @@
 project('python kwarg',
     default_options: [
-        'python.bytecompile=-1',
-        'python.purelibdir=/pure',
+        'python.bytecompile=-1',  # because there is currently is no way to know the installed filename in test.json
     ]
 )
 
