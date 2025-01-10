@@ -18,3 +18,17 @@ And then you just use it in a target like this:
 executable('threadedprogram', ...
   dependencies : thread_dep)
 ```
+
+On Windows, `dependency('threads')` does nothing on MSVC and links with
+winpthreads on MinGW.  If your code uses native Win32 thread primitives
+instead of pthreads, `dependency('threads')` will therefore add a spurious
+winpthreads dependency when building with MinGW.  To prevent this, avoid
+`dependency('threads')` on Windows:
+
+```meson
+if host_machine.system() == 'windows'
+  thread_dep = dependency('', required: false)
+else
+  thread_dep = dependency('threads')
+endif
+```
