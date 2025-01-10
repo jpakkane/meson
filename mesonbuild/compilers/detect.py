@@ -1005,7 +1005,7 @@ def detect_cython_compiler(env: 'Environment', for_machine: MachineChoice) -> Co
 
 def detect_vala_compiler(env: 'Environment', for_machine: MachineChoice) -> Compiler:
     from .vala import ValaCompiler
-    exelist = env.lookup_binary_entry(MachineChoice.BUILD, 'vala')
+    exelist = env.lookup_binary_entry(for_machine, 'vala')
     is_cross = env.is_cross_build(for_machine)
     info = env.machines[for_machine]
     if exelist is None:
