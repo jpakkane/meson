@@ -487,7 +487,9 @@ PRESERVE_PATH_KW: KwargInfo[bool] = KwargInfo('preserve_path', bool, default=Fal
 TEST_KWS: T.List[KwargInfo] = [
     KwargInfo('args', ContainerTypeInfo(list, (str, File, BuildTarget, CustomTarget, CustomTargetIndex, ExternalProgram)),
               listify=True, default=[]),
-    KwargInfo('should_fail', bool, default=False),
+    KwargInfo('should_fail', (bool, NoneType), deprecated='1.6.0', deprecated_message='Use expected_fail instead of should_fail'),
+    KwargInfo('expected_fail', (bool, NoneType), since='1.6.0'),
+    KwargInfo('success_returncode', (int, NoneType), since='1.6.0'),
     KwargInfo('timeout', int, default=30),
     KwargInfo('workdir', (str, NoneType), default=None,
               validator=lambda x: 'must be an absolute path' if not os.path.isabs(x) else None),

@@ -40,10 +40,28 @@ kwargs:
 
   should_fail:
     type: bool
+    deprecated: 1.6.0
     default: false
     description: |
       when true the test is considered passed if the
       executable returns a non-zero return value (i.e. reports an error)
+
+  expected_fail:
+    type: bool
+    since: 1.6.0
+    default: false
+    description: |
+      when true the test is considered passed if the
+      executable returns a non-zero return value (i.e. reports an error)
+
+  success_returncode:
+    type: int
+    since: 1.6.0
+    default: 0
+    description: |
+      the test is considered passed if the
+      executable returns the specified returncode,
+      only has effect when protocol is set to exitcode
 
   suite:
     type: str | list[str]

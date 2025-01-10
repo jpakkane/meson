@@ -2261,6 +2261,14 @@ class Interpreter(InterpreterBase, HoldableObject):
         if kwargs['timeout'] <= 0:
             FeatureNew.single_use('test() timeout <= 0', '0.57.0', self.subproject, location=node)
 
+        expected_fail = False
+        if kwargs['should_fail'] is not None and kwargs['expected_fail'] is not None:
+            raise InvalidArguments('Tried to use both \'should_fail\' and \'expected_fail\'')
+        elif kwargs['should_fail'] is not None:
+            expected_fail = kwargs['should_fail']
+        elif kwargs['expected_fail'] is not None:
+            expected_fail = kwargs['expected_fail']
+
         prj = self.subproject if self.is_subproject() else self.build.project_name
 
         suite: T.List[str] = []
@@ -2277,7 +2285,8 @@ class Interpreter(InterpreterBase, HoldableObject):
                     kwargs.get('is_parallel', False),
                     kwargs['args'],
                     env,
-                    kwargs['should_fail'],
+                    expected_fail,
+                    kwargs['success_returncode'],
                     kwargs['timeout'],
                     kwargs['workdir'],
                     kwargs['protocol'],

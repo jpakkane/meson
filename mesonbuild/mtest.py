@@ -940,7 +940,8 @@ class TestRun:
         self.additional_error = ''
         self.cmd: T.Optional[T.List[str]] = None
         self.env = test_env
-        self.should_fail = test.should_fail
+        self.expected_fail = test.expected_fail
+        self.success_returncode = test.success_returncode
         self.project = test.project_name
         self.junit: T.Optional[et.ElementTree] = None
         self.is_parallel = is_parallel
@@ -988,7 +989,7 @@ class TestRun:
         if self.res == TestResult.RUNNING:
             self.res = TestResult.OK
         assert isinstance(self.res, TestResult)
-        if self.should_fail and self.res in (TestResult.OK, TestResult.FAIL):
+        if self.expected_fail and self.res in (TestResult.OK, TestResult.FAIL):
             self.res = TestResult.UNEXPECTEDPASS if self.res is TestResult.OK else TestResult.EXPECTEDFAIL
         if self.stdo and not self.stdo.endswith('\n'):
             self.stdo += '\n'
@@ -1044,6 +1045,11 @@ class TestRunExitCode(TestRun):
     def complete(self) -> None:
         if self.res != TestResult.RUNNING:
             pass
+        elif self.success_returncode is not None:
+            if self.returncode == self.success_returncode:
+                self.res = TestResult.OK
+            else:
+                self.res = TestResult.FAIL
         elif self.returncode == GNU_SKIP_RETURNCODE:
             self.res = TestResult.SKIP
         elif self.returncode == GNU_ERROR_RETURNCODE:
