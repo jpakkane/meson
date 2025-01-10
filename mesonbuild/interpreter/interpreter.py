@@ -1427,12 +1427,18 @@ class Interpreter(InterpreterBase, HoldableObject):
 
     @noArgsFlattening
     @FeatureNew('warning', '0.44.0')
-    @noKwargs
-    def func_warning(self, node, args, kwargs):
+    @typed_kwargs(
+        'warning',
+        KwargInfo('error_if', (bool, options.UserFeatureOption), default=False, since='1.6.0'),
+    )
+    def func_warning(self, node, args, kwargs: kwtypes.FuncWarning):
         if len(args) > 1:
             FeatureNew.single_use('warning with more than one argument', '0.54.0', self.subproject, location=node)
-        args_str = self._stringify_user_arguments(args, 'warning')
-        mlog.warning(*args_str, location=node)
+        if kwargs['error_if']:
+            self.func_error(node, args, {})
+        else:
+            args_str = self._stringify_user_arguments(args, 'warning')
+            mlog.warning(*args_str, location=node)
 
     @noArgsFlattening
     @noKwargs

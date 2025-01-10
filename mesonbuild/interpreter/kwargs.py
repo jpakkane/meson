@@ -482,3 +482,7 @@ class FuncDeclareDependency(TypedDict):
     sources: T.List[T.Union[FileOrString, build.GeneratedTypes]]
     variables: T.Dict[str, str]
     version: T.Optional[str]
+
+class FuncWarning(TypedDict):
+
+    error_if: T.Union[bool, options.UserFeatureOption]
