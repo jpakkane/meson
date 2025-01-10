@@ -175,7 +175,6 @@ class InstallSymlinkData:
     install_path: str
     subproject: str
     tag: T.Optional[str] = None
-    allow_missing: bool = False
 
 # cannot use dataclass here because "exclude" is out of order
 class SubdirInstallData(InstallDataBase):
@@ -1765,7 +1764,7 @@ class Backend:
 
                     for alias, to, tag in t.get_aliases():
                         alias = os.path.join(first_outdir, alias)
-                        s = InstallSymlinkData(to, alias, first_outdir, t.subproject, tag, allow_missing=True)
+                        s = InstallSymlinkData(to, alias, first_outdir, t.subproject, tag)
                         d.symlinks.append(s)
 
                     if isinstance(t, (build.SharedLibrary, build.SharedModule, build.Executable)):
