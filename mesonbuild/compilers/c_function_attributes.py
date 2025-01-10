@@ -139,7 +139,7 @@ CXX_FUNC_ATTRIBUTES = {
     'ifunc':
         ('extern "C" {'
          'int my_foo(void) { return 0; }'
-         'static int (*resolve_foo(void))(void) { return my_foo; }'
+         'int (*resolve_foo(void))(void) { return my_foo; }'
          '}'
          'int foo(void) __attribute__((ifunc("resolve_foo")));'),
 }
