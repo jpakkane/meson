@@ -63,7 +63,17 @@ def resolve_cmake_trace_targets(target_name: str,
 
     processed_targets: T.List[str] = []
     while len(targets) > 0:
-        curr = targets.pop(0)
+        def maybe_unwrap(x: str) -> str:
+            # Unwrap things like:
+            # -Wl,--no-as-needed,"/home/gaoxiang/.virtualenvs/nvfuser/lib/python3.11/site-packages/torch/lib/libtorch_cuda.so" -Wl,--as-needed
+            # TODO: This is a hack, we should really be parsing the arguments properly
+            prefix = '-Wl,--no-as-needed,"'
+            suffix = '" -Wl,--as-needed'
+            if x.startswith(prefix) and x.endswith(suffix):
+                return x[len(prefix):-len(suffix)]
+            return x
+
+        curr = maybe_unwrap(targets.pop(0))
 
         # Skip already processed targets
         if curr in processed_targets:
