@@ -460,6 +460,12 @@ class WindowsTests(BasePlatformTests):
         # Studio is picked, as a regression test for
         # https://github.com/mesonbuild/meson/issues/9774
         env['PATH'] = get_path_without_cmd('ninja', env['PATH'])
+        # Add a multiline variable to test that it is handled correctly
+        # with a line that contains only '=' and a line that would result
+        # in an invalid variable name.
+        # see: https://github.com/mesonbuild/meson/pull/13682
+        env['MULTILINE_VAR_WITH_EQUALS'] = 'Foo\r\n=====\r\n'
+        env['MULTILINE_VAR_WITH_INVALID_NAME'] = 'Foo\n%=Bar\n'
         testdir = os.path.join(self.common_test_dir, '1 trivial')
         out = self.init(testdir, extra_args=['--vsenv'], override_envvars=env)
         self.assertIn('Activating VS', out)
