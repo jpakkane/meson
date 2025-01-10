@@ -27,6 +27,32 @@ If you have multiple dependencies, pass them as an array:
 executable('manydeps', 'file.c', dependencies : [dep1, dep2, dep3, dep4])
 ```
 
+Multiple dependencies can be added to an array using a loop (not recommended):
+
+```meson
+want_deps = [zlib, libcurl, openssl]
+deps = []
+foreach dep : want_deps
+  deps += dependency(dep)
+endforeach
+```
+
+The primary problem with the above implementation is that it doesn't map well
+in cases where some dependencies are found using
+[`pkg-config`](#dependency-detection-method) and others by
+[`cc.find_library()`](Reference-manual_returned_compiler.md#compilerfind_library),
+or where a minimum version must be specified as a keyword argument for an
+individual dependency. Therefore, the recommended method is to use a separate
+line:
+
+```meson
+deps = [
+    dependency('zlib'),
+    dependency('libcurl'),
+    dependency('openssl'),
+]
+```
+
 If the dependency is optional, you can tell Meson not to error out if
 the dependency is not found and then do further configuration.
 
