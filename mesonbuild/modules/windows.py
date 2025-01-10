@@ -173,7 +173,7 @@ class WindowsModule(ExtensionModule):
             # Path separators are not allowed in target names
             name = name.replace('/', '_').replace('\\', '_').replace(':', '_')
             name_formatted = name_formatted.replace('/', '_').replace('\\', '_').replace(':', '_')
-            output = f'{name}_@BASENAME@.{suffix}'
+            output = f'@BASENAME@.{suffix}'
             command: T.List[T.Union[str, ExternalProgram]] = []
             command.append(rescomp)
             command.extend(res_args)
