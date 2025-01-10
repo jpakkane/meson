@@ -44,13 +44,11 @@ of the Meson GitHub repository.
 
 ### [Projects using Meson](Users.md)
 
-Many projects are using Meson and they're
-a great resource for learning what to (and what not to!) do when
-converting existing projects to Meson.
+[A short list of open source projects using Meson can be found
+here](Users.md) but there are many more.
 
-[A short list of Meson users can be found here](Users.md)
-but there are many more. We would love to hear about your success
-stories too and how things could be improved too!
+Meson is also used by many proprietary projects. [Some of them are
+listed on this page](Corporate-users.md).
 
 ## Development
 

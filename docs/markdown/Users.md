@@ -2,15 +2,17 @@
 title: Users
 ...
 
-# List of projects using Meson
+# List of open source projects using Meson
 
 If you have a project that uses Meson that you want to add to this
 list, please [file a
 pull-request](https://github.com/mesonbuild/meson/edit/master/docs/markdown/Users.md)
 for it. All the software on this list is tested for regressions before
-release, so it's highly recommended that projects add themselves
-here. Some additional projects are listed in the [`meson` GitHub
+release, so it's highly recommended that projects add themselves here.
+Some additional projects are listed in the [`meson` GitHub
 topic](https://github.com/topics/meson).
+
+Closed source projects are listed [on their own page](Corporate-Users.md).
 
  - [2048.cpp](https://github.com/plibither8/2048.cpp), a fully featured terminal version of the game "2048" written in C++
  - [aawordsearch](https://github.com/theimpossibleastronaut/aawordsearch), generate wordsearch puzzles using random words in different languages

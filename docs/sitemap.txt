@@ -141,6 +141,7 @@ index.md
 		Porting-from-autotools.md
 		Use-of-Python.md
 		Users.md
+		Corporate-users.md
 		Using-multiple-build-directories.md
 		Vs-External.md
 	Contributing.md
