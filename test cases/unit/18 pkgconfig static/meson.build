@@ -4,7 +4,7 @@ if build_machine.system() != 'windows'
   prefix = meson.source_root()
 else
   # pkg-config files should not use paths with \
-  prefix_parts = meson.source_root().split('\\')
+  prefix_parts = meson.source_root().replace('/', '\\').split('\\')
   # If the path is C:/foo/bar, convert it to /c/foo/bar so we can test if our
   # automatic conversion to C:/foo/bar inside PkgConfigDependency is working.
   if prefix_parts[0][1] == ':'

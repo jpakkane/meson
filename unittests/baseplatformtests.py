@@ -25,7 +25,7 @@ import mesonbuild.environment
 import mesonbuild.coredata
 import mesonbuild.modules.gnome
 from mesonbuild.mesonlib import (
-    is_cygwin, join_args, split_args, windows_proof_rmtree, python_command
+    is_windows, is_cygwin, join_args, split_args, windows_proof_rmtree, python_command
 )
 import mesonbuild.modules.pkgconfig
 
@@ -50,6 +50,8 @@ class BasePlatformTests(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
+        #if is_windows():
+        #    cls.prefix = 'X:/usr'
         cls.maxDiff = None
         src_root = str(PurePath(__file__).parents[1])
         cls.src_root = src_root

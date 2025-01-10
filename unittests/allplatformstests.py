@@ -124,7 +124,7 @@ class AllPlatformTests(BasePlatformTests):
                 break
         else:
             raise self.fail('Did not find option "prefix"')
-        self.assertEqual(prefix, '/absoluteprefix')
+        self.assertEqual(prefix, 'X:/absoluteprefix')
 
     def test_do_conf_file_preserve_newlines(self):
 
@@ -327,27 +327,28 @@ class AllPlatformTests(BasePlatformTests):
         be overridden in default_options or by the command line.
         '''
         testdir = os.path.join(self.common_test_dir, '163 default options prefix dependent defaults')
+        drv = 'X:'
         expected = {
             '':
-            {'prefix':         '/usr',
-             'sysconfdir':     '/etc',
-             'localstatedir':  '/var',
-             'sharedstatedir': '/sharedstate'},
+            {'prefix':         drv + '/usr',
+             'sysconfdir':     drv + '/etc',
+             'localstatedir':  drv + '/var',
+             'sharedstatedir': drv + '/sharedstate'},
             '--prefix=/usr':
-            {'prefix':         '/usr',
-             'sysconfdir':     '/etc',
-             'localstatedir':  '/var',
-             'sharedstatedir': '/sharedstate'},
+            {'prefix':         drv + '/usr',
+             'sysconfdir':     drv + '/etc',
+             'localstatedir':  drv + '/var',
+             'sharedstatedir': drv + '/sharedstate'},
             '--sharedstatedir=/var/state':
-            {'prefix':         '/usr',
-             'sysconfdir':     '/etc',
-             'localstatedir':  '/var',
-             'sharedstatedir': '/var/state'},
+            {'prefix':         drv + '/usr',
+             'sysconfdir':     drv + '/etc',
+             'localstatedir':  drv + '/var',
+             'sharedstatedir': drv + '/var/state'},
             '--sharedstatedir=/var/state --prefix=/usr --sysconfdir=sysconf':
-            {'prefix':         '/usr',
-             'sysconfdir':     'sysconf',
-             'localstatedir':  '/var',
-             'sharedstatedir': '/var/state'},
+            {'prefix':         drv + '/usr',
+             'sysconfdir':     drv + 'sysconf',
+             'localstatedir':  drv + '/var',
+             'sharedstatedir': drv + '/var/state'},
         }
         for args in expected:
             self.init(testdir, extra_args=args.split(), default_args=False)
@@ -1756,7 +1757,7 @@ class AllPlatformTests(BasePlatformTests):
             if not (compiler.info.is_windows() or compiler.info.is_cygwin() or compiler.info.is_darwin()):
                 extra_args += ['-fPIC']
             link_cmd = compiler.get_exelist() + ['-shared', '-o', outfile, objectfile]
-            if not is_osx():
+            if not is_osx() and not is_windows() and not is_cygwin():
                 link_cmd += ['-Wl,-soname=' + os.path.basename(outfile)]
         self.pbcompile(compiler, source, objectfile, extra_args=extra_args)
         try:
@@ -2014,7 +2015,8 @@ class AllPlatformTests(BasePlatformTests):
     @mock.patch.dict(os.environ)
     def test_pkgconfig_gen_escaping(self):
         testdir = os.path.join(self.common_test_dir, '44 pkgconfig-gen')
-        prefix = '/usr/with spaces'
+        prefix = '/usr' if not is_windows() else 'X:/usr'
+        prefix += '/with spaces'
         libdir = 'lib'
         self.init(testdir, extra_args=['--prefix=' + prefix,
                                        '--libdir=' + libdir])
@@ -2465,6 +2467,7 @@ class AllPlatformTests(BasePlatformTests):
         """
         tdir = os.path.join(self.unit_test_dir, '30 shared_mod linking')
         out = self.init(tdir)
+        self.assertTrue(False, 'prefix is ' + self.prefix)
         msg = ('''DEPRECATION: target prog links against shared module mymod, which is incorrect.
              This will be an error in meson 2.0, so please use shared_library() for mymod instead.
              If shared_module() was used for mymod because it has references to undefined symbols,
@@ -3731,6 +3734,7 @@ class AllPlatformTests(BasePlatformTests):
 
     def test_summary(self):
         testdir = os.path.join(self.unit_test_dir, '71 summary')
+        drive = 'X:'
         out = self.init(testdir, extra_args=['-Denabled_opt=enabled', f'-Dpython={sys.executable}'])
         expected = textwrap.dedent(r'''
             Some Subproject 2.0
@@ -3780,7 +3784,7 @@ class AllPlatformTests(BasePlatformTests):
                 backend        : ''' + self.backend_name + '''
                 enabled_opt    : enabled
                 libdir         : lib
-                prefix         : /usr
+                prefix         : ''' + drive + '''/usr
                 python         : ''' + sys.executable + '''
             ''')
         expected_lines = expected.split('\n')[1:]
@@ -5016,7 +5020,7 @@ class AllPlatformTests(BasePlatformTests):
             '-Darray=[\'three\']',
             '-Dfeature=disabled',
             '--buildtype=plain',
-            '--prefix=/abc',
+            '--prefix=X:/abc',
         ]
         self.init(testdir, extra_args=args)
 
@@ -5025,7 +5029,7 @@ class AllPlatformTests(BasePlatformTests):
         olddata = filename.read_bytes()
         oldmtime = os.path.getmtime(filename)
 
-        for opt in ('-Dstring=val', '--buildtype=plain', '-Dfeature=disabled', '-Dprefix=/abc'):
+        for opt in ('-Dstring=val', '--buildtype=plain', '-Dfeature=disabled', '-Dprefix=X:/abc'):
             self.setconf([opt])
             newdata = filename.read_bytes()
             newmtime = os.path.getmtime(filename)
@@ -5034,7 +5038,7 @@ class AllPlatformTests(BasePlatformTests):
             olddata = newdata
             oldmtime = newmtime
 
-        for opt in ('-Dstring=abc', '--buildtype=release', '-Dfeature=enabled', '-Dprefix=/def'):
+        for opt in ('-Dstring=abc', '--buildtype=release', '-Dfeature=enabled', '-Dprefix=X:/def'):
             self.setconf([opt])
             newdata = filename.read_bytes()
             newmtime = os.path.getmtime(filename)

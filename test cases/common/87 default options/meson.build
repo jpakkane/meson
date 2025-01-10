@@ -1,5 +1,5 @@
 project('default options', 'cpp', 'c', default_options : [
-  'prefix=/absoluteprefix',
+  'prefix=X:/absoluteprefix',
   'buildtype=debugoptimized',
   'cpp_std=c++11',
   'cpp_eh=none',
