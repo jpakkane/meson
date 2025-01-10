@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import functools, json, os, textwrap
 from pathlib import Path
+import subprocess
 import typing as T
 
 from .. import mesonlib, mlog
@@ -72,6 +73,34 @@ class NumPyConfigToolDependency(ConfigToolDependency):
         if not self.is_found:
             return
         self.compile_args = self.get_config_value(['--cflags'], 'compile_args')
+
+
+class NumPySystemDependency(SystemDependency):
+    """
+    This dependency should only be needed for NumPy 1.x; from NumPy 2.0 onwards,
+    numpy-config should always be available.
+    """
+    def __init__(self, name: str, environment: 'Environment', kwargs: T.Dict[str, T.Any]) -> None:
+        super().__init__(name, environment, kwargs, language='c')
+
+        # We need `numpy` for the Python interpreter that the user is building for.
+        # To get at the result of import('python').find_installation(...), we need the
+        # user to pass it in.
+        py_interpreter: str = mesonlib.extract_as_list(kwargs, 'interpreter')[0]
+        if not py_interpreter.found():
+            self.is_found = False
+            return
+
+        cmd = py_interpreter.command + ['-c', 'import numpy; print(numpy.get_include())']
+
+        p = subprocess.run(cmd, capture_output=True, text=True)
+        incdir = p.stdout.strip()
+        if p.returncode != 0 or not os.path.exists(incdir):
+            self.is_found = False
+            return
+
+        self.is_found = True
+        self.compile_args = ['-I' + incdir]
 
 
 class BasicPythonExternalProgram(ExternalProgram):
@@ -448,6 +477,7 @@ packages['pybind11'] = pybind11_factory = DependencyFactory(
 
 packages['numpy'] = numpy_factory = DependencyFactory(
     'numpy',
-    [DependencyMethods.PKGCONFIG, DependencyMethods.CONFIG_TOOL],
+    [DependencyMethods.PKGCONFIG, DependencyMethods.CONFIG_TOOL, DependencyMethods.SYSTEM],
     configtool_class=NumPyConfigToolDependency,
+    system_class=NumPySystemDependency,
 )

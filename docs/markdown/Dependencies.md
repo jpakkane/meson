@@ -698,9 +698,20 @@ The `language` keyword may used.
 
 *(added 1.4.0)*
 
-`method` may be `auto`, `pkg-config`, or `config-tool`.
+`method` may be `auto`, `pkg-config`, `config-tool`, or `system`.
 `dependency('numpy')` supports regular use of the NumPy C API.
 Use of `numpy.f2py` for binding Fortran code isn't yet supported.
+
+The use of the `system` method is useful and necessary only for NumPy
+1.x; for NumPy 2.0 and up the pkg-config and config-tool methods are available
+and preferred. Importantly, the system method requires passing in the target
+Python installation:
+
+```meson
+py = import('python').find_installation(pure: false)
+
+numpy_dep = dependency('numpy', interpreter: py)
+```
 
 ## pcap
 
