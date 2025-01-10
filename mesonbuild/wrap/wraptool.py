@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import sys, os
+import pathlib
 import configparser
 import shutil
 import typing as T
@@ -89,14 +90,24 @@ def get_latest_version(name: str, allow_insecure: bool) -> T.Tuple[str, str]:
     version, revision = latest_version.rsplit('-', 1)
     return version, revision
 
+def get_project_root() -> pathlib.Path:
+    cwd = pathlib.Path.cwd()
+    while str(cwd) != cwd.root:
+        meson_build = cwd / "meson.build"
+        if meson_build.is_file():
+            return cwd
+        cwd = cwd.parent
+    raise SystemExit("Project root could not be found")
+
 def install(options: 'argparse.Namespace') -> None:
     name = options.name
-    if not os.path.isdir('subprojects'):
-        raise SystemExit('Subprojects dir not found. Run this script in your source root directory.')
-    if os.path.isdir(os.path.join('subprojects', name)):
-        raise SystemExit('Subproject directory for this project already exists.')
-    wrapfile = os.path.join('subprojects', name + '.wrap')
-    if os.path.exists(wrapfile):
+    subprojects = get_project_root() / "subprojects"
+    if not subprojects.is_dir():
+        subprojects.mkdir()
+    if (subprojects / name).is_dir():
+        raise SystemExit(f"Subproject directory for {name} already exists.")
+    wrapfile = subprojects / f"{name}.wrap"
+    if wrapfile.exists():
         raise SystemExit('Wrap file already exists.')
     (version, revision) = get_latest_version(name, options.allow_insecure)
     url = open_wrapdburl(f'https://wrapdb.mesonbuild.com/v2/{name}_{version}-{revision}/{name}.wrap', options.allow_insecure, True)
