@@ -2000,8 +2000,10 @@ class Executable(BuildTarget):
         if not hasattr(self, 'prefix'):
             self.prefix = ''
         if not hasattr(self, 'suffix'):
-            # Executable for Windows or C#/Mono
-            if machine.is_windows() or machine.is_cygwin() or 'cs' in self.compilers:
+            suffix = machine.get_exe_suffix()
+            if suffix:
+                self.suffix = suffix
+            elif 'cs' in self.compilers:
                 self.suffix = 'exe'
             elif machine.system.startswith('wasm') or machine.system == 'emscripten':
                 self.suffix = 'js'

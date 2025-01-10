@@ -528,7 +528,8 @@ def detect_machine_info(compilers: T.Optional[CompilersDict] = None) -> MachineI
         detect_cpu(compilers) if compilers is not None else None,
         sys.byteorder,
         detect_kernel(system),
-        detect_subsystem(system))
+        detect_subsystem(system),
+        None)
 
 # TODO make this compare two `MachineInfo`s purely. How important is the
 # `detect_cpu_family({})` distinction? It is the one impediment to that.
