@@ -115,17 +115,27 @@ class PythonInstallation(_ExternalProgramHolder['PythonExternalProgram']):
         info = python.info
         prefix = self.interpreter.environment.coredata.get_option(OptionKey('prefix'))
         assert isinstance(prefix, str), 'for mypy'
+
+        if python.build_config:
+            self.version = python.build_config['language']['version']
+            self.platform = python.build_config['platform']
+            self.suffix = python.build_config['abi']['extension_suffix']
+            self.limited_api_suffix = python.build_config['abi']['stable_abi_suffix']
+            self.link_libpython = python.build_config['libpython']['link_to_libpython']
+            self.is_pypy = python.build_config['implementation']['name'] == 'pypy'
+        else:
+            self.version = info['version']
+            self.platform = info['platform']
+            self.suffix = info['suffix']
+            self.limited_api_suffix = info['limited_api_suffix']
+            self.link_libpython = info['link_libpython']
+            self.is_pypy = info['is_pypy']
+
         self.variables = info['variables']
-        self.suffix = info['suffix']
-        self.limited_api_suffix = info['limited_api_suffix']
         self.paths = info['paths']
         self.pure = python.pure
         self.platlib_install_path = os.path.join(prefix, python.platlib)
         self.purelib_install_path = os.path.join(prefix, python.purelib)
-        self.version = info['version']
-        self.platform = info['platform']
-        self.is_pypy = info['is_pypy']
-        self.link_libpython = info['link_libpython']
         self.methods.update({
             'extension_module': self.extension_module_method,
             'dependency': self.dependency_method,
@@ -256,8 +266,12 @@ class PythonInstallation(_ExternalProgramHolder['PythonExternalProgram']):
         if dep is not None:
             return dep
 
+        build_config = self.interpreter.environment.coredata.get_option(OptionKey('python.build_config'))
+
         new_kwargs = kwargs.copy()
         new_kwargs['required'] = False
+        if build_config:
+            new_kwargs['build_config'] = build_config
         candidates = python_factory(self.interpreter.environment, for_machine, new_kwargs, self.held_object)
         dep = find_external_dependency('python', self.interpreter.environment, new_kwargs, candidates)
 
@@ -441,11 +455,13 @@ class PythonModule(ExtensionModule):
             return None
 
     def _find_installation_impl(self, state: 'ModuleState', display_name: str, name_or_path: str, required: bool) -> MaybePythonProg:
+        build_config = self.interpreter.environment.coredata.get_option(OptionKey('python.build_config'))
+
         if not name_or_path:
-            python = PythonExternalProgram('python3', mesonlib.python_command)
+            python = PythonExternalProgram('python3', mesonlib.python_command, build_config_path=build_config)
         else:
             tmp_python = ExternalProgram.from_entry(display_name, name_or_path)
-            python = PythonExternalProgram(display_name, ext_prog=tmp_python)
+            python = PythonExternalProgram(display_name, ext_prog=tmp_python, build_config_path=build_config)
 
             if not python.found() and mesonlib.is_windows():
                 pythonpath = self._get_win_pythonpath(name_or_path)
@@ -459,7 +475,7 @@ class PythonModule(ExtensionModule):
             # it
             if not python.found() and name_or_path in {'python2', 'python3'}:
                 tmp_python = ExternalProgram.from_entry(display_name, 'python')
-                python = PythonExternalProgram(name_or_path, ext_prog=tmp_python)
+                python = PythonExternalProgram(name_or_path, ext_prog=tmp_python, build_config_path=build_config)
 
         if python.found():
             if python.sanity(state):

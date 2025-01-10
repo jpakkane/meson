@@ -663,6 +663,8 @@ BUILTIN_CORE_OPTIONS: T.Dict['OptionKey', 'BuiltinOption'] = OrderedDict([
      BuiltinOption(UserStringOption, 'Directory for site-specific, non-platform-specific files.', '')),
     (OptionKey('python.allow_limited_api'),
      BuiltinOption(UserBooleanOption, 'Whether to allow use of the Python Limited API', True)),
+    (OptionKey('python.build_config'),
+     BuiltinOption(UserStringOption, 'Config file containing the build details for the target Python installation.', '')),
 ])
 
 BUILTIN_OPTIONS = OrderedDict(chain(BUILTIN_DIR_OPTIONS.items(), BUILTIN_CORE_OPTIONS.items()))
