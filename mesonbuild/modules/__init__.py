@@ -41,7 +41,6 @@ class ModuleState:
         self.current_lineno = interpreter.current_node.lineno
         self.environment = interpreter.environment
         self.project_name = interpreter.build.project_name
-        self.project_version = interpreter.build.dep_manifest[interpreter.active_projectname].version
         # The backend object is under-used right now, but we will need it:
         # https://github.com/mesonbuild/meson/issues/1419
         self.backend = interpreter.backend
@@ -52,6 +51,10 @@ class ModuleState:
         self.global_args = interpreter.build.global_args.host
         self.project_args = interpreter.build.projects_args.host.get(interpreter.subproject, {})
         self.current_node = interpreter.current_node
+
+    @property
+    def project_version(self) -> str:
+        return self._interpreter.build.dep_manifest[self._interpreter.active_projectname].version
 
     def get_include_args(self, include_dirs: T.Iterable[T.Union[str, build.IncludeDirs]], prefix: str = '-I') -> T.List[str]:
         if not include_dirs:

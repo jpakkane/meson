@@ -63,7 +63,6 @@ class ExternalProject(NewExtensionModule):
                              })
 
         self.subdir = Path(state.subdir)
-        self.project_version = state.project_version
         self.subproject = state.subproject
         self.env = state.environment
         self.configure_command = configure_command
@@ -267,7 +266,7 @@ class ExternalProject(NewExtensionModule):
             abs_includedir = Path(abs_includedir, kwargs['subdir'])
         abs_libdir = Path(self.install_dir, self.rel_prefix, self.libdir)
 
-        version = self.project_version
+        version = state.project_version
         compile_args = [f'-I{abs_includedir}']
         link_args = [f'-L{abs_libdir}', f'-l{libname}']
         sources = self.target
