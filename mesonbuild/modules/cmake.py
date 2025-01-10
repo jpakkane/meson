@@ -193,6 +193,7 @@ class CMakeSubprojectOptions(ModuleObject):
                 'add_cmake_defines': self.add_cmake_defines,
                 'set_override_option': self.set_override_option,
                 'set_install': self.set_install,
+                'append_cmake_args': self.append_cmake_args,
                 'append_compile_args': self.append_compile_args,
                 'append_link_args': self.append_link_args,
                 'clear': self.clear,
@@ -218,6 +219,11 @@ class CMakeSubprojectOptions(ModuleObject):
     @typed_kwargs('subproject_options.set_install', _TARGET_KW)
     def set_install(self, state: ModuleState, args: T.Tuple[bool], kwargs: TargetKW) -> None:
         self._get_opts(kwargs).set_install(args[0])
+
+    @typed_pos_args('subproject_options.append_cmake_args', varargs=str, min_varargs=1)
+    @permittedKwargs({'target'})
+    def append_cmake_args(self, state: ModuleState, args: T.Tuple[T.List[str]], kwargs: TYPE_kwargs) -> None:
+        self.cmake_options.extend(args[0])
 
     @typed_pos_args('subproject_options.append_compile_args', str, varargs=str, min_varargs=1)
     @typed_kwargs('subproject_options.append_compile_args', _TARGET_KW)
