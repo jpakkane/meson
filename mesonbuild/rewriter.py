@@ -517,16 +517,21 @@ class Rewriter:
             arg_node = node.args
         elif cmd['function'] == 'target':
             tmp = self.find_target(cmd['id'])
-            if tmp:
-                node = tmp['node']
-                arg_node = node.args
+            if not tmp:
+                mlog.error('Unable to find the target', mlog.bold(cmd['id']), *self.on_error())
+                return self.handle_error()
+            node = tmp['node']
+            arg_node = node.args
         elif cmd['function'] == 'dependency':
             tmp = self.find_dependency(cmd['id'])
-            if tmp:
-                node = tmp['node']
-                arg_node = node.args
+            if not tmp:
+                mlog.error('Unable to find the dependency', mlog.bold(cmd['id']), *self.on_error())
+                return self.handle_error()
+            node = tmp['node']
+            arg_node = node.args
         if not node:
-            mlog.error('Unable to find the function node')
+            mlog.error('Unable to find the function node', *self.on_error())
+            return self.handle_error()
         assert isinstance(node, FunctionNode)
         assert isinstance(arg_node, ArgumentNode)
         # Transform the key nodes to plain strings
