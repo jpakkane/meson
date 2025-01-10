@@ -490,6 +490,8 @@ class Installer:
         else:
             exclude_files = exclude_dirs = set()
         for root, dirs, files in os.walk(src_dir):
+            dirs.sort()
+            files.sort()
             assert os.path.isabs(root)
             for d in dirs[:]:
                 abs_src = os.path.join(root, d)
