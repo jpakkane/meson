@@ -30,4 +30,6 @@ assert(w_level == '3', 'warning level "' + w_level + '" instead of "3"')
 #   assert(cc.compiles('int foobar;', no_builtin_args : true), 'No_builtin did not disable builtins.')
 # endif
 
-subproject('sub1')
+subproject('sub1', default_options : [
+  'c_args=-Dtest',
+  ])

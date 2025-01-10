@@ -721,7 +721,7 @@ class CoreData:
 
         self.set_options(options, subproject=subproject, first_invocation=env.first_invocation)
 
-    def add_compiler_options(self, c_options: MutableKeyedOptionDictType, lang: str, for_machine: MachineChoice,
+    def add_compiler_options(self, c_options: MutableKeyedOptionDictType, for_machine: MachineChoice,
                              env: Environment, subproject: str) -> None:
         for k, o in c_options.items():
             value = env.options.get(k)
@@ -749,10 +749,10 @@ class CoreData:
         for gopt_key, gopt_valobj in compilers.get_global_options(lang, comp, for_machine, env).items():
             self.optstore.add_compiler_option(lang, gopt_key, gopt_valobj)
 
-    def process_compiler_options(self, lang: str, comp: Compiler, env: Environment, subproject: str) -> None:
+    def process_compiler_options(self, comp: Compiler, env: Environment, subproject: str) -> None:
         from . import compilers
 
-        self.add_compiler_options(comp.get_options(), lang, comp.for_machine, env, subproject)
+        self.add_compiler_options(comp.get_options(), comp.for_machine, env, subproject)
 
         enabled_opts: T.List[OptionKey] = []
         for key in comp.base_options:

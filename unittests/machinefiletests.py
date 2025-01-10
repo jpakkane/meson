@@ -523,20 +523,21 @@ class NativeFileTests(BasePlatformTests):
 
         self.init(testcase, extra_args=['--native-file', config])
         configuration = self.introspect('--buildoptions')
-        found = 0
+        score = 0
         for each in configuration:
             # Test that no-per subproject options are inherited from the parent
+            # while the rest of the options are inherited as-is
             if 'c_args' in each['name']:
-                # This path will be hit twice, once for build and once for host,
+                # This path will be hit twice per project: for build and for host
                 self.assertEqual(each['value'], ['-Dfoo'])
-                found += 1
+                score += 1
             elif each['name'] == 'default_library':
                 self.assertEqual(each['value'], 'both')
-                found += 1
+                score += 10
             elif each['name'] == 'sub:default_library':
                 self.assertEqual(each['value'], 'static')
-                found += 1
-        self.assertEqual(found, 4, 'Did not find all three sections')
+                score += 100
+        self.assertEqual(score, 118, 'Did not find all three sections')
 
     def test_builtin_options_subprojects_overrides_buildfiles(self):
         # If the buildfile says subproject(... default_library: shared), ensure that's overwritten

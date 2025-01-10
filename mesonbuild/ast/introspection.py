@@ -197,11 +197,16 @@ class IntrospectionInterpreter(AstInterpreter):
                         continue
                 if self.subproject:
                     options = {}
+                    lang_options = compilers.compilers.get_global_options(lang, type(comp), for_machine, self.environment)
+                    for k in lang_options:
+                        v = copy.copy(self.coredata.optstore.get_value_object(k))
+                        k = k.evolve(subproject=self.subproject)
+                        options[k] = v
                     for k in comp.get_options():
                         v = copy.copy(self.coredata.optstore.get_value_object(k))
                         k = k.evolve(subproject=self.subproject)
                         options[k] = v
-                    self.coredata.add_compiler_options(options, lang, for_machine, self.environment, self.subproject)
+                    self.coredata.add_compiler_options(options, for_machine, self.environment, self.subproject)
 
     def func_dependency(self, node: BaseNode, args: T.List[TYPE_var], kwargs: T.Dict[str, TYPE_var]) -> None:
         args = self.flatten_args(args)

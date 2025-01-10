@@ -1539,16 +1539,22 @@ class Interpreter(InterpreterBase, HoldableObject):
                     self.backend.allow_thin_archives[for_machine] = False
             else:
                 # update new values from commandline, if it applies
-                self.coredata.process_compiler_options(lang, comp, self.environment, self.subproject)
+                self.coredata.process_compiler_options(comp, self.environment, self.subproject)
 
-            # Add per-subproject compiler options. They inherit value from main project.
+            # Add per-subproject language and compiler options. They inherit value from main project.
             if self.subproject:
                 options = {}
+                lang_options = compilers.compilers.get_global_options(lang, type(comp), for_machine, self.environment)
+                for k in lang_options:
+                    v = copy.copy(self.coredata.optstore.get_value_object(k))
+                    k = k.evolve(subproject=self.subproject)
+                    options[k] = v
+
                 for k in comp.get_options():
                     v = copy.copy(self.coredata.optstore.get_value_object(k))
                     k = k.evolve(subproject=self.subproject)
                     options[k] = v
-                self.coredata.add_compiler_options(options, lang, for_machine, self.environment, self.subproject)
+                self.coredata.add_compiler_options(options, for_machine, self.environment, self.subproject)
 
             if for_machine == MachineChoice.HOST or self.environment.is_cross_build():
                 logger_fun = mlog.log
