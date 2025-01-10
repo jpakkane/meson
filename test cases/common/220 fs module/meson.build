@@ -191,6 +191,21 @@ subdir('subdir')
 
 subproject('subbie')
 
+
+# configure_file_list
+test_file_list = find_program('testfilelist.py')
+cfl = fs.configure_file_list(
+  'fl.txt',
+  'meson.build',
+  subdirfiles,
+  [btgt, ctgt],
+)
+test(
+  'fs.configure_file_list',
+  test_file_list,
+  args: cfl,
+)
+
 testcase expect_error('File notfound does not exist.')
   fs.read('notfound')
 endtestcase

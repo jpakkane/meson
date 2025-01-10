@@ -12,7 +12,7 @@ from .. import mlog
 from ..build import BuildTarget, CustomTarget, CustomTargetIndex, InvalidArguments
 from ..interpreter.type_checking import INSTALL_KW, INSTALL_MODE_KW, INSTALL_TAG_KW, NoneType
 from ..interpreterbase import FeatureNew, KwargInfo, typed_kwargs, typed_pos_args, noKwargs
-from ..mesonlib import File, MesonException, has_path_sep, path_is_in_root, relpath
+from ..mesonlib import File, MesonException, has_path_sep, path_is_in_root, relpath, quote_arg
 
 if T.TYPE_CHECKING:
     from . import ModuleState
@@ -37,6 +37,13 @@ if T.TYPE_CHECKING:
         install_mode: FileMode
         install_tag: T.Optional[str]
 
+    class ConfigureFileListKw(TypedDict):
+
+        quote: bool
+        separator: str
+        end: str
+        relative_paths: bool
+
 
 class FSModule(ExtensionModule):
 
@@ -46,6 +53,7 @@ class FSModule(ExtensionModule):
         super().__init__(interpreter)
         self.methods.update({
             'as_posix': self.as_posix,
+            'configure_file_list': self.configure_file_list,
             'copyfile': self.copyfile,
             'exists': self.exists,
             'expanduser': self.expanduser,
@@ -316,6 +324,69 @@ class FSModule(ExtensionModule):
         f = to_path(args[1])
 
         return relpath(t, f)
+
+    @FeatureNew('fs.configure_file_list', '1.7.0')
+    @typed_pos_args('fs.configure_file_list', str, varargs=(str, File, CustomTarget, CustomTargetIndex, BuildTarget))
+    @typed_kwargs(
+        'fs.configure_file_list',
+        KwargInfo('quote', bool, default=False),
+        KwargInfo('separator', str, default='\n'),
+        KwargInfo('end', str, default='\n'),
+        KwargInfo('relative_paths', bool, default=False),
+    )
+    def configure_file_list(self, state: ModuleState, args: T.Tuple[str, T.List[T.Union[FileOrString, BuildTargetTypes]]], kwargs: ConfigureFileListKw) -> ModuleReturnValue:
+        current_build_dir = Path(state.environment.build_dir, state.subdir)
+        file_list_dir = current_build_dir / 'file_list.p'
+        file_list_dir.mkdir(exist_ok=True)
+        name = args[0]
+
+        input_file = file_list_dir / name
+        output_file = current_build_dir / name
+
+        separator = kwargs['separator']
+        is_relative = kwargs['relative_paths']
+        quote = kwargs['quote']
+
+        # We generate the output now because we know how...
+        sources = args[1].copy()
+        nargs = len(sources)
+        with input_file.open('w', encoding='utf-8') as f:
+            for i, a in enumerate(sources, 1):
+                if isinstance(a, str):
+                    a = File(False, state.subdir, a)
+
+                elif isinstance(a, (BuildTarget, CustomTarget, CustomTargetIndex)):
+                    a = File(True, a.get_subdir(), a.get_outputs()[0])
+
+                assert isinstance(a, File), 'for mypy'
+                if is_relative:
+                    line = a.relative_name()
+                else:
+                    line = a.absolute_path(state.environment.source_dir, state.environment.build_dir)
+
+                if quote:
+                    line = quote_arg(line)
+
+                if i == nargs:
+                    separator = kwargs['end']
+                print(line, end=separator, file=f)
+
+        sources.insert(0, input_file.as_posix())
+
+        # ...but we copy it later, to ensure it is touched when an input is modified
+        ct = CustomTarget(
+            name,
+            state.subdir,
+            state.subproject,
+            state.environment,
+            state.environment.get_build_command() + ['--internal', 'copy', '@INPUT0@', '@OUTPUT@'],
+            sources,
+            [output_file.name],
+            build_by_default=True,
+            backend=state.backend,
+            description='Generating file list {}',
+        )
+        return ModuleReturnValue(ct, [ct])
 
 
 def initialize(*args: T.Any, **kwargs: T.Any) -> FSModule:

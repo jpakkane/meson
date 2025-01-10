@@ -264,3 +264,32 @@ returns:
 ```meson
 copy = fs.copyfile('input-file', 'output-file')
 ```
+
+### configure_file_list
+
+*Since 1.7.0*
+
+Write paths from a list of files to a configuration file, which can be used as
+an argument to a command. The result file is generated at build time and 
+updated when any input file is updated.
+
+Has the following positional arguments:
+   - name `str`: name of the resulting file
+   - sources `str | file | custom_tgt | custom_idx | build_tgt`: file paths to
+     write to the result file
+
+Has the following keyword arguments:
+   - quote `bool`: if `true`, add quote and escape chars to the file paths
+     (default `false`)
+   - separator `str`: characters used to separate the paths (default `\n`)
+   - end `str`: characters to put at the end of the file (default `\n`)
+   - relative_paths `bool`: if `true`, write relative paths, if `false`, write
+     absolute paths (default: `false`)
+
+returns:
+   - a [[custom_target]] object
+
+```meson
+src_files = files(...)
+file_list = fs.configure_file_list('filelist.txt', src_files)
+```
