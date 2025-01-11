@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import hashlib
+import traceback
 
 from .. import mparser
 from .. import environment
@@ -622,8 +623,18 @@ class Interpreter(InterpreterBase, HoldableObject):
         if real_modname in self.modules:
             return self.modules[real_modname]
         try:
-            module = importlib.import_module(f'mesonbuild.modules.{real_modname}')
-        except ImportError:
+            full_module_path = f'mesonbuild.modules.{real_modname}'
+            module = importlib.import_module(full_module_path)
+        except ImportError as e:
+            if e.name != full_module_path:
+                if required:
+                    raise e
+
+                mlog.warning(f'Module "{modname}" exists but failed to import.')
+
+                for line in traceback.format_exception(e):
+                    mlog.debug(line)
+
             if required:
                 raise InvalidArguments(f'Module "{modname}" does not exist')
             ext_module = NotFoundExtensionModule(real_modname)
