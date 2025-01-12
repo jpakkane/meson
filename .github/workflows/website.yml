@@ -45,7 +45,7 @@ jobs:
       - name: Install package
         run: |
           sudo apt-get -y install python3-pip ninja-build libjson-glib-dev
-          pip install hotdoc chevron strictyaml
+          pip install hotdoc chevron strictyaml aiohttp
 
       - uses: actions/cache/save@v4
         with:

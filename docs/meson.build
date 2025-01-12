@@ -1,7 +1,7 @@
 project('Meson documentation', version: '1.0')
 
 yaml_modname = get_option('unsafe_yaml') ? 'yaml' : 'strictyaml'
-py = import('python').find_installation('python3', modules: [yaml_modname], required: false)
+py = import('python').find_installation('python3', modules: [yaml_modname, 'aiohttp'], required: false)
 if not py.found()
     error(f'Cannot build documentation without yaml support')
 endif
@@ -145,3 +145,5 @@ run_target('upload',
     ],
     depends: documentation,
 )
+
+test('validate_links', find_program('./validatelinks.py'), args: meson.current_source_dir() / 'markdown' / 'Users.md')

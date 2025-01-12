@@ -125,7 +125,6 @@ format files
  - [NetPanzer](https://github.com/netpanzer/netpanzer), a 2D online multiplayer tactical warfare game designed for fast action combat
  - [NumPy](https://numpy.org/), a Python package for scientific computing
  - [nvme-cli](https://github.com/linux-nvme/nvme-cli), NVMe management command line interface
- - [OcherBook](https://github.com/ccoffing/OcherBook), an open source book reader for Kobo devices
  - [oomd](https://github.com/facebookincubator/oomd), a userspace Out-Of-Memory (OOM) killer for Linux systems
  - [OpenH264](https://github.com/cisco/openh264), open source H.264 codec
  - [OpenHMD](https://github.com/OpenHMD/OpenHMD), a free and open source API and drivers for immersive technology, such as head mounted displays with built in head tracking
@@ -141,7 +140,6 @@ format files
  - [Peek](https://github.com/phw/peek), simple animated GIF screen recorder with an easy to use interface
  - [PicoLibc](https://github.com/keith-packard/picolibc), a standard C library for small embedded systems with limited RAM
  - [PipeWire](https://github.com/PipeWire/pipewire), a framework for video and audio for containerized applications
- - [Paper Rock Scissors](https://github.com/michaelbrockus/paper_rock_scissors), a game with weapons themed at home paper rock scissors style
  - [Pistache](https://github.com/pistacheio/pistache), a high performance REST toolkit written in C++
  - [Pithos](https://github.com/pithos/pithos), a Pandora Radio client
  - [Pitivi](https://github.com/pitivi/pitivi/), a nonlinear video editor
