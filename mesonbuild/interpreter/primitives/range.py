@@ -5,8 +5,9 @@ from __future__ import annotations
 import typing as T
 
 from ...interpreterbase import (
-    MesonInterpreterObject,
+    InterpreterObject,
     IterableObject,
+    MesonInterpreterObject,
     MesonOperator,
     InvalidArguments,
 )
@@ -18,10 +19,8 @@ class RangeHolder(MesonInterpreterObject, IterableObject):
     def __init__(self, start: int, stop: int, step: int, *, subproject: 'SubProject') -> None:
         super().__init__(subproject=subproject)
         self.range = range(start, stop, step)
-        self.operators.update({
-            MesonOperator.INDEX: self.op_index,
-        })
 
+    @InterpreterObject.operator(MesonOperator.INDEX)
     def op_index(self, other: int) -> int:
         try:
             return self.range[other]

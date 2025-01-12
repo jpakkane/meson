@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from ...interpreterbase import (
-    ObjectHolder,
+    InterpreterObject,
     MesonOperator,
+    ObjectHolder,
     typed_pos_args,
     noKwargs,
     noPosargs,
@@ -20,30 +21,25 @@ if T.TYPE_CHECKING:
     from ...interpreterbase import TYPE_var, TYPE_kwargs
 
 class BooleanHolder(ObjectHolder[bool]):
-    def __init__(self, obj: bool, interpreter: 'Interpreter') -> None:
-        super().__init__(obj, interpreter)
-        self.methods.update({
-            'to_int': self.to_int_method,
-            'to_string': self.to_string_method,
-        })
-
-        self.trivial_operators.update({
-            MesonOperator.BOOL: (None, lambda x: self.held_object),
-            MesonOperator.NOT: (None, lambda x: not self.held_object),
-            MesonOperator.EQUALS: (bool, lambda x: self.held_object == x),
-            MesonOperator.NOT_EQUALS: (bool, lambda x: self.held_object != x),
-        })
+    TRIVIAL_OPERATORS = {
+        MesonOperator.BOOL: (None, lambda obj, x: obj.held_object),
+        MesonOperator.NOT: (None, lambda obj, x: not obj.held_object),
+        MesonOperator.EQUALS: (bool, lambda obj, x: obj.held_object == x),
+        MesonOperator.NOT_EQUALS: (bool, lambda obj, x: obj.held_object != x),
+    }
 
     def display_name(self) -> str:
         return 'bool'
 
     @noKwargs
     @noPosargs
+    @InterpreterObject.method('to_int')
     def to_int_method(self, args: T.List[TYPE_var], kwargs: TYPE_kwargs) -> int:
         return 1 if self.held_object else 0
 
     @noKwargs
     @typed_pos_args('bool.to_string', optargs=[str, str])
+    @InterpreterObject.method('to_string')
     def to_string_method(self, args: T.Tuple[T.Optional[str], T.Optional[str]], kwargs: TYPE_kwargs) -> str:
         true_str = args[0] or 'true'
         false_str = args[1] or 'false'

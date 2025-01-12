@@ -15,15 +15,14 @@ from abc import ABCMeta
 from contextlib import AbstractContextManager
 
 if T.TYPE_CHECKING:
-    from typing_extensions import Protocol, TypeAlias
+    from typing_extensions import TypeAlias
 
     # Object holders need the actual interpreter
     from ..interpreter import Interpreter
 
-    __T = T.TypeVar('__T', bound='TYPE_var', contravariant=True)
-
-    class OperatorCall(Protocol[__T]):
-        def __call__(self, other: __T) -> 'TYPE_var': ...
+    TYPE_op_arg = T.TypeVar('TYPE_op_arg', bound='TYPE_var', contravariant=True)
+    OperatorCall = T.Callable[[TYPE_op_arg, TYPE_op_arg], TYPE_var]
+    MethodCall = T.Callable[[T.List[TYPE_var], TYPE_kwargs], TYPE_var]
 
 
 TV_func = T.TypeVar('TV_func', bound=T.Callable[..., T.Any])
@@ -37,30 +36,81 @@ TYPE_key_resolver = T.Callable[[mparser.BaseNode], str]
 
 SubProject = T.NewType('SubProject', str)
 
-class InterpreterObject:
+class InterpreterObject(metaclass=ABCMeta):
+    TRIVIAL_OPERATORS: T.Dict[
+        MesonOperator,
+        T.Tuple[
+            T.Union[T.Type, T.Tuple[T.Type, ...]],
+            'OperatorCall'
+        ]
+    ] = {}
+
+    OPERATORS: T.Dict[MesonOperator, 'OperatorCall'] = {}
+
+    METHODS: T.Dict[
+        str,
+        MethodCall,
+    ] = {}
+
+    def __init_subclass__(cls: T.Type[InterpreterObject], **kwargs) -> None:
+        super().__init_subclass__(**kwargs)
+        saved_trivial_operators = cls.TRIVIAL_OPERATORS
+
+        cls.METHODS = {}
+        cls.OPERATORS = {}
+        cls.TRIVIAL_OPERATORS = {}
+
+        # Compute the supported operators according to the Python resolution order
+        # Reverse the result of mro() because update() will overwrite operators
+        # that are set by the superclass with those that are set by the subclass
+        for superclass in reversed(cls.mro()[1:]):
+            if superclass is InterpreterObject:
+                # __init_subclass__ does not operate on InterpreterObject itself,
+                # so it cannot use @InterpreterObject.operator
+                cls.OPERATORS.update({
+                    MesonOperator.EQUALS: InterpreterObject.op_equals,
+                    MesonOperator.NOT_EQUALS: InterpreterObject.op_not_equals
+                })
+
+            elif issubclass(superclass, InterpreterObject):
+                cls.METHODS.update(superclass.METHODS)
+                cls.OPERATORS.update(superclass.OPERATORS)
+                cls.TRIVIAL_OPERATORS.update(superclass.TRIVIAL_OPERATORS)
+
+        for name, method in cls.__dict__.items():
+            if hasattr(method, "meson_method"):
+                cls.METHODS[method.meson_method] = method
+            if hasattr(method, "meson_operator"):
+                cls.OPERATORS[method.meson_operator] = method
+        cls.TRIVIAL_OPERATORS.update(saved_trivial_operators)
+
+    @staticmethod
+    def method(name: str) -> MethodCall:
+        '''Decorator that tags a Python method as the implementation of a method
+           for the Meson interpreter'''
+        def decorator(f: MethodCall) -> MethodCall:
+            f.meson_method = name
+            return f
+        return decorator
+
+    @staticmethod
+    def operator(op: MesonOperator) -> OperatorCall:
+        '''Decorator that tags a method as the implementation of an operator
+           for the Meson interpreter'''
+        def decorator(f: OperatorCall) -> OperatorCall:
+            f.meson_operator = op
+            return f
+        return decorator
+
     def __init__(self, *, subproject: T.Optional['SubProject'] = None) -> None:
         self.methods: T.Dict[
             str,
             T.Callable[[T.List[TYPE_var], TYPE_kwargs], TYPE_var]
         ] = {}
-        self.operators: T.Dict[MesonOperator, 'OperatorCall'] = {}
-        self.trivial_operators: T.Dict[
-            MesonOperator,
-            T.Tuple[
-                T.Union[T.Type, T.Tuple[T.Type, ...]],
-                'OperatorCall'
-            ]
-        ] = {}
         # Current node set during a method call. This can be used as location
         # when printing a warning message during a method call.
         self.current_node:  mparser.BaseNode = None
         self.subproject = subproject or SubProject('')
-
-        # Some default operators supported by all objects
-        self.operators.update({
-            MesonOperator.EQUALS: self.op_equals,
-            MesonOperator.NOT_EQUALS: self.op_not_equals,
-        })
 
     # The type of the object that can be printed to the user
     def display_name(self) -> str:
@@ -72,6 +122,13 @@ class InterpreterObject:
                 args: T.List[TYPE_var],
                 kwargs: TYPE_kwargs
             ) -> TYPE_var:
+        if method_name in self.METHODS:
+            method = self.METHODS[method_name]
+            if not getattr(method, 'no-args-flattening', False):
+                args = flatten(args)
+            if not getattr(method, 'no-second-level-holder-flattening', False):
+                args, kwargs = resolve_second_level_holders(args, kwargs)
+            return method(self, args, kwargs)
         if method_name in self.methods:
             method = self.methods[method_name]
             if not getattr(method, 'no-args-flattening', False):
@@ -82,15 +139,16 @@ class InterpreterObject:
         raise InvalidCode(f'Unknown method "{method_name}" in object {self} of type {type(self).__name__}.')
 
     def operator_call(self, operator: MesonOperator, other: TYPE_var) -> TYPE_var:
-        if operator in self.trivial_operators:
-            op = self.trivial_operators[operator]
+        if operator in self.TRIVIAL_OPERATORS:
+            op = self.TRIVIAL_OPERATORS[operator]
             if op[0] is None and other is not None:
                 raise MesonBugException(f'The unary operator `{operator.value}` of {self.display_name()} was passed the object {other} of type {type(other).__name__}')
             if op[0] is not None and not isinstance(other, op[0]):
                 raise InvalidArguments(f'The `{operator.value}` operator of {self.display_name()} does not accept objects of type {type(other).__name__} ({other})')
-            return op[1](other)
-        if operator in self.operators:
-            return self.operators[operator](other)
+            return op[1](self, other)
+        if operator in self.OPERATORS:
+            return self.OPERATORS[operator](self, other)
+
         raise InvalidCode(f'Object {self} of type {self.display_name()} does not support the `{operator.value}` operator.')
 
     # Default comparison operator support
@@ -115,10 +173,10 @@ class InterpreterObject:
             self._throw_comp_exception(other, '!=')
         return self != other
 
-class MesonInterpreterObject(InterpreterObject):
+class MesonInterpreterObject(InterpreterObject, metaclass=ABCMeta):
     ''' All non-elementary objects and non-object-holders should be derived from this '''
 
-class MutableInterpreterObject:
+class MutableInterpreterObject(metaclass=ABCMeta):
     ''' Dummy class to mark the object type as mutable '''
 
 HoldableTypes = (HoldableObject, int, bool, str, list, dict)
@@ -142,12 +200,14 @@ class ObjectHolder(InterpreterObject, T.Generic[InterpreterObjectTypeVar]):
         return type(self.held_object).__name__
 
     # Override default comparison operators for the held object
+    @InterpreterObject.operator(MesonOperator.EQUALS)
     def op_equals(self, other: TYPE_var) -> bool:
         # See the comment from InterpreterObject why we are using `type()` here.
         if type(self.held_object) is not type(other):
             self._throw_comp_exception(other, '==')
         return self.held_object == other
 
+    @InterpreterObject.operator(MesonOperator.NOT_EQUALS)
     def op_not_equals(self, other: TYPE_var) -> bool:
         if type(self.held_object) is not type(other):
             self._throw_comp_exception(other, '!=')

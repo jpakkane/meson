@@ -5,9 +5,10 @@ from __future__ import annotations
 import typing as T
 
 from ...interpreterbase import (
-    ObjectHolder,
+    InterpreterObject,
     IterableObject,
     MesonOperator,
+    ObjectHolder,
     typed_operator,
     noKwargs,
     noPosargs,
@@ -25,29 +26,17 @@ if T.TYPE_CHECKING:
     from ...interpreterbase import TYPE_kwargs
 
 class DictHolder(ObjectHolder[T.Dict[str, TYPE_var]], IterableObject):
-    def __init__(self, obj: T.Dict[str, TYPE_var], interpreter: 'Interpreter') -> None:
-        super().__init__(obj, interpreter)
-        self.methods.update({
-            'has_key': self.has_key_method,
-            'keys': self.keys_method,
-            'get': self.get_method,
-        })
+    # Operators that only require type checks
+    TRIVIAL_OPERATORS = {
+        # Arithmetic
+        MesonOperator.PLUS: (dict, lambda obj, x: {**obj.held_object, **x}),
 
-        self.trivial_operators.update({
-            # Arithmetic
-            MesonOperator.PLUS: (dict, lambda x: {**self.held_object, **x}),
-
-            # Comparison
-            MesonOperator.EQUALS: (dict, lambda x: self.held_object == x),
-            MesonOperator.NOT_EQUALS: (dict, lambda x: self.held_object != x),
-            MesonOperator.IN: (str, lambda x: x in self.held_object),
-            MesonOperator.NOT_IN: (str, lambda x: x not in self.held_object),
-        })
-
-        # Use actual methods for functions that require additional checks
-        self.operators.update({
-            MesonOperator.INDEX: self.op_index,
-        })
+        # Comparison
+        MesonOperator.EQUALS: (dict, lambda obj, x: obj.held_object == x),
+        MesonOperator.NOT_EQUALS: (dict, lambda obj, x: obj.held_object != x),
+        MesonOperator.IN: (str, lambda obj, x: x in obj.held_object),
+        MesonOperator.NOT_IN: (str, lambda obj, x: x not in obj.held_object),
+    }
 
     def display_name(self) -> str:
         return 'dict'
@@ -63,17 +52,20 @@ class DictHolder(ObjectHolder[T.Dict[str, TYPE_var]], IterableObject):
 
     @noKwargs
     @typed_pos_args('dict.has_key', str)
+    @InterpreterObject.method('has_key')
     def has_key_method(self, args: T.Tuple[str], kwargs: TYPE_kwargs) -> bool:
         return args[0] in self.held_object
 
     @noKwargs
     @noPosargs
+    @InterpreterObject.method('keys')
     def keys_method(self, args: T.List[TYPE_var], kwargs: TYPE_kwargs) -> T.List[str]:
         return sorted(self.held_object)
 
     @noArgsFlattening
     @noKwargs
     @typed_pos_args('dict.get', str, optargs=[object])
+    @InterpreterObject.method('get')
     def get_method(self, args: T.Tuple[str, T.Optional[TYPE_var]], kwargs: TYPE_kwargs) -> TYPE_var:
         if args[0] in self.held_object:
             return self.held_object[args[0]]
@@ -82,6 +74,7 @@ class DictHolder(ObjectHolder[T.Dict[str, TYPE_var]], IterableObject):
         raise InvalidArguments(f'Key {args[0]!r} is not in the dictionary.')
 
     @typed_operator(MesonOperator.INDEX, str)
+    @InterpreterObject.operator(MesonOperator.INDEX)
     def op_index(self, other: str) -> TYPE_var:
         if other not in self.held_object:
             raise InvalidArguments(f'Key {other} is not in the dictionary.')

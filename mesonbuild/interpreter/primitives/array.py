@@ -5,9 +5,10 @@ from __future__ import annotations
 import typing as T
 
 from ...interpreterbase import (
-    ObjectHolder,
+    InterpreterObject,
     IterableObject,
     MesonOperator,
+    ObjectHolder,
     typed_operator,
     noKwargs,
     noPosargs,
@@ -27,26 +28,16 @@ if T.TYPE_CHECKING:
     from ...interpreterbase import TYPE_kwargs
 
 class ArrayHolder(ObjectHolder[T.List[TYPE_var]], IterableObject):
+    # Operators that only require type checks
+    TRIVIAL_OPERATORS = {
+        MesonOperator.EQUALS: (list, lambda obj, x: obj.held_object == x),
+        MesonOperator.NOT_EQUALS: (list, lambda obj, x: obj.held_object != x),
+        MesonOperator.IN: (object, lambda obj, x: x in obj.held_object),
+        MesonOperator.NOT_IN: (object, lambda obj, x: x not in obj.held_object),
+    }
+
     def __init__(self, obj: T.List[TYPE_var], interpreter: 'Interpreter') -> None:
         super().__init__(obj, interpreter)
-        self.methods.update({
-            'contains': self.contains_method,
-            'length': self.length_method,
-            'get': self.get_method,
-        })
-
-        self.trivial_operators.update({
-            MesonOperator.EQUALS: (list, lambda x: self.held_object == x),
-            MesonOperator.NOT_EQUALS: (list, lambda x: self.held_object != x),
-            MesonOperator.IN: (object, lambda x: x in self.held_object),
-            MesonOperator.NOT_IN: (object, lambda x: x not in self.held_object),
-        })
-
-        # Use actual methods for functions that require additional checks
-        self.operators.update({
-            MesonOperator.PLUS: self.op_plus,
-            MesonOperator.INDEX: self.op_index,
-        })
 
     def display_name(self) -> str:
         return 'array'
@@ -63,6 +54,7 @@ class ArrayHolder(ObjectHolder[T.List[TYPE_var]], IterableObject):
     @noArgsFlattening
     @noKwargs
     @typed_pos_args('array.contains', object)
+    @InterpreterObject.method('contains')
     def contains_method(self, args: T.Tuple[object], kwargs: TYPE_kwargs) -> bool:
         def check_contains(el: T.List[TYPE_var]) -> bool:
             for element in el:
@@ -77,12 +69,14 @@ class ArrayHolder(ObjectHolder[T.List[TYPE_var]], IterableObject):
 
     @noKwargs
     @noPosargs
+    @InterpreterObject.method('length')
     def length_method(self, args: T.List[TYPE_var], kwargs: TYPE_kwargs) -> int:
         return len(self.held_object)
 
     @noArgsFlattening
     @noKwargs
     @typed_pos_args('array.get', int, optargs=[object])
+    @InterpreterObject.method('get')
     def get_method(self, args: T.Tuple[int, T.Optional[TYPE_var]], kwargs: TYPE_kwargs) -> TYPE_var:
         index = args[0]
         if index < -len(self.held_object) or index >= len(self.held_object):
@@ -92,6 +86,7 @@ class ArrayHolder(ObjectHolder[T.List[TYPE_var]], IterableObject):
         return self.held_object[index]
 
     @typed_operator(MesonOperator.PLUS, object)
+    @InterpreterObject.operator(MesonOperator.PLUS)
     def op_plus(self, other: TYPE_var) -> T.List[TYPE_var]:
         if not isinstance(other, list):
             if not isinstance(self.current_node, PlusAssignmentNode):
@@ -101,6 +96,7 @@ class ArrayHolder(ObjectHolder[T.List[TYPE_var]], IterableObject):
         return self.held_object + other
 
     @typed_operator(MesonOperator.INDEX, int)
+    @InterpreterObject.operator(MesonOperator.INDEX)
     def op_index(self, other: int) -> TYPE_var:
         try:
             return self.held_object[other]
