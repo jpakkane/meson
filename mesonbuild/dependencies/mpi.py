@@ -27,7 +27,9 @@ def mpi_factory(env: 'Environment',
                 for_machine: 'MachineChoice',
                 kwargs: T.Dict[str, T.Any],
                 methods: T.List[DependencyMethods]) -> T.List['DependencyGenerator']:
-    language = kwargs.get('language', 'c')
+    language = kwargs.get('language')
+    if language is None:
+        language = 'c'
     if language not in {'c', 'cpp', 'fortran'}:
         # OpenMPI doesn't work without any other languages
         return []

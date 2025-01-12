@@ -417,6 +417,9 @@ def python_factory(env: 'Environment', for_machine: 'MachineChoice',
                     set_env('PKG_CONFIG_LIBDIR', old_pkg_libdir)
                     set_env('PKG_CONFIG_PATH', old_pkg_path)
 
+            # Otherwise this doesn't fulfill the interface requirements
+            wrap_in_pythons_pc_dir.log_tried = PythonPkgConfigDependency.log_tried  # type: ignore[attr-defined]
+
             candidates.append(functools.partial(wrap_in_pythons_pc_dir, pkg_name, env, kwargs, installation))
             # We only need to check both, if a python install has a LIBPC. It might point to the wrong location,
             # e.g. relocated / cross compilation, but the presence of LIBPC indicates we should definitely look for something.
