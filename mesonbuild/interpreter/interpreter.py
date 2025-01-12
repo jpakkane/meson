@@ -131,6 +131,7 @@ if T.TYPE_CHECKING:
 
     ProgramVersionFunc = T.Callable[[T.Union[ExternalProgram, build.Executable, OverrideProgram]], str]
 
+    TestClass = T.TypeVar('TestClass', bound=Test)
 
 def _project_version_validator(value: T.Union[T.List, str, mesonlib.File, None]) -> T.Optional[str]:
     if isinstance(value, list):
@@ -796,13 +797,12 @@ class Interpreter(InterpreterBase, HoldableObject):
             if not cmd.found():
                 raise InterpreterException(f'command {cmd.get_name()!r} not found or not executable')
         elif isinstance(cmd, compilers.Compiler):
-            exelist = cmd.get_exelist()
-            cmd = exelist[0]
+            expanded_args = cmd.get_exe_args()
+            cmd = cmd.get_exe()
             prog = ExternalProgram(cmd, silent=True)
             if not prog.found():
                 raise InterpreterException(f'Program {cmd!r} not found or not executable')
             cmd = prog
-            expanded_args = exelist[1:]
         else:
             if isinstance(cmd, mesonlib.File):
                 cmd = cmd.absolute_path(srcdir, builddir)
@@ -821,7 +821,7 @@ class Interpreter(InterpreterBase, HoldableObject):
                 expanded_args.append(a.get_path())
             elif isinstance(a, compilers.Compiler):
                 FeatureNew.single_use('Compiler object as a variadic argument to `run_command`', '0.61.0', self.subproject, location=self.current_node)
-                prog = ExternalProgram(a.exelist[0], silent=True)
+                prog = ExternalProgram(a.get_exe(), silent=True)
                 if not prog.found():
                     raise InterpreterException(f'Program {cmd!r} not found or not executable')
                 expanded_args.append(prog.get_path())
@@ -2239,7 +2239,8 @@ class Interpreter(InterpreterBase, HoldableObject):
 
     def make_test(self, node: mparser.BaseNode,
                   args: T.Tuple[str, T.Union[build.Executable, build.Jar, ExternalProgram, mesonlib.File, build.CustomTarget, build.CustomTargetIndex]],
-                  kwargs: 'kwtypes.BaseTest') -> Test:
+                  kwargs: 'kwtypes.BaseTest',
+                  klass: T.Type[TestClass] = Test) -> TestClass:
         name = args[0]
         if ':' in name:
             mlog.deprecation(f'":" is not allowed in test name "{name}", it has been replaced with "_"',
@@ -2269,20 +2270,20 @@ class Interpreter(InterpreterBase, HoldableObject):
                 s = ':' + s
             suite.append(prj.replace(' ', '_').replace(':', '_') + s)
 
-        return Test(name,
-                    prj,
-                    suite,
-                    exe,
-                    kwargs['depends'],
-                    kwargs.get('is_parallel', False),
-                    kwargs['args'],
-                    env,
-                    kwargs['should_fail'],
-                    kwargs['timeout'],
-                    kwargs['workdir'],
-                    kwargs['protocol'],
-                    kwargs['priority'],
-                    kwargs['verbose'])
+        return klass(name,
+                     prj,
+                     suite,
+                     exe,
+                     kwargs['depends'],
+                     kwargs.get('is_parallel', False),
+                     kwargs['args'],
+                     env,
+                     kwargs['should_fail'],
+                     kwargs['timeout'],
+                     kwargs['workdir'],
+                     kwargs['protocol'],
+                     kwargs['priority'],
+                     kwargs['verbose'])
 
     def add_test(self, node: mparser.BaseNode,
                  args: T.Tuple[str, T.Union[build.Executable, build.Jar, ExternalProgram, mesonlib.File, build.CustomTarget, build.CustomTargetIndex]],

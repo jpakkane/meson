@@ -38,7 +38,6 @@ class BaseTest(TypedDict):
 
     """Shared base for the Rust module."""
 
-    args: T.List[T.Union[str, File, build.Target, ExternalProgram]]
     should_fail: bool
     timeout: int
     workdir: T.Optional[str]
@@ -48,10 +47,13 @@ class BaseTest(TypedDict):
     suite: T.List[str]
 
 
+TestArgs = T.Union[str, File, build.Target, ExternalProgram]
+
 class FuncBenchmark(BaseTest):
 
     """Keyword Arguments shared between `test` and `benchmark`."""
 
+    args: T.List[TestArgs]
     protocol: Literal['exitcode', 'tap', 'gtest', 'rust']
 
 

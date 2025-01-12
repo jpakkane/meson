@@ -29,6 +29,9 @@ class StaticLinker:
     def get_id(self) -> str:
         return self.id
 
+    def get_exe(self) -> str:
+        return self.exelist[0]
+
     def compiler_args(self, args: T.Optional[T.Iterable[str]] = None) -> CompilerArgs:
         return CompilerArgs(self, args)
 
@@ -146,6 +149,9 @@ class DynamicLinker(metaclass=abc.ABCMeta):
 
     def get_id(self) -> str:
         return self.id
+
+    def get_exe(self) -> str:
+        return self.exelist[0]
 
     def get_version_string(self) -> str:
         return f'({self.id} {self.version})'

@@ -9,6 +9,7 @@ from ..envconfig import CMakeSkipCompilerTest
 from .common import language_map, cmake_get_generator_args
 from .. import mlog
 
+import os.path
 import shutil
 import typing as T
 from enum import Enum
@@ -198,7 +199,7 @@ class CMakeToolchain:
         if compiler.get_argument_syntax() == 'msvc':
             return arg.startswith('/')
         else:
-            if compiler.exelist[0] == 'zig' and arg in {'ar', 'cc', 'c++', 'dlltool', 'lib', 'ranlib', 'objcopy', 'rc'}:
+            if os.path.basename(compiler.get_exe()) == 'zig' and arg in {'ar', 'cc', 'c++', 'dlltool', 'lib', 'ranlib', 'objcopy', 'rc'}:
                 return True
             return arg.startswith('-')
 
