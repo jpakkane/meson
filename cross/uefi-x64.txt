@@ -1,0 +1,11 @@
+[binaries]
+c = ['clang', '-target', 'x86_64-uefi']
+cpp = ['clang++', '-target', 'x86_64-uefi']
+ar = 'llvm-ar'
+strip = 'llvm-strip'
+
+[host_machine]
+system = 'uefi'
+cpu = 'x86_64'
+cpu_family = 'x86_64'
+endian = 'little'

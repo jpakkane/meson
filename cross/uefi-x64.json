@@ -1,0 +1,5 @@
+{
+  "file": "uefi-x64.txt",
+  "tests": ["common"],
+  "env": {}
+}

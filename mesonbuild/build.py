@@ -2372,6 +2372,10 @@ class SharedLibrary(BuildTarget):
             suffix = 'so'
             # Android doesn't support shared_library versioning
             self.filename_tpl = '{0.prefix}{0.name}.{0.suffix}'
+        elif self.environment.machines[self.for_machine].is_uefi():
+            prefix = 'lib'
+            suffix = 'lib'
+            self.filename_tpl = '{0.prefix}{0.name}.{0.suffix}'
         else:
             prefix = 'lib'
             suffix = 'so'

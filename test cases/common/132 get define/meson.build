@@ -13,6 +13,7 @@ system_define_map = {
   'openbsd'   : ['__OpenBSD__',   '1'],
   'gnu'       : ['__GNU__',       '1'],
   'sunos'     : ['__sun__',       '1'],
+  'uefi'      : ['__uefi__',      '1'],
 
   # The __FreeBSD__ define will be equal to the major version of the release
   # (ex, in FreeBSD 11.x, __FreeBSD__ == 11). To make the test robust when

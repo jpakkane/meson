@@ -691,6 +691,9 @@ def is_qnx() -> bool:
 def is_aix() -> bool:
     return platform.system().lower() == 'aix'
 
+def is_uefi() -> bool:
+    return platform.system().lower() == 'uefi'
+
 @lru_cache(maxsize=None)
 def darwin_get_object_archs(objpath: str) -> 'ImmutableListProtocol[str]':
     '''

@@ -367,12 +367,18 @@ class MachineInfo(HoldableObject):
         """Machine is IRIX?"""
         return self.system.startswith('irix')
 
+    def is_uefi(self) -> bool:
+        """Machine is UEFI?"""
+        return self.system == 'uefi'
+
     # Various prefixes and suffixes for import libraries, shared libraries,
     # static libraries, and executables.
     # Versioning is added to these names in the backends as-needed.
     def get_exe_suffix(self) -> str:
         if self.is_windows() or self.is_cygwin():
             return 'exe'
+        elif self.is_uefi():
+            return 'efi'
         else:
             return ''
 
@@ -383,7 +389,7 @@ class MachineInfo(HoldableObject):
             return 'o'
 
     def libdir_layout_is_win(self) -> bool:
-        return self.is_windows() or self.is_cygwin()
+        return self.is_windows() or self.is_cygwin() or self.is_uefi()
 
 class BinaryTable:
 
