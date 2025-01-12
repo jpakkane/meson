@@ -91,27 +91,8 @@ def gcc_rsp_quote(s: str) -> str:
 
     return quote_func(s)
 
-def get_rsp_threshold() -> int:
-    '''Return a conservative estimate of the commandline size in bytes
-    above which a response file should be used.  May be overridden for
-    debugging by setting environment variable MESON_RSP_THRESHOLD.'''
-
-    if mesonlib.is_windows():
-        # Usually 32k, but some projects might use cmd.exe,
-        # and that has a limit of 8k.
-        limit = 8192
-    else:
-        # Unix-like OSes usually have very large command line limits, (On Linux,
-        # for example, this is limited by the kernel's MAX_ARG_STRLEN). However,
-        # some programs place much lower limits, notably Wine which enforces a
-        # 32k limit like Windows. Therefore, we limit the command line to 32k.
-        limit = 32768
-    # Be conservative
-    limit = limit // 2
-    return int(os.environ.get('MESON_RSP_THRESHOLD', limit))
-
 # a conservative estimate of the command-line length limit
-rsp_threshold = get_rsp_threshold()
+rsp_threshold = mesonlib.get_rsp_threshold()
 
 # ninja variables whose value should remain unquoted. The value of these ninja
 # variables (or variables we use them in) is interpreted directly by ninja

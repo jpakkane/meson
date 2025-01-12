@@ -1,0 +1,6 @@
+{
+    "installed": [
+        { "type": "file", "file": "usr/intl/main.pot" }
+    ],
+    "expect_skip_on_jobname": ["azure", "cygwin"]
+}
