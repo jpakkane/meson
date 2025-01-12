@@ -3487,6 +3487,8 @@ class Interpreter(InterpreterBase, HoldableObject):
 
         target = targetclass(name, self.subdir, self.subproject, for_machine, srcs, struct, objs,
                              self.environment, self.compilers[for_machine], kwargs)
+        if objs and target.uses_rust():
+            FeatureNew.single_use('objects in Rust targets', '1.7.0', self.subproject)
 
         self.add_target(name, target)
         self.project_args_frozen = True

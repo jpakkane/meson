@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import typing as T
 import functools
+import itertools
 import os
 
 from .. import options
@@ -27,6 +28,7 @@ from mesonbuild.mesonlib import (
 )
 
 if T.TYPE_CHECKING:
+    from ..build import BuildTarget, BuildTargetTypes
     from ..coredata import MutableKeyedOptionDictType, KeyedOptionDictType
     from ..dependencies import Dependency
     from ..envconfig import MachineInfo
@@ -79,6 +81,15 @@ class FortranCompiler(CLikeCompiler, Compiler):
 
     def get_module_outdir_args(self, path: str) -> T.List[str]:
         return ['-module', path]
+
+    # Fortran is a bit weird (again). When you link against a library, just compiling a source file
+    # requires the mod files that are output when single files are built. To do this right we would need to
+    # scan all inputs and write out explicit deps for each file. That is too slow and too much effort so
+    # instead just have an ordered dependency on the library. This ensures all required mod files are created.
+    # The real deps are then detected via dep file generation from the compiler. This breaks on compilers that
+    # produce incorrect dep files but such is life.
+    def get_extra_order_deps(self, target: BuildTarget) -> T.Iterable[BuildTargetTypes]:
+        return itertools.chain(target.link_targets, target.link_whole_targets)
 
     def compute_parameters_with_absolute_paths(self, parameter_list: T.List[str],
                                                build_dir: str) -> T.List[str]:
