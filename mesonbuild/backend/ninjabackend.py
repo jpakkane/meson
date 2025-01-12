@@ -3368,7 +3368,7 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
             objects_from_static_libs: T.List[ExtractedObjects] = []
             for dep in target.link_whole_targets:
                 l = dep.extract_all_objects(False)
-                objects_from_static_libs += self.determine_ext_objs(l, '')
+                objects_from_static_libs += self.determine_ext_objs(l)
                 objects_from_static_libs.extend(self.flatten_object_list(dep)[0])
 
             return objects_from_static_libs
