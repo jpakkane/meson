@@ -1010,7 +1010,7 @@ class NinjaBackend(backends.Backend):
             if self.environment.is_llvm_ir(src):
                 o, s = self.generate_llvm_ir_compile(target, src)
             else:
-                o, s = self.generate_single_compile(target, src, True, order_deps=header_deps)
+                o, s = self.generate_single_compile(target, src, True, full_deps=header_deps)
             compiled_sources.append(s)
             source2object[s] = o
             obj_list.append(o)
@@ -1054,7 +1054,7 @@ class NinjaBackend(backends.Backend):
             else:
                 transpiled_source_files.append(raw_src)
         for src in transpiled_source_files:
-            o, s = self.generate_single_compile(target, src, True, [], header_deps)
+            o, s = self.generate_single_compile(target, src, True, full_deps=header_deps)
             obj_list.append(o)
 
         # Generate compile targets for all the preexisting sources for this target
@@ -1068,17 +1068,21 @@ class NinjaBackend(backends.Backend):
                                            src.rel_to_builddir(self.build_to_src))
                     unity_src.append(abs_src)
                 else:
-                    o, s = self.generate_single_compile(target, src, False, [],
-                                                        header_deps + d_generated_deps + fortran_order_deps,
-                                                        fortran_inc_args)
+                    o, s = self.generate_single_compile(
+                        target, src, False,
+                        full_deps=header_deps + d_generated_deps + fortran_order_deps,
+                        extra_args=fortran_inc_args)
                     obj_list.append(o)
                     compiled_sources.append(s)
                     source2object[s] = o
 
         if is_unity:
             for src in self.generate_unity_files(target, unity_src):
-                o, s = self.generate_single_compile(target, src, True, unity_deps + header_deps + d_generated_deps,
-                                                    fortran_order_deps, fortran_inc_args, unity_src)
+                o, s = self.generate_single_compile(
+                    target, src, True,
+                    full_deps=unity_deps + header_deps + d_generated_deps + fortran_order_deps,
+                    extra_args=fortran_inc_args,
+                    unity_sources=unity_src)
                 obj_list.append(o)
                 compiled_sources.append(s)
                 source2object[s] = o
@@ -3004,17 +3008,27 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
             src_type_to_args[src_type_str] = commands.to_native()
         return src_type_to_args
 
-    def generate_single_compile(self, target: build.BuildTarget, src,
-                                is_generated: bool = False, header_deps=None,
-                                order_deps: T.Optional[T.List[FileOrString]] = None,
+    def generate_single_compile(self, target: build.BuildTarget,
+                                src: FileOrString,
+                                is_generated: bool = False,
+                                order_deps: T.Optional[T.Sequence[FileOrString]] = None,
+                                full_deps: T.Optional[T.List[FileOrString]] = None,
                                 extra_args: T.Optional[T.List[str]] = None,
                                 unity_sources: T.Optional[T.List[FileOrString]] = None,
                                 ) -> T.Tuple[str, str]:
+        """Compiles C/C++, ObjC/ObjC++, Fortran, and D sources.
+
+        :param target: The target which the source belongs to
+        :param src: The source to be compiled
+        :param is_generated: Whether this source is generated or static, defaults to False
+        :param order_deps: Order only dependencies, defaults to None
+        :param full_deps: Dependencies which cause a full rebuild, defaults to None
+        :param extra_args: Extra arguments just for this compilation unit, defaults to None
+        :param unity_sources: The sources that were combined into this unity, defaults to None
+        :return: A tuple with the object file that will be created and the source that was compiled
         """
-        Compiles C/C++, ObjC/ObjC++, Fortran, and D sources
-        """
-        header_deps = header_deps if header_deps is not None else []
         order_deps = order_deps if order_deps is not None else []
+        full_deps = full_deps if full_deps is not None else []
 
         if isinstance(src, str) and src.endswith('.h'):
             raise AssertionError(f'BUG: sources should not contain headers {src!r}')
@@ -3115,15 +3129,10 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
             commands.extend(extra_args)
 
         element = NinjaBuildElement(self.all_outputs, rel_obj, compiler_name, rel_src)
-        self.add_header_deps(target, element, header_deps)
+        self.add_full_deps(target, element, full_deps)
         for d in extra_deps:
             element.add_dep(d)
-        for d in order_deps:
-            if isinstance(d, File):
-                d = d.rel_to_builddir(self.build_to_src)
-            elif not self.has_dir_part(d):
-                d = os.path.join(self.get_target_private_dir(target), d)
-            element.add_orderdep(d)
+        self.add_order_deps(target, element, order_deps)
         element.add_dep(pch_dep)
         for i in self.get_fortran_orderdeps(target, compiler):
             element.add_orderdep(i)
@@ -3176,13 +3185,36 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
     def get_dep_scan_file_for(self, target: build.BuildTarget) -> str:
         return os.path.join(self.get_target_private_dir(target), 'depscan.dd')
 
-    def add_header_deps(self, target, ninja_element, header_deps):
-        for d in header_deps:
+    def _add_deps(self, target: build.BuildTarget, deps: T.Sequence[mesonlib.FileOrString],
+                  adder: T.Callable[[str], None]) -> None:
+        if isinstance(deps, str):
+            deps = [deps]
+        for d in deps:
             if isinstance(d, File):
                 d = d.rel_to_builddir(self.build_to_src)
             elif not self.has_dir_part(d):
                 d = os.path.join(self.get_target_private_dir(target), d)
-            ninja_element.add_dep(d)
+            adder(d)
+
+    def add_full_deps(self, target: build.BuildTarget, ninja_element: NinjaBuildElement,
+                      deps: T.Sequence[mesonlib.FileOrString]) -> None:
+        """Add multiple full dependencies.
+
+        :param target: The Target which the sources come from
+        :param ninja_element: The Ninja build Element being modified
+        :param deps: The dependencies being added
+        """
+        self._add_deps(target, deps, ninja_element.add_dep)
+
+    def add_order_deps(self, target: build.BuildTarget, ninja_element: NinjaBuildElement,
+                       deps: T.Sequence[mesonlib.FileOrString]) -> None:
+        """Add multiple order-only dependencies.
+
+        :param target: The Target which the sources come from
+        :param ninja_element: The Ninja build Element being modified
+        :param deps: The dependencies being added
+        """
+        self._add_deps(target, deps, ninja_element.add_orderdep)
 
     def has_dir_part(self, fname: FileOrString) -> bool:
         # FIXME FIXME: The usage of this is a terrible and unreliable hack
@@ -3249,7 +3281,7 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
         dep = os.path.splitext(dst)[0] + '.' + compiler.get_depfile_suffix()
         return commands, dep, dst, []  # mwcc compilers do not create an object file during pch generation.
 
-    def generate_pch(self, target, header_deps=None):
+    def generate_pch(self, target: build.BuildTarget, header_deps: T.Optional[T.Sequence[mesonlib.FileOrString]] = None) -> T.List[str]:
         header_deps = header_deps if header_deps is not None else []
         pch_objects = []
         for lang in ['c', 'cpp']:
@@ -3280,7 +3312,7 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
             elem = NinjaBuildElement(self.all_outputs, objs + [dst], rulename, src)
             if extradep is not None:
                 elem.add_dep(extradep)
-            self.add_header_deps(target, elem, header_deps)
+            self.add_full_deps(target, elem, header_deps)
             elem.add_item('ARGS', commands)
             elem.add_item('DEPFILE', dep)
             self.add_build(elem)
