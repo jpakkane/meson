@@ -542,7 +542,7 @@ class InterpreterBase:
         method_name = node.name.value
         (h_args, h_kwargs) = self.reduce_arguments(node.args)
         (args, kwargs) = self._unholder_args(h_args, h_kwargs)
-        if is_disabled(args, kwargs):
+        if is_disabled(args, kwargs) and method_name != 'get_variable':
             return Disabler()
         if not isinstance(obj, InterpreterObject):
             raise InvalidArguments(f'{object_display_name} is not callable.')

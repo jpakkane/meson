@@ -151,3 +151,8 @@ foreach k, i : {'a': true, 'b': disabler(), 'c': true}
 endforeach
 assert(loops == 3, 'Disabler in foreach dict')
 assert(disablers == 1, 'Disabler in foreach dict')
+
+# https://github.com/mesonbuild/meson/issues/13717
+bar_subproject = subproject('bar')
+bar_dep = bar_subproject.get_variable('bar_dep', disabler())
+assert(not is_disabler(bar_dep))
