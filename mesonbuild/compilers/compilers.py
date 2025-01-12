@@ -196,7 +196,7 @@ gnu_winlibs = ['-lkernel32', '-luser32', '-lgdi32', '-lwinspool', '-lshell32',
 
 msvc_winlibs = ['kernel32.lib', 'user32.lib', 'gdi32.lib',
                 'winspool.lib', 'shell32.lib', 'ole32.lib', 'oleaut32.lib',
-                'uuid.lib', 'comdlg32.lib', 'advapi32.lib']
+                'uuid.lib', 'comdlg32.lib', 'advapi32.lib', 'runtimeobject.lib']
 
 clike_optimization_args: T.Dict[str, T.List[str]] = {
     'plain': [],
