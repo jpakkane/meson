@@ -121,6 +121,15 @@ kwargs:
     since: 0.53.0
     description: extra list of absolute paths where to look for program names.
 
+  skip_source_dir:
+    type: bool
+    since: 1.7.0
+    default: false
+    description: |
+      Unless `dirs` are provided, Meson searches the source directory relative
+      to the current subdir before searching through `PATH`. If `true`, this
+      step will skip searching the source directory and query `PATH` directly.
+
   default_options:
     type: list[str] | dict[str | bool | int | list[str]]
     since: 1.3.0
