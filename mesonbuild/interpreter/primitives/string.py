@@ -7,7 +7,7 @@ import os
 
 import typing as T
 
-from ...mesonlib import version_compare
+from ...mesonlib import version_compare_many
 from ...interpreterbase import (
     ObjectHolder,
     MesonOperator,
@@ -169,9 +169,11 @@ class StringHolder(ObjectHolder[str]):
         return re.sub(r'[^a-zA-Z0-9]', '_', self.held_object)
 
     @noKwargs
-    @typed_pos_args('str.version_compare', str)
-    def version_compare_method(self, args: T.Tuple[str], kwargs: TYPE_kwargs) -> bool:
-        return version_compare(self.held_object, args[0])
+    @typed_pos_args('str.version_compare', varargs=str, min_varargs=1)
+    def version_compare_method(self, args: T.Tuple[T.List[str]], kwargs: TYPE_kwargs) -> bool:
+        if len(args[0]) > 1:
+            FeatureNew.single_use('version_compare() with multiple arguments', '1.8.0', self.subproject, location=self.current_node)
+        return version_compare_many(self.held_object, args[0])[0]
 
     @staticmethod
     def _op_div(this: str, other: str) -> str:
@@ -205,10 +207,12 @@ class MesonVersionString(str):
 
 class MesonVersionStringHolder(StringHolder):
     @noKwargs
-    @typed_pos_args('str.version_compare', str)
-    def version_compare_method(self, args: T.Tuple[str], kwargs: TYPE_kwargs) -> bool:
+    @typed_pos_args('str.version_compare', varargs=str, min_varargs=1)
+    def version_compare_method(self, args: T.Tuple[T.List[str]], kwargs: TYPE_kwargs) -> bool:
+        if len(args[0]) > 1:
+            FeatureNew.single_use('version_compare() with multiple arguments', '1.8.0', self.subproject, location=self.current_node)
         self.interpreter.tmp_meson_version = args[0]
-        return version_compare(self.held_object, args[0])
+        return version_compare_many(self.held_object, args[0])[0]
 
 # These special subclasses of string exist to cover the case where a dependency
 # exports a string variable interchangeable with a system dependency. This
