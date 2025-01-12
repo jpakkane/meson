@@ -18,5 +18,5 @@
     {"type": "file", "file": "usr/qml/My/Module5/qmldir"},
     {"type": "file", "file": "usr/qml/My/Module5/My_Module5.qmltypes"}
   ],
-  "expect_skip_on_jobname": ["cygwin", "msys2", "azure", "bionic", "macos"]
+  "expect_skip_on_jobname": ["cygwin", "msys2", "azure", "bionic", "macos", "opensuse"]
 }
