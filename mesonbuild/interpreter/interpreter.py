@@ -131,6 +131,8 @@ if T.TYPE_CHECKING:
 
     ProgramVersionFunc = T.Callable[[T.Union[ExternalProgram, build.Executable, OverrideProgram]], str]
 
+BT = T.TypeVar('BT', bound=build.BuildTarget)
+
 
 def _project_version_validator(value: T.Union[T.List, str, mesonlib.File, None]) -> T.Optional[str]:
     if isinstance(value, list):
@@ -3250,6 +3252,9 @@ class Interpreter(InterpreterBase, HoldableObject):
         if idname not in self.coredata.target_guids:
             self.coredata.target_guids[idname] = str(uuid.uuid4()).upper()
 
+        if isinstance(tobj, build.BuildTarget):
+            self.project_args_frozen = True
+
     @FeatureNew('both_libraries', '0.46.0')
     def build_both_libraries(self, node: mparser.BaseNode, args: T.Tuple[str, SourcesVarargsType], kwargs: kwtypes.Library) -> build.BothLibraries:
         shared_lib = self.build_target(node, args, kwargs, build.SharedLibrary)
@@ -3372,6 +3377,12 @@ class Interpreter(InterpreterBase, HoldableObject):
                      kwargs: T.Union[kwtypes.Executable, kwtypes.StaticLibrary, kwtypes.SharedLibrary, kwtypes.SharedModule, kwtypes.Jar],
                      targetclass: T.Type[T.Union[build.Executable, build.StaticLibrary, build.SharedModule, build.SharedLibrary, build.Jar]]
                      ) -> T.Union[build.Executable, build.StaticLibrary, build.SharedModule, build.SharedLibrary, build.Jar]:
+        target = self.create_build_target(node, args, kwargs, targetclass)
+        self.add_target(target.name, target)
+        return target
+
+    def create_build_target(self, node: mparser.BaseNode, args: T.Tuple[str, SourcesVarargsType],
+                            kwargs: T.Dict[str, TYPE_var], targetclass: T.Type[BT]) -> BT:
         name, sources = args
         for_machine = kwargs['native']
         if kwargs.get('rust_crate_type') == 'proc-macro':
@@ -3485,12 +3496,8 @@ class Interpreter(InterpreterBase, HoldableObject):
             if kwargs['implib'] is None:
                 kwargs['implib'] = False
 
-        target = targetclass(name, self.subdir, self.subproject, for_machine, srcs, struct, objs,
-                             self.environment, self.compilers[for_machine], kwargs)
-
-        self.add_target(name, target)
-        self.project_args_frozen = True
-        return target
+        return targetclass(name, self.subdir, self.subproject, for_machine, srcs, struct, objs,
+                           self.environment, self.compilers[for_machine], kwargs)
 
     def add_stdlib_info(self, target):
         for l in target.compilers.keys():
