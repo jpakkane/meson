@@ -58,7 +58,7 @@ lang_suffixes: T.Mapping[str, T.Tuple[str, ...]] = {
     # f90, f95, f03, f08 are for free-form fortran ('f90' recommended)
     # f, for, ftn, fpp are for fixed-form fortran ('f' or 'for' recommended)
     'fortran': ('f90', 'f95', 'f03', 'f08', 'f', 'for', 'ftn', 'fpp'),
-    'd': ('d', 'di'),
+    'd': ('d', 'di', 'c', 'i'),
     'objc': ('m',),
     'objcpp': ('mm',),
     'rust': ('rs',),
