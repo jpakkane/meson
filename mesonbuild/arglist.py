@@ -97,15 +97,32 @@ class CompilerArgs(T.MutableSequence[str]):
     def __init__(self, compiler: T.Union['Compiler', 'StaticLinker'],
                  iterable: T.Optional[T.Iterable[str]] = None):
         self.compiler = compiler
+
+        if isinstance(iterable, CompilerArgs):
+            iterable.flush_pre_post()
+            # list(iter(x)) is over two times slower than list(x), so
+            # pass the underlying list to list() directly, instead of an iterator
+            iterable = iterable._container
         self._container: T.List[str] = list(iterable) if iterable is not None else []
+
         self.pre: T.Deque[str] = collections.deque()
-        self.post: T.Deque[str] = collections.deque()
+        self.post: T.List[str] = []
+        self.needs_override_check: bool = False
 
     # Flush the saved pre and post list into the _container list
     #
     # This correctly deduplicates the entries after _can_dedup definition
     # Note: This function is designed to work without delete operations, as deletions are worsening the performance a lot.
     def flush_pre_post(self) -> None:
+        if not self.needs_override_check:
+            if self.pre:
+                self._container[0:0] = self.pre
+                self.pre.clear()
+            if self.post:
+                self._container.extend(self.post)
+                self.post.clear()
+            return
+
         new: T.List[str] = []
         pre_flush_set: T.Set[str] = set()
         post_flush: T.Deque[str] = collections.deque()
@@ -127,19 +144,18 @@ class CompilerArgs(T.MutableSequence[str]):
 
         #pre and post will overwrite every element that is in the container
         #only copy over args that are in _container but not in the post flush or pre flush set
-        if pre_flush_set or post_flush_set:
-            for a in self._container:
-                if a not in post_flush_set and a not in pre_flush_set:
-                    new.append(a)
-        else:
-            new.extend(self._container)
+        for a in self._container:
+            if a not in post_flush_set and a not in pre_flush_set:
+                new.append(a)
         new.extend(post_flush)
 
         self._container = new
         self.pre.clear()
         self.post.clear()
+        self.needs_override_check = False
 
     def __iter__(self) -> T.Iterator[str]:
+        # see also __init__, where this method is essentially inlined
         self.flush_pre_post()
         return iter(self._container)
 
@@ -288,6 +304,8 @@ class CompilerArgs(T.MutableSequence[str]):
                 # Argument already exists and adding a new instance is useless
                 if arg in self._container or arg in self.pre or arg in self.post:
                     continue
+            elif dedup is Dedup.OVERRIDDEN:
+                self.needs_override_check = True
             if self._should_prepend(arg):
                 tmp_pre.appendleft(arg)
             else:
