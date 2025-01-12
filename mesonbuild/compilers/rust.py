@@ -161,6 +161,9 @@ class RustCompiler(Compiler):
                 # no match and kernel == none (i.e. baremetal) is a valid use case.
                 # return and let native_static_libs list empty
                 return
+            if self.info.system == 'emscripten':
+                # no match and emscripten is valid after rustc 1.84
+                return
             raise EnvironmentException('Failed to find native-static-libs in Rust compiler output.')
         # Exclude some well known libraries that we don't need because they
         # are always part of C/C++ linkers. Rustc probably should not print
