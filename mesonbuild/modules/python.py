@@ -71,7 +71,7 @@ class PythonExternalProgram(BasicPythonExternalProgram):
     run_bytecompile: T.ClassVar[T.Dict[str, bool]] = {}
 
     def sanity(self, state: T.Optional['ModuleState'] = None) -> bool:
-        ret = super().sanity()
+        ret = super().sanity(state)
         if ret:
             self.platlib = self._get_path(state, 'platlib')
             self.purelib = self._get_path(state, 'purelib')

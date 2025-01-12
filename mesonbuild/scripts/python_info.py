@@ -80,17 +80,53 @@ def links_against_libpython():
 
 variables = sysconfig.get_config_vars()
 variables.update({'base_prefix': getattr(sys, 'base_prefix', sys.prefix)})
+sys_root_variables = variables
 
 is_pypy = '__pypy__' in sys.builtin_module_names
 
+# Determine some information from the sys_root if it is given in the
+# environment. When not given, it is expected to be an empty string.
+sys_root_prefix = os.environ.get('MESON_SYS_ROOT_PREFIX')
+if sys_root_prefix:
+    import glob
+    try:
+        # We need to load the sys_root sysconfigdata from its stdlib directory.
+        # We assume that the same Python version as the build machine exists
+        # within the sys_root with the same stdlib directory, save for the
+        # prefix. If not, we fall back to the build machine.
+        stdlib = sysconfig.get_path('stdlib', vars={
+            'base': sys_root_prefix,
+            'installed_base': sys_root_prefix
+        })
+
+        # We cannot predict exactly what the sys_root sysconfigdata filename
+        # will be, but there should only be one, so glob to find it.
+        sysconfigdatas = glob.glob(os.path.join(stdlib, '_sysconfigdata*.py'))
+
+        # Only use the sys_root sysconfigdata if we find exactly one. More than
+        # one is odd, so it is safer to fall back to the build machine.
+        if len(sysconfigdatas) == 1:
+            with open(sysconfigdatas[0], encoding='utf-8') as f:
+                code = compile(f.read(), sysconfigdatas[0], 'exec')
+            data = {}
+            exec(code, data)
+            sys_root_variables = data.get('build_time_vars', variables)
+    except OSError:
+        pass
+
+# Only read the suffix from the sys_root. Paths should be the same, save for the
+# prefix, and other info such as the platform cannot be determined this way.
 if sys.version_info < (3, 0):
-    suffix = variables.get('SO')
-elif sys.version_info < (3, 8, 7):
-    # https://bugs.python.org/issue?@action=redirect&bpo=39825
+    suffix = sys_root_variables.get('SO')
+# sysconfig's EXT_SUFFIX was wrong on Windows before 3.8.7 so use distutils in
+# that case. Don't do this when checking the sys_root though as you cannot use
+# distutils from there. Windows doesn't have the sysconfigdata file anyway.
+# https://bugs.python.org/issue?@action=redirect&bpo=39825
+elif variables is sys_root_variables and sys.version_info < (3, 8, 7):
     from distutils.sysconfig import get_config_var
     suffix = get_config_var('EXT_SUFFIX')
 else:
-    suffix = variables.get('EXT_SUFFIX')
+    suffix = sys_root_variables.get('EXT_SUFFIX')
 
 limited_api_suffix = None
 if sys.version_info >= (3, 2):

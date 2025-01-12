@@ -24,6 +24,7 @@ if T.TYPE_CHECKING:
     from .factory import DependencyGenerator
     from ..environment import Environment
     from ..mesonlib import MachineChoice
+    from ..modules import ModuleState
 
     class PythonIntrospectionDict(TypedDict):
 
@@ -113,14 +114,25 @@ class BasicPythonExternalProgram(ExternalProgram):
             return mesonlib.version_compare(version, '>= 3.0')
         return True
 
-    def sanity(self) -> bool:
+    def sanity(self, state: T.Optional['ModuleState'] = None) -> bool:
         # Sanity check, we expect to have something that at least quacks in tune
 
         import importlib.resources
 
+        # Pass the sys_root with its prefix as an env variable to python_info.py
+        # if a sys_root is defined. Otherwise pass an empty string.
+        sys_root_prefix = ''
+        if state:
+            sys_root = state.environment.properties[mesonlib.MachineChoice.HOST].get_sys_root()
+            prefix = state.environment.coredata.get_option(mesonlib.OptionKey('prefix'))
+            assert isinstance(prefix, str), 'for mypy'
+            if sys_root:
+                sys_root_prefix = sys_root + prefix
+
         with importlib.resources.path('mesonbuild.scripts', 'python_info.py') as f:
             cmd = self.get_command() + [str(f)]
             env = os.environ.copy()
+            env['MESON_SYS_ROOT_PREFIX'] = sys_root_prefix
             env['SETUPTOOLS_USE_DISTUTILS'] = 'stdlib'
             p, stdout, stderr = mesonlib.Popen_safe(cmd, env=env)
 
