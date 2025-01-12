@@ -2392,10 +2392,17 @@ class lazy_property(T.Generic[_T]):
     Due to Python's MRO that means that the calculated value will be found
     before this property, speeding up subsequent lookups.
     """
-    def __init__(self, func: T.Callable[[T.Any], _T]):
+    def __init__(self, func: T.Callable[[T.Any], _T]) -> None:
+        self.__name: T.Optional[str] = None
         self.__func = func
+
+    def __set_name__(self, owner: T.Any, name: str) -> None:
+        if self.__name is None:
+            self.__name = name
+        else:
+            assert name == self.__name
 
     def __get__(self, instance: object, cls: T.Type) -> _T:
         value = self.__func(instance)
-        setattr(instance, self.__func.__name__, value)
+        setattr(instance, self.__name, value)
         return value
