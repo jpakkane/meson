@@ -3677,12 +3677,12 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
             else:
                 self.implicit_meson_outs.append(aliasfile)
 
-    def generate_custom_target_clean(self, trees: T.List[str]) -> str:
+    def generate_dir_target_clean(self, trees: T.List[str]) -> str:
         e = self.create_phony_target('clean-ctlist', 'CUSTOM_COMMAND', 'PHONY')
         d = CleanTrees(self.environment.get_build_dir(), trees)
         d_file = os.path.join(self.environment.get_scratch_dir(), 'cleantrees.dat')
         e.add_item('COMMAND', self.environment.get_build_command() + ['--internal', 'cleantrees', d_file])
-        e.add_item('description', 'Cleaning custom target directories')
+        e.add_item('description', 'Cleaning directory target outputs')
         self.add_build(e)
         # Write out the data file passed to the script
         with open(d_file, 'wb') as ofile:
@@ -3837,14 +3837,13 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
         # instead of files. This is needed because on platforms other than
         # Windows, Ninja only deletes directories while cleaning if they are
         # empty. https://github.com/mesonbuild/meson/issues/1220
-        ctlist = []
+        dir_output_list = []
         for t in self.build.get_targets().values():
-            if isinstance(t, build.CustomTarget):
-                # Create a list of all custom target outputs
-                for o in t.get_outputs():
-                    ctlist.append(os.path.join(self.get_target_dir(t), o))
-        if ctlist:
-            elem.add_dep(self.generate_custom_target_clean(ctlist))
+            for o in t.get_outputs():
+                if t.can_output_be_directory(o):
+                    dir_output_list.append(os.path.join(self.get_target_dir(t), o))
+        if dir_output_list:
+            elem.add_dep(self.generate_dir_target_clean(dir_output_list))
 
         if OptionKey('b_coverage') in self.environment.coredata.optstore and \
            self.environment.coredata.optstore.get_value('b_coverage'):
