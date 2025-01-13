@@ -962,6 +962,7 @@ class GnomeModule(ExtensionModule):
             scan_command: T.Sequence[T.Union['FileOrString', Executable, ExternalProgram, OverrideProgram]],
             generated_files: T.Sequence[T.Union[str, mesonlib.File, CustomTarget, CustomTargetIndex, GeneratedList]],
             depends: T.Sequence[T.Union['FileOrString', build.BuildTarget, 'build.GeneratedTypes', build.StructuredSources]],
+            devenv: mesonlib.EnvironmentVariables,
             kwargs: T.Dict[str, T.Any]) -> GirTarget:
         install = kwargs['install_gir']
         if install is None:
@@ -983,6 +984,13 @@ class GnomeModule(ExtensionModule):
         cc_exelist = state.environment.coredata.compilers.host['c'].get_exelist()
         run_env.set('CC', [quote_arg(x) for x in cc_exelist], ' ')
         run_env.merge(kwargs['env'])
+        # g-ir-scanner must use the uninstalled libraries rather than the system ones
+        # to generate the introspection data.
+        ospathvar = os.environ.get('PATH', None)
+        if ospathvar is not None:
+            pathvar = devenv.get_env({'PATH': ospathvar})['PATH'].split(os.pathsep)
+            devenv.set('PATH', pathvar)
+        run_env.merge(devenv)
 
         return GirTarget(
             girfile,
@@ -1216,7 +1224,7 @@ class GnomeModule(ExtensionModule):
         generated_files = [f for f in libsources if isinstance(f, (GeneratedList, CustomTarget, CustomTargetIndex))]
 
         scan_target = self._make_gir_target(
-            state, girfile, scan_command, generated_files, depends,
+            state, girfile, scan_command, generated_files, depends, self.interpreter.backend.get_devenv(),
             # We have to cast here because mypy can't figure this out
             T.cast('T.Dict[str, T.Any]', kwargs))
 
