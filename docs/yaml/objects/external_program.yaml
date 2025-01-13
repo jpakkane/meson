@@ -3,6 +3,18 @@ long_name: External program
 description: Opaque object representing an external program
 
 methods:
+- name: cmd_array
+  returns: list[str]
+  since: 1.2.0
+  description: |
+    Returns an array containing the arguments needed to run a program.
+
+    **NOTE:** You should not usually need to use this method. Passing the
+    object itself should work in most contexts where a program can appear,
+    and allows Meson to setup inter-target dependencies correctly (for
+    example in cases where a program might be overridden by a [[@build_tgt]]).
+    Only use this if you specifically need a command array.
+
 - name: found
   returns: bool
   description: Returns whether the executable was found.

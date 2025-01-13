@@ -25,6 +25,8 @@ assert(not prog.found(), 'Version should be too old')
 
 prog = find_program('print-version.py', version : '>=1.0')
 assert(prog.found(), 'Program version should match')
+version = run_command(prog.cmd_array(), '--version', check : true).stdout().strip()
+assert(version == '1.0', 'Program command array should be useable')
 
 prog = find_program('print-version.py')
 assert(prog.version() == '1.0', 'Program version should be detectable')
