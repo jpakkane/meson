@@ -213,6 +213,15 @@ class PackageDefinition:
         wrap.original_filename = filename
         wrap.parse_provide_section(config)
 
+        patch_url = values.get('patch_url')
+        if patch_url and patch_url.startswith('https://wrapdb.mesonbuild.com/v1'):
+            if name == 'sqlite':
+                mlog.deprecation('sqlite wrap has been renamed to sqlite3, update using `meson wrap install sqlite3`')
+            elif name == 'libjpeg':
+                mlog.deprecation('libjpeg wrap has been renamed to libjpeg-turbo, update using `meson wrap install libjpeg-turbo`')
+            else:
+                mlog.deprecation(f'WrapDB v1 is deprecated, updated using `meson wrap update {name}`')
+
         with open(filename, 'r', encoding='utf-8') as file:
             wrap.wrapfile_hash = hashlib.sha256(file.read().encode('utf-8')).hexdigest()
 
