@@ -41,6 +41,7 @@ meson_dep1_init (MesonDep1 *self)
 
 /**
  * meson_dep1_just_return_it:
+ * @self: #MesonDep1.
  * @dep: a #MesonDep2.
  *
  * Returns the #MesonDep2 that is passed in
@@ -53,4 +54,16 @@ meson_dep1_just_return_it (MesonDep1 *self, MesonDep2 *dep)
   g_return_val_if_fail (MESON_IS_DEP1 (self), NULL);
 
   return dep;
+}
+
+/**
+ * meson_dep1_take_record:
+ * @self: #MesonDep1.
+ * @rec: a #MesonDep4Record.
+ *
+ * Takes a #MesonDep4Record record.
+ */
+void
+meson_dep1_take_record (MesonDep1 *self, MesonDep4Record *rec)
+{
 }

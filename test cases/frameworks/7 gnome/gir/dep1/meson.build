@@ -1,5 +1,6 @@
 subdir('dep2')
 subdir('dep3')
+subdir('dep4')
 
 dep1sources = ['dep1.c', 'dep1.h']
 
@@ -7,7 +8,7 @@ dep1sources = ['dep1.c', 'dep1.h']
 dep1lib = shared_library(
   'dep1lib',
   sources : dep1sources,
-  dependencies : gobj,
+  dependencies : [gobj, dep4_dep],
   install : true
 )
 
@@ -21,11 +22,12 @@ dep1gir = gnome.generate_gir(
   symbol_prefix : 'meson',
   identifier_prefix : 'Meson',
   header: 'dep1.h',
-  includes : ['GObject-2.0', 'MesonDep2-1.0', dep3gir[0]],
+  include_directories: meson.current_source_dir() / 'dep4',
+  includes : ['GObject-2.0', 'MesonDep2-1.0', dep3gir[0], 'MesonDep4-1.0'],
   dependencies : [dep2_dep],
   install : true
 )
 
 dep1_dep = declare_dependency(link_with : dep1lib,
-  dependencies : [dep2_dep, dep3_dep],
+  dependencies : [dep2_dep, dep3_dep, dep4_dep],
   sources : [dep1gir])

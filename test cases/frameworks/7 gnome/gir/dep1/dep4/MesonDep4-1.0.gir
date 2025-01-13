@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<repository xmlns="http://www.gtk.org/introspection/core/1.0" xmlns:c="http://www.gtk.org/introspection/c/1.0" version="1.2">
+  <namespace name="MesonDep4" version="1.0" c:identifier-prefixes="MesonDep4" c:symbol-prefixes="MesonDep4">
+    <record name="MesonDep4Record" c:type="MesonDep4Record"/>
+  </namespace>
+</repository>

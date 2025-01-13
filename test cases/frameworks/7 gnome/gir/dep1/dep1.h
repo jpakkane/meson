@@ -7,6 +7,7 @@
 
 #include <glib-object.h>
 #include "dep2/dep2.h"
+#include "dep4/dep4.h"
 
 G_BEGIN_DECLS
 
@@ -17,6 +18,8 @@ G_DECLARE_FINAL_TYPE (MesonDep1, meson_dep1, MESON, DEP1, GObject)
 MesonDep1   *meson_dep1_new            (void);
 MesonDep2   *meson_dep1_just_return_it (MesonDep1 *self,
                                         MesonDep2 *dep);
+void         meson_dep1_take_record    (MesonDep1 *self,
+                                        MesonDep4Record *rec);
 
 G_END_DECLS
 

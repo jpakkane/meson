@@ -35,8 +35,6 @@ meson_sample2_init (MesonSample2 *self)
  * @self: a #MesonSample2.
  *
  * Prints Hello.
- *
- * Returns: Nothing.
  */
 void
 meson_sample2_print_message (MesonSample2 *self)
