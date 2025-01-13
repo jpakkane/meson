@@ -32,15 +32,21 @@ ESCAPE_SEQUENCE_SINGLE_RE = re.compile(r'''
 def decode_match(match: T.Match[str]) -> str:
     return codecs.decode(match.group(0).encode(), 'unicode_escape')
 
+
+if T.TYPE_CHECKING:
+    from typing_extensions import Unpack
+    from .mesonlib import MesonExceptionKeywordArguments
+
+    class ParseExceptionKeywordArguments(MesonExceptionKeywordArguments):
+        line: T.NotRequired[str]
+
 class ParseException(MesonException):
 
     ast: T.Optional[CodeBlockNode] = None
 
-    def __init__(self, text: str, line: str, lineno: int, colno: int) -> None:
+    def __init__(self, *args: object, **kwargs: Unpack[ParseExceptionKeywordArguments]) -> None:
         # Format as error message, followed by the line with the error, followed by a caret to show the error column.
-        super().__init__(mlog.code_line(text, line, colno))
-        self.lineno = lineno
-        self.colno = colno
+        super().__init__(*args, **kwargs)
 
 class BlockParseException(ParseException):
     def __init__(
@@ -101,7 +107,9 @@ class Lexer:
     def __init__(self, code: str):
         if code.startswith(codecs.BOM_UTF8.decode('utf-8')):
             line, *_ = code.split('\n', maxsplit=1)
-            raise ParseException('Builder file must be encoded in UTF-8 (with no BOM)', line, lineno=0, colno=0)
+            raise ParseException('Builder file must be encoded in UTF-8 (with no BOM)',
+                                 lineno=1, end_lineno=1, colno=0, end_colno=1,
+                                 error_resolve="Remove the (invisible) startup BOM character")
 
         self.code = code
         self.keywords = {'true', 'false', 'if', 'else', 'elif',
@@ -188,7 +196,9 @@ class Lexer:
                     elif tid == 'rcurl':
                         curl_count -= 1
                     elif tid == 'dblquote':
-                        raise ParseException('Double quotes are not supported. Use single quotes.', self.getline(line_start), lineno, col)
+                        raise ParseException('Double quotes are not supported. Use single quotes.',
+                                             line=self.getline(line_start), lineno=lineno, colno=col,
+                                             error_resolve='Use simple \' quote instead')
                     elif tid in {'string', 'fstring'}:
                         if value.find("\n") != -1:
                             msg = ("Newline character in a string detected, use ''' (three single quotes) "
@@ -221,7 +231,7 @@ class Lexer:
                     yield Token(tid, filename, curline_start, curline, col, bytespan, value)
                     break
             if not matched:
-                raise ParseException('lexer', self.getline(line_start), lineno, col)
+                raise ParseException('lexer', line=self.getline(line_start), lineno=lineno, colno=col)
 
 @dataclass
 class BaseNode:
@@ -302,6 +312,8 @@ class NumberNode(ElementaryNode[int]):
         self.raw_value = token.value
         self.value = int(token.value, base=0)
         self.bytespan = token.bytespan
+        if token.bytespan is not None:
+            self.end_colno = token.bytespan[1] - token.bytespan[0] + token.colno
 
 @dataclass(unsafe_hash=True)
 class StringNode(ElementaryNode[str]):
@@ -688,14 +700,21 @@ comparison_map: T.Mapping[str, COMPARISONS] = {
 
 class Parser:
     def __init__(self, code: str, filename: str):
-        self.lexer = Lexer(code)
-        self.stream = self.lexer.lex(filename)
-        self.current: Token = Token('eof', '', 0, 0, 0, (0, 0), None)
-        self.previous = self.current
-        self.current_ws: T.List[Token] = []
+        try:
+            self.filename = filename
+            self.code = code
+            self.lexer = Lexer(code)
+            self.stream = self.lexer.lex(filename)
+            self.current: Token = Token('eof', '', 0, 0, 0, (0, 0), None)
+            self.previous = self.current
+            self.current_ws: T.List[Token] = []
 
-        self.getsym()
-        self.in_ternary = False
+            self.getsym()
+            self.in_ternary = False
+        except ParseException as e:
+            e.file = filename
+            e.source = code
+            raise e
 
     def create_node(self, node_type: T.Type[BaseNodeT], *args: T.Any, **kwargs: T.Any) -> BaseNodeT:
         node = node_type(*args, **kwargs)
@@ -737,7 +756,8 @@ class Parser:
     def expect(self, s: str) -> bool:
         if self.accept(s):
             return True
-        raise ParseException(f'Expecting {s} got {self.current.tid}.', self.getline(), self.current.lineno, self.current.colno)
+        raise ParseException(f'Expecting {s} got {self.current.tid}.',
+                             line=self.getline(), lineno=self.current.lineno, colno=self.current.colno)
 
     def block_expect(self, s: str, block_start: Token) -> bool:
         if self.accept(s):
@@ -750,6 +770,8 @@ class Parser:
             self.expect('eof')
         except ParseException as e:
             e.ast = block
+            e.file = self.filename
+            e.source = self.code
             raise
         return block
 
@@ -762,21 +784,25 @@ class Parser:
             operator = self.create_node(SymbolNode, self.previous)
             value = self.e1()
             if not isinstance(left, IdNode):
-                raise ParseException('Plusassignment target must be an id.', self.getline(), left.lineno, left.colno)
+                # Example: build.meson: 15 += 10
+                raise ParseException('Plusassignment target must be an id.',
+                                     line=self.getline(), lineno=left.lineno, colno=left.colno, end_colno=left.end_colno,
+                                     error_resolve="exemple")
             assert isinstance(left.value, str)
             return self.create_node(PlusAssignmentNode, left, operator, value)
         elif self.accept('assign'):
             operator = self.create_node(SymbolNode, self.previous)
             value = self.e1()
             if not isinstance(left, IdNode):
-                raise ParseException('Assignment target must be an id.',
-                                     self.getline(), left.lineno, left.colno)
+                raise ParseException.from_node('Assignment target must be an id.', node=left,
+                                               line=self.getline())
             assert isinstance(left.value, str)
             return self.create_node(AssignmentNode, left, operator, value)
         elif self.accept('questionmark'):
             if self.in_ternary:
                 raise ParseException('Nested ternary operators are not allowed.',
-                                     self.getline(), left.lineno, left.colno)
+                                     lineno=left.lineno, colno=left.colno,
+                                     line=self.getline())
 
             qm_node = self.create_node(SymbolNode, self.previous)
             self.in_ternary = True
@@ -793,8 +819,9 @@ class Parser:
         while self.accept('or'):
             operator = self.create_node(SymbolNode, self.previous)
             if isinstance(left, EmptyNode):
-                raise ParseException('Invalid or clause.',
-                                     self.getline(), left.lineno, left.colno)
+                raise ParseException.from_node('Missing left condition for `or\' clause.', node=left,
+                                               line=self.getline(),
+                                               error_resolve="Did you forget to escape the previous line?")
             left = self.create_node(OrNode, left, operator, self.e3())
         return left
 
@@ -803,8 +830,9 @@ class Parser:
         while self.accept('and'):
             operator = self.create_node(SymbolNode, self.previous)
             if isinstance(left, EmptyNode):
-                raise ParseException('Invalid and clause.',
-                                     self.getline(), left.lineno, left.colno)
+                raise ParseException.from_node('Missing left condition for `and\' clause.', node=left,
+                                               line=self.getline(),
+                                               error_resolve="Did you forget to escape the previous line?")
             left = self.create_node(AndNode, left, operator, self.e4())
         return left
 
@@ -882,8 +910,7 @@ class Parser:
             self.block_expect('rparen', block_start)
             rpar = self.create_node(SymbolNode, self.previous)
             if not isinstance(left, IdNode):
-                raise ParseException('Function call must be applied to plain id',
-                                     self.getline(), left.lineno, left.colno)
+                raise ParseException.from_node('Function call must be applied to plain id', node=left)
             assert isinstance(left.value, str)
             left = self.create_node(FunctionNode, left, lpar, args, rpar)
         go_again = True
@@ -949,7 +976,7 @@ class Parser:
                 a.commas.append(self.create_node(SymbolNode, self.previous))
             else:
                 raise ParseException('Only key:value pairs are valid in dict construction.',
-                                     self.getline(), s.lineno, s.colno)
+                                     line=self.getline(), lineno=s.lineno, colno=s.colno)
             s = self.statement()
         return a
 
@@ -965,7 +992,7 @@ class Parser:
                 a.colons.append(self.create_node(SymbolNode, self.previous))
                 if not isinstance(s, IdNode):
                     raise ParseException('Dictionary key must be a plain identifier.',
-                                         self.getline(), s.lineno, s.colno)
+                                         line=self.getline(), lineno=s.lineno, colno=s.colno)
                 a.set_kwarg(s, self.statement())
                 if not self.accept('comma'):
                     return a
@@ -982,9 +1009,9 @@ class Parser:
         if not isinstance(methodname, IdNode):
             if isinstance(source_object, NumberNode) and isinstance(methodname, NumberNode):
                 raise ParseException('meson does not support float numbers',
-                                     self.getline(), source_object.lineno, source_object.colno)
+                                     line=self.getline(), lineno=source_object.lineno, colno=source_object.colno)
             raise ParseException('Method name must be plain id',
-                                 self.getline(), self.current.lineno, self.current.colno)
+                                 line=self.getline(), lineno=self.current.lineno, colno=self.current.colno)
         assert isinstance(methodname.value, str)
         self.expect('lparen')
         lpar = self.create_node(SymbolNode, self.previous)
@@ -1100,6 +1127,8 @@ class Parser:
 
         except ParseException as e:
             e.ast = block
+            e.file = self.filename
+            e.source = self.code
             raise
 
         # Remaining whitespaces will not be catched since there are no more nodes

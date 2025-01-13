@@ -27,6 +27,8 @@ from .exceptions import (
     SubdirDoneRequest,
 )
 
+from ..utils.core import MesonException
+
 from .decorators import FeatureNew
 from .disabler import Disabler, is_disabled
 from .helpers import default_resolve_key, flatten, resolve_second_level_holders, stringifyUserArguments
@@ -40,6 +42,8 @@ import textwrap
 if T.TYPE_CHECKING:
     from .baseobjects import InterpreterObjectTypeVar, SubProject, TYPE_kwargs, TYPE_var
     from ..interpreter import Interpreter
+    from ..utils.core import MesonExceptionKeywordArguments
+    from typing_extensions import Unpack
 
     HolderMapType = T.Dict[
         T.Union[
@@ -59,11 +63,9 @@ if T.TYPE_CHECKING:
         T.Callable[[mparser.BaseNode, T.List[TYPE_var], T.Dict[str, TYPE_var]], TYPE_var]
     ]
 
-
 class InvalidCodeOnVoid(InvalidCode):
-
-    def __init__(self, op_type: str) -> None:
-        super().__init__(f'Cannot perform {op_type!r} operation on void statement.')
+    def __init__(self, op_type: str, **kwargs: Unpack[MesonExceptionKeywordArguments]) -> None:
+        super().__init__(f'Cannot perform {op_type!r} operation on void statement.', **kwargs)
 
 
 class InterpreterBase:
@@ -109,8 +111,10 @@ class InterpreterBase:
         if code.isspace():
             raise InvalidCode('Builder file is empty.')
         assert isinstance(code, str)
+        self.source = code
         try:
-            self.ast = mparser.Parser(code, mesonfile).parse()
+            self.parser = mparser.Parser(code, mesonfile)
+            self.ast = self.parser.parse()
             self.handle_meson_version_from_ast()
         except mparser.ParseException as me:
             me.file = mesonfile
@@ -184,13 +188,16 @@ class InterpreterBase:
             cur = statements[i]
             try:
                 self.evaluate_statement(cur)
-            except Exception as e:
-                if getattr(e, 'lineno', None) is None:
+            except MesonException as e:
+                e.source = self.source
+                if e.lineno is None:
                     # We are doing the equivalent to setattr here and mypy does not like it
                     # NOTE: self.current_node is continually updated during processing
-                    e.lineno = self.current_node.lineno                                               # type: ignore
-                    e.colno = self.current_node.colno                                                 # type: ignore
-                    e.file = os.path.join(self.source_root, self.subdir, environment.build_filename)  # type: ignore
+                    e.lineno = self.current_node.lineno
+                    e.colno = self.current_node.colno
+                    e.file = os.path.join(self.source_root, self.subdir, environment.build_filename)
+                raise e
+            except Exception as e:
                 raise e
             i += 1 # In THE FUTURE jump over blocks and stuff.
 
@@ -290,9 +297,21 @@ class InterpreterBase:
             # Reset self.tmp_meson_version to know if it gets set during this
             # statement evaluation.
             self.tmp_meson_version = None
+            if isinstance(i.condition, mparser.AssignmentNode):
+                raise InvalidCode.from_node(
+                    'Assignment are returning void and not valid in if clause.',
+                    node=i.condition,
+                    error_resolve='Should this be an equality check?')
+
             result = self.evaluate_statement(i.condition)
+            if isinstance(i.condition, mparser.FunctionNode) and result is None:
+                raise InvalidCode.from_node(
+                    f'{i.condition.func_name.value}(...) returns void and is not valid in condition.',
+                    node=i.condition,
+                    error_resolve=f'Change the condition or move the call to {i.condition.func_name.value}(...) before the condition')
+
             if result is None:
-                raise InvalidCodeOnVoid('if')
+                raise InvalidCodeOnVoid.from_node('if', node=i.condition)
             if isinstance(result, Disabler):
                 return result
             if not isinstance(result, InterpreterObject):
