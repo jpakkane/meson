@@ -5084,3 +5084,29 @@ class AllPlatformTests(BasePlatformTests):
             'link', 'lld-link', 'mwldarm', 'mwldeppc', 'optlink', 'xilink',
         }
         self.assertEqual(cc.linker.get_accepts_rsp(), has_rsp)
+
+    def test_run_command_output(self):
+        '''
+        Test that run_command will output to stdout/stderr if `check: false`.
+        '''
+        testdir = os.path.join(self.common_test_dir, '33 run program')
+
+        # inprocess=False uses BasePlatformTests::_run, which by default
+        # redirects all stderr to stdout, so we look for the expected stderr
+        # in the merged stdout.
+        # inprocess=True captures stderr and stdout separately, but doesn't
+        # return stderr (only printing it on failure) so unless we change the
+        # function signature we can't get at the stderr output
+        out = self.init(testdir, inprocess=False)
+        # No output at all
+        assert('stdout|capture:false,console:false' not in out)
+        assert('stderr|capture:false,console:false' not in out)
+        # Output not captured, but printed
+        assert('stdout|capture:false,console:true' in out)
+        assert('stderr|capture:false,console:true' in out)
+        # Output captured, but not printed
+        assert('stdout|capture:true,console:false' not in out)
+        assert('stderr|capture:true,console:false' not in out)
+        # Output captured and printed
+        assert('stdout|capture:true,console:true' in out)
+        assert('stderr|capture:true,console:true' in out)

@@ -756,6 +756,7 @@ class Interpreter(InterpreterBase, HoldableObject):
         'run_command',
         KwargInfo('check', (bool, NoneType), since='0.47.0'),
         KwargInfo('capture', bool, default=True, since='0.47.0'),
+        KwargInfo('console', bool, default=False, since='1.7.0'),
         ENV_KW.evolve(since='0.50.0'),
     )
     def func_run_command(self, node: mparser.BaseNode,
@@ -770,7 +771,6 @@ class Interpreter(InterpreterBase, HoldableObject):
                          kwargs: 'kwtypes.RunCommand',
                          in_builddir: bool = False) -> RunProcess:
         cmd, cargs = args
-        capture = kwargs['capture']
         env = kwargs['env']
         srcdir = self.environment.get_source_dir()
         builddir = self.environment.get_build_dir()
@@ -838,7 +838,8 @@ class Interpreter(InterpreterBase, HoldableObject):
 
         return RunProcess(cmd, expanded_args, env, srcdir, builddir, self.subdir,
                           self.environment.get_build_command() + ['introspect'],
-                          in_builddir=in_builddir, check=check, capture=capture)
+                          in_builddir=in_builddir, check=check, capture=kwargs['capture'],
+                          console=kwargs['console'])
 
     def func_option(self, nodes, args, kwargs):
         raise InterpreterException('Tried to call option() in build description file. All options must be in the option file.')
@@ -2752,7 +2753,10 @@ class Interpreter(InterpreterBase, HoldableObject):
             mlog.log('Configuring', mlog.bold(output), 'with command')
             cmd, *args = _cmd
             res = self.run_command_impl((cmd, args),
-                                        {'capture': True, 'check': True, 'env': EnvironmentVariables()},
+                                        {'capture': True,
+                                         'console': False,
+                                         'check': True,
+                                         'env': mesonlib.EnvironmentVariables()},
                                         True)
             if kwargs['capture']:
                 dst_tmp = ofile_abs + '~'
