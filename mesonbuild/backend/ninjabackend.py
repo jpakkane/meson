@@ -954,7 +954,11 @@ class NinjaBackend(backends.Backend):
         self.generate_generator_list_rules(target)
 
         # Generate rules for building the remaining source files in this target
-        outname = self.get_target_filename(target)
+        if isinstance(target, build.AppBundle):
+            outname = os.path.join(self.get_target_private_dir(target), target.get_binary_name())
+        else:
+            outname = self.get_target_filename(target)
+
         obj_list = []
         is_unity = target.is_unity
         header_deps = []
@@ -1102,6 +1106,9 @@ class NinjaBackend(backends.Backend):
             if target.aix_so_archive:
                 elem = NinjaBuildElement(self.all_outputs, linker.get_archive_name(outname), 'AIX_LINKER', [outname])
                 self.add_build(elem)
+
+        if isinstance(target, build.AppBundle):
+            self.generate_bundle_target(target, elem)
 
     def should_use_dyndeps_for_target(self, target: 'build.BuildTarget') -> bool:
         if not self.ninja_has_dyndeps:
@@ -1377,6 +1384,8 @@ class NinjaBackend(backends.Backend):
                                 extra='restat = 1'))
         self.add_rule(NinjaRule('COPY_FILE', self.environment.get_build_command() + ['--internal', 'copy'],
                                 ['$in', '$out'], 'Copying $in to $out'))
+        self.add_rule(NinjaRule('MERGE_PLIST', self.environment.get_build_command() + ['--internal', 'merge-plist'],
+                                ['$out', '$in'], 'Merging plist $inputs to $out'))
 
         c = self.environment.get_build_command() + \
             ['--internal',
@@ -1484,6 +1493,53 @@ class NinjaBackend(backends.Backend):
         self.add_build(elem)
         # Create introspection information
         self.create_target_source_introspection(target, compiler, compile_args, src_list, gen_src_list)
+
+    def generate_bundle_target(self, target: build.AppBundle, bin_elem: NinjaBuildElement) -> None:
+        main_binary = bin_elem.outfilenames[0]
+        main_binary_dir, main_binary_fname = os.path.split(main_binary)
+        bundle_rel = self.get_target_filename(target)
+
+        presets_path = os.path.join(self.get_target_private_dir(target), 'Presets', 'Info.plist')
+        presets_fullpath = os.path.join(self.environment.get_build_dir(), presets_path)
+        os.makedirs(os.path.dirname(presets_fullpath), exist_ok=True)
+
+        with open(presets_fullpath, 'wb') as fp:
+            import plistlib
+
+            dict = {
+                'CFBundleExecutable': main_binary_fname,
+                'CFBundleInfoDictionaryVersion': '6.0',
+                'CFBundlePackageType': 'APPL',
+                'NSPrincipalClass': target.default_principal_class,
+            }
+            plistlib.dump(dict, fp)
+
+        presets_file = File(True, *os.path.split(presets_path))
+
+        if target.info_plist:
+            info_plist = self.generate_merge_plist(target, 'Info.plist', [presets_file, target.info_plist])
+        else:
+            info_plist = presets_file
+
+        layout = build.StructuredSources()
+        layout.sources[target.bin_root] += [File(True, main_binary_dir, main_binary_fname)]
+        layout.sources[target.info_root] += [info_plist]
+
+        if target.bundle_resources is not None:
+            for k, v in target.bundle_resources.sources.items():
+                layout.sources[os.path.join(target.resources_root, k)] += v
+
+        if target.bundle_contents is not None:
+            for k, v in target.bundle_contents.sources.items():
+                layout.sources[os.path.join(target.contents_root, k)] += v
+
+        if target.bundle_extra_binaries is not None:
+            for k, v in target.bundle_extra_binaries.sources.items():
+                layout.sources[os.path.join(target.bin_root, k)] += v
+
+        elem = NinjaBuildElement(self.all_outputs, bundle_rel, 'phony', [])
+        elem.add_orderdep(self.__generate_sources_structure(Path(bundle_rel), layout)[0])
+        self.add_build(elem)
 
     def generate_cs_resource_tasks(self, target) -> T.Tuple[T.List[str], T.List[str]]:
         args = []
@@ -1863,7 +1919,7 @@ class NinjaBackend(backends.Backend):
     def _generate_copy_target(self, src: FileOrString, output: Path) -> None:
         """Create a target to copy a source file from one location to another."""
         if isinstance(src, File):
-            instr = src.absolute_path(self.environment.source_dir, self.environment.build_dir)
+            instr = src.rel_to_builddir(self.build_to_src)
         else:
             instr = src
         elem = NinjaBuildElement(self.all_outputs, [str(output)], 'COPY_FILE', [instr])
@@ -3301,6 +3357,18 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
             elem.add_item('CROSS', '--cross-host=' + self.environment.machines[target.for_machine].system)
         self.add_build(elem)
 
+    def generate_merge_plist(self, target: build.BuildTarget, out_name: str, in_files: T.List[File]) -> File:
+        out_path = os.path.join(self.get_target_private_dir(target), out_name)
+        elem = NinjaBuildElement(
+            self.all_outputs,
+            out_path,
+            'MERGE_PLIST',
+            [f.rel_to_builddir(self.build_to_src) for f in in_files],
+        )
+        self.add_build(elem)
+
+        return File(True, self.get_target_private_dir(target), out_name)
+
     def get_import_filename(self, target) -> str:
         return os.path.join(self.get_target_dir(target), target.import_filename)
 
@@ -3663,12 +3731,12 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
             else:
                 self.implicit_meson_outs.append(aliasfile)
 
-    def generate_custom_target_clean(self, trees: T.List[str]) -> str:
+    def generate_dir_target_clean(self, trees: T.List[str]) -> str:
         e = self.create_phony_target('clean-ctlist', 'CUSTOM_COMMAND', 'PHONY')
         d = CleanTrees(self.environment.get_build_dir(), trees)
         d_file = os.path.join(self.environment.get_scratch_dir(), 'cleantrees.dat')
         e.add_item('COMMAND', self.environment.get_build_command() + ['--internal', 'cleantrees', d_file])
-        e.add_item('description', 'Cleaning custom target directories')
+        e.add_item('description', 'Cleaning directory target outputs')
         self.add_build(e)
         # Write out the data file passed to the script
         with open(d_file, 'wb') as ofile:
@@ -3808,6 +3876,7 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
                     if self.environment.machines[t.for_machine].is_aix():
                         linker, stdlib_args = t.get_clink_dynamic_linker_and_stdlibs()
                         t.get_outputs()[0] = linker.get_archive_name(t.get_outputs()[0])
+
                 targetlist.append(os.path.join(self.get_target_dir(t), t.get_outputs()[0]))
 
             elem = NinjaBuildElement(self.all_outputs, targ, 'phony', targetlist)
@@ -3823,14 +3892,13 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
         # instead of files. This is needed because on platforms other than
         # Windows, Ninja only deletes directories while cleaning if they are
         # empty. https://github.com/mesonbuild/meson/issues/1220
-        ctlist = []
+        dir_output_list = []
         for t in self.build.get_targets().values():
-            if isinstance(t, build.CustomTarget):
-                # Create a list of all custom target outputs
-                for o in t.get_outputs():
-                    ctlist.append(os.path.join(self.get_target_dir(t), o))
-        if ctlist:
-            elem.add_dep(self.generate_custom_target_clean(ctlist))
+            for o in t.get_outputs():
+                if t.can_output_be_directory(o):
+                    dir_output_list.append(os.path.join(self.get_target_dir(t), o))
+        if dir_output_list:
+            elem.add_dep(self.generate_dir_target_clean(dir_output_list))
 
         if OptionKey('b_coverage') in self.environment.coredata.optstore and \
            self.environment.coredata.optstore.get_value('b_coverage'):

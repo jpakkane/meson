@@ -315,6 +315,12 @@ class MachineInfo(HoldableObject):
         """
         return self.system in {'darwin', 'ios', 'tvos'}
 
+    def is_macos(self) -> bool:
+        """
+        Machine is macOS?
+        """
+        return self.system == 'darwin' and self.subsystem == 'macos'
+
     def is_android(self) -> bool:
         """
         Machine is Android?

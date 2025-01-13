@@ -392,6 +392,16 @@ class Executable(_BuildTarget):
     win_subsystem: T.Optional[str]
 
 
+class AppBundle(Executable):
+
+    bundle_layout: T.Optional[str]
+    bundle_resources: T.Optional[build.StructuredSources]
+    bundle_contents: T.Optional[build.StructuredSources]
+    bundle_extra_binaries: T.Optional[build.StructuredSources]
+    bundle_exe_dir_name: T.Optional[str]
+    info_plist: T.Optional[T.Union[str, File, build.CustomTarget, build.CustomTargetIndex]]
+
+
 class _StaticLibMixin(TypedDict):
 
     prelink: bool

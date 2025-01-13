@@ -209,7 +209,8 @@ def run_script_command(script_name: str, script_args: T.List[str]) -> int:
                   'delsuffix': 'delwithsuffix',
                   'gtkdoc': 'gtkdochelper',
                   'hotdoc': 'hotdochelper',
-                  'regencheck': 'regen_checker'}
+                  'regencheck': 'regen_checker',
+                  'merge-plist': 'merge_plist'}
     module_name = script_map.get(script_name, script_name)
 
     try:

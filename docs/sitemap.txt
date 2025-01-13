@@ -47,6 +47,7 @@ index.md
 			Icestorm-module.md
 			Java-module.md
 			Keyval-module.md
+			NSBundle-module.md
 			Pkgconfig-module.md
 			Python-3-module.md
 			Python-module.md
