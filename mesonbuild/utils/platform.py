@@ -11,7 +11,7 @@ import typing as T
 
 from .. import mlog
 
-__all__ = ['BuildDirLock']
+__all__ = ['BuildDirLock', 'join_paths']
 
 # This needs to be inherited by the specific implementations to make type
 # checking happy
@@ -25,3 +25,6 @@ class BuildDirLock:
 
     def __exit__(self, *args: T.Any) -> None:
         pass
+
+
+join_paths = os.path.join

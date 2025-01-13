@@ -7,12 +7,13 @@ from __future__ import annotations
 """Posix specific implementations of mesonlib functionality."""
 
 import fcntl
+import os.path
 import typing as T
 
 from .core import MesonException
 from .platform import BuildDirLock as BuildDirLockBase
 
-__all__ = ['BuildDirLock']
+__all__ = ['BuildDirLock', 'join_paths']
 
 class BuildDirLock(BuildDirLockBase):
 
@@ -30,3 +31,6 @@ class BuildDirLock(BuildDirLockBase):
     def __exit__(self, *args: T.Any) -> None:
         fcntl.flock(self.lockfile, fcntl.LOCK_UN)
         self.lockfile.close()
+
+
+join_paths = os.path.join
