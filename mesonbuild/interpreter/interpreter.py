@@ -1081,15 +1081,29 @@ class Interpreter(InterpreterBase, HoldableObject):
         raise InterpreterException(f'Tried to access unknown option {optname!r}.')
 
     @typed_pos_args('get_option', str)
-    @noKwargs
-    def func_get_option(self, nodes: mparser.BaseNode, args: T.Tuple[str],
-                        kwargs: 'TYPE_kwargs') -> T.Union[options.UserOption, 'TYPE_var']:
+    @typed_kwargs(
+        'get_option',
+        KwargInfo(
+            'format', int, default=1, since='1.6.0',
+            validator=lambda x: "Version must be >= 1 if given" if x < 0 else None
+        ),
+    )
+    def func_get_option(self, node: mparser.BaseNode, args: T.Tuple[str],
+                        kwargs: kwtypes.FuncGetOption) -> T.Union[options.UserOption, 'TYPE_var']:
         optname = args[0]
+        opt_fmt = kwargs['format']
+        if optname == 'b_sanitize':
+            if opt_fmt > 2:
+                raise InvalidArguments('b_sanitize only has two option formats')
+            FeatureNew.single_use('b_sanitize version 2 (as an array)', '1.6',
+                                  self.subproject, location=node)
+        elif opt_fmt != 1:
+            raise InvalidArguments(f'{optname} does not have multiple versions')
+
         if ':' in optname:
             raise InterpreterException('Having a colon in option name is forbidden, '
                                        'projects are not allowed to directly access '
                                        'options of other subprojects.')
-
         if optname_regex.search(optname.split('.', maxsplit=1)[-1]) is not None:
             raise InterpreterException(f'Invalid option name {optname!r}')
 
@@ -1097,6 +1111,12 @@ class Interpreter(InterpreterBase, HoldableObject):
         if isinstance(opt, options.UserFeatureOption):
             opt.name = optname
             return opt
+        elif optname == 'b_sanitize':
+            assert isinstance(opt, options.UserArrayOption), 'for mypy'
+            # to ensure backwards compat this always returns a string
+            if opt_fmt == 1:
+                return ','.join(sorted(opt.value))
+            return opt.value
         elif isinstance(opt, options.UserOption):
             if isinstance(opt.value, str):
                 return P_OBJ.OptionString(opt.value, f'{{{optname}}}')
@@ -3088,7 +3108,7 @@ class Interpreter(InterpreterBase, HoldableObject):
         if OptionKey('b_sanitize') not in self.coredata.optstore:
             return
         if (self.coredata.optstore.get_value('b_lundef') and
-                self.coredata.optstore.get_value('b_sanitize') != 'none'):
+                self.coredata.optstore.get_value('b_sanitize')):
             value = self.coredata.optstore.get_value('b_sanitize')
             mlog.warning(textwrap.dedent(f'''\
                     Trying to use {value} sanitizer on Clang with b_lundef.

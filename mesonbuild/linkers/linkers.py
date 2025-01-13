@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2012-2022 The Meson development team
+# Copyright © 2023 Intel Corporation
 
 from __future__ import annotations
 
@@ -216,7 +217,7 @@ class DynamicLinker(metaclass=abc.ABCMeta):
     def get_thinlto_cache_args(self, path: str) -> T.List[str]:
         return []
 
-    def sanitizer_args(self, value: str) -> T.List[str]:
+    def sanitizer_args(self, value: T.List[str]) -> T.List[str]:
         return []
 
     def get_asneeded_args(self) -> T.List[str]:
@@ -592,6 +593,9 @@ class PosixDynamicLinkerMixin(DynamicLinkerBase):
     def get_search_args(self, dirname: str) -> T.List[str]:
         return ['-L' + dirname]
 
+    def sanitizer_args(self, value: T.List[str]) -> T.List[str]:
+        return []
+
 
 class GnuLikeDynamicLinkerMixin(DynamicLinkerBase):
 
@@ -647,10 +651,10 @@ class GnuLikeDynamicLinkerMixin(DynamicLinkerBase):
     def get_lto_args(self) -> T.List[str]:
         return ['-flto']
 
-    def sanitizer_args(self, value: str) -> T.List[str]:
-        if value == 'none':
-            return []
-        return ['-fsanitize=' + value]
+    def sanitizer_args(self, value: T.List[str]) -> T.List[str]:
+        if not value:
+            return value
+        return [f'-fsanitize={",".join(value)}']
 
     def get_coverage_args(self) -> T.List[str]:
         return ['--coverage']
@@ -802,10 +806,10 @@ class AppleDynamicLinker(PosixDynamicLinkerMixin, DynamicLinker):
     def get_coverage_args(self) -> T.List[str]:
         return ['--coverage']
 
-    def sanitizer_args(self, value: str) -> T.List[str]:
-        if value == 'none':
-            return []
-        return ['-fsanitize=' + value]
+    def sanitizer_args(self, value: T.List[str]) -> T.List[str]:
+        if not value:
+            return value
+        return [f'-fsanitize={",".join(value)}']
 
     def no_undefined_args(self) -> T.List[str]:
         # We used to emit -undefined,error, but starting with Xcode 15 /

@@ -33,22 +33,22 @@ not be relied on, since they can be absolute paths in the following cases:
 
 ### Directories
 
-| Option                               | Default value | Description |
-| ------                               | ------------- | ----------- |
-| prefix                               | see below     | Installation prefix |
-| bindir                               | bin           | Executable directory |
-| datadir                              | share         | Data file directory |
-| includedir                           | include       | Header file directory |
-| infodir                              | share/info    | Info page directory |
-| libdir                               | see below     | Library directory |
-| licensedir                           | see below     | Licenses directory (since 1.1.0)|
-| libexecdir                           | libexec       | Library executable directory |
-| localedir                            | share/locale  | Locale data directory |
-| localstatedir                        | var           | Localstate data directory |
-| mandir                               | share/man     | Manual page directory |
-| sbindir                              | sbin          | System executable directory |
-| sharedstatedir                       | com           | Architecture-independent data directory |
-| sysconfdir                           | etc           | Sysconf data directory |
+| Option         | Default value | Description                             |
+| -------------- | ------------- | --------------------------------------- |
+| prefix         | see below     | Installation prefix                     |
+| bindir         | bin           | Executable directory                    |
+| datadir        | share         | Data file directory                     |
+| includedir     | include       | Header file directory                   |
+| infodir        | share/info    | Info page directory                     |
+| libdir         | see below     | Library directory                       |
+| licensedir     | see below     | Licenses directory (since 1.1.0)        |
+| libexecdir     | libexec       | Library executable directory            |
+| localedir      | share/locale  | Locale data directory                   |
+| localstatedir  | var           | Localstate data directory               |
+| mandir         | share/man     | Manual page directory                   |
+| sbindir        | sbin          | System executable directory             |
+| sharedstatedir | com           | Architecture-independent data directory |
+| sysconfdir     | etc           | Sysconf data directory                  |
 
 
 `prefix` defaults to `C:/` on Windows, and `/usr/local` otherwise. You
@@ -141,7 +141,7 @@ from it. For example, `-Dbuildtype=debugoptimized` is the same as
 the two-way mapping:
 
 | buildtype      | debug | optimization |
-| ---------      | ----- | ------------ |
+| -------------- | ----- | ------------ |
 | plain          | false | plain        |
 | debug          | true  | 0            |
 | debugoptimized | true  | 2            |
@@ -156,7 +156,7 @@ Exact flags per warning level is compiler specific, but there is an approximativ
 table for most common compilers.
 
 | Warning level | GCC/Clang                | MSVC  |
-| ------------- | ---                      | ----  |
+| ------------- | ------------------------ | ----- |
 | 0             |                          |       |
 | 1             | -Wall                    | /W2   |
 | 2             | -Wall -Wextra            | /W3   |
@@ -207,7 +207,7 @@ The following options are available. Note that they may not be
 available on all platforms or with all compilers:
 
 | Option              | Default value        | Possible values                                               | Description                                                                    |
-|---------------------|----------------------|---------------------------------------------------------------|--------------------------------------------------------------------------------|
+| ------------------- | -------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------ |
 | b_asneeded          | true                 | true, false                                                   | Use -Wl,--as-needed when linking                                               |
 | b_bitcode           | false                | true, false                                                   | Embed Apple bitcode, see below                                                 |
 | b_colorout          | always               | auto, always, never                                           | Use colored output                                                             |
@@ -226,10 +226,17 @@ available on all platforms or with all compilers:
 | b_pie               | false                | true, false                                                   | Build position-independent executables (since 0.49.0)                          |
 | b_vscrt             | from_buildtype       | none, md, mdd, mt, mtd, from_buildtype, static_from_buildtype | VS runtime library to use (since 0.48.0) (static_from_buildtype since 0.56.0)  |
 
-The value of `b_sanitize` can be one of: `none`, `address`, `thread`,
-`undefined`, `memory`, `leak`, `address,undefined`, but note that some
-compilers might not support all of them. For example Visual Studio
-only supports the address sanitizer.
+† The default and possible values of sanitizers changed in 1.6. Before 1.6 they
+were string values, and restricted to a specific subset of values: `none`,
+`address`, `thread`, `undefined`, `memory`, `leak`, or `address,undefined`. In
+1.6 it was changed to a free form array of sanitizers, which are checked by a
+compiler and linker check. For backwards compatibility reasons
+`get_option('b_sanitize')` continues to return a string value, which is
+guaranteed to match the old string value if the array value contains the same
+values (ie, `['undefined', 'address'] == 'address,undefined`). If a value not
+allowed before 1.6 is used `b_sanitize` will return a string in undefined order.
+In 1.6 `get_option('b_sanitize', format : 2)`, will return a free form array,
+with no ordering guarantees.
 
 \* < 0 means disable, == 0 means automatic selection, > 0 sets a specific number to use
 
@@ -242,7 +249,7 @@ used internally to pick the CRT compiler arguments for `from_buildtype` or
 option:
 
 | buildtype      | from_buildtype | static_from_buildtype |
-| --------       | -------------- | --------------------- |
+| -------------- | -------------- | --------------------- |
 | debug          | `/MDd`         | `/MTd`                |
 | debugoptimized | `/MD`          | `/MT`                 |
 | release        | `/MD`          | `/MT`                 |
@@ -380,7 +387,7 @@ option with the module's name:
 ### Pkgconfig module
 
 | Option      | Default value | Possible values | Description                                                |
-|-------------|---------------|-----------------|------------------------------------------------------------|
+| ----------- | ------------- | --------------- | ---------------------------------------------------------- |
 | relocatable | false         | true, false     | Generate the pkgconfig files as relocatable (Since 0.63.0) |
 
 *Since 0.63.0* The `pkgconfig.relocatable` option is used by the
@@ -401,13 +408,13 @@ install prefix. For example: if the install prefix is `/usr` and the
 
 ### Python module
 
-| Option            | Default value | Possible values             | Description |
-| ------            | ------------- | -----------------           | ----------- |
-| bytecompile       | 0             | integer from -1 to 2        | What bytecode optimization level to use (Since 1.2.0) |
-| install_env       | prefix        | {auto,prefix,system,venv}   | Which python environment to install to (Since 0.62.0) |
-| platlibdir        |               | Directory path              | Directory for site-specific, platform-specific files (Since 0.60.0) |
-| purelibdir        |               | Directory path              | Directory for site-specific, non-platform-specific files  (Since 0.60.0) |
-| allow_limited_api | true          | true, false                 | Disables project-wide use of the Python Limited API (Since 1.3.0) |
+| Option            | Default value | Possible values           | Description                                                              |
+| ----------------- | ------------- | ------------------------- | ------------------------------------------------------------------------ |
+| bytecompile       | 0             | integer from -1 to 2      | What bytecode optimization level to use (Since 1.2.0)                    |
+| install_env       | prefix        | {auto,prefix,system,venv} | Which python environment to install to (Since 0.62.0)                    |
+| platlibdir        |               | Directory path            | Directory for site-specific, platform-specific files (Since 0.60.0)      |
+| purelibdir        |               | Directory path            | Directory for site-specific, non-platform-specific files  (Since 0.60.0) |
+| allow_limited_api | true          | true, false               | Disables project-wide use of the Python Limited API (Since 1.3.0)        |
 
 *Since 0.60.0* The `python.platlibdir` and `python.purelibdir` options are used
 by the python module methods `python.install_sources()` and

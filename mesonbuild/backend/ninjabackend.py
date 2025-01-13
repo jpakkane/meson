@@ -3507,7 +3507,7 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
             commands += compilers.get_base_link_args(target.get_options(),
                                                      linker,
                                                      isinstance(target, build.SharedModule),
-                                                     self.environment.get_build_dir())
+                                                     self.environment)
         # Add -nostdlib if needed; can't be overridden
         commands += self.get_no_stdlib_link_args(target, linker)
         # Add things like /NOLOGO; usually can't be overridden

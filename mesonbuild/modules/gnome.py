@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2015-2016 The Meson development team
+# Copyright © 2023-2024 Intel Corporation
 
 '''This module provides helper functions for Gnome/GLib related
 functionality such as gobject-introspection, gresources and gtk-doc'''
@@ -911,8 +912,8 @@ class GnomeModule(ExtensionModule):
                 cflags += state.project_args[lang]
             if OptionKey('b_sanitize') in compiler.base_options:
                 sanitize = state.environment.coredata.optstore.get_value('b_sanitize')
+                assert isinstance(sanitize, list), 'for mypy'
                 cflags += compiler.sanitizer_compile_args(sanitize)
-                sanitize = sanitize.split(',')
                 # These must be first in ldflags
                 if 'address' in sanitize:
                     internal_ldflags += ['-lasan']

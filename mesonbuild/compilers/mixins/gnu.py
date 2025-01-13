@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2019-2022 The meson development team
+# Copyright © 2023 Intel Corporation
 
 from __future__ import annotations
 
@@ -496,11 +497,11 @@ class GnuLikeCompiler(Compiler, metaclass=abc.ABCMeta):
         # for their specific arguments
         return ['-flto']
 
-    def sanitizer_compile_args(self, value: str) -> T.List[str]:
-        if value == 'none':
-            return []
-        args = ['-fsanitize=' + value]
-        if 'address' in value:  # for -fsanitize=address,undefined
+    def sanitizer_compile_args(self, value: T.List[str]) -> T.List[str]:
+        if not value:
+            return value
+        args = ['-fsanitize=' + ','.join(value)]
+        if 'address' in value:
             args.append('-fno-omit-frame-pointer')
         return args
 

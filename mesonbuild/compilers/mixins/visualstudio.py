@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2019 The meson development team
+# Copyright © 2023 Intel Corporation
 
 from __future__ import annotations
 
@@ -166,12 +167,10 @@ class VisualStudioLikeCompiler(Compiler, metaclass=abc.ABCMeta):
     def get_no_optimization_args(self) -> T.List[str]:
         return ['/Od', '/Oi-']
 
-    def sanitizer_compile_args(self, value: str) -> T.List[str]:
-        if value == 'none':
-            return []
-        if value != 'address':
-            raise mesonlib.MesonException('VS only supports address sanitizer at the moment.')
-        return ['/fsanitize=address']
+    def sanitizer_compile_args(self, value: T.List[str]) -> T.List[str]:
+        if not value:
+            return value
+        return [f'/fsanitize={",".join(value)}']
 
     def get_output_args(self, outputname: str) -> T.List[str]:
         if self.mode == 'PREPROCESSOR':

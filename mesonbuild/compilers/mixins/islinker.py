@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2019 The Meson development team
+# Copyright © 2023 Intel Corporation
 
 from __future__ import annotations
 
@@ -36,7 +37,7 @@ class BasicLinkerIsCompilerMixin(Compiler):
     functionality itself.
     """
 
-    def sanitizer_link_args(self, value: str) -> T.List[str]:
+    def sanitizer_link_args(self, value: T.List[str]) -> T.List[str]:
         return []
 
     def get_lto_link_args(self, *, threads: int = 0, mode: str = 'default',

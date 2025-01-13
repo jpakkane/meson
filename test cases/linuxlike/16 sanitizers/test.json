@@ -1,0 +1,10 @@
+{
+  "matrix": {
+    "options": {
+      "b_sanitize": [
+        { "val": ["undefined", "address"] },
+        { "val": ["address", "undefined"] }
+      ]
+    }
+  }
+}
