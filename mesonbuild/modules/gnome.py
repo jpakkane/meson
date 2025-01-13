@@ -1292,7 +1292,9 @@ class GnomeModule(ExtensionModule):
 
         langs = kwargs['languages']
         if not langs:
-            langs = read_linguas(os.path.join(state.environment.source_dir, state.subdir))
+            langs, def_file = read_linguas(os.path.join(state.environment.source_dir, state.subdir))
+            if def_file:
+                self.interpreter.add_build_def_file(def_file)
 
         media = kwargs['media']
         symlinks = kwargs['symlink_media']

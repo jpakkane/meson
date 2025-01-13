@@ -281,7 +281,9 @@ class I18nModule(ExtensionModule):
         install_dir = kwargs['install_dir'] or state.environment.coredata.get_option(OptionKey('localedir'))
         assert isinstance(install_dir, str), 'for mypy'
         if not languages:
-            languages = read_linguas(path.join(state.environment.source_dir, state.subdir))
+            languages, def_file = read_linguas(path.join(state.environment.source_dir, state.subdir))
+            if def_file:
+                self.interpreter.add_build_def_file(def_file)
         for l in languages:
             po_file = mesonlib.File.from_source_file(state.environment.source_dir,
                                                      state.subdir, l+'.po')

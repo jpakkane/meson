@@ -21,7 +21,7 @@ parser.add_argument('--msgmerge', default='msgmerge')
 parser.add_argument('--msginit', default='msginit')
 parser.add_argument('--extra-args', default='')
 
-def read_linguas(src_sub: str) -> T.List[str]:
+def read_linguas(src_sub: str) -> T.Tuple[T.List[str], T.Optional[str]]:
     # Syntax of this file is documented here:
     # https://www.gnu.org/software/gettext/manual/html_node/po_002fLINGUAS.html
     linguas = os.path.join(src_sub, 'LINGUAS')
@@ -32,10 +32,10 @@ def read_linguas(src_sub: str) -> T.List[str]:
                 line = line.strip()
                 if line and not line.startswith('#'):
                     langs += line.split()
-        return langs
+        return langs, linguas
     except (FileNotFoundError, PermissionError):
         print(f'Could not find file LINGUAS in {src_sub}')
-        return []
+        return [], None
 
 def run_potgen(src_sub: str, xgettext: str, pkgname: str, datadirs: str, args: T.List[str], source_root: str) -> int:
     listfile = os.path.join(src_sub, 'POTFILES.in')
@@ -73,7 +73,7 @@ def run(args: T.List[str]) -> int:
     src_sub = os.path.join(options.source_root, subdir)
 
     if not langs:
-        langs = read_linguas(src_sub)
+        langs = read_linguas(src_sub)[0]
 
     if subcmd == 'pot':
         return run_potgen(src_sub, options.xgettext, options.pkgname, options.datadirs, extra_args, options.source_root)
