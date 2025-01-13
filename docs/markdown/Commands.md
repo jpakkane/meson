@@ -423,6 +423,9 @@ format should be used. There are currently 3 formats supported:
 - `vscode`: Same as `sh` but without `$VAR` substitution because they do not
   seems to be properly supported by vscode.
 
+*Since 1.4.0* `--dump-format=vscode` now performs correct substitution
+using `VAR=/prepend:${env:VAR}:/append`
+
 {{ devenv_arguments.inc }}
 
 

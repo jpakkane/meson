@@ -4383,7 +4383,7 @@ class AllPlatformTests(BasePlatformTests):
 
         cmd = self.meson_command + ['devenv', '-C', self.builddir, '--dump', '--dump-format', 'vscode']
         o = self._run(cmd)
-        expected = os.pathsep.join(['/prefix', '/suffix'])
+        expected = os.pathsep.join(['/prefix', '${env:TEST_C}', '/suffix'])
         self.assertIn(f'TEST_C="{expected}"', o)
         self.assertNotIn('export', o)
 

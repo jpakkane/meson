@@ -41,6 +41,11 @@ from unittests.windowstests import WindowsTests
 from unittests.platformagnostictests import PlatformAgnosticTests
 
 def unset_envs():
+    # Suppress warnings that can interfer with captured outputs
+    os.environ['PYDEVD_DISABLE_FILE_VALIDATION'] = '1'
+    if sys.version_info >= (3, 10):
+        os.environ['PYTHONWARNINGS'] = 'ignore::EncodingWarning:platform'
+
     # For unit tests we must fully control all command lines
     # so that there are no unexpected changes coming from the
     # environment, for example when doing a package build.

@@ -68,10 +68,14 @@ def get_env(b: build.Build, dump_fmt: T.Optional[str]) -> T.Tuple[T.Dict[str, st
         extra_env.set('QEMU_LD_PREFIX', [sysroot])
 
     env = {} if dump_fmt else os.environ.copy()
-    default_fmt = '${0}' if dump_fmt in {'sh', 'export'} else None
+    default_fmt = {
+        'vscode': '${{env:{0}}}',
+        'sh': '${0}',
+        'export': '${0}',
+    }
     varnames = set()
     for i in itertools.chain(b.devenv, {extra_env}):
-        env = i.get_env(env, default_fmt)
+        env = i.get_env(env, default_fmt.get(dump_fmt))
         varnames |= i.get_names()
 
     reduce_winepath(env)
