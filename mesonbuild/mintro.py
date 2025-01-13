@@ -68,6 +68,7 @@ def get_meson_introspection_types(coredata: T.Optional[cdata.CoreData] = None,
     # Enforce key order for argparse
     return collections.OrderedDict([
         ('ast', IntroCommand('Dump the AST of the meson file', no_bd=dump_ast)),
+        ('full_ast', IntroCommand('Dump the AST of all meson files', no_bd=dump_full_ast)),
         ('benchmarks', IntroCommand('List all benchmarks', func=lambda: list_benchmarks(benchmarkdata))),
         ('buildoptions', IntroCommand('List all build options', func=lambda: list_buildoptions(coredata), no_bd=list_buildoptions_from_source)),
         ('buildsystem_files', IntroCommand('List files that make up the build system', func=lambda: list_buildsystem_files(builddata, interpreter))),
@@ -104,6 +105,17 @@ def dump_ast(intr: IntrospectionInterpreter) -> T.Dict[str, T.Any]:
     printer = AstJSONPrinter()
     intr.ast.accept(printer)
     return printer.result
+
+def dump_full_ast(intr: IntrospectionInterpreter) -> T.Dict[str, T.Dict[str, T.Any]]:
+    result = {}
+    src_root = Path(intr.source_root).resolve()
+    for filename, node in intr.processed_buildfiles.items():
+        fn = Path(filename).resolve().relative_to(src_root).as_posix()
+        printer = AstJSONPrinter()
+        if node is not None:
+            node.accept(printer)
+            result[fn] = printer.result
+    return result
 
 def list_installed(installdata: backends.InstallData) -> T.Dict[str, str]:
     res = {}
@@ -545,6 +557,7 @@ def run(options: argparse.Namespace) -> int:
     if 'meson.build' in [os.path.basename(options.builddir), options.builddir]:
         # Make sure that log entries in other parts of meson don't interfere with the JSON output
         with redirect_stdout(sys.stderr):
+            mesonlib.setup_vsenv()
             backend = backends.get_backend_from_name(options.backend)
             assert backend is not None
             intr = IntrospectionInterpreter(sourcedir, '', backend.name, visitors = [AstIDGenerator(), AstIndentationGenerator(), AstConditionLevel()])

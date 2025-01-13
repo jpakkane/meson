@@ -6,10 +6,9 @@
 from __future__ import annotations
 
 import os
-import sys
 import typing as T
 
-from .. import mparser, mesonlib
+from .. import mparser, mesonlib, mlog
 from .. import environment
 
 from ..interpreterbase import (
@@ -89,7 +88,7 @@ class AstInterpreter(InterpreterBase):
     def __init__(self, source_root: str, subdir: str, subproject: SubProject, visitors: T.Optional[T.List[AstVisitor]] = None):
         super().__init__(source_root, subdir, subproject)
         self.visitors = visitors if visitors is not None else []
-        self.processed_buildfiles: T.Set[str] = set()
+        self.processed_buildfiles: T.Dict[str, T.Optional[mparser.CodeBlockNode]] = {}
         self.assignments: T.Dict[str, BaseNode] = {}
         self.assign_vals: T.Dict[str, T.Any] = {}
         self.reverse_assignment: T.Dict[str, BaseNode] = {}
@@ -165,13 +164,14 @@ class AstInterpreter(InterpreterBase):
 
     def load_root_meson_file(self) -> None:
         super().load_root_meson_file()
+        self.processed_buildfiles[self.ast.filename] = self.ast
         for i in self.visitors:
             self.ast.accept(i)
 
     def func_subdir(self, node: BaseNode, args: T.List[TYPE_var], kwargs: T.Dict[str, TYPE_var]) -> None:
         args = self.flatten_args(args)
         if len(args) != 1 or not isinstance(args[0], str):
-            sys.stderr.write(f'Unable to evaluate subdir({args}) in AstInterpreter --> Skipping\n')
+            mlog.warning(f'Unable to evaluate subdir({args}) in AstInterpreter --> Skipping\n')
             return
 
         prev_subdir = self.subdir
@@ -182,12 +182,12 @@ class AstInterpreter(InterpreterBase):
         symlinkless_dir = os.path.realpath(absdir)
         build_file = os.path.join(symlinkless_dir, 'meson.build')
         if build_file in self.processed_buildfiles:
-            sys.stderr.write('Trying to enter {} which has already been visited --> Skipping\n'.format(args[0]))
+            mlog.warning('Trying to enter {} which has already been visited --> Skipping\n'.format(args[0]))
             return
-        self.processed_buildfiles.add(build_file)
+        self.processed_buildfiles[build_file] = None
 
         if not os.path.isfile(absname):
-            sys.stderr.write(f'Unable to find build file {buildfilename} --> Skipping\n')
+            mlog.warning(f'Unable to find build file {buildfilename} --> Skipping\n')
             return
         code = self.read_buildfile(absname, buildfilename)
         try:
@@ -196,6 +196,7 @@ class AstInterpreter(InterpreterBase):
             me.file = absname
             raise me
 
+        self.processed_buildfiles[build_file] = codeblock
         self.subdir = subdir
         for i in self.visitors:
             codeblock.accept(i)
