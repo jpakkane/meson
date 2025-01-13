@@ -27,6 +27,9 @@ libbar_gir = gnome.generate_gir(libbar,
 
 libbar_vapi = gnome.generate_vapi('bar-' + libbar_api_ver,
   sources: libbar_gir[0],
-  packages: libfoo_vapi,
+  packages: [
+    dependency('gobject-2.0'),
+    libfoo_vapi,
+  ],
   install: true,
 )

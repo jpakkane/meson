@@ -1,5 +1,6 @@
 using Foo;
 using Bar;
+using Baz;
 
 class Main : GLib.Object {
     public static int main(string[] args) {

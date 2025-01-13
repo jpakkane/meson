@@ -22,7 +22,7 @@ from .. import interpreter
 from .. import mesonlib
 from .. import mlog
 from ..build import CustomTarget, CustomTargetIndex, Executable, GeneratedList, InvalidArguments
-from ..dependencies import Dependency, InternalDependency
+from ..dependencies import Dependency, ExternalLibrary, InternalDependency
 from ..dependencies.pkgconfig import PkgConfigDependency, PkgConfigInterface
 from ..interpreter.type_checking import DEPENDS_KW, DEPEND_FILES_KW, ENV_KW, INSTALL_DIR_KW, INSTALL_KW, NoneType, DEPENDENCY_SOURCES_KW, in_set_validator
 from ..interpreterbase import noPosargs, noKwargs, FeatureNew, FeatureDeprecated
@@ -2072,7 +2072,8 @@ class GnomeModule(ExtensionModule):
         rv = [body, header]
         return ModuleReturnValue(rv, rv)
 
-    def _extract_vapi_packages(self, state: 'ModuleState', packages: T.List[T.Union[InternalDependency, str]],
+    def _extract_vapi_packages(self, state: 'ModuleState',
+                               packages: T.List[T.Union[ExternalLibrary, InternalDependency, PkgConfigDependency, str]],
                                ) -> T.Tuple[T.List[str], T.List[VapiTarget], T.List[str], T.List[str], T.List[str]]:
         '''
         Packages are special because we need to:
@@ -2089,7 +2090,16 @@ class GnomeModule(ExtensionModule):
         vapi_args: T.List[str] = []
         remaining_args = []
         for arg in packages:
-            if isinstance(arg, InternalDependency):
+            if isinstance(arg, PkgConfigDependency):
+                vapi_args.append(f'--pkg={arg.name}')
+                vapi_packages.append(arg.name)
+                remaining_args.append(arg.name)
+            elif isinstance(arg, ExternalLibrary):
+                # We can only handle VAPI files here
+                assert arg.language == 'vala'
+                ext_vapi = arg.get_link_args('vala')[0]
+                remaining_args.append(ext_vapi)
+            elif isinstance(arg, InternalDependency):
                 targets = [t for t in arg.sources if isinstance(t, VapiTarget)]
                 for target in targets:
                     srcdir = os.path.join(state.environment.get_source_dir(),
@@ -2143,14 +2153,16 @@ class GnomeModule(ExtensionModule):
         KwargInfo('vapi_dirs', ContainerTypeInfo(list, str), listify=True, default=[]),
         KwargInfo('metadata_dirs', ContainerTypeInfo(list, str), listify=True, default=[]),
         KwargInfo('gir_dirs', ContainerTypeInfo(list, str), listify=True, default=[]),
-        KwargInfo('packages', ContainerTypeInfo(list, (str, InternalDependency)), listify=True, default=[]),
+        KwargInfo('packages', ContainerTypeInfo(list, (str, ExternalLibrary, InternalDependency, PkgConfigDependency)), listify=True, default=[]),
     )
     def generate_vapi(self, state: 'ModuleState', args: T.Tuple[str], kwargs: 'GenerateVapi') -> ModuleReturnValue:
         created_values: T.List[T.Union[Dependency, build.Data]] = []
         library = args[0]
         build_dir = os.path.join(state.environment.get_build_dir(), state.subdir)
         source_dir = os.path.join(state.environment.get_source_dir(), state.subdir)
+
         pkg_cmd, vapi_depends, vapi_packages, vapi_includes, packages = self._extract_vapi_packages(state, kwargs['packages'])
+
         cmd: T.List[T.Union[ExternalProgram, Executable, OverrideProgram, str]]
         cmd = [state.find_program('vapigen'), '--quiet', f'--library={library}', f'--directory={build_dir}']
         cmd.extend([f'--vapidir={d}' for d in kwargs['vapi_dirs']])
