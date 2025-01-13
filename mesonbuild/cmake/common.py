@@ -51,6 +51,9 @@ blacklist_cmake_defs = [
     'MESON_CMAKE_ROOT',
 ]
 
+blacklist_cmake_warning_flags = [
+]
+
 def cmake_is_debug(env: 'Environment') -> bool:
     if OptionKey('b_vscrt') in env.coredata.optstore:
         is_debug = env.coredata.get_option(OptionKey('buildtype')) == 'debug'
@@ -127,6 +130,20 @@ def cmake_defines_to_args(raw: T.List[T.Dict[str, TYPE_var]], permissive: bool =
                 res += [f'-D{key}={val_str}']
             else:
                 raise MesonException('Type "{}" of "{}" is not supported as for a CMake define value'.format(type(val).__name__, key))
+
+    return res
+
+def cmake_warning_flags_to_args(raw: T.List[str], permissive: bool = False) -> T.List[str]:
+    res: T.List[str] = []
+
+    for flag in raw:
+        if flag in blacklist_cmake_warning_flags:
+            # idk something something
+            #mlog.warning('Setting', mlog.bold(flag), 'is not supported. See the meson docs for cross compilation support:')
+            #mlog.warning('  - URL: https://mesonbuild.com/CMake-module.html#cross-compilation')
+            #mlog.warning('  --> Ignoring this option')
+            continue
+        res += [f'-W{flag}']
 
     return res
 

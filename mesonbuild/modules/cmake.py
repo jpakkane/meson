@@ -11,7 +11,7 @@ from . import ExtensionModule, ModuleReturnValue, ModuleObject, ModuleInfo
 
 from .. import build, mesonlib, mlog, dependencies
 from ..options import OptionKey
-from ..cmake import TargetOptions, cmake_defines_to_args
+from ..cmake import TargetOptions, cmake_defines_to_args, cmake_warning_flags_to_args
 from ..interpreter import SubprojectHolder
 from ..interpreter.type_checking import REQUIRED_KW, INSTALL_DIR_KW, NoneType, in_set_validator
 from ..interpreterbase import (
@@ -191,6 +191,7 @@ class CMakeSubprojectOptions(ModuleObject):
         self.methods.update(
             {
                 'add_cmake_defines': self.add_cmake_defines,
+                'add_cmake_warning_flags': self.add_cmake_warning_flags,
                 'set_override_option': self.set_override_option,
                 'set_install': self.set_install,
                 'append_compile_args': self.append_compile_args,
@@ -208,6 +209,11 @@ class CMakeSubprojectOptions(ModuleObject):
     @noKwargs
     def add_cmake_defines(self, state: ModuleState, args: T.Tuple[T.List[T.Dict[str, TYPE_var]]], kwargs: TYPE_kwargs) -> None:
         self.cmake_options += cmake_defines_to_args(args[0])
+
+    @typed_pos_args('subproject_options.add_cmake_warning_flags', varargs=str)
+    @noKwargs
+    def add_cmake_warning_flags(self, state: ModuleState, args: T.Tuple[T.List[str]], kwargs: TYPE_kwargs) -> None:
+        self.cmake_options += cmake_warning_flags_to_args(args[0])
 
     @typed_pos_args('subproject_options.set_override_option', str, str)
     @typed_kwargs('subproject_options.set_override_option', _TARGET_KW)

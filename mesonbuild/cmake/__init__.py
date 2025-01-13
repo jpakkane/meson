@@ -15,12 +15,13 @@ __all__ = [
     'TargetOptions',
     'language_map',
     'cmake_defines_to_args',
+    'cmake_warning_flags_to_args',
     'check_cmake_args',
     'cmake_is_debug',
     'resolve_cmake_trace_targets',
 ]
 
-from .common import CMakeException, TargetOptions, cmake_defines_to_args, language_map, check_cmake_args, cmake_is_debug
+from .common import CMakeException, TargetOptions, cmake_defines_to_args, cmake_warning_flags_to_args, language_map, check_cmake_args, cmake_is_debug
 from .executor import CMakeExecutor
 from .interpreter import CMakeInterpreter
 from .toolchain import CMakeToolchain, CMakeExecScope
