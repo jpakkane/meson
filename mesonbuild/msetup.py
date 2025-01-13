@@ -184,7 +184,9 @@ class MesonApp:
             mlog.set_timestamp_start(time.monotonic())
         if self.options.clearcache:
             env.coredata.clear_cache()
-        with mesonlib.BuildDirLock(self.build_dir):
+        with mesonlib.DirectoryLock(self.build_dir, 'meson-private/meson.lock',
+                                    mesonlib.DirectoryLockAction.FAIL,
+                                    'Some other Meson process is already using this build directory. Exiting.'):
             return self._generate(env, capture, vslite_ctx)
 
     def _generate(self, env: environment.Environment, capture: bool, vslite_ctx: T.Optional[dict]) -> T.Optional[dict]:

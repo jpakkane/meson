@@ -6,22 +6,30 @@ from __future__ import annotations
 
 """base classes providing no-op functionality.."""
 
+import enum
 import os
 import typing as T
 
 from .. import mlog
 
-__all__ = ['BuildDirLock']
+__all__ = ['DirectoryLock', 'DirectoryLockAction', 'DirectoryLockBase']
 
-# This needs to be inherited by the specific implementations to make type
-# checking happy
-class BuildDirLock:
+class DirectoryLockAction(enum.Enum):
+    IGNORE = 0
+    WAIT = 1
+    FAIL = 2
 
-    def __init__(self, builddir: str) -> None:
-        self.lockfilename = os.path.join(builddir, 'meson-private/meson.lock')
+class DirectoryLockBase:
+    def __init__(self, directory: str, lockfile: str, action: DirectoryLockAction, err: str) -> None:
+        self.action = action
+        self.err = err
+        self.lockpath = os.path.join(directory, lockfile)
 
     def __enter__(self) -> None:
-        mlog.debug('Calling the no-op version of BuildDirLock')
+        mlog.debug('Calling the no-op version of DirectoryLock')
 
     def __exit__(self, *args: T.Any) -> None:
         pass
+
+class DirectoryLock(DirectoryLockBase):
+    pass

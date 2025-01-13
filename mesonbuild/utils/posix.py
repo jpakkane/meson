@@ -10,23 +10,38 @@ import fcntl
 import typing as T
 
 from .core import MesonException
-from .platform import BuildDirLock as BuildDirLockBase
+from .platform import DirectoryLockBase, DirectoryLockAction
 
-__all__ = ['BuildDirLock']
+__all__ = ['DirectoryLock', 'DirectoryLockAction']
 
-class BuildDirLock(BuildDirLockBase):
+class DirectoryLock(DirectoryLockBase):
 
     def __enter__(self) -> None:
-        self.lockfile = open(self.lockfilename, 'w', encoding='utf-8')
         try:
-            fcntl.flock(self.lockfile, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except (BlockingIOError, PermissionError):
+            self.lockfile = open(self.lockpath, 'w+', encoding='utf-8')
+        except FileNotFoundError:
+            self.lockfile = None
+            return
+
+        try:
+            flags = fcntl.LOCK_EX
+            if self.action != DirectoryLockAction.WAIT:
+                flags = flags | fcntl.LOCK_NB
+            fcntl.flock(self.lockfile, flags)
+        except BlockingIOError:
             self.lockfile.close()
-            raise MesonException('Some other Meson process is already using this build directory. Exiting.')
+            if self.action == DirectoryLockAction.IGNORE:
+                return
+            raise MesonException(self.err)
+        except PermissionError:
+            self.lockfile.close()
+            raise MesonException(self.err)
         except OSError as e:
             self.lockfile.close()
-            raise MesonException(f'Failed to lock the build directory: {e.strerror}')
+            raise MesonException(f'Failed to lock directory {self.lockpath}: {e.strerror}')
 
     def __exit__(self, *args: T.Any) -> None:
+        if self.lockfile is None or self.lockfile.closed:
+            return
         fcntl.flock(self.lockfile, fcntl.LOCK_UN)
         self.lockfile.close()
