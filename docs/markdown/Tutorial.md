@@ -15,7 +15,7 @@ Debian-derived systems such as Ubuntu they can be installed with the
 following command:
 
 ```
-sudo apt install libgtk-3-dev
+sudo apt install libgtk-4-dev
 ```
 
 In addition, it is recommended to have the glib library with version 2.74 or higher.
@@ -71,13 +71,19 @@ directory in a subdirectory of your top level source directory.
 When Meson is run it prints the following output.
 
     The Meson build system
-     version: 0.13.0-research
-    Source dir: /home/jpakkane/mesontutorial
-    Build dir: /home/jpakkane/mesontutorial/builddir
+    Version: 1.2.1
+    Source dir: /home/user/mesontutorial
+    Build dir: /home/user/mesontutorial/builddir
     Build type: native build
-    Project name is "tutorial".
-    Using native c compiler "ccache cc". (gcc 4.8.2)
-    Creating build target "demo" with 1 files.
+    Project name: tutorial
+    Project version: undefined
+    C compiler for the host machine: cc (gcc 13.2.1 "cc (GCC) 13.2.1 20230801")
+    C linker for the host machine: cc ld.bfd 2.41.0
+    Host machine cpu family: x86_64
+    Host machine cpu: x86_64
+    Build targets in project: 1
+
+    Found ninja-1.11.1 at /sbin/ninja
 
 Now we are ready to build our code.
 
@@ -112,28 +118,28 @@ Adding dependencies
 
 Just printing text is a bit old fashioned. Let's update our program to
 create a graphical window instead. We'll use the
-[GTK+](https://gtk.org) widget toolkit. First we edit the main file to
-use GTK+. The new version looks like this.
+[GTK](https://gtk.org) widget toolkit. First we edit the main file to
+use GTK. The new version looks like this.
 
 ```c
-
 #include <gtk/gtk.h>
 
 //
-// Should provided the active view for a GTK application
+// Callback function which constructs the window
 //
-static void activate(GtkApplication* app, gpointer user_data)
+static void activate(GtkApplication *app, gpointer user_data)
 {
   GtkWidget *window;
   GtkWidget *label;
 
-  window = gtk_application_window_new (app);
-  label = gtk_label_new("Hello GNOME!");
-  gtk_container_add (GTK_CONTAINER (window), label);
-  gtk_window_set_title(GTK_WINDOW (window), "Welcome to GNOME");
-  gtk_window_set_default_size(GTK_WINDOW (window), 400, 200);
-  gtk_widget_show_all(window);
-} // end of function activate
+  window = gtk_application_window_new(app);
+  gtk_window_set_title(GTK_WINDOW(window), "Window");
+  gtk_window_set_default_size(GTK_WINDOW(window), 200, 200);
+
+  label = gtk_label_new("Hello world!");
+  gtk_window_set_child(GTK_WINDOW(window), label);
+  gtk_widget_set_visible(window, true);
+}
 
 //
 // main is where all program execution starts
@@ -148,20 +154,21 @@ int main(int argc, char **argv)
 #else
   app = gtk_application_new(NULL, G_APPLICATION_FLAGS_NONE);
 #endif
+
   g_signal_connect(app, "activate", G_CALLBACK(activate), NULL);
   status = g_application_run(G_APPLICATION(app), argc, argv);
-  g_object_unref(app);
+  g_object_unref(app);  // Free from memory when program terminates
 
   return status;
-} // end of function main
+}
 ```
 
-Then we edit the Meson file, instructing it to find and use the GTK+
+Then we edit the Meson file, instructing it to find and use the GTK
 libraries.
 
 ```meson
 project('tutorial', 'c')
-gtkdep = dependency('gtk+-3.0')
+gtkdep = dependency('gtk4')
 executable('demo', 'main.c', dependencies : gtkdep)
 ```
 
@@ -169,7 +176,13 @@ If your app needs to use multiple libraries, you need to use separate
 [[dependency]] calls for each, like so:
 
 ```meson
-gtkdeps = [dependency('gtk+-3.0'), dependency('gtksourceview-3.0')]
+project('tutorial', 'c')
+gtkdep = dependency('gtk4')
+
+# Make sure to install the new dependency first with
+# sudo apt install libgtksourceview-5-dev
+gtksourceview_dep = dependency('gtksourceview-5')
+executable('demo', 'main.c', dependencies : [gtkdep, gtksourceview_dep])
 ```
 
 We don't need it for the current example.
@@ -189,18 +202,27 @@ compile`. Meson will automatically detect when you have done changes
 to build definitions and will take care of everything so users don't
 have to care. In this case the following output is produced.
 
-    [1/1] Regenerating build files
+    INFO: autodetecting backend as ninja
+    INFO: calculating backend command to run: /sbin/ninja
+    [0/1] Regenerating build files.
     The Meson build system
-     version: 0.13.0-research
-    Source dir: /home/jpakkane/mesontutorial
-    Build dir: /home/jpakkane/mesontutorial/builddir
+    Version: 1.2.1
+    Source dir: /home/user/mesontutorial
+    Build dir: /home/user/mesontutorial/builddir
     Build type: native build
-    Project name is "tutorial".
-    Using native c compiler "ccache cc". (gcc 4.8.2)
-    Found pkg-config version 0.26.
-    Dependency gtk+-3.0 found: YES
-    Creating build target "demo" with 1 files.
-    [1/2] Compiling c object demo.dir/main.c.o
+    Project name: tutorial
+    Project version: undefined
+    C compiler for the host machine: cc (gcc 13.2.1 "cc (GCC) 13.2.1 20230801")
+    C linker for the host machine: cc ld.bfd 2.41.0
+    Host machine cpu family: x86_64
+    Host machine cpu: x86_64
+    Found pkg-config: /sbin/pkg-config (1.8.1)
+    Run-time dependency gtk4 found: YES 4.12.0
+    Run-time dependency gtksourceview-5 found: YES 5.8.0
+    Build targets in project: 1
+
+    Found ninja-1.11.1 at /sbin/ninja
+    Cleaning... 0 files.
     [2/2] Linking target demo
 
 Note how Meson noticed that the build definition has changed and reran
@@ -212,4 +234,4 @@ $ ./demo
 
 This creates the following GUI application.
 
-![GTK+ sample application screenshot](images/gtksample.png)
+![GTK sample application screenshot](images/gtksample.png)
