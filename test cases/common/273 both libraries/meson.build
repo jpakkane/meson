@@ -111,3 +111,32 @@ if get_option('default_library') == 'both' and get_option('default_both_librarie
     )
     test('test shared', main_shared)
 endif
+
+# Test case for https://github.com/mesonbuild/meson/pull/14098
+if get_option('default_library') == 'shared'
+
+    if get_option('use_dep')
+        lib_deps = [with_bl_dep.as_static(recursive: true)]
+        lib_links = []
+    else
+        lib_deps = []
+        lib_links = [with_bl.get_static_lib()]
+    endif
+
+    lib_with_static_dep = library(
+        'lib_with_static_dep',
+        files('src/library.c'),
+        c_shared_args: ['-DEXPORT'],
+        link_with: lib_links,
+        dependencies: lib_deps,
+    )
+
+    main_with_static_dep = executable(
+        'main_with_static_dep',
+        files('src/main.c'),
+        c_args: [f'-DEXPECTED=1'],
+        link_with: lib_with_static_dep,
+    )
+    test('test static dep', main_with_static_dep)
+
+endif

@@ -371,14 +371,14 @@ class InternalDependency(Dependency):
 
     def get_as_static(self, recursive: bool) -> InternalDependency:
         new_dep = copy.copy(self)
-        new_dep.libraries = [lib.get('static') for lib in self.libraries]
+        new_dep.libraries = [lib.get('static', recursive) for lib in self.libraries]
         if recursive:
             new_dep.ext_deps = [dep.get_as_static(True) for dep in self.ext_deps]
         return new_dep
 
     def get_as_shared(self, recursive: bool) -> InternalDependency:
         new_dep = copy.copy(self)
-        new_dep.libraries = [lib.get('shared') for lib in self.libraries]
+        new_dep.libraries = [lib.get('shared', recursive) for lib in self.libraries]
         if recursive:
             new_dep.ext_deps = [dep.get_as_shared(True) for dep in self.ext_deps]
         return new_dep

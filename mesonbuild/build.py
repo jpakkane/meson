@@ -6,6 +6,7 @@ from collections import defaultdict, OrderedDict
 from dataclasses import dataclass, field, InitVar
 from functools import lru_cache
 import abc
+import copy
 import hashlib
 import itertools, pathlib
 import os
@@ -1757,7 +1758,7 @@ class BuildTarget(Target):
                 lib_list.append(lib)
         return lib_list
 
-    def get(self, lib_type: T.Literal['static', 'shared', 'auto']) -> LibTypes:
+    def get(self, lib_type: T.Literal['static', 'shared']) -> LibTypes:
         """Base case used by BothLibraries"""
         return self
 
@@ -2216,12 +2217,16 @@ class StaticLibrary(BuildTarget):
         return not self.install
 
     def set_shared(self, shared_library: SharedLibrary) -> None:
-        self.both_lib = shared_library
+        self.both_lib = copy.copy(shared_library)
+        self.both_lib.both_lib = None
 
-    def get(self, lib_type: T.Literal['static', 'shared', 'auto']) -> LibTypes:
+    def get(self, lib_type: T.Literal['static', 'shared'], recursive: bool = False) -> LibTypes:
+        result = self
         if lib_type == 'shared':
-            return self.both_lib or self
-        return self
+            result = self.both_lib or self
+        if recursive:
+            result.link_targets = [t.get(lib_type, True) for t in self.link_targets]
+        return result
 
 class SharedLibrary(BuildTarget):
     known_kwargs = known_shlib_kwargs
@@ -2490,12 +2495,16 @@ class SharedLibrary(BuildTarget):
         return True
 
     def set_static(self, static_library: StaticLibrary) -> None:
-        self.both_lib = static_library
+        self.both_lib = copy.copy(static_library)
+        self.both_lib.both_lib = None
 
-    def get(self, lib_type: T.Literal['static', 'shared']) -> LibTypes:
+    def get(self, lib_type: T.Literal['static', 'shared'], recursive: bool = False) -> LibTypes:
+        result = self
         if lib_type == 'static':
-            return self.both_lib or self
-        return self
+            result = self.both_lib or self
+        if recursive:
+            result.link_targets = [t.get(lib_type, True) for t in self.link_targets]
+        return result
 
 # A shared library that is meant to be used with dlopen rather than linking
 # into something else.
@@ -2542,7 +2551,7 @@ class BothLibraries(SecondLevelHolder):
     def __repr__(self) -> str:
         return f'<BothLibraries: static={repr(self.static)}; shared={repr(self.shared)}>'
 
-    def get(self, lib_type: T.Literal['static', 'shared', 'auto']) -> LibTypes:
+    def get(self, lib_type: T.Literal['static', 'shared']) -> LibTypes:
         if lib_type == 'static':
             return self.static
         if lib_type == 'shared':
@@ -2616,7 +2625,7 @@ class CustomTargetBase:
     def get_internal_static_libraries_recurse(self, result: OrderedSet[BuildTargetTypes]) -> None:
         pass
 
-    def get(self, lib_type: T.Literal['static', 'shared', 'auto']) -> LibTypes:
+    def get(self, lib_type: T.Literal['static', 'shared'], recursive: bool = False) -> LibTypes:
         """Base case used by BothLibraries"""
         return self
 
