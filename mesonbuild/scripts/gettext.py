@@ -6,7 +6,10 @@ from __future__ import annotations
 import os
 import argparse
 import subprocess
+import re
 import typing as T
+
+from pathlib import Path
 
 parser = argparse.ArgumentParser()
 parser.add_argument('command')
@@ -54,12 +57,22 @@ def run_potgen(src_sub: str, xgettext: str, pkgname: str, datadirs: str, args: T
                             '-D', source_root, '-k_', '-o', ofile] + args,
                            env=child_env)
 
+pot_timestamp_re = re.compile(r'^"POT-Creation-Date:[^\\]+', re.MULTILINE)
+
 def update_po(src_sub: str, msgmerge: str, msginit: str, pkgname: str, langs: T.List[str]) -> int:
     potfile = os.path.join(src_sub, pkgname + '.pot')
     for l in langs:
-        pofile = os.path.join(src_sub, l + '.po')
-        if os.path.exists(pofile):
-            subprocess.check_call([msgmerge, '-q', '-o', pofile, pofile, potfile])
+        pofile = Path(src_sub, l + '.po')
+        if pofile.exists():
+            old_content = pofile.read_text(encoding='utf-8')
+            new_content = subprocess.check_output([msgmerge, '-q', pofile, potfile], text=True)
+            m = pot_timestamp_re.search(old_content)
+            if m:
+                changed = pot_timestamp_re.sub(m.group(0), new_content) != old_content
+            else:
+                changed = new_content != old_content
+            if changed:
+                pofile.write_text(new_content, encoding='utf-8')
         else:
             subprocess.check_call([msginit, '--input', potfile, '--output-file', pofile, '--locale', l, '--no-translator'])
     return 0
