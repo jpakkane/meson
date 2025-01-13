@@ -4,7 +4,7 @@ char * success(void);
 #ifndef PROJECT_ARG
 char * success(void);
 #endif
-#ifndef CMD_ARG
+#ifndef RUST_12_CMD_ARG
 char * success(void);
 #endif
 int success(void);

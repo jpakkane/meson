@@ -1,6 +1,6 @@
 {
   "env": {
-    "CFLAGS": "-DCMD_ARG"
+    "CFLAGS": "-DRUST_12_CMD_ARG"
   },
   "stdout": [
     {

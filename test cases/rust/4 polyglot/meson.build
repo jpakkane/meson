@@ -18,6 +18,7 @@ foreach crate_type : ['lib', 'rlib', 'dylib', 'cdylib', 'staticlib', 'proc-macro
   foreach target_type, allowed : allowed_map
     name = f'stuff_@crate_type@_@target_type@'.underscorify()
     src = crate_type == 'proc-macro' ? 'proc.rs' : 'stuff.rs'
+    install = crate_type == 'proc-macro' ? false : true
     if crate_type not in allowed
       # Note: in the both_libraries() case it is possible that the static part
       # is still being built because the shared part raised an error but we
@@ -26,7 +27,7 @@ foreach crate_type : ['lib', 'rlib', 'dylib', 'cdylib', 'staticlib', 'proc-macro
         build_target(name, src,
           target_type: target_type,
           rust_crate_type: crate_type,
-          install: true)
+          install: install)
       endtestcase
       continue
     endif
@@ -39,7 +40,7 @@ foreach crate_type : ['lib', 'rlib', 'dylib', 'cdylib', 'staticlib', 'proc-macro
     l = build_target(name, src,
       target_type: target_type,
       kwargs: rust_kwargs,
-      install: true)
+      install: install)
     if crate_type in ['cdylib', 'staticlib', 'clib']
       e = executable(f'prog-@name@', 'prog.c',
         link_with: l,

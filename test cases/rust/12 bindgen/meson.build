@@ -133,6 +133,7 @@ subdir('dependencies')
 gp = rust.bindgen(
   input : 'src/global-project.h',
   output : 'global-project.rs',
+  args : ['--no-rustfmt-bindings'],
 )
 
 gp_lib = static_library('gp_lib', 'src/global.c')

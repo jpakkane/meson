@@ -7,12 +7,16 @@ static = static_library('static', 'lib.c', c_args : '-DMODE="static"')
 # compiler when handling the dependency.
 static_dep = declare_dependency(link_with : static, compile_args : ['-Idoesnotexist'])
 exe = executable('static', 'main.rs', dependencies : static_dep)
-test('static linkage', test_prog, args : [exe, 'This is a static C library'])
+if meson.can_run_host_binaries()
+  test('static linkage', test_prog, args : [exe, 'This is a static C library'])
+endif
 
 # Shared linkage with rust doesn't work on macOS with meson, yet
 if host_machine.system() != 'darwin'
   shared = shared_library('shared', 'lib.c', c_args : '-DMODE="shared"')
   shared_dep = declare_dependency(link_with : shared, compile_args : ['-Idoesnotexist'])
   exe = executable('shared', 'main.rs', dependencies : shared_dep)
-  test('shared linkage', test_prog, args : [exe, 'This is a shared C library'])
+  if meson.can_run_host_binaries()
+    test('shared linkage', test_prog, args : [exe, 'This is a shared C library'])
+  endif
 endif

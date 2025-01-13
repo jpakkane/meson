@@ -3,15 +3,16 @@
 # when cross compiled binaries can't be run we don't do that
 c = ['/usr/bin/arm-linux-gnueabihf-gcc']
 cpp = ['/usr/bin/arm-linux-gnueabihf-g++']
-rust = ['rustc', '--target', 'arm-unknown-linux-gnueabihf', '-C', 'linker=/usr/bin/arm-linux-gnueabihf-gcc-7']
+rust = ['rustc', '--target', 'arm-unknown-linux-gnueabihf']
 ar = '/usr/arm-linux-gnueabihf/bin/ar'
 strip = '/usr/arm-linux-gnueabihf/bin/strip'
 pkg-config = '/usr/bin/arm-linux-gnueabihf-pkg-config'
 ld = '/usr/bin/arm-linux/gnueabihf-ld'
 
 [built-in options]
-# Used in unit test '140 get define'
-c_args = ['-DMESON_TEST_ISSUE_1665=1']
+# MESON_TEST_ISSUE_1665: Used in unit test '140 get define'
+# RUST_12_CMD_ARG: Used in rust test '12 bindgen'
+c_args = ['-DMESON_TEST_ISSUE_1665=1', '-DRUST_12_CMD_ARG']
 cpp_args = '-DMESON_TEST_ISSUE_1665=1'
 
 [properties]
