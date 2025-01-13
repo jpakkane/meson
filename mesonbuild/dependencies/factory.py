@@ -12,7 +12,7 @@ from .base import process_method_kw
 from .base import BuiltinDependency, SystemDependency
 from .cmake import CMakeDependency
 from .framework import ExtraFrameworkDependency
-from .pkgconfig import PkgConfigDependency
+from .pkgconfig import PkgConfigDependency, PkgConfigInterface
 
 if T.TYPE_CHECKING:
     from .base import ExternalDependency
@@ -112,6 +112,11 @@ class DependencyFactory:
         # Extra frameworks are only valid for macOS and other apple products
         if (method is DependencyMethods.EXTRAFRAMEWORK and
                 not env.machines[for_machine].is_darwin()):
+            return False
+
+        # PkgConfig only works if pkg-config is available
+        if (method is DependencyMethods.PKGCONFIG and
+                not PkgConfigInterface.instance(env, for_machine, True)):
             return False
         return True
 
