@@ -589,4 +589,4 @@ class PkgConfigDependency(ExternalDependency):
                 pass
         if default_value is not None:
             return default_value
-        raise DependencyException(f'Could not get pkg-config variable and no default provided for {self!r}')
+        raise DependencyException(f'Could not get {self.name} pkg-config variable {pkgconfig} and no default provided')

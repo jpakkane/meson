@@ -350,7 +350,7 @@ class InternalDependency(Dependency):
         val = self.variables.get(internal, default_value)
         if val is not None:
             return val
-        raise DependencyException(f'Could not get an internal variable and no default provided for {self!r}')
+        raise DependencyException(f'Could not get an internal variable {internal} and no default provided')
 
     def generate_link_whole_dependency(self) -> Dependency:
         from ..build import SharedLibrary, CustomTarget, CustomTargetIndex

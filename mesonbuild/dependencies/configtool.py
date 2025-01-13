@@ -170,4 +170,4 @@ class ConfigToolDependency(ExternalDependency):
                 return variable
         if default_value is not None:
             return default_value
-        raise DependencyException(f'Could not get config-tool variable and no default provided for {self!r}')
+        raise DependencyException(f'Could not get {self.name} variable {configtool} using {self.tool_name} and no default provided')

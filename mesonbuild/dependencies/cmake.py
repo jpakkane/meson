@@ -637,7 +637,7 @@ class CMakeDependency(ExternalDependency):
                 return ';'.join(v)
         if default_value is not None:
             return default_value
-        raise DependencyException(f'Could not get cmake variable and no default provided for {self!r}')
+        raise DependencyException(f'Could not get {self.name} cmake variable {cmake} and no default provided')
 
 
 class CMakeDependencyFactory:
