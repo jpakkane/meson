@@ -58,8 +58,8 @@ def parse_generator_expressions(
 
     def target_file(arg: str) -> str:
         if arg not in trace.targets:
-            mlog.warning(f"Unable to evaluate the cmake variable '$<TARGET_FILE:{arg}>'.")
-            return ''
+            mlog.warning(f"Unable to correctly evaluate the cmake variable '$<TARGET_FILE:{arg}>'.")
+            return arg
         tgt = trace.targets[arg]
 
         cfgs = []

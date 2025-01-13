@@ -1,0 +1,4 @@
+#include <string>
+std::string getStr2() {
+  return "Hello World 2";
+}
