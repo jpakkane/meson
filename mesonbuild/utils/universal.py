@@ -124,6 +124,7 @@ __all__ = [
     'is_netbsd',
     'is_openbsd',
     'is_osx',
+    'is_parent_path',
     'is_qnx',
     'is_sunos',
     'is_windows',
@@ -1125,6 +1126,30 @@ def determine_worker_count(varnames: T.Optional[T.List[str]] = None) -> int:
         except Exception:
             num_workers = 1
     return num_workers
+
+def is_parent_path(parent: str, trial: str) -> bool:
+    '''Checks if @trial is a file under the directory @parent. Both @trial and @parent should be
+       adequately normalized, though empty and '.' segments in @parent and @trial are accepted
+       and discarded, matching the behavior of os.path.commonpath.  Either both or none should
+       be absolute.'''
+    assert os.path.isabs(trial) == os.path.isabs(parent)
+    if is_windows():
+        parent = parent.replace('\\', '/')
+        trial = trial.replace('\\', '/')
+
+    split_parent = parent.split('/')
+    split_trial = trial.split('/')
+
+    split_parent = [c for c in split_parent if c and c != '.']
+    split_trial = [c for c in split_trial if c and c != '.']
+
+    if len(split_trial) < len(split_parent):
+        return False
+    for i, component in enumerate(split_parent):
+        if component != split_trial[i]:
+            return False
+    return True
+
 
 def has_path_sep(name: str, sep: str = '/\\') -> bool:
     'Checks if any of the specified @sep path separators are in @name'

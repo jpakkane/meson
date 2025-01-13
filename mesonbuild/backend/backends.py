@@ -28,7 +28,8 @@ from ..compilers import LANGUAGES_USING_LDFLAGS, detect, lang_suffixes
 from ..mesonlib import (
     File, MachineChoice, MesonException, OrderedSet,
     ExecutableSerialisation, EnvironmentException,
-    classify_unity_sources, get_compiler_for_source
+    classify_unity_sources, get_compiler_for_source,
+    is_parent_path,
 )
 from ..options import OptionKey
 
@@ -791,12 +792,7 @@ class Backend:
                 ):
                     continue
 
-                try:
-                    commonpath = os.path.commonpath((libdir, srcdir))
-                except ValueError: # when paths are on different drives on Windows
-                    commonpath = ''
-
-                if commonpath == srcdir:
+                if is_parent_path(srcdir, libdir):
                     rel_to_src = libdir[len(srcdir) + 1:]
                     assert not os.path.isabs(rel_to_src), f'rel_to_src: {rel_to_src} is absolute'
                     paths.add(os.path.join(self.build_to_src, rel_to_src))

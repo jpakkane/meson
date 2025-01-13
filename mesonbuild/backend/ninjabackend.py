@@ -31,7 +31,7 @@ from ..mesonlib import (
     File, LibType, MachineChoice, MesonBugException, MesonException, OrderedSet, PerMachine,
     ProgressBar, quote_arg
 )
-from ..mesonlib import get_compiler_for_source, has_path_sep
+from ..mesonlib import get_compiler_for_source, has_path_sep, is_parent_path
 from ..options import OptionKey
 from .backends import CleanTrees
 from ..build import GeneratedList, InvalidArguments
@@ -1709,7 +1709,7 @@ class NinjaBackend(backends.Backend):
                 # Check if the vala file is in a subdir of --basedir
                 abs_srcbasedir = os.path.join(self.environment.get_source_dir(), target.get_subdir())
                 abs_vala_file = os.path.join(self.environment.get_build_dir(), vala_file)
-                if PurePath(os.path.commonpath((abs_srcbasedir, abs_vala_file))) == PurePath(abs_srcbasedir):
+                if is_parent_path(abs_srcbasedir, abs_vala_file):
                     vala_c_subdir = PurePath(abs_vala_file).parent.relative_to(abs_srcbasedir)
                     vala_c_file = os.path.join(str(vala_c_subdir), vala_c_file)
             else:

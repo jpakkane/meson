@@ -19,7 +19,7 @@ from .. import envconfig
 from ..wrap import wrap, WrapMode
 from .. import mesonlib
 from ..mesonlib import (EnvironmentVariables, ExecutableSerialisation, MesonBugException, MesonException, HoldableObject,
-                        FileMode, MachineChoice, listify,
+                        FileMode, MachineChoice, is_parent_path, listify,
                         extract_as_list, has_path_sep, path_is_in_root, PerMachine)
 from ..options import OptionKey
 from ..programs import ExternalProgram, NonExistingExternalProgram
@@ -292,6 +292,7 @@ class Interpreter(InterpreterBase, HoldableObject):
         self.sanity_check_ast()
         self.builtin.update({'meson': MesonMain(self.build, self)})
         self.processed_buildfiles: T.Set[str] = set()
+        self.validated_cache: T.Set[str] = set()
         self.project_args_frozen = False
         self.global_args_frozen = False  # implies self.project_args_frozen
         self.subprojects: T.Dict[str, SubprojectHolder] = {}
@@ -3107,8 +3108,8 @@ class Interpreter(InterpreterBase, HoldableObject):
     # subproject than it is defined in (due to e.g. a
     # declare_dependency).
     def validate_within_subproject(self, subdir, fname):
-        srcdir = Path(self.environment.source_dir)
-        builddir = Path(self.environment.build_dir)
+        srcdir = self.environment.source_dir
+        builddir = self.environment.build_dir
         if isinstance(fname, P_OBJ.DependencyVariableString):
             def validate_installable_file(fpath: Path) -> bool:
                 installablefiles: T.Set[Path] = set()
@@ -3128,27 +3129,39 @@ class Interpreter(InterpreterBase, HoldableObject):
             # subproject files, as long as they are scheduled to be installed.
             if validate_installable_file(norm):
                 return
-        norm = Path(os.path.abspath(Path(srcdir, subdir, fname)))
-        if os.path.isdir(norm):
-            inputtype = 'directory'
-        else:
-            inputtype = 'file'
-        if InterpreterRuleRelaxation.ALLOW_BUILD_DIR_FILE_REFERENCES in self.relaxations and builddir in norm.parents:
+
+        def do_validate_within_subproject(norm):
+            if os.path.isdir(norm):
+                inputtype = 'directory'
+            else:
+                inputtype = 'file'
+            if InterpreterRuleRelaxation.ALLOW_BUILD_DIR_FILE_REFERENCES in self.relaxations and is_parent_path(builddir, norm):
+                return
+
+            if not is_parent_path(srcdir, norm):
+                # Grabbing files outside the source tree is ok.
+                # This is for vendor stuff like:
+                #
+                # /opt/vendorsdk/src/file_with_license_restrictions.c
+                return
+
+            project_root = os.path.join(srcdir, self.root_subdir)
+            if not is_parent_path(project_root, norm):
+                name = os.path.basename(norm)
+                raise InterpreterException(f'Sandbox violation: Tried to grab {inputtype} {name} outside current (sub)project.')
+
+            subproject_dir = os.path.join(project_root, self.subproject_dir)
+            if is_parent_path(subproject_dir, norm):
+                name = os.path.basename(norm)
+                raise InterpreterException(f'Sandbox violation: Tried to grab {inputtype} {name} from a nested subproject.')
+
+        fname = os.path.join(subdir, fname)
+        if fname in self.validated_cache:
             return
-        if srcdir not in norm.parents:
-            # Grabbing files outside the source tree is ok.
-            # This is for vendor stuff like:
-            #
-            # /opt/vendorsdk/src/file_with_license_restrictions.c
-            return
-        project_root = Path(srcdir, self.root_subdir)
-        subproject_dir = project_root / self.subproject_dir
-        if norm == project_root:
-            return
-        if project_root not in norm.parents:
-            raise InterpreterException(f'Sandbox violation: Tried to grab {inputtype} {norm.name} outside current (sub)project.')
-        if subproject_dir == norm or subproject_dir in norm.parents:
-            raise InterpreterException(f'Sandbox violation: Tried to grab {inputtype} {norm.name} from a nested subproject.')
+
+        norm = os.path.abspath(os.path.join(srcdir, fname))
+        do_validate_within_subproject(norm)
+        self.validated_cache.add(fname)
 
     @T.overload
     def source_strings_to_files(self, sources: T.List['mesonlib.FileOrString'], strict: bool = True) -> T.List['mesonlib.File']: ...

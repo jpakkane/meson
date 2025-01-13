@@ -23,7 +23,7 @@ from .mesonlib import (
     File, MesonException, MachineChoice, PerMachine, OrderedSet, listify,
     extract_as_list, typeslistify, stringlistify, classify_unity_sources,
     get_filenames_templates_dict, substitute_values, has_path_sep,
-    PerMachineDefaultable,
+    is_parent_path, PerMachineDefaultable,
     MesonBugException, EnvironmentVariables, pickle_load,
 )
 from .options import OptionKey
@@ -1838,14 +1838,6 @@ class Generator(HoldableObject):
         basename = os.path.splitext(plainname)[0]
         return [x.replace('@BASENAME@', basename).replace('@PLAINNAME@', plainname) for x in self.arglist]
 
-    @staticmethod
-    def is_parent_path(parent: str, trial: str) -> bool:
-        try:
-            common = os.path.commonpath((parent, trial))
-        except ValueError: # Windows on different drives
-            return False
-        return pathlib.PurePath(common) == pathlib.PurePath(parent)
-
     def process_files(self, files: T.Iterable[T.Union[str, File, 'CustomTarget', 'CustomTargetIndex', 'GeneratedList']],
                       state: T.Union['Interpreter', 'ModuleState'],
                       preserve_path_from: T.Optional[str] = None,
@@ -1875,7 +1867,7 @@ class Generator(HoldableObject):
             for f in fs:
                 if preserve_path_from:
                     abs_f = f.absolute_path(state.environment.source_dir, state.environment.build_dir)
-                    if not self.is_parent_path(preserve_path_from, abs_f):
+                    if not is_parent_path(preserve_path_from, abs_f):
                         raise InvalidArguments('generator.process: When using preserve_path_from, all input files must be in a subdirectory of the given dir.')
                 f = FileMaybeInTargetPrivateDir(f)
                 output.add_file(f, state)
