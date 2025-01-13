@@ -64,6 +64,8 @@ class InternalTests(unittest.TestCase):
         self.assertEqual(search_version('2016.10 1.2.3'), '1.2.3')
         self.assertEqual(search_version('oops v1.2.3'), '1.2.3')
         self.assertEqual(search_version('2016.oops 1.2.3'), '1.2.3')
+        self.assertEqual(search_version('zig ld 0.11.0'), '0.11.0')
+        self.assertEqual(search_version('zig ld 0.11.0-dev.3867+ff37ccd29'), '0.11.0-dev')
         self.assertEqual(search_version('2016.x'), 'unknown version')
         self.assertEqual(search_version(r'something version is \033[32;2m1.2.0\033[0m.'), '1.2.0')
 

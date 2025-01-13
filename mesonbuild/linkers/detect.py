@@ -168,6 +168,9 @@ def guess_nix_linker(env: 'Environment', compiler: T.List[str], comp_class: T.Ty
     elif 'Snapdragon' in e and 'LLVM' in e:
         linker = linkers.QualcommLLVMDynamicLinker(
             compiler, for_machine, comp_class.LINKER_PREFIX, override, version=v)
+    elif o.startswith('zig ld '):
+        linker = linkers.LLVMDynamicLinker(
+            compiler, for_machine, comp_class.LINKER_PREFIX, override, version=v)
     elif e.startswith('lld-link: '):
         # The LLD MinGW frontend didn't respond to --version before version 9.0.0,
         # and produced an error message about failing to link (when no object
