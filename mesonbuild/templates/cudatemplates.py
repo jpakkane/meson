@@ -1,9 +1,14 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2019 The Meson development team
+# Copyright © 2023-2025 Intel Corporation
 
 from __future__ import annotations
+import typing as T
 
 from mesonbuild.templates.sampleimpl import FileHeaderImpl
+
+if T.TYPE_CHECKING:
+    from ..minit import Arguments
 
 
 hello_cuda_template = '''#include <iostream>
@@ -20,13 +25,23 @@ int main(int argc, char **argv) {{
 }}
 '''
 
-hello_cuda_meson_template = '''project('{project_name}', ['cuda', 'cpp'],
+hello_cuda_meson_template = '''project(
+  '{project_name}',
+  ['cuda', 'cpp'],
   version : '{version}',
-  default_options : ['warning_level=3',
-                     'cpp_std=c++14'])
+  meson_version : '>= {meson_version}',
+  default_options : ['warning_level=3', 'cpp_std=c++14'],
+)
 
-exe = executable('{exe_name}', '{source_name}',
-  install : true)
+dependencies = [{dependencies}
+]
+
+exe = executable(
+  '{exe_name}',
+  '{source_name}',
+  dependencies : dependencies,
+  install : true,
+)
 
 test('basic', exe)
 '''
@@ -92,28 +107,45 @@ int main(int argc, char **argv) {{
 }}
 '''
 
-lib_cuda_meson_template = '''project('{project_name}', ['cuda', 'cpp'],
+lib_cuda_meson_template = '''project(
+  '{project_name}',
+  ['cuda', 'cpp'],
   version : '{version}',
-  default_options : ['warning_level=3'])
+  meson_version : '>= {meson_version}',
+  default_options : ['warning_level=3'],
+)
 
 # These arguments are only used to build the shared library
 # not the executables that use the library.
 lib_args = ['-DBUILDING_{utoken}']
 
-shlib = shared_library('{lib_name}', '{source_file}',
+dependencies = [{dependencies}
+]
+
+lib = library(
+  '{lib_name}',
+  '{source_file}',
   install : true,
-  cpp_args : lib_args,
+  cpp_shared_args : lib_args,
   gnu_symbol_visibility : 'hidden',
+  dependencies : dependencies,
 )
 
-test_exe = executable('{test_exe_name}', '{test_source_file}',
-  link_with : shlib)
+test_exe = executable(
+  '{test_exe_name}',
+  '{test_source_file}',
+  link_with : lib,
+  dependencies : dependencies,
+)
 test('{test_name}', test_exe)
 
 # Make this library usable as a Meson subproject.
 {ltoken}_dep = declare_dependency(
-  include_directories: include_directories('.'),
-  link_with : shlib)
+  include_directories : include_directories('.'),
+  dependencies : dependencies,
+  link_with : lib,
+)
+meson.override_dependency('{project_name}', {ltoken}_dep)
 
 # Make this library usable from the system's
 # package manager.
@@ -121,12 +153,9 @@ install_headers('{header_file}', subdir : '{header_dir}')
 
 pkg_mod = import('pkgconfig')
 pkg_mod.generate(
-  name : '{project_name}',
-  filebase : '{ltoken}',
+  lib,
   description : 'Meson sample project.',
   subdirs : '{header_dir}',
-  libraries : shlib,
-  version : '{version}',
 )
 '''
 
@@ -141,3 +170,7 @@ class CudaProject(FileHeaderImpl):
     lib_header_template = lib_h_template
     lib_test_template = lib_cuda_test_template
     lib_meson_template = lib_cuda_meson_template
+
+    def __init__(self, args: Arguments):
+        super().__init__(args)
+        self.meson_version = '1.3.0'

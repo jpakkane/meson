@@ -1,9 +1,14 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2019 The Meson development team
+# Copyright © 2023-2025 Intel Corporation
 
 from __future__ import annotations
+import typing as T
 
 from mesonbuild.templates.sampleimpl import FileHeaderImpl
+
+if T.TYPE_CHECKING:
+    from ..minit import Arguments
 
 
 lib_h_template = '''#pragma once
@@ -51,28 +56,44 @@ int main(int argc, char **argv) {{
 }}
 '''
 
-lib_objc_meson_template = '''project('{project_name}', 'objc',
+lib_objc_meson_template = '''project(
+  '{project_name}',
+  'objc',
   version : '{version}',
-  default_options : ['warning_level=3'])
+  meson_version : '>= {meson_version}',
+  default_options : ['warning_level=3'],
+)
+
+dependencies = [{dependencies}
+]
 
 # These arguments are only used to build the shared library
 # not the executables that use the library.
 lib_args = ['-DBUILDING_{utoken}']
 
-shlib = shared_library('{lib_name}', '{source_file}',
+lib = library(
+  '{lib_name}',
+  '{source_file}',
   install : true,
-  objc_args : lib_args,
+  objc_shared_args : lib_args,
+  dependencies : dependencies,
   gnu_symbol_visibility : 'hidden',
 )
 
-test_exe = executable('{test_exe_name}', '{test_source_file}',
-  link_with : shlib)
+test_exe = executable(
+  '{test_exe_name}',
+  '{test_source_file}',
+  dependencies : dependencies,
+  link_with : lib)
 test('{test_name}', test_exe)
 
 # Make this library usable as a Meson subproject.
 {ltoken}_dep = declare_dependency(
-  include_directories: include_directories('.'),
-  link_with : shlib)
+  include_directories : include_directories('.'),
+  dependencies : dependencies,
+  link_with : lib,
+)
+meson.override_dependency('{project_name}', {ltoken}_dep)
 
 # Make this library usable from the system's
 # package manager.
@@ -80,12 +101,9 @@ install_headers('{header_file}', subdir : '{header_dir}')
 
 pkg_mod = import('pkgconfig')
 pkg_mod.generate(
-  name : '{project_name}',
-  filebase : '{ltoken}',
+  lib,
   description : 'Meson sample project.',
   subdirs : '{header_dir}',
-  libraries : shlib,
-  version : '{version}',
 )
 '''
 
@@ -103,12 +121,23 @@ int main(int argc, char **argv) {{
 }}
 '''
 
-hello_objc_meson_template = '''project('{project_name}', 'objc',
+hello_objc_meson_template = '''project(
+  '{project_name}',
+  'objc',
   version : '{version}',
-  default_options : ['warning_level=3'])
+  meson_version : '>= {meson_version}',
+  default_options : ['warning_level=3'],
+)
 
-exe = executable('{exe_name}', '{source_name}',
-  install : true)
+dependencies = [{dependencies}
+]
+
+exe = executable(
+  '{exe_name}',
+  '{source_name}',
+  dependencies : dependencies,
+  install : true,
+)
 
 test('basic', exe)
 '''
@@ -124,3 +153,7 @@ class ObjCProject(FileHeaderImpl):
     lib_header_template = lib_h_template
     lib_test_template = lib_objc_test_template
     lib_meson_template = lib_objc_meson_template
+
+    def __init__(self, args: Arguments):
+        super().__init__(args)
+        self.meson_version = '1.3.0'

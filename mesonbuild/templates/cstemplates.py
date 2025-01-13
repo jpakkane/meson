@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2019 The Meson development team
+# Copyright © 2023-2025 Intel Corporation
 
 from __future__ import annotations
 
@@ -23,12 +24,23 @@ public class {class_name} {{
 
 '''
 
-hello_cs_meson_template = '''project('{project_name}', 'cs',
+hello_cs_meson_template = '''project(
+  '{project_name}',
+  'cs',
   version : '{version}',
-  default_options : ['warning_level=3'])
+  meson_version : '>= {meson_version}',
+  default_options : ['warning_level=3'],
+)
 
-exe = executable('{exe_name}', '{source_name}',
-  install : true)
+dependencies = [{dependencies}
+]
+
+exe = executable(
+  '{exe_name}',
+  '{source_name}',
+  install : true,
+  dependencies : dependencies,
+)
 
 test('basic', exe)
 '''
@@ -60,22 +72,39 @@ public class {class_test} {{
 
 '''
 
-lib_cs_meson_template = '''project('{project_name}', 'cs',
+lib_cs_meson_template = '''project(
+  '{project_name}',
+  'cs',
   version : '{version}',
-  default_options : ['warning_level=3'])
+  meson_version : '>= {meson_version}',
+  default_options : ['warning_level=3'],
+)
 
-stlib = shared_library('{lib_name}', '{source_file}',
+dependencies = [{dependencies}
+]
+
+stlib = shared_library(
+  '{lib_name}',
+  '{source_file}',
+  dependencies : dependencies,
   install : true,
 )
 
-test_exe = executable('{test_exe_name}', '{test_source_file}',
-  link_with : stlib)
+test_exe = executable(
+  '{test_exe_name}',
+  '{test_source_file}',
+  dependencies : dependencies,
+  link_with : stlib,
+)
 test('{test_name}', test_exe)
 
 # Make this library usable as a Meson subproject.
 {ltoken}_dep = declare_dependency(
-  include_directories: include_directories('.'),
-  link_with : stlib)
+  include_directories : include_directories('.'),
+  dependencies : dependencies,
+  link_with : stlib,
+)
+meson.override_dependency('{project_name}', {ltoken}_dep)
 
 '''
 
