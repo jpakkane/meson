@@ -174,7 +174,7 @@ def run(options: argparse.Namespace) -> int:
         if options.dump is True:
             dump(devenv, varnames, dump_fmt)
         else:
-            with open(options.dump, "w", encoding='utf-8') as output:
+            with open(os.path.join(options.builddir, options.dump), "w", encoding='utf-8') as output:
                 dump(devenv, varnames, dump_fmt, output)
         return 0
 
