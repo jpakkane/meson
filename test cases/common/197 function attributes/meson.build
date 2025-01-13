@@ -117,7 +117,16 @@ if ['gcc', 'intel'].contains(c.get_id())
   endif
 endif
 
+if c.get_id() == 'clang'
+  if c.version().version_compare('>= 18.0.0')
+    attributes += 'counted_by'
+  endif
+endif
+
 if c.get_id() == 'gcc'
+  if c.version().version_compare('>= 15.1')
+    attributes += 'counted_by'
+  endif
   if c.version().version_compare('>= 14.1')
     attributes += 'null_terminated_string_arg'
   endif

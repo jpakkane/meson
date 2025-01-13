@@ -30,6 +30,13 @@ C_FUNC_ATTRIBUTES = {
         'int foo(void) __attribute__((constructor));',
     'constructor_priority':
         'int foo( void ) __attribute__((__constructor__(65535/2)));',
+    'counted_by':
+        '''
+        struct foo {
+            unsigned int count;
+            char bar[] __attribute__((counted_by(count)));
+        };
+        ''',
     'deprecated':
         'int foo(void) __attribute__((deprecated("")));',
     'destructor':
