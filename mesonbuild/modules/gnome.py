@@ -1210,7 +1210,8 @@ class GnomeModule(ExtensionModule):
         if '--warn-error' in scan_command:
             FeatureDeprecated.single_use('gnome.generate_gir argument --warn-error', '0.55.0',
                                          state.subproject, 'Use "fatal_warnings" keyword argument', state.current_node)
-        if kwargs['fatal_warnings']:
+        werror = state.environment.coredata.get_option(OptionKey('werror', machine=MachineChoice.BUILD, subproject=state.subproject))
+        if werror or kwargs['fatal_warnings']:
             scan_command.append('--warn-error')
 
         generated_files = [f for f in libsources if isinstance(f, (GeneratedList, CustomTarget, CustomTargetIndex))]
