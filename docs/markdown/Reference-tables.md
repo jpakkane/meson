@@ -1,5 +1,14 @@
 # Reference tables
 
+## Implementations (since 1.3.0)
+
+These are return values of `meson.implementation()` depending on known
+re-implementations.
+
+| Value | Implementation |
+| ----- | -------------- |
+| meson | Meson          |
+
 ## Compiler ids
 
 These are return values of the `get_id` (Compiler family) and

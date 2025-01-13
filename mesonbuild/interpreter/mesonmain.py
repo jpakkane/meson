@@ -72,6 +72,7 @@ class MesonMain(MesonInterpreterObject):
                              'global_source_root': self.global_source_root_method,
                              'has_exe_wrapper': self.has_exe_wrapper_method,
                              'has_external_property': self.has_external_property_method,
+                             'implementation': self.implementation_method,
                              'install_dependency_manifest': self.install_dependency_manifest_method,
                              'is_cross_build': self.is_cross_build_method,
                              'is_subproject': self.is_subproject_method,
@@ -291,6 +292,12 @@ class MesonMain(MesonInterpreterObject):
             self.build.environment.need_exe_wrapper() and
             self.build.environment.exe_wrapper is None
         )
+
+    @noPosargs
+    @noKwargs
+    @FeatureNew('meson.implementation', '1.3.0')
+    def implementation_method(self, args: T.List['TYPE_var'], kwargs: 'TYPE_kwargs') -> str:
+        return 'meson'
 
     @noPosargs
     @noKwargs
