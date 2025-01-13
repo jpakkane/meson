@@ -177,3 +177,8 @@ methods:
       type: str
       default: "''"
       description: The error message to print if the check fails
+
+- name: to_string
+  returns: str
+  since: 1.3.0
+  description: Returns the value of the feature option as a string.

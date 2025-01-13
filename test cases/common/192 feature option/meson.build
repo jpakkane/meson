@@ -22,6 +22,7 @@ assert(required_opt.disable_auto_if(true).enabled(), 'Should be enabled option')
 assert(required_opt.disable_auto_if(false).enabled(), 'Should be enabled option')
 assert(required_opt.enable_auto_if(true).enabled(), 'Should be enabled option')
 assert(required_opt.enable_auto_if(false).enabled(), 'Should be enabled option')
+assert(required_opt.to_string() == 'enabled', 'Should be enabled option')
 
 assert(not optional_opt.enabled(), 'Should be auto option')
 assert(not optional_opt.disabled(), 'Should be auto option')
@@ -37,6 +38,7 @@ assert(optional_opt.disable_auto_if(true).disabled(), 'Should be disabled auto o
 assert(optional_opt.disable_auto_if(false).auto(), 'Should be auto option')
 assert(optional_opt.enable_auto_if(true).enabled(), 'Should be disabled auto option')
 assert(optional_opt.enable_auto_if(false).auto(), 'Should be auto option')
+assert(optional_opt.to_string() == 'auto', 'Should be auto option')
 
 assert(not disabled_opt.enabled(), 'Should be disabled option')
 assert(disabled_opt.disabled(), 'Should be disabled option')
@@ -51,6 +53,7 @@ assert(disabled_opt.disable_auto_if(true).disabled(), 'Should be disabled option
 assert(disabled_opt.disable_auto_if(false).disabled(), 'Should be disabled option')
 assert(disabled_opt.enable_auto_if(true).disabled(), 'Should be disabled option')
 assert(disabled_opt.enable_auto_if(false).disabled(), 'Should be disabled option')
+assert(disabled_opt.to_string() == 'disabled', 'Should be disabled option')
 
 dep = dependency('threads', required : required_opt)
 assert(dep.found(), 'Should find required "threads" dep')
