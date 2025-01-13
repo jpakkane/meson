@@ -101,6 +101,8 @@ class CompilerArgs(T.MutableSequence[str]):
         self.pre: T.Deque[str] = collections.deque()
         self.post: T.Deque[str] = collections.deque()
 
+        self._libs: T.Set[str] = set()
+
     # Flush the saved pre and post list into the _container list
     #
     # This correctly deduplicates the entries after _can_dedup definition
@@ -258,12 +260,15 @@ class CompilerArgs(T.MutableSequence[str]):
         normal_flags = []
         lflags = []
         for i in iterable:
-            if i not in self.always_dedup_args and (i.startswith('-l') or i.startswith('-L')):
+            if i not in self.always_dedup_args and (i.startswith('-l') or i.startswith('-L')) and i not in self._libs:
                 lflags.append(i)
             else:
                 normal_flags.append(i)
         self.extend(normal_flags)
-        self.extend_direct(lflags)
+
+        if any(i.startswith('-l') for i in lflags):
+            self.extend_direct(lflags)
+            self._libs.update(i for i in lflags if i.startswith('-l'))
 
     def __add__(self, args: T.Iterable[str]) -> 'CompilerArgs':
         self.flush_pre_post()
