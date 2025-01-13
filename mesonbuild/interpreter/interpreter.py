@@ -3368,6 +3368,12 @@ class Interpreter(InterpreterBase, HoldableObject):
     def build_target(self, node: mparser.BaseNode, args: T.Tuple[str, SourcesVarargsType],
                      kwargs: kwtypes.Jar, targetclass: T.Type[build.Jar]) -> build.Jar: ...
 
+    @T.overload
+    def build_target(self, node: mparser.BaseNode, args: T.Tuple[str, SourcesVarargsType],
+                     kwargs: T.Union[kwtypes.Executable, kwtypes.StaticLibrary, kwtypes.SharedLibrary, kwtypes.SharedModule, kwtypes.Jar],
+                     targetclass: T.Type[T.Union[build.Executable, build.StaticLibrary, build.SharedModule, build.SharedLibrary, build.Jar]]
+                     ) -> T.Union[build.Executable, build.StaticLibrary, build.SharedModule, build.SharedLibrary, build.Jar]: ...
+
     def build_target(self, node: mparser.BaseNode, args: T.Tuple[str, SourcesVarargsType],
                      kwargs: T.Union[kwtypes.Executable, kwtypes.StaticLibrary, kwtypes.SharedLibrary, kwtypes.SharedModule, kwtypes.Jar],
                      targetclass: T.Type[T.Union[build.Executable, build.StaticLibrary, build.SharedModule, build.SharedLibrary, build.Jar]]

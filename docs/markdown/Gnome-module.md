@@ -429,3 +429,11 @@ It takes the following keyword arguments:
   MIME types handled by desktop files in `<prefix>/<datadir>/applications`.
 - `update_mime_database`: *Since 0.64.0* If set to `true`, update cache of
   MIME types in `<prefix>/<datadir>/mime`.
+
+### gnome.executable()
+
+*Since 1.7.0*
+
+Wrapper for executable explicitly targeting applications utilizing GTK. It
+takes the same arguments as
+[executable](Reference-manual_functions.md#executable).

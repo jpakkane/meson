@@ -264,6 +264,9 @@ def list_targets(builddata: build.Build, installdata: backends.InstallData, back
             'depends': [lib.get_id() for lib in getattr(target, 'dependencies', [])]
         }
 
+        if target.introspection_flags:
+            t['flags'] = target.introspection_flags
+
         vs_module_defs = getattr(target, 'vs_module_defs', None)
         if vs_module_defs is not None:
             t['vs_module_defs'] = vs_module_defs.relative_name()

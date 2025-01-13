@@ -15,8 +15,10 @@ from ..mesonlib import relpath, HoldableObject, MachineChoice
 from ..programs import ExternalProgram
 
 if T.TYPE_CHECKING:
+    from ..interpreter import kwargs as kwtypes
     from ..interpreter import Interpreter
     from ..interpreter.interpreter import ProgramVersionFunc
+    from ..interpreter.type_checking import SourcesVarargsType
     from ..interpreterbase import TYPE_var, TYPE_kwargs
     from ..programs import OverrideProgram
     from ..dependencies import Dependency
@@ -156,6 +158,28 @@ class ModuleState:
 
     def add_language(self, lang: str, for_machine: MachineChoice) -> None:
         self._interpreter.add_languages([lang], True, for_machine)
+
+    @T.overload
+    def add_target(self, args: T.Tuple[str, SourcesVarargsType],
+                   kwargs: kwtypes.Executable, targetclass: T.Type[build.Executable]) -> build.Executable: ...
+
+    @T.overload
+    def add_target(self, args: T.Tuple[str, SourcesVarargsType],
+                   kwargs: kwtypes.StaticLibrary, targetclass: T.Type[build.StaticLibrary]) -> build.StaticLibrary: ...
+
+    @T.overload
+    def add_target(self, args: T.Tuple[str, SourcesVarargsType],
+                   kwargs: kwtypes.SharedModule, targetclass: T.Type[build.SharedModule]) -> build.SharedModule: ...
+
+    @T.overload
+    def add_target(self, args: T.Tuple[str, SourcesVarargsType],
+                   kwargs: kwtypes.SharedLibrary, targetclass: T.Type[build.SharedLibrary]) -> build.SharedLibrary: ...
+
+    def add_target(self, args: T.Tuple[str, SourcesVarargsType],
+                   kwargs: T.Union[kwtypes.Executable, kwtypes.StaticLibrary, kwtypes.SharedLibrary, kwtypes.SharedModule, kwtypes.Jar],
+                   targetclass: T.Type[T.Union[build.Executable, build.StaticLibrary, build.SharedModule, build.SharedLibrary, build.Jar]]
+                   ) -> T.Union[build.Executable, build.StaticLibrary, build.SharedModule, build.SharedLibrary, build.Jar]:
+        return self._interpreter.build_target(self.current_node, args, kwargs, targetclass)
 
 class ModuleObject(HoldableObject):
     """Base class for all objects returned by modules

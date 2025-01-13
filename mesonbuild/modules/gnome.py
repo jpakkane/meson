@@ -24,8 +24,8 @@ from .. import mlog
 from ..build import CustomTarget, CustomTargetIndex, Executable, GeneratedList, InvalidArguments
 from ..dependencies import Dependency, InternalDependency
 from ..dependencies.pkgconfig import PkgConfigDependency, PkgConfigInterface
-from ..interpreter.type_checking import DEPENDS_KW, DEPEND_FILES_KW, ENV_KW, INSTALL_DIR_KW, INSTALL_KW, NoneType, DEPENDENCY_SOURCES_KW, in_set_validator
-from ..interpreterbase import noPosargs, noKwargs, FeatureNew, FeatureDeprecated
+from ..interpreter.type_checking import DEPENDS_KW, DEPEND_FILES_KW, ENV_KW, EXECUTABLE_KWS, INSTALL_DIR_KW, INSTALL_KW, SOURCES_VARARGS, NoneType, DEPENDENCY_SOURCES_KW, in_set_validator
+from ..interpreterbase import noPosargs, noKwargs, permittedKwargs, FeatureNew, FeatureDeprecated
 from ..interpreterbase import typed_kwargs, KwargInfo, ContainerTypeInfo
 from ..interpreterbase.decorators import typed_pos_args
 from ..mesonlib import (
@@ -41,7 +41,9 @@ if T.TYPE_CHECKING:
     from . import ModuleState
     from ..build import BuildTarget
     from ..compilers import Compiler
+    from ..interpreter import kwargs as kwtypes
     from ..interpreter import Interpreter
+    from ..interpreter.type_checking import SourcesVarargsType
     from ..interpreterbase import TYPE_var, TYPE_kwargs
     from ..mesonlib import FileOrString
     from ..programs import ExternalProgram
@@ -274,6 +276,7 @@ class GnomeModule(ExtensionModule):
             'mkenums_simple': self.mkenums_simple,
             'genmarshal': self.genmarshal,
             'generate_vapi': self.generate_vapi,
+            'executable': self.executable,
         })
 
     def _get_native_glib_version(self, state: 'ModuleState') -> str:
@@ -2204,6 +2207,25 @@ class GnomeModule(ExtensionModule):
         rv = InternalDependency(None, incs, [], [], link_with, [], sources, [], [], {}, [], [], [])
         created_values.append(rv)
         return ModuleReturnValue(rv, created_values)
+
+    @permittedKwargs(build.known_exe_kwargs)
+    @typed_pos_args('gnome.executable', str, varargs=SOURCES_VARARGS)
+    @typed_kwargs('gnome.executable', *EXECUTABLE_KWS, allow_unknown=True)
+    def executable(self, state: 'ModuleState', args: T.Tuple[str, SourcesVarargsType], kwargs: kwtypes.Executable) -> ModuleReturnValue:
+        target: T.Union[build.Executable, build.SharedLibrary]
+        if state.environment.machines.host.is_android():
+            kwargs["gui_app"] = None
+            kwargs["win_subsystem"] = None
+            if T.TYPE_CHECKING:
+                target = state.add_target(args, T.cast(kwtypes.SharedLibrary, kwargs), build.SharedLibrary)
+            else:
+                target = state.add_target(args, kwargs, build.SharedLibrary)
+            glue = state.dependency('gtk4-android-glue')
+            target.add_deps([glue])
+            target.add_introspection_flag('gnome:has-android-glue')
+        else:
+            target = state.add_target(args, kwargs, build.Executable)
+        return ModuleReturnValue(target, [])
 
 def initialize(interp: 'Interpreter') -> GnomeModule:
     mod = GnomeModule(interp)
