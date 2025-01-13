@@ -19,15 +19,15 @@ from .compilers import (
     CompileCheckMode,
 )
 from .c_function_attributes import CXX_FUNC_ATTRIBUTES, C_FUNC_ATTRIBUTES
-from .mixins.apple import AppleCompilerMixin
+from .mixins.apple import AppleCompilerMixin, AppleCPPStdsMixin
 from .mixins.clike import CLikeCompiler
 from .mixins.ccrx import CcrxCompiler
 from .mixins.ti import TICompiler
 from .mixins.arm import ArmCompiler, ArmclangCompiler
 from .mixins.visualstudio import MSVCCompiler, ClangClCompiler
-from .mixins.gnu import GnuCompiler, gnu_common_warning_args, gnu_cpp_warning_args
+from .mixins.gnu import GnuCompiler, GnuCPPStds, gnu_common_warning_args, gnu_cpp_warning_args
 from .mixins.intel import IntelGnuLikeCompiler, IntelVisualStudioLikeCompiler
-from .mixins.clang import ClangCompiler
+from .mixins.clang import ClangCompiler, ClangCPPStds
 from .mixins.elbrus import ElbrusCompiler
 from .mixins.pgi import PGICompiler
 from .mixins.emscripten import EmscriptenMixin
@@ -45,9 +45,9 @@ if T.TYPE_CHECKING:
 else:
     CompilerMixinBase = object
 
-_ALL_STDS = ['c++98', 'c++0x', 'c++03', 'c++1y', 'c++1z', 'c++11', 'c++14', 'c++17', 'c++2a', 'c++20', 'c++23', 'c++26']
-_ALL_STDS += [f'gnu{std[1:]}' for std in _ALL_STDS]
-_ALL_STDS += ['vc++11', 'vc++14', 'vc++17', 'vc++20', 'vc++latest', 'c++latest']
+ALL_STDS = ['c++98', 'c++0x', 'c++03', 'c++1y', 'c++1z', 'c++11', 'c++14', 'c++17', 'c++2a', 'c++20', 'c++23', 'c++26']
+ALL_STDS += [f'gnu{std[1:]}' for std in ALL_STDS]
+ALL_STDS += ['vc++11', 'vc++14', 'vc++17', 'vc++20', 'vc++latest', 'c++latest']
 
 
 def non_msvc_eh_options(eh: str, args: T.List[str]) -> None:
@@ -175,7 +175,7 @@ class CPPCompiler(CLikeCompiler, Compiler):
         opts = super().get_options()
         key = self.form_compileropt_key('std')
         opts.update({
-            key: options.UserStdOption('C++', _ALL_STDS),
+            key: options.UserStdOption('C++', ALL_STDS),
         })
         return opts
 
@@ -218,10 +218,7 @@ class _StdCPPLibMixin(CompilerMixinBase):
         raise MesonException('Could not detect either libc++ or libstdc++ as your C++ stdlib implementation.')
 
 
-class ClangCPPCompiler(_StdCPPLibMixin, ClangCompiler, CPPCompiler):
-
-    _CPP23_VERSION = '>=12.0.0'
-    _CPP26_VERSION = '>=17.0.0'
+class ClangCPPCompiler(_StdCPPLibMixin, ClangCPPStds, ClangCompiler, CPPCompiler):
 
     def __init__(self, ccache: T.List[str], exelist: T.List[str], version: str, for_machine: MachineChoice, is_cross: bool,
                  info: 'MachineInfo',
@@ -239,7 +236,7 @@ class ClangCPPCompiler(_StdCPPLibMixin, ClangCompiler, CPPCompiler):
                           'everything': ['-Weverything']}
 
     def get_options(self) -> 'MutableKeyedOptionDictType':
-        opts = CPPCompiler.get_options(self)
+        opts = super().get_options()
         self.update_options(
             opts,
             self.create_option(options.UserComboOption,
@@ -256,16 +253,6 @@ class ClangCPPCompiler(_StdCPPLibMixin, ClangCompiler, CPPCompiler):
                                'STL debug mode',
                                False),
         )
-        cppstd_choices = [
-            'c++98', 'c++03', 'c++11', 'c++14', 'c++17', 'c++1z', 'c++2a', 'c++20',
-        ]
-        if version_compare(self.version, self._CPP23_VERSION):
-            cppstd_choices.append('c++23')
-        if version_compare(self.version, self._CPP26_VERSION):
-            cppstd_choices.append('c++26')
-        std_opt = opts[self.form_compileropt_key('std')]
-        assert isinstance(std_opt, options.UserStdOption), 'for mypy'
-        std_opt.set_versions(cppstd_choices, gnu=True)
         if self.info.is_windows() or self.info.is_cygwin():
             self.update_options(
                 opts,
@@ -338,12 +325,8 @@ class ArmLtdClangCPPCompiler(ClangCPPCompiler):
     id = 'armltdclang'
 
 
-class AppleClangCPPCompiler(AppleCompilerMixin, ClangCPPCompiler):
-
-    _CPP23_VERSION = '>=13.0.0'
-    # TODO: We don't know which XCode version will include LLVM 17 yet, so
-    # use something absurd.
-    _CPP26_VERSION = '>=99.0.0'
+class AppleClangCPPCompiler(AppleCompilerMixin, AppleCPPStdsMixin, ClangCPPCompiler):
+    pass
 
 
 class EmscriptenCPPCompiler(EmscriptenMixin, ClangCPPCompiler):
@@ -432,7 +415,7 @@ class ArmclangCPPCompiler(ArmclangCompiler, CPPCompiler):
         return []
 
 
-class GnuCPPCompiler(_StdCPPLibMixin, GnuCompiler, CPPCompiler):
+class GnuCPPCompiler(_StdCPPLibMixin, GnuCPPStds, GnuCompiler, CPPCompiler):
     def __init__(self, ccache: T.List[str], exelist: T.List[str], version: str, for_machine: MachineChoice, is_cross: bool,
                  info: 'MachineInfo',
                  linker: T.Optional['DynamicLinker'] = None,
@@ -452,7 +435,7 @@ class GnuCPPCompiler(_StdCPPLibMixin, GnuCompiler, CPPCompiler):
 
     def get_options(self) -> 'MutableKeyedOptionDictType':
         key = self.form_compileropt_key('std')
-        opts = CPPCompiler.get_options(self)
+        opts = super().get_options()
         self.update_options(
             opts,
             self.create_option(options.UserComboOption,
@@ -469,17 +452,6 @@ class GnuCPPCompiler(_StdCPPLibMixin, GnuCompiler, CPPCompiler):
                                'STL debug mode',
                                False),
         )
-        cppstd_choices = [
-            'c++98', 'c++03', 'c++11', 'c++14', 'c++17', 'c++1z',
-            'c++2a', 'c++20',
-        ]
-        if version_compare(self.version, '>=11.0.0'):
-            cppstd_choices.append('c++23')
-        if version_compare(self.version, '>=14.0.0'):
-            cppstd_choices.append('c++26')
-        std_opt = opts[key]
-        assert isinstance(std_opt, options.UserStdOption), 'for mypy'
-        std_opt.set_versions(cppstd_choices, gnu=True)
         if self.info.is_windows() or self.info.is_cygwin():
             self.update_options(
                 opts,

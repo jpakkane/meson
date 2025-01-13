@@ -5043,9 +5043,11 @@ class AllPlatformTests(BasePlatformTests):
             olddata = newdata
             oldmtime = newmtime
 
-    def test_c_cpp_stds(self):
+    def __test_multi_stds(self, test_c: bool = True, test_objc: bool = False) -> None:
+        assert test_c or test_objc, 'must test something'
         testdir = os.path.join(self.unit_test_dir, '116 c cpp stds')
-        self.init(testdir)
+        self.init(testdir, extra_args=[f'-Dwith-c={str(test_c).lower()}',
+                                       f'-Dwith-objc={str(test_objc).lower()}'])
         # Invalid values should fail whatever compiler we have
         with self.assertRaises(subprocess.CalledProcessError):
             self.setconf('-Dc_std=invalid')
@@ -5054,8 +5056,20 @@ class AllPlatformTests(BasePlatformTests):
         with self.assertRaises(subprocess.CalledProcessError):
             self.setconf('-Dc_std=c++11')
         env = get_fake_env()
-        cc = detect_c_compiler(env, MachineChoice.HOST)
-        if cc.get_id() == 'msvc':
+        if test_c:
+            cc = detect_c_compiler(env, MachineChoice.HOST)
+        if test_objc:
+            objc = detect_compiler_for(env, 'objc', MachineChoice.HOST, True, '')
+            assert objc is not None
+            if test_c and cc.get_argument_syntax() != objc.get_argument_syntax():
+                # The test doesn't work correctly in this case because we can
+                # end up with incompatible stds, like gnu89 with cl.exe for C
+                # and clang.exe for ObjC
+                return
+            if not test_c:
+                cc = objc
+
+        if cc.get_id() in {'msvc', 'clang-cl'}:
             # default_option should have selected those
             self.assertEqual(self.getconf('c_std'), 'c89')
             self.assertEqual(self.getconf('cpp_std'), 'vc++11')
@@ -5068,13 +5082,26 @@ class AllPlatformTests(BasePlatformTests):
             # The first supported std should be selected
             self.setconf('-Dcpp_std=gnu++11,vc++11,c++11')
             self.assertEqual(self.getconf('cpp_std'), 'vc++11')
-        elif cc.get_id() == 'gcc':
+        elif cc.get_id() in {'gcc', 'clang'}:
             # default_option should have selected those
             self.assertEqual(self.getconf('c_std'), 'gnu89')
             self.assertEqual(self.getconf('cpp_std'), 'gnu++98')
             # The first supported std should be selected
             self.setconf('-Dcpp_std=c++11,gnu++11,vc++11')
             self.assertEqual(self.getconf('cpp_std'), 'c++11')
+
+    def test_c_cpp_stds(self) -> None:
+        self.__test_multi_stds()
+
+    @skip_if_not_language('objc')
+    @skip_if_not_language('objcpp')
+    def test_objc_objcpp_stds(self) -> None:
+        self.__test_multi_stds(test_c=False, test_objc=True)
+
+    @skip_if_not_language('objc')
+    @skip_if_not_language('objcpp')
+    def test_c_cpp_objc_objcpp_stds(self) -> None:
+        self.__test_multi_stds(test_objc=True)
 
     def test_rsp_support(self):
         env = get_fake_env()

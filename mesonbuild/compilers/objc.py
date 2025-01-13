@@ -5,13 +5,14 @@ from __future__ import annotations
 
 import typing as T
 
-from .. import options
-from ..options import OptionKey
+from ..options import OptionKey, UserStdOption
 
+from .c import ALL_STDS
 from .compilers import Compiler
+from .mixins.apple import AppleCStdsMixin
+from .mixins.clang import ClangCompiler, ClangCStds
 from .mixins.clike import CLikeCompiler
-from .mixins.gnu import GnuCompiler, gnu_common_warning_args, gnu_objc_warning_args
-from .mixins.clang import ClangCompiler
+from .mixins.gnu import GnuCompiler, GnuCStds, gnu_common_warning_args, gnu_objc_warning_args
 
 if T.TYPE_CHECKING:
     from .. import coredata
@@ -34,6 +35,14 @@ class ObjCCompiler(CLikeCompiler, Compiler):
                           linker=linker)
         CLikeCompiler.__init__(self)
 
+    def get_options(self) -> coredata.MutableKeyedOptionDictType:
+        opts = super().get_options()
+        key = self.form_compileropt_key('std')
+        opts.update({
+            key: UserStdOption('c', ALL_STDS),
+        })
+        return opts
+
     @staticmethod
     def get_display_language() -> str:
         return 'Objective-C'
@@ -42,8 +51,13 @@ class ObjCCompiler(CLikeCompiler, Compiler):
         code = '#import<stddef.h>\nint main(void) { return 0; }\n'
         return self._sanity_check_impl(work_dir, environment, 'sanitycheckobjc.m', code)
 
+    def form_compileropt_key(self, basename: str) -> OptionKey:
+        if basename == 'std':
+            return OptionKey(f'c_{basename}', machine=self.for_machine)
+        return super().form_compileropt_key(basename)
 
-class GnuObjCCompiler(GnuCompiler, ObjCCompiler):
+
+class GnuObjCCompiler(GnuCStds, GnuCompiler, ObjCCompiler):
     def __init__(self, ccache: T.List[str], exelist: T.List[str], version: str, for_machine: MachineChoice,
                  is_cross: bool, info: 'MachineInfo',
                  defines: T.Optional[T.Dict[str, str]] = None,
@@ -61,8 +75,15 @@ class GnuObjCCompiler(GnuCompiler, ObjCCompiler):
                                          self.supported_warn_args(gnu_common_warning_args) +
                                          self.supported_warn_args(gnu_objc_warning_args))}
 
+    def get_option_compile_args(self, options: 'coredata.KeyedOptionDictType') -> T.List[str]:
+        args = []
+        std = options.get_value(self.form_compileropt_key('std'))
+        if std != 'none':
+            args.append('-std=' + std)
+        return args
 
-class ClangObjCCompiler(ClangCompiler, ObjCCompiler):
+
+class ClangObjCCompiler(ClangCStds, ClangCompiler, ObjCCompiler):
     def __init__(self, ccache: T.List[str], exelist: T.List[str], version: str, for_machine: MachineChoice,
                  is_cross: bool, info: 'MachineInfo',
                  defines: T.Optional[T.Dict[str, str]] = None,
@@ -78,23 +99,13 @@ class ClangObjCCompiler(ClangCompiler, ObjCCompiler):
                           '3': default_warn_args + ['-Wextra', '-Wpedantic'],
                           'everything': ['-Weverything']}
 
-    def get_options(self) -> 'coredata.MutableKeyedOptionDictType':
-        return self.update_options(
-            super().get_options(),
-            self.create_option(options.UserComboOption,
-                               OptionKey('c_std', machine=self.for_machine),
-                               'C language standard to use',
-                               ['none', 'c89', 'c99', 'c11', 'c17', 'gnu89', 'gnu99', 'gnu11', 'gnu17'],
-                               'none'),
-        )
-
     def get_option_compile_args(self, options: 'coredata.KeyedOptionDictType') -> T.List[str]:
         args = []
-        std = options.get_value(OptionKey('c_std', machine=self.for_machine))
+        std = options.get_value(self.form_compileropt_key('std'))
         if std != 'none':
             args.append('-std=' + std)
         return args
 
-class AppleClangObjCCompiler(ClangObjCCompiler):
+class AppleClangObjCCompiler(AppleCStdsMixin, ClangObjCCompiler):
 
     """Handle the differences between Apple's clang and vanilla clang."""

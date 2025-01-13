@@ -1,0 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright © 2024 Intel Corporation
+
+option('with-c', type : 'boolean', value : false)
+option('with-objc', type : 'boolean', value : false)

@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2012-2020 The Meson development team
+# Copyright © 2024 Intel Corporation
 
 from __future__ import annotations
 
@@ -10,7 +11,7 @@ from .. import options
 from .. import mlog
 from ..mesonlib import MesonException, version_compare
 from .c_function_attributes import C_FUNC_ATTRIBUTES
-from .mixins.apple import AppleCompilerMixin
+from .mixins.apple import AppleCompilerMixin, AppleCStdsMixin
 from .mixins.clike import CLikeCompiler
 from .mixins.ccrx import CcrxCompiler
 from .mixins.xc16 import Xc16Compiler
@@ -18,10 +19,10 @@ from .mixins.compcert import CompCertCompiler
 from .mixins.ti import TICompiler
 from .mixins.arm import ArmCompiler, ArmclangCompiler
 from .mixins.visualstudio import MSVCCompiler, ClangClCompiler
-from .mixins.gnu import GnuCompiler
+from .mixins.gnu import GnuCompiler, GnuCStds
 from .mixins.gnu import gnu_common_warning_args, gnu_c_warning_args
 from .mixins.intel import IntelGnuLikeCompiler, IntelVisualStudioLikeCompiler
-from .mixins.clang import ClangCompiler
+from .mixins.clang import ClangCompiler, ClangCStds
 from .mixins.elbrus import ElbrusCompiler
 from .mixins.pgi import PGICompiler
 from .mixins.emscripten import EmscriptenMixin
@@ -47,9 +48,9 @@ if T.TYPE_CHECKING:
 else:
     CompilerMixinBase = object
 
-_ALL_STDS = ['c89', 'c9x', 'c90', 'c99', 'c1x', 'c11', 'c17', 'c18', 'c2x', 'c23']
-_ALL_STDS += [f'gnu{std[1:]}' for std in _ALL_STDS]
-_ALL_STDS += ['iso9899:1990', 'iso9899:199409', 'iso9899:1999', 'iso9899:2011', 'iso9899:2017', 'iso9899:2018']
+ALL_STDS = ['c89', 'c9x', 'c90', 'c99', 'c1x', 'c11', 'c17', 'c18', 'c2x', 'c23']
+ALL_STDS += [f'gnu{std[1:]}' for std in ALL_STDS]
+ALL_STDS += ['iso9899:1990', 'iso9899:199409', 'iso9899:1999', 'iso9899:2011', 'iso9899:2017', 'iso9899:2018']
 
 
 class CCompiler(CLikeCompiler, Compiler):
@@ -98,45 +99,12 @@ class CCompiler(CLikeCompiler, Compiler):
         opts = super().get_options()
         key = self.form_compileropt_key('std')
         opts.update({
-            key: options.UserStdOption('C', _ALL_STDS),
+            key: options.UserStdOption('C', ALL_STDS),
         })
         return opts
 
 
-class _ClangCStds(CompilerMixinBase):
-
-    """Mixin class for clang based compilers for setting C standards.
-
-    This is used by both ClangCCompiler and ClangClCompiler, as they share
-    the same versions
-    """
-
-    _C17_VERSION = '>=6.0.0'
-    _C18_VERSION = '>=8.0.0'
-    _C2X_VERSION = '>=9.0.0'
-    _C23_VERSION = '>=18.0.0'
-
-    def get_options(self) -> 'MutableKeyedOptionDictType':
-        opts = super().get_options()
-        stds = ['c89', 'c99', 'c11']
-        # https://releases.llvm.org/6.0.0/tools/clang/docs/ReleaseNotes.html
-        # https://en.wikipedia.org/wiki/Xcode#Latest_versions
-        if version_compare(self.version, self._C17_VERSION):
-            stds += ['c17']
-        if version_compare(self.version, self._C18_VERSION):
-            stds += ['c18']
-        if version_compare(self.version, self._C2X_VERSION):
-            stds += ['c2x']
-        if version_compare(self.version, self._C23_VERSION):
-            stds += ['c23']
-        key = self.form_compileropt_key('std')
-        std_opt = opts[key]
-        assert isinstance(std_opt, options.UserStdOption), 'for mypy'
-        std_opt.set_versions(stds, gnu=True)
-        return opts
-
-
-class ClangCCompiler(_ClangCStds, ClangCompiler, CCompiler):
+class ClangCCompiler(ClangCStds, ClangCompiler, CCompiler):
 
     def __init__(self, ccache: T.List[str], exelist: T.List[str], version: str, for_machine: MachineChoice, is_cross: bool,
                  info: 'MachineInfo',
@@ -189,17 +157,13 @@ class ArmLtdClangCCompiler(ClangCCompiler):
     id = 'armltdclang'
 
 
-class AppleClangCCompiler(AppleCompilerMixin, ClangCCompiler):
+class AppleClangCCompiler(AppleCompilerMixin, AppleCStdsMixin, ClangCCompiler):
 
     """Handle the differences between Apple Clang and Vanilla Clang.
 
     Right now this just handles the differences between the versions that new
     C standards were added.
     """
-
-    _C17_VERSION = '>=10.0.0'
-    _C18_VERSION = '>=11.0.0'
-    _C2X_VERSION = '>=11.0.0'
 
 
 class EmscriptenCCompiler(EmscriptenMixin, ClangCCompiler):
@@ -269,11 +233,8 @@ class ArmclangCCompiler(ArmclangCompiler, CCompiler):
         return []
 
 
-class GnuCCompiler(GnuCompiler, CCompiler):
+class GnuCCompiler(GnuCStds, GnuCompiler, CCompiler):
 
-    _C18_VERSION = '>=8.0.0'
-    _C2X_VERSION = '>=9.0.0'
-    _C23_VERSION = '>=14.0.0'
     _INVALID_PCH_VERSION = ">=3.4.0"
 
     def __init__(self, ccache: T.List[str], exelist: T.List[str], version: str, for_machine: MachineChoice, is_cross: bool,
@@ -295,23 +256,12 @@ class GnuCCompiler(GnuCompiler, CCompiler):
                                          self.supported_warn_args(gnu_c_warning_args))}
 
     def get_options(self) -> 'MutableKeyedOptionDictType':
-        opts = CCompiler.get_options(self)
-        stds = ['c89', 'c99', 'c11']
-        if version_compare(self.version, self._C18_VERSION):
-            stds += ['c17', 'c18']
-        if version_compare(self.version, self._C2X_VERSION):
-            stds += ['c2x']
-        if version_compare(self.version, self._C23_VERSION):
-            stds += ['c23']
-        key = self.form_compileropt_key('std')
-        std_opt = opts[key]
-        assert isinstance(std_opt, options.UserStdOption), 'for mypy'
-        std_opt.set_versions(stds, gnu=True)
+        opts = super().get_options()
         if self.info.is_windows() or self.info.is_cygwin():
             self.update_options(
                 opts,
                 self.create_option(options.UserArrayOption,
-                                   key.evolve('c_winlibs'),
+                                   self.form_compileropt_key('winlibs'),
                                    'Standard Windows libs to link against',
                                    gnu_winlibs),
             )
@@ -517,7 +467,7 @@ class VisualStudioCCompiler(MSVCCompiler, VisualStudioLikeCCompilerMixin, CCompi
         return args
 
 
-class ClangClCCompiler(_ClangCStds, ClangClCompiler, VisualStudioLikeCCompilerMixin, CCompiler):
+class ClangClCCompiler(ClangCStds, ClangClCompiler, VisualStudioLikeCCompilerMixin, CCompiler):
     def __init__(self, exelist: T.List[str], version: str, for_machine: MachineChoice,
                  is_cross: bool, info: 'MachineInfo', target: str,
                  linker: T.Optional['DynamicLinker'] = None,
