@@ -17,6 +17,7 @@ language_map = {
     'c': 'C',
     'cpp': 'CXX',
     'cuda': 'CUDA',
+    'nasm': 'ASM_NASM',
     'objc': 'OBJC',
     'objcpp': 'OBJCXX',
     'cs': 'CSharp',

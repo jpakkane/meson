@@ -1,0 +1,9 @@
+{
+    "stdout": [
+      {
+        "line": ".*CMake Toolchain: Failed to determine CMake compilers state.*",
+        "match": "re",
+        "count": 0
+      }
+    ]
+  }
