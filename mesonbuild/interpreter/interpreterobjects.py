@@ -958,6 +958,8 @@ class BuildTargetHolder(ObjectHolder[_BuildTarget]):
     @noKwargs
     @typed_pos_args('extract_objects', varargs=(mesonlib.File, str, build.CustomTarget, build.CustomTargetIndex, build.GeneratedList))
     def extract_objects_method(self, args: T.Tuple[T.List[T.Union[mesonlib.FileOrString, 'build.GeneratedTypes']]], kwargs: TYPE_nkwargs) -> build.ExtractedObjects:
+        if self.subproject != self.held_object.subproject:
+            raise InterpreterException('Tried to extract objects from a different subproject.')
         return self._target_object.extract_objects(args[0])
 
     @noPosargs
