@@ -11,6 +11,7 @@ import struct
 import shutil
 import subprocess
 import typing as T
+import platform
 
 from ..mesonlib import OrderedSet, generate_list, Popen_safe
 
@@ -25,6 +26,223 @@ DT_MIPS_RLD_MAP_REL = 1879048245
 # Global cache for tools
 INSTALL_NAME_TOOL = False
 
+"""-------------------AIX-------------------------"""
+
+"""
+Reference documents:
+https://www.ibm.com/docs/en/aix/7.1?topic=formats-xcoff-object-file-format
+https://www.ibm.com/docs/en/aix/7.2?topic=formats-ar-file-format-big
+"""
+
+# Define the archive header size and format.
+AR_HDR_SIZE = 114
+AR_HDR_FORMAT = "20s 20s 20s 12s 12s 12s 12s 4s 2s"
+
+# Define the fixed length header size and format.
+FL_HDR_SIZE = 128
+FL_HDR_FORMAT = "8s 20s 20s 20s 20s 20s 20s"
+
+# Size of magic number
+XCOFF_MAGIC_SIZE = 2
+
+# Sizes of XCOFF HEADERS in Shared Objects.
+
+# Define File Header Size and format.
+CFH_HDR_SIZE = 24
+#CFH_HDR_FORMAT = "2s 2s 4s 8s 2s 2s 4s"
+
+# Define Auxillary Header Size and format.
+AUX_HDR_SIZE = 120
+AUX_HDR_FORMAT = "2s 2s 4s 8s 8s 8s 2s 2s 2s 2s 2s 2s 2s 2s 2s 1s 1s 1s 1s 1s 1s 8s 8s 8s 8s 8s 8s 2s 2s 2s 10s"
+
+# Define SECTION Header Size and format.
+SCN_HDR_SIZE = 72
+SCN_HDR_FORMAT = "8s 8s 8s 8s 8s 8s 8s 4s 4s 4s 4s"
+
+# Define LOADER Header Size and format.
+LDR_HDR_SIZE = 56
+LDR_HDR_FORMAT = "4s 4s 4s 4s 4s 4s 8s 8s 8s 8s"
+
+def align(value: int, align_bytes: int) -> int:
+    """ Function used by AIX to align value to align_bytes"""
+    align_bytes = 1 << align_bytes
+    return ((value + align_bytes - 1) // align_bytes) * align_bytes
+
+def traverse_xcoff(file: T.BinaryIO, isArchive: bool) -> None:
+
+    """An AIX archive contains a fixed length header in the begining
+       which is of FL_HDR_SIZE bytes in size. After this the archive header
+       exists which is  of AR_HDR_SIZE bytes in size."""
+
+    if isArchive:
+        """Reads an AIX fixed length header (struct fl_hdr)"""
+        header_data = file.read(FL_HDR_SIZE)
+
+        fl_magic, fl_memoff, fl_gstoff, fl_gst64off, fl_fstmoff, fl_lstmoff, fl_freeoff = struct.unpack(FL_HDR_FORMAT, header_data)
+
+        # Supports only big archive
+        if fl_magic.decode('utf-8').strip() == "<bigaf>":
+            print("This is a big archive.")
+        else:
+            print("Only big archive format is supported to write Libpath.")
+            sys.exit(0)
+
+        file.seek(0)
+        file.seek(int(fl_fstmoff))
+
+        """Read an AIX archive header (struct ar_hdr) byte wise"""
+        header_data = file.read(AR_HDR_SIZE)
+
+        # Unpack the header fields
+        ar_size, ar_nxtmem, ar_prvmem, ar_date, ar_uid, ar_gid, ar_mode, ar_namlen, _ar_name = struct.unpack(AR_HDR_FORMAT, header_data)
+
+        # Decode to strings and strip spaces
+        ar_namlen = ar_namlen.decode('utf-8').strip()
+
+        """ The Magic number always starts at the event byte boundary. So if the length
+            of the archive name is odd add one to it. Else keep it as it and move those
+            many bytes. """
+
+        ar_namlen = int(ar_namlen) if int(ar_namlen) % 2 == 0 else int(ar_namlen) + 1
+
+        file.seek(ar_namlen, 1)
+
+    """ From here on an archive and a non archive shared object have the common logic """
+    """ Shared Modules begin here and shared objects have the fixed length and archive headers """
+
+    """Reads the first 2 bytes of a shared object file"""
+    magic_data = file.read(XCOFF_MAGIC_SIZE)
+    if len(magic_data) != XCOFF_MAGIC_SIZE:
+        sys.exit(0)
+    magic_number = struct.unpack(">H", magic_data)[0]  # Big-endian 16-bit integer
+
+    if magic_number:
+        """ XCOFF type. """
+        if magic_number == 0x01DF:
+            print(" Error Cannot write in 32-bit Shared Object")
+        elif magic_number == 0x01F7:
+            print(" Changing Libpath for a 64-bit Shared Object")
+        else:
+            print(" Error Not a shared object")
+
+    file.seek(0, 0)
+    if isArchive:
+        file.read(FL_HDR_SIZE)
+        file.seek(int(fl_fstmoff))
+        file.read(AR_HDR_SIZE)
+        file.seek(ar_namlen, 1)
+
+    """ Reads composite file header. """
+    file.read(CFH_HDR_SIZE)
+
+    """ Reads auxillary header and unpacks it. """
+    aux_header_data = file.read(AUX_HDR_SIZE)
+
+    o_mflags, o_vstamp, o_debugger, o_text_start, o_data_start, o_toc, o_snentry, o_sntext, o_sndata, o_sntoc, o_snloader, o_snbss, o_algntext, o_algndata, o_modtype, o_cpuflag, o_cputype, o_textpsize, o_datapsize, o_stackpsize, o_flags, o_tsize, o_dsize, o_bsize, o_entry, o_maxstack, o_maxdata, o_sntdata, o_sntbss, o_x64flags, dummy = struct.unpack(AUX_HDR_FORMAT, aux_header_data)
+
+    o_algntext = int.from_bytes(o_algntext, byteorder="big")
+    o_algndata = int.from_bytes(o_algndata, byteorder="big")
+    o_snloader = int.from_bytes(o_snloader, byteorder="big")
+
+    """ Calculate the bytes_to_align which is max of o_algntext, o_algndata. """
+    bytes_to_align = o_algntext if o_algntext >= o_algndata else o_algndata
+    file.seek((o_snloader - 1) * SCN_HDR_SIZE, 1)
+
+    scn_header_data = file.read(SCN_HDR_SIZE)
+
+    s_name, s_paddr, s_vaddr, s_size, s_scnptr, s_relptr, s_lnnoptr, s_nreloc, s_nlnno, s_flags, dummy = struct.unpack(SCN_HDR_FORMAT, scn_header_data)
+
+    s_scnptr = int.from_bytes(s_scnptr, byteorder="big")
+
+    header_len = 0
+    scnptrFromArchiveStart = 0
+
+    """ In a shared object section pointer is s_scnptr + align(header_len, bytes_to_align)
+        In a shared module section pointer is s_scnptr. """
+    if isArchive:
+        header_len = FL_HDR_SIZE + AR_HDR_SIZE + ar_namlen
+        scnptrFromArchiveStart = s_scnptr + align(header_len, bytes_to_align)
+    else:
+        scnptrFromArchiveStart = s_scnptr
+
+    file.seek(scnptrFromArchiveStart, 0)
+
+    """ Reads loader header and unpacks it. """
+    ldr_header_data = file.read(LDR_HDR_SIZE)
+
+    l_version, l_nsyms, l_nreloc, l_istlen, l_nimpid, l_stlen, l_impoff, l_stoff, l_symoff, l_rldoff = struct.unpack(LDR_HDR_FORMAT, ldr_header_data)
+
+    l_impoff = int.from_bytes(l_impoff, byteorder='big')
+    l_istlen = int.from_bytes(l_istlen, byteorder='big')
+
+    scnptrFromArchiveStartPlusOff = 0
+
+    """ In a shared object table position is s_scnptr + l_impoff +  align(header_len, bytes_to_align)
+        In a shared module table position is s_scnptr + l_impoff. """
+    if isArchive:
+        scnptrFromArchiveStartPlusOff = s_scnptr + l_impoff + align(header_len, bytes_to_align)
+    else:
+        scnptrFromArchiveStartPlusOff = s_scnptr + l_impoff
+    file.seek(scnptrFromArchiveStartPlusOff, 0)
+
+    """ Read libpath whose length is l_istlen. """
+    libpath = file.read(l_istlen)
+    build_libpath = libpath.split(b'\x00')[0].decode('utf-8', errors='ignore')
+
+    """ In AIX one can pass install_rpath via LDFLAGS.
+        For example export LDFLAGS=-Wl,-blibpath:/opt/freeware/lib/pthread:/opt/freeware/lib64:/opt/freeware/lib:/usr/lib:/lib"""
+
+    """ The below section of the code checks this and gives it the highest preference as the install_rpath. """
+    install_rpath = ""
+    try:
+        aix_ld_flags = os.environ['LDFLAGS']
+        if "blibpath" in aix_ld_flags:
+            start_pos = aix_ld_flags.find('-blibpath:')
+            start_pos += len('-blibpath:')
+            end_pos = aix_ld_flags.find(' ', start_pos)
+            if end_pos == -1:
+                install_rpath = aix_ld_flags[start_pos:]
+            else:
+                install_rpath = aix_ld_flags[start_pos:end_pos]
+    except Exception as e:
+        print(f"No LDFLAGS set: {e}")
+        return
+
+    """ If the length of the build_rpath length is < install_rpath length then we do not have space to write
+        the same hence exit. Otherwise, we can and the length has to be the same as build_rpath.
+        If the install_rpath length is less than build_rpath length then pad the difference with :"""
+    if len(install_rpath) > len(build_libpath):
+        print("Error: install_rpath is bigger than build_rpath")
+        sys.exit(0)
+    else:
+        install_rpath = install_rpath + (":" * (len(build_libpath) - len(install_rpath)))
+
+    file.seek(scnptrFromArchiveStartPlusOff, 0)
+    file.write(install_rpath.encode('utf-8'))
+    print("Successfully changed libpath from ", build_libpath, "to ", install_rpath)
+
+""" Writes Libpath to an xcoff shared object """
+
+def fix_aix(file_path: str) -> None:
+    """ In AIX, shared modules are .so and shared library is in an archive.
+        isArchive is to check the same. """
+    isArchive = False
+    if file_path.endswith('.a'):
+        isArchive = True
+    elif not file_path.endswith('.so'):
+        return
+
+    try:
+        with open(file_path, 'r+b') as file:
+            traverse_xcoff(file, isArchive)
+
+    except FileNotFoundError:
+        print("Error: File not found.")
+    except Exception as e:
+        print(f"Unexpected Error: {e}")
+
+
+"""----------------AIX------------------"""
 class DataSizes:
     def __init__(self, ptrsize: int, is_le: bool) -> None:
         if is_le:
@@ -457,6 +675,10 @@ def fix_jar(fname: str) -> None:
 
 def fix_rpath(fname: str, rpath_dirs_to_remove: T.Set[bytes], new_rpath: T.Union[str, bytes], final_path: str, install_name_mappings: T.Dict[str, str], verbose: bool = True) -> None:
     global INSTALL_NAME_TOOL  # pylint: disable=global-statement
+
+    if platform.system() == 'AIX':
+        fix_aix(fname)
+
     # Static libraries, import libraries, debug information, headers, etc
     # never have rpaths
     # DLLs and EXE currently do not need runtime path fixing
