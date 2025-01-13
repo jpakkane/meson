@@ -2005,7 +2005,7 @@ class Backend:
             in_default_dir = t.should_install() and not t.get_install_dir()[2]
             if t.for_machine != MachineChoice.HOST or not in_default_dir:
                 continue
-            tdir = os.path.join(self.environment.get_build_dir(), self.get_target_dir(t))
+            tdir = (Path(self.environment.get_build_dir()) / self.get_target_dir(t)).as_posix()
             if isinstance(t, build.Executable):
                 # Add binaries that are going to be installed in bindir into PATH
                 # so they get used by default instead of searching on system when
