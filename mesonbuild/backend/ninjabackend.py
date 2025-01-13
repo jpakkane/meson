@@ -503,6 +503,7 @@ class NinjaBackend(backends.Backend):
         self.ninja_filename = 'build.ninja'
         self.fortran_deps: T.Dict[str, T.Dict[str, File]] = {}
         self.all_outputs: T.Set[str] = set()
+        self.all_structured_sources: T.Set[str] = set()
         self.introspection_data = {}
         self.created_llvm_ir_rule = PerMachine(False, False)
         self.rust_crates: T.Dict[str, RustCrate] = {}
@@ -1951,7 +1952,6 @@ class NinjaBackend(backends.Backend):
             if target.structured_sources.needs_copy():
                 _ods, main_rust_file = self.__generate_sources_structure(Path(
                     self.get_target_private_dir(target)) / 'structured', target.structured_sources)
-                orderdeps.extend(_ods)
             else:
                 # The only way to get here is to have only files in the "root"
                 # positional argument, which are all generated into the same
@@ -1965,12 +1965,15 @@ class NinjaBackend(backends.Backend):
                 else:
                     main_rust_file = os.path.join(g.get_subdir(), g.get_outputs()[0])
 
+                _ods = []
                 for f in target.structured_sources.as_list():
                     if isinstance(f, File):
-                        orderdeps.append(f.rel_to_builddir(self.build_to_src))
+                        _ods.append(f.rel_to_builddir(self.build_to_src))
                     else:
-                        orderdeps.extend([os.path.join(self.build_to_src, f.subdir, s)
-                                          for s in f.get_outputs()])
+                        _ods.extend([os.path.join(self.build_to_src, f.subdir, s)
+                                     for s in f.get_outputs()])
+            self.all_structured_sources.update(_ods)
+            orderdeps.extend(_ods)
 
         for i in target.get_sources():
             if not rustc.can_compile(i):
@@ -3715,6 +3718,7 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
         for crate in self.rust_crates.values():
             if crate.crate_type in {'rlib', 'dylib', 'proc-macro'}:
                 elem.add_dep(crate.target_name)
+        elem.add_dep(list(self.all_structured_sources))
         self.add_build(elem)
 
     def generate_scanbuild(self) -> None:

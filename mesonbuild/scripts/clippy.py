@@ -33,7 +33,7 @@ class ClippyDriver:
 
     def __call__(self, target: T.Dict[str, T.Any]) -> T.Iterable[T.Coroutine[None, None, int]]:
         for src_block in target['target_sources']:
-            if src_block['language'] == 'rust':
+            if 'compiler' in src_block and src_block['language'] == 'rust':
                 clippy = getattr(self.tools, src_block['machine'])
                 if not clippy:
                     self.warn_missing_clippy(src_block['machine'])
