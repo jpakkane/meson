@@ -322,6 +322,11 @@ class ExternalProgram(mesonlib.HoldableObject):
             paths = OrderedSet(path.split(os.pathsep)).difference(exclude_paths)
             path = os.pathsep.join(paths)
         command = shutil.which(name, path=path)
+        if not command and mesonlib.is_os2():
+            for ext in ['exe', 'cmd']:
+                command = shutil.which(f'{name}.{ext}', path=path)
+                if command:
+                    return [command]
         if mesonlib.is_windows():
             return self._search_windows_special_cases(name, command, exclude_paths)
         # On UNIX-like platforms, shutil.which() is enough to find

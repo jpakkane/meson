@@ -387,8 +387,10 @@ class ArLinker(ArLikeLinker, StaticLinker):
         # on Mac OS X, Solaris, or illumos, so don't build them on those OSes.
         # OS X ld rejects with: "file built for unknown-unsupported file format"
         # illumos/Solaris ld rejects with: "unknown file type"
+        # OS/2 ld rejects with: "malformed input file (not rel or archive)"
         if is_thin and not env.machines[self.for_machine].is_darwin() \
-          and not env.machines[self.for_machine].is_sunos():
+          and not env.machines[self.for_machine].is_sunos() \
+          and not env.machines[self.for_machine].is_os2():
             return self.std_thin_args
         else:
             return self.std_args
@@ -543,6 +545,13 @@ class TaskingStaticLinker(StaticLinker):
 
     def get_linker_always_args(self) -> T.List[str]:
         return ['-r']
+
+
+class EmxomfArLinker(ArLinker):
+    id = 'emxomfar'
+
+    def get_std_link_args(self, env: 'Environment', is_thin: bool) -> T.List[str]:
+        return ['cr']
 
 def prepare_rpaths(raw_rpaths: T.Tuple[str, ...], build_dir: str, from_dir: str) -> T.List[str]:
     # The rpaths we write must be relative if they point to the build dir,
@@ -1734,3 +1743,22 @@ class TaskingLinker(DynamicLinker):
         for a in args:
             l.extend(self._apply_prefix('-Wl--whole-archive=' + a))
         return l
+
+
+class OS2DynamicLinker(PosixDynamicLinkerMixin, DynamicLinker):
+    """ld and emxomfld"""
+
+    id = 'ld.os2'
+
+    def get_allow_undefined_args(self) -> T.List[str]:
+        return []
+
+    def thread_flags(self, env: 'Environment') -> T.List[str]:
+        return ['-lpthread']
+
+    def get_std_shared_lib_args(self) -> T.List[str]:
+        return ['-Zdll']
+
+    def get_soname_args(self, env: 'Environment', prefix: str, shlib_name: str,
+                        suffix: str, soversion: str, darwin_versions: T.Tuple[str, str]) -> T.List[str]:
+        return []

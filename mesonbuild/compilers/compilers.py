@@ -293,6 +293,8 @@ def are_asserts_disabled(options: KeyedOptionDictType) -> bool:
 
 def get_base_compile_args(options: 'KeyedOptionDictType', compiler: 'Compiler', env: 'Environment') -> T.List[str]:
     args: T.List[str] = []
+    if mesonlib.is_os2() and options[OptionKey('emxomf')].value:
+        args += ['-Zomf']
     try:
         if options.get_value(OptionKey('b_lto')):
             args.extend(compiler.get_lto_compile_args(
@@ -342,6 +344,8 @@ def get_base_compile_args(options: 'KeyedOptionDictType', compiler: 'Compiler', 
 def get_base_link_args(options: 'KeyedOptionDictType', linker: 'Compiler',
                        is_shared_module: bool, build_dir: str) -> T.List[str]:
     args: T.List[str] = []
+    if mesonlib.is_os2():
+        args += ['-Zomf']
     try:
         if options.get_value('b_lto'):
             if options.get_value('werror'):

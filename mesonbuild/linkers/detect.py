@@ -27,6 +27,7 @@ defaults['clang_cl_static_linker'] = ['llvm-lib']
 defaults['cuda_static_linker'] = ['nvlink']
 defaults['gcc_static_linker'] = ['gcc-ar']
 defaults['clang_static_linker'] = ['llvm-ar']
+defaults['emxomf_static_linker'] = ['emxomfar']
 
 def __failed_to_detect_linker(compiler: T.List[str], args: T.List[str], stdout: str, stderr: str) -> 'T.NoReturn':
     msg = 'Unable to detect linker for compiler `{}`\nstdout: {}\nstderr: {}'.format(
@@ -242,6 +243,8 @@ def guess_nix_linker(env: 'Environment', compiler: T.List[str], comp_class: T.Ty
         else:
             __failed_to_detect_linker(compiler, check_args, o, e)
         linker = linkers.AppleDynamicLinker(compiler, for_machine, comp_class.LINKER_PREFIX, override, version=v)
+    elif 'ld.exe: unrecognized option' in e or 'emxomfld: invalid option' in e:
+        linker = linkers.OS2DynamicLinker(compiler, for_machine, comp_class.LINKER_PREFIX, override, version='none')
     else:
         __failed_to_detect_linker(compiler, check_args, o, e)
     return linker
