@@ -1193,14 +1193,14 @@ class Backend:
         result: T.Set[str] = set()
         prospectives: T.Set[build.BuildTargetTypes] = set()
         if isinstance(target, build.BuildTarget):
-            prospectives.update(target.get_transitive_link_deps())
+            prospectives.update(target.get_all_link_deps())
             # External deps
             result.update(self.extract_dll_paths(target))
 
         for bdep in extra_bdeps:
             prospectives.add(bdep)
             if isinstance(bdep, build.BuildTarget):
-                prospectives.update(bdep.get_transitive_link_deps())
+                prospectives.update(bdep.get_all_link_deps())
         # Internal deps
         for ld in prospectives:
             dirseg = os.path.join(self.environment.get_build_dir(), self.get_target_dir(ld))
