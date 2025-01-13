@@ -1,5 +1,7 @@
 #! /bin/sh
 
+set -e
+
 srcdir=$(dirname "$0")
 
 for i in "$@"
@@ -42,3 +44,8 @@ install: libfoo.$LIBEXT
 	cp \$< "\$(DESTDIR)$LIBDIR";
 	cp "$srcdir/libfoo.h" "\$(DESTDIR)$INCDIR";
 EOL
+
+if [ "$FOO" != "BAR" ]; then
+  echo "Env FOO is not set"
+  exit 1
+fi
