@@ -43,6 +43,11 @@ class CudaDependency(SystemDependency):
                 req_modules = ['cudart_static']
             self.requested_modules = req_modules + self.requested_modules
 
+        if 'HOMEBREW_PREFIX' in os.environ:
+            self.local_path = os.environ['HOMEBREW_PREFIX']
+        else:
+            self.local_path = '/usr/local'
+
         (self.cuda_path, self.version, self.is_found) = self._detect_cuda_path_and_version()
         if not self.is_found:
             return
@@ -98,7 +103,7 @@ class CudaDependency(SystemDependency):
             return (defaults[0][0], defaults[0][1], True)
 
         platform_msg = 'set the CUDA_PATH environment variable' if self._is_windows() \
-            else 'set the CUDA_PATH environment variable/create the \'/usr/local/cuda\' symbolic link'
+            else f'set the CUDA_PATH environment variable/create the \'{self.local_path}/cuda\' symbolic link'
         msg = f'Please specify the desired CUDA Toolkit version (e.g. dependency(\'cuda\', version : \'>=10.1\')) or {platform_msg} to point to the location of your desired version.'
         return self._report_dependency_error(msg, (None, None, False))
 
@@ -112,7 +117,7 @@ class CudaDependency(SystemDependency):
         mlog.debug(f'Search paths: {paths}')
 
         if nvcc_version and defaults:
-            default_src = f"the {self.env_var} environment variable" if self.env_var else "the \'/usr/local/cuda\' symbolic link"
+            default_src = f"the {self.env_var} environment variable" if self.env_var else f"the \'{self.local_path}/cuda\' symbolic link"
             nvcc_warning = 'The default CUDA Toolkit as designated by {} ({}) doesn\'t match the current nvcc version {} and will be ignored.'.format(default_src, os.path.realpath(defaults[0][0]), nvcc_version)
         else:
             nvcc_warning = None
@@ -146,7 +151,7 @@ class CudaDependency(SystemDependency):
 
     def _cuda_paths_nix(self) -> T.List[T.Tuple[str, bool]]:
         # include /usr/local/cuda default only if no env_var was found
-        pattern = '/usr/local/cuda-*' if self.env_var else '/usr/local/cuda*'
+        pattern = f'{self.local_path}/cuda-*' if self.env_var else f'{self.local_path}/cuda*'
         return [(path, os.path.basename(path) == 'cuda') for path in glob.iglob(pattern)]
 
     toolkit_version_regex = re.compile(r'^CUDA Version\s+(.*)$')
