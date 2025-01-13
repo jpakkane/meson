@@ -152,9 +152,6 @@ class CMakeFileAPI:
                 if i['role'] == 'flags':
                     link_flags += [i['fragment']]
 
-            # TODO The `dependencies` entry is new in the file API.
-            #      maybe we can make use of that in addition to the
-            #      implicit dependency detection
             tgt_data = {
                 'artifacts': [Path(x.get('path', '')) for x in tgt.get('artifacts', [])],
                 'sourceDirectory': src_dir,
@@ -168,6 +165,8 @@ class CMakeFileAPI:
                 'linkFlags': ' '.join(link_flags),     # See previous comment block why we join the array
                 'type': tgt.get('type', 'EXECUTABLE'),
                 'fileGroups': [],
+                'cmakeId': tgt.get('id', ''),
+                'dependencies': [dep.get('id', '') for dep in tgt.get('dependencies', [])],
             }
 
             processed_src_idx = []
@@ -253,6 +252,27 @@ class CMakeFileAPI:
 
             return pro_data
 
+        def find_target(cnf_data: T.Dict[str, T.Any], id: str) -> T.Optional[T.Dict[str, T.Any]]:
+            for project in cnf_data['projects']:
+                for target in project['targets']:  # type: T.Dict[str, T.Any]
+                    if target['cmakeId'] == id:
+                        return target
+            return None
+
+        def flatten_dependencies(cnf_data: T.Dict[str, T.Any]) -> None:
+            for project in cnf_data['projects']:
+                for target in project['targets']:
+                    for dep_id in target.get('dependencies', '[]'):
+                        dep = find_target(cnf_data, dep_id)
+                        if dep is None:
+                            mlog.warning('CMake: unknown target id', mlog.bold(dep_id), 'as a dependency of target', mlog.bold(target['name']))
+                            continue
+
+                        if dep['type'] == 'STATIC_LIBRARY':
+                            if target['linkLibraries']:
+                                target['linkLibraries'] += ' '
+                            target['linkLibraries'] += ' '.join(str(a) for a in dep['artifacts'])
+
         for cnf in data.get('configurations', []):
             cnf_data = {
                 'name': cnf.get('name', ''),
@@ -262,6 +282,7 @@ class CMakeFileAPI:
             for pro in cnf.get('projects', []):
                 cnf_data['projects'] += [parse_project(pro)]
 
+            flatten_dependencies(cnf_data)
             self.cmake_configurations += [CMakeConfiguration(cnf_data)]
 
     def _parse_cmakeFiles(self, data: T.Dict[str, T.Any]) -> None:
