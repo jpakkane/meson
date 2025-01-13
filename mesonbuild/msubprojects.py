@@ -5,6 +5,7 @@ import os, subprocess
 import argparse
 import asyncio
 import threading
+import configparser
 import copy
 import shutil
 from concurrent.futures.thread import ThreadPoolExecutor
@@ -470,6 +471,35 @@ class Runner:
             self.wrap.update_hash_cache(self.repo_dir)
         return success
 
+    def syncwrap(self) -> bool:
+        if not os.path.isdir(self.repo_dir):
+            return True
+
+        self.log(f'Sync {self.wrap.name}...')
+        if self.wrap.redirected:
+            self.wrap.filename = self.wrap.original_filename
+            self.wrap.parse_wrap()
+
+        if self.wrap.type != 'git':
+            return True
+
+        revision = self.wrap.get('revision').strip()
+
+        found, new_revision = quiet_git(['describe', '--exact-match', '--tags'], self.repo_dir)
+        if not found:
+            new_revision = self.git_output(['rev-parse', 'HEAD']).strip()
+
+        if new_revision != revision:
+            if self.wrap.redirected:
+                self.log(mlog.yellow('Warning:'), f'{self.wrap.original_filename} redirected to {self.wrap.filename}')
+            cp = configparser.ConfigParser(interpolation=None)
+            cp.read(self.wrap.filename, encoding='utf-8')
+            cp['wrap-git']['revision'] = new_revision
+            with open(self.wrap.filename, 'w', encoding='utf-8') as f:
+                cp.write(f)
+            self.log(f'  -> New revision {new_revision}')
+        return True
+
     def checkout(self) -> bool:
         options = T.cast('CheckoutArguments', self.options)
 
@@ -669,6 +699,11 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
     add_common_arguments(p)
     add_subprojects_argument(p)
     p.set_defaults(subprojects_func=Runner.update)
+
+    p = subparsers.add_parser('syncwrap', help='Update all wrap files from subprojects latest revision (git only)')
+    add_common_arguments(p)
+    add_subprojects_argument(p)
+    p.set_defaults(subprojects_func=Runner.syncwrap)
 
     p = subparsers.add_parser('checkout', help='Checkout a branch (git only)')
     p.add_argument('-b', default=False, action='store_true',

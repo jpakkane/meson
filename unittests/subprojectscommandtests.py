@@ -4,6 +4,7 @@
 import subprocess
 import tempfile
 import textwrap
+import configparser
 import os
 from pathlib import Path
 import typing as T
@@ -59,6 +60,11 @@ class SubprojectsCommandTests(BasePlatformTests):
     def _git_remote_commit(self, name, ref='HEAD'):
         return self._git_remote(['rev-parse', ref], name)
 
+    def _git_wrap_commit(self, name):
+        cp = configparser.ConfigParser(interpolation=None)
+        cp.read(str((self.subprojects_dir / name).with_suffix('.wrap')), encoding='utf-8')
+        return cp['wrap-git']['revision']
+
     def _git_create_repo(self, path):
         # If a user has git configuration init.defaultBranch set we want to override that
         with tempfile.TemporaryDirectory() as d:
@@ -84,6 +90,9 @@ class SubprojectsCommandTests(BasePlatformTests):
         self._git_remote(['checkout', branch], name)
         self._git_remote(['commit', '--no-gpg-sign', '--allow-empty', '-m', f'initial {branch} commit'], name)
 
+    def _git_create_local_commit(self, name):
+        self._git_local(['commit', '--no-gpg-sign', '--allow-empty', '-m', 'Additional commit'], self.subprojects_dir / name)
+
     def _git_create_remote_branch(self, name, branch):
         self._git_remote(['checkout', '-b', branch], name)
         self._git_remote(['commit', '--no-gpg-sign', '--allow-empty', '-m', f'initial {branch} commit'], name)
@@ -91,6 +100,10 @@ class SubprojectsCommandTests(BasePlatformTests):
     def _git_create_remote_tag(self, name, tag):
         self._git_remote(['commit', '--no-gpg-sign', '--allow-empty', '-m', f'tag {tag} commit'], name)
         self._git_remote(['tag', '--no-sign', tag], name)
+
+    def _git_create_local_tag(self, name, tag):
+        self._git_local(['commit', '--no-gpg-sign', '--allow-empty', '-m', f'tag {tag} commit'], name)
+        self._git_local(['tag', '--no-sign', tag], name)
 
     def _wrap_create_git(self, name, revision='master', depth=None):
         path = self.root_dir / name
@@ -298,3 +311,28 @@ class SubprojectsCommandTests(BasePlatformTests):
         self.assertFalse(Path(self.subprojects_dir / 'sub_file').exists())
         self.assertFalse(Path(self.subprojects_dir / 'sub_git').exists())
         self.assertFalse(Path(self.subprojects_dir / 'redirect.wrap').exists())
+
+    def test_syncwrap(self):
+        subp_name = 'sub1'
+
+        self._git_create_remote_repo(subp_name)
+        self._wrap_create_git(subp_name, 'head')
+        self._subprojects_cmd(['download'])
+        self.assertPathExists(str(self.subprojects_dir / subp_name))
+        self._git_config(self.subprojects_dir / subp_name)
+
+        # test sha1 revision
+        self._git_create_local_commit(subp_name)
+        self._subprojects_cmd(['syncwrap'])
+        self.assertNotEqual(self._git_wrap_commit(subp_name), self._git_remote_commit(subp_name))
+        self.assertEqual(self._git_wrap_commit(subp_name), self._git_local_commit(subp_name))
+    
+        # test tag
+        self._git_create_local_tag(subp_name, 'newtag')
+        self._subprojects_cmd(['syncwrap'])
+        self.assertEqual(self._git_wrap_commit(subp_name), 'newtag')
+
+        # test dirty tag
+        self._git_create_local_commit(subp_name)
+        self._subprojects_cmd(['syncwrap'])
+        self.assertEqual(self._git_wrap_commit(subp_name), self._git_local_commit(subp_name))

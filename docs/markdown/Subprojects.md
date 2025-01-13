@@ -372,6 +372,16 @@ execute a command in each subproject directory. For example this can
 be useful to check the status of subprojects (e.g. with `git status`
 or `git diff`) before performing other actions on them.
 
+### Synchronize wrap files
+
+*Since 1.1.0*
+
+The command-line `meson subprojects syncwrap` will update the content
+of wrap-git files to match the revision found in their subprojects
+directory. For example this can be useful when developing subprojects
+together with a project.
+
+
 ## Why must all subprojects be inside a single directory?
 
 There are several reasons.
