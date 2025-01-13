@@ -65,6 +65,7 @@ jobs:
             gobject-introspection
             gtk-doc
             libboost-devel
+            libclang-devel
             libglib2.0-devel
             libgtk3-devel
             libxml2-devel

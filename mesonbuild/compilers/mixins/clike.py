@@ -1119,7 +1119,7 @@ class CLikeCompiler(Compiler):
         # Only try to find std libs if no extra dirs specified.
         # The built-in search procedure will always favour .so and then always
         # search for .a. This is only allowed if libtype is LibType.PREFER_SHARED
-        if ((not extra_dirs and libtype is LibType.PREFER_SHARED) or
+        if ((not extra_dirs and libtype in {LibType.PREFER_SHARED, LibType.SHARED}) or
                 libname in self.internal_libs):
             cargs = ['-l' + libname]
             largs = self.get_linker_always_args() + self.get_allow_undefined_link_args()

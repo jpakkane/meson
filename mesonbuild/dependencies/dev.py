@@ -508,6 +508,185 @@ class LLVMDependencyCMake(CMakeDependency):
         return module
 
 
+class ClangSystemDependency(SystemDependency):
+
+    def __init__(self, name: str, env: Environment, kwargs: T.Dict[str, T.Any], language: T.Optional[str] = None) -> None:
+        language = kwargs.get('language', language)
+        if language not in {None, 'c', 'cpp'}:
+            raise DependencyException('Clang only provides C and C++ language support')
+
+        super().__init__(name, env, kwargs, language)
+        self.feature_since = ('1.6.0', '')
+        self.module_details: T.List[str] = []
+
+        # Clang may be installed a number of different ways:
+        #
+        # 1. Clang is installed directly in a common search path
+        # 2. Clang is installed alongside LLVM in a separate path to allow multiple versions
+        #    to be co-installed. (Debian and Gentoo do this)
+        # 3. LLVM and Clang are installed in separate, default search paths. (NixOS does this)
+        #
+        # In order to accommodate all three of these we need to search both in
+        # the LLVM directory and outside of it. Start with the LLVM dir to avoid
+        # a situation where there is Clang next to LLVM and a different one in a
+        # common path
+        #
+        # Try to handle the combinations of CMake and config-tool LLVM with this
+        # method, even though it probably doesn't make sense to use the system
+        # finder for Clang with CMake LLVM
+        llvm = T.cast('T.Optional[ExternalDependency]', kwargs.get('llvm'))
+        if llvm is not None:
+            if not llvm.found():
+                mlog.debug('Passed LLVM was not found, treating Clang as not found')
+                return
+            if self.version_reqs and not mesonlib.version_compare_many(llvm.version, self.version_reqs):
+                mlog.debug('Passed LLVMs version does not match the version required for Clang, treating it as not found')
+                return
+            self.ext_deps.append(llvm)
+        else:
+            if not self._add_sub_dependency(
+                llvm_factory(
+                    env, self.for_machine, {'required': False, 'version': kwargs.get('version'), 'method': 'config-tool'})):
+                return
+            llvm = T.cast('ExternalDependency', self.ext_deps[0])
+        # Clang and LLVM need to have the same version
+        self.version = llvm.version
+
+        # libclang-cpp.so does not require modules, but there is no static equivalent
+        modules = stringlistify(extract_as_list(kwargs, 'modules'))
+        if not modules and language == 'cpp':
+            mlog.warning('Clang C++ dependency without modules works correctly for dynamically linked Clang, '
+                         'but will fail to find a statically linked Clang', once=True, fatal=False)
+
+        dirs: T.List[T.List[str]] = [[llvm.get_variable(configtool='libdir', cmake='LLVM_LIBRARY_DIR')], []]
+
+        # Need the Windows version.dll library for the C++ interface
+        machine = self.env.machines[self.for_machine]
+        assert machine is not None, 'for mypy'
+        if machine.is_windows() and language == 'cpp':
+            libver = self.clib_compiler.find_library('version', env, [])
+            self.link_args = libver if libver is not None else []
+
+        # Clang provides up to two interfaces for C++ code, and only one for C
+        #
+        # For C++ you can use libclang-cpp.so, or you can use loose static
+        # archives (This is just like LLVM).
+        #
+        # For C you use libclang which may be built static or shared, depending
+        # on configuration.
+        if not self.static or language == 'c':
+            if language == 'cpp':
+                # Use strict libtypes for C++ since we can fall through to
+                # individual libs if we can't find what
+                libtype = mesonlib.LibType.SHARED
+                libname = 'clang-cpp'
+            else:
+                libtype = mesonlib.LibType.PREFER_STATIC if self.static else mesonlib.LibType.PREFER_SHARED
+                libname = 'clang'
+
+            for search in dirs:
+                lib = self.clib_compiler.find_library(libname, env, search, libtype=libtype)
+                if lib:
+                    # Version.h is a C++ header, and this will fail if we look
+                    # for clang-c. The inc is just the basic
+                    version = self.clib_compiler.get_define('CLANG_VERSION', '#include <clang/Basic/Version.inc>', env, lib, self.ext_deps)[0]
+                    if not version:
+                        mlog.debug(f'Could not find Clang in {search}, Becuase Version header was not found')
+                        continue
+
+                    if not self.version_reqs or mesonlib.version_compare_many(version, self.version_reqs):
+                        self.version = version
+                        self.link_args.extend(lib)
+                        self.is_found = True
+                        return
+
+        # If we don't have modules, or we're looking for C we're done, it's not going to find anything anyway
+        if not modules or language != 'cpp':
+            return
+
+        opt_modules = stringlistify(extract_as_list(kwargs, 'optional_modules'))
+
+        libtype = mesonlib.LibType.PREFER_STATIC if self.static else mesonlib.LibType.PREFER_SHARED
+
+        # Sometimes (especially on Windows), the libs will have a suffix of the
+        # major version, so thigs like `clangBasic-8.lib` or
+        # `cygclangBasic-8.dll`
+        assert llvm.version is not None, 'for mypy'
+        for search, suffix in zip(dirs, ['', f'-{llvm.version.split(".")[0]}']):
+            self.module_details.clear()
+            libs: T.List[str] = []
+            for m in modules:
+                m = f'{m}{suffix}'
+                lib = self.clib_compiler.find_library(m, env, search, libtype)
+                if lib:
+                    libs.extend(lib)
+                    self.module_details.append(m)
+                else:
+                    self.module_details.append(f'{m} (missing)')
+                    # Intentionally do not break here so that we can get an
+                    # accurate count of missing modules
+            if len(modules) != len(libs):
+                mlog.debug(f'Could not find Clang in {search}, '
+                           f'because of missing modules: {self.module_details}')
+                continue
+
+            for m in opt_modules:
+                m = f'{m}{suffix}'
+                lib = self.clib_compiler.find_library(m, env, search, libtype)
+                if lib:
+                    libs.extend(lib)
+                    self.module_details.append(m)
+                else:
+                    self.module_details.append(f'{m} (missing but optional)')
+
+            version = self.clib_compiler.get_define('CLANG_VERSION', '#include <clang/Basic/Version.h>', env, libs, self.ext_deps)[0]
+            if not version:
+                mlog.debug(f'Could not find Clang in {search}, Becuase Version header was not found')
+                continue
+
+            if not self.version_reqs or mesonlib.version_compare_many(version, self.version_reqs):
+                self.version = version
+                self.link_args = libs
+                self.is_found = True
+                return
+
+            mlog.debug(f'Could not use Clang in {search}, because of version mismatch, '
+                       f'required {", ".join(self.version_reqs)}, version: {version}')
+
+    def log_details(self) -> str:
+        if self.module_details:
+            return 'modules: ' + ', '.join(self.module_details)
+        return ''
+
+
+class ClangCMakeDependency(CMakeDependency):
+
+    def __init__(self, name: str, environment: Environment, kwargs: T.Dict[str, T.Any], language: T.Optional[str] = None,
+                 force_use_global_compilers: bool = False) -> None:
+        language = kwargs.get('language', language)
+
+        # libclang-cpp.so does not require modules, but there is no static equivalent
+        if not kwargs.get('modules') and language == 'cpp':
+            mlog.warning('Clang C++ dependency without modules works correctly for dynamically linked Clang, '
+                         'but will fail to find a statically linked Clang', once=True, fatal=False)
+
+        # There are no loose libs for the C api, only libclang
+        if language != 'cpp':
+            kwargs['modules'] = ['libclang']
+        elif not kwargs.get('static', False):
+            # XXX: We really need to try twice here, once for clang-cpp and once
+            # for individual libs. We're probably going to need a custom
+            # factory…
+            kwargs['modules'] = ['clang-cpp']
+
+        # The C compiler is required for C++ mode, otherwise it will fail.
+        # Setting this option will add the C compielr if it's enabled
+        if language == 'cpp':
+            force_use_global_compilers = True
+
+        super().__init__(name, environment, kwargs, language, force_use_global_compilers)
+
+
 class ValgrindDependency(PkgConfigDependency):
     '''
     Consumers of Valgrind usually only need the compile args and do not want to
@@ -701,6 +880,13 @@ class JDKSystemDependency(JNISystemDependency):
 
 packages['jdk'] = JDKSystemDependency
 
+packages['clang'] = DependencyFactory(
+    'clang',
+    [DependencyMethods.CMAKE, DependencyMethods.SYSTEM],
+    cmake_class=ClangCMakeDependency,
+    cmake_name='Clang',
+    system_class=ClangSystemDependency,
+)
 
 class DiaSDKSystemDependency(SystemDependency):
 

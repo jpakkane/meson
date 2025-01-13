@@ -612,6 +612,41 @@ llvm_dep = dependency('llvm', version : ['>= 8', '< 9'])
 llvm_link = find_program(llvm_dep.get_variable(configtool: 'bindir') / 'llvm-link')
 ```
 
+## Clang
+
+*(since 1.6.0)*
+
+Meson has native support for Clang, as well as support for using CMake to find Clang.
+Because of the tight coupling between Clang and LLVM, the Clang dependency has a
+specific argument to select the LLVM to use, or an internal version will be used
+(When using the system based finder). This argument is unused with the CMake finder:
+
+```meson
+llvm = dependency('llvm', version : ['>= 16', '< 17'])
+clang = dependency('clang', version : ['>= 16', '< 17'], llvm : llvm, method : 'system')
+```
+
+Both libclang (the C interface) and the C++ interfaces are supported via the
+`language` keyword. The default is to search for the `C` interface.
+
+If the `language` is `c`, then `libclang` will be searched for. This may be
+built static or shared, and is a Clang configuration option.
+
+Otherwise, if the dependency may be shared, `clang-cpp`  will be searched for
+before loose clang libraries. It is always considered to have all of the modules
+included.
+
+`method` may be `auto`, `system`, or `cmake`.
+
+### Modules
+
+Clang modules are supported, and must be passed in the format `clangBasic`, with
+proper capitalization and the `clang` prepended.
+
+```meson
+clang = dependency('clang', static : true, modules : ['clangBasic', 'clangIndex'])
+```
+
 ## MPI
 
 *(added 0.42.0)*

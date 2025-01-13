@@ -244,6 +244,7 @@ permitted_dependency_kwargs = {
     'fallback',
     'include_type',
     'language',
+    'llvm',
     'main',
     'method',
     'modules',

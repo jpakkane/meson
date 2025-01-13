@@ -1,0 +1,30 @@
+{
+  "matrix": {
+    "options": {
+      "method": [
+        { "val": "system", "expect_skip_on_jobname": ["msys2-gccx64ninja", "msys2-gccx86ninja", "azure-vc2019x64vs", "azure-vc2019x64ninja"] },
+        { "val": "cmake", "expect_skip_on_jobname": ["msys2-gccx64ninja", "msys2-gccx86ninja", "azure-vc2019x64vs", "azure-vc2019x64ninja"] }
+      ],
+      "link-static": [
+        {
+          "val": true,
+          "expect_skip_on_jobname": [
+            "linux-arch-gcc", "linux-arch-gcc-pypy", "linux-opensuse-gcc",
+            "linux-fedora-gcc", "linux-gentoo-gcc"
+          ]
+        },
+        { "val": false }
+      ],
+      "language": [
+        { "val": "c" },
+        { "val": "cpp" }
+      ]
+    },
+    "exclude": [
+      { "link-static": true, "language": "c" }
+    ]
+  },
+  "tools": {
+    "cmake": ">=3.11"
+  }
+}
