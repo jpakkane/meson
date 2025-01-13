@@ -1605,25 +1605,6 @@ class Backend:
         # Substitute the rest of the template strings
         values = mesonlib.get_filenames_templates_dict(inputs, outputs)
         cmd = mesonlib.substitute_values(cmd, values)
-        # This should not be necessary but removing it breaks
-        # building GStreamer on Windows. The underlying issue
-        # is problems with quoting backslashes on Windows
-        # which is the seventh circle of hell. The downside is
-        # that this breaks custom targets whose command lines
-        # have backslashes. If you try to fix this be sure to
-        # check that it does not break GST.
-        #
-        # The bug causes file paths such as c:\foo to get escaped
-        # into c:\\foo.
-        #
-        # Unfortunately we have not been able to come up with an
-        # isolated test case for this so unless you manage to come up
-        # with one, the only way is to test the building with Gst's
-        # setup. Note this in your MR or ping us and we will get it
-        # fixed.
-        #
-        # https://github.com/mesonbuild/meson/pull/737
-        cmd = [i.replace('\\', '/') for i in cmd]
         return inputs, outputs, cmd
 
     def get_introspect_command(self) -> str:
